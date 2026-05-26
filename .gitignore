@@ -1,0 +1,42 @@
+# Xcode
+Deep/build/
+Deep/DerivedData/
+Deep/**/*.xcuserstate
+Deep/**/*.xcuserdatad
+Deep/**/xcuserdata/
+Deep/**/*.xcscmblueprint
+Deep/**/*.xccheckout
+
+# Xcode workspace user settings
+Deep/**/project.xcworkspace/xcuserdata/
+Deep/**/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+# Swift Package Manager
+Deep/.swiftpm/
+Deep/Package.resolved
+Deep/.build/
+
+# CocoaPods
+Deep/Pods/
+
+# Carthage
+Deep/Carthage/Build/
+Deep/Carthage/Checkouts/
+
+# fastlane
+Deep/fastlane/report.xml
+Deep/fastlane/Preview.html
+Deep/fastlane/screenshots/**/*.png
+Deep/fastlane/test_output
+
+# macOS
+Deep/**/.DS_Store
+Deep/**/.AppleDouble
+Deep/**/.LSOverride
+Deep/**/._*
+
+# IDE
+Deep/**/.idea/
+Deep/**/.vscode/
+Deep/**/*.swp
+Deep/**/*.swo
