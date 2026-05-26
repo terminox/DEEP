@@ -8,11 +8,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        GlobalPauseView()
-    }
+  var body: some View {
+    GlobalPauseView()
+  }
 }
 
 #Preview {
-    ContentView()
+  ContentView()
 }
