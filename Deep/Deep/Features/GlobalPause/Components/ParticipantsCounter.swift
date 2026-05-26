@@ -4,25 +4,31 @@ struct ParticipantsCounter: View {
     let count: Int
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Image(systemName: "person.2.fill")
-                .font(.system(size: 14, weight: .regular))
+                .font(.system(.subheadline, design: .rounded, weight: .regular))
                 .foregroundStyle(DeepColor.lavenderMist)
-                .padding(8)
+                .padding(9)
                 .background(
                     Circle().fill(.white.opacity(0.7))
+                        .background(Circle().fill(.ultraThinMaterial))
                 )
+                .overlay(Circle().strokeBorder(.white.opacity(0.6), lineWidth: 0.5))
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(formatted)
-                    .font(.system(size: 22, weight: .medium, design: .rounded))
+                    .font(DeepType.bigNumber)
                     .foregroundStyle(DeepColor.deepPlum)
                     .contentTransition(.numericText())
-                    .accessibilityLabel("\(count) people pausing with you")
+                    .monospacedDigit()
                 Text("people pausing with you")
-                    .font(.system(size: 13))
+                    .font(DeepType.caption)
                     .foregroundStyle(DeepColor.driftGrey)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(count) people pausing with you")
+
             Spacer(minLength: 0)
         }
     }

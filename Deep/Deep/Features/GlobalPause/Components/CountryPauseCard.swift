@@ -11,7 +11,7 @@ struct CountryPauseCard: View {
                 .padding(.bottom, 10)
 
             CountryImage(url: pause.imageURL, accent: accentColor)
-                .frame(height: 92)
+                .frame(height: 96)
                 .clipShape(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
@@ -42,21 +42,25 @@ struct CountryPauseCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Text(pause.flagEmoji)
-                    .font(.system(size: 16))
+                    .font(.system(.callout))
+                    .accessibilityHidden(true)
                 Text(pause.countryName)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(DeepType.body.weight(.medium))
                     .foregroundStyle(DeepColor.deepPlum)
-                Spacer(minLength: 0)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: 4)
                 Text(pause.localTime)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
                     .foregroundStyle(DeepColor.driftGrey)
+                    .monospacedDigit()
             }
             HStack(spacing: 4) {
                 Image(systemName: "person.fill")
-                    .font(.system(size: 9))
+                    .font(.system(.caption2))
                     .foregroundStyle(DeepColor.lavenderMist)
                 Text(pause.participantCount.formatted(.number.grouping(.automatic)))
-                    .font(.system(size: 11))
+                    .font(DeepType.caption)
                     .foregroundStyle(DeepColor.driftGrey)
             }
         }
@@ -105,7 +109,7 @@ private struct CountryImage: View {
         )
         .overlay(
             Image(systemName: "mountain.2.fill")
-                .font(.system(size: 28, weight: .light))
+                .font(.system(.title2, design: .default, weight: .light))
                 .foregroundStyle(.white.opacity(0.55))
         )
     }

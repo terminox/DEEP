@@ -36,7 +36,7 @@ private struct Chip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 13, weight: isSelected ? .medium : .regular))
+                .font(DeepType.body.weight(isSelected ? .medium : .regular))
                 .foregroundStyle(isSelected ? .white : DeepColor.deepPlum.opacity(0.85))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
@@ -62,7 +62,7 @@ private struct Chip: View {
                     radius: 10, x: 0, y: 4
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.softPress)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

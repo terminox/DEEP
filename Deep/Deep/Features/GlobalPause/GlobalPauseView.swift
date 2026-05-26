@@ -12,20 +12,17 @@ struct GlobalPauseView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             AtmosphereBackground()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: DeepSpacing.rhythm) {
-                    // Reserved top spacing where the header/logo would live.
-                    Color.clear.frame(height: 120)
-
                     ParticipantsCounter(count: 128_756)
                         .padding(.horizontal, DeepSpacing.edge)
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Let's create a Global pause")
-                            .font(.system(size: 13))
+                            .font(DeepType.caption)
                             .foregroundStyle(DeepColor.driftGrey)
                             .padding(.horizontal, DeepSpacing.edge)
 
@@ -35,7 +32,7 @@ struct GlobalPauseView: View {
                                 "Every day, at the same time.",
                                 "21:00 Thailand Time"
                             ],
-                            durationDescription: "10 minute together",
+                            durationDescription: "10 minutes together",
                             hasJoined: $hasJoined
                         )
                         .padding(.horizontal, DeepSpacing.edge)
@@ -52,8 +49,26 @@ struct GlobalPauseView: View {
 
                     Color.clear.frame(height: 28)
                 }
+                .padding(.top, 16)
             }
             .scrollBounceBehavior(.basedOnSize)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                GlobalPauseHeader()
+                    .padding(.top, 6)
+                    .padding(.bottom, 12)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                DeepColor.moonCream.opacity(0.85),
+                                DeepColor.moonCream.opacity(0.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .ignoresSafeArea(edges: .top)
+                        .allowsHitTesting(false)
+                    )
+            }
         }
         .preferredColorScheme(.light)
     }

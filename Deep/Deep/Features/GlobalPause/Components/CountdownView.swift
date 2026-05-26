@@ -22,25 +22,25 @@ struct CountdownView: View {
 
     private var separator: some View {
         Text(":")
-            .font(.system(size: 18, weight: .light, design: .rounded))
+            .font(DeepType.countdown.weight(.light))
             .foregroundStyle(DeepColor.driftGrey.opacity(0.5))
-            .padding(.bottom, 10)
+            .padding(.bottom, 12)
+            .accessibilityHidden(true)
     }
 
     private func unit(value: Int, label: String) -> some View {
         VStack(spacing: 2) {
             Text(String(format: "%02d", value))
-                .font(.system(size: 20, weight: .medium, design: .rounded))
+                .font(DeepType.countdown)
                 .foregroundStyle(DeepColor.deepPlum)
                 .monospacedDigit()
                 .contentTransition(.numericText(countsDown: true))
                 .animation(DeepMotion.exhale, value: value)
             Text(label)
-                .font(.system(size: 8, weight: .medium))
-                .tracking(1.0)
+                .font(DeepType.micro)
+                .tracking(1.2)
                 .foregroundStyle(DeepColor.driftGrey)
         }
-        .frame(minWidth: 28)
     }
 
     private struct Remaining {
@@ -51,10 +51,11 @@ struct CountdownView: View {
 
     private func remaining(until target: Date, now: Date) -> Remaining {
         let interval = max(0, Int(target.timeIntervalSince(now)))
-        let h = interval / 3600
-        let m = (interval % 3600) / 60
-        let s = interval % 60
-        return Remaining(hours: h, minutes: m, seconds: s)
+        return Remaining(
+            hours: interval / 3600,
+            minutes: (interval % 3600) / 60,
+            seconds: interval % 60
+        )
     }
 }
 

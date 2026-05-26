@@ -6,53 +6,45 @@ struct NextPauseCard: View {
     let durationDescription: String
     @Binding var hasJoined: Bool
 
-    @State private var pressed = false
-
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            GlobeOrb()
-                .frame(width: 48, height: 48)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
+                GlobeOrb()
+                    .frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Text("Next Global Pause")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(DeepColor.deepPlum)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 9, weight: .regular))
-                            .foregroundStyle(DeepColor.lavenderMist)
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                    Spacer(minLength: 6)
-                    CountdownView(target: target)
-                        .fixedSize()
-                }
+                Text("Next Global Pause")
+                    .font(DeepType.sectionTitle)
+                    .foregroundStyle(DeepColor.deepPlum)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                HStack(alignment: .bottom, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(scheduleLines, id: \.self) { line in
-                            Text(line)
-                                .font(.system(size: 12))
-                                .foregroundStyle(DeepColor.driftGrey)
-                        }
-                        Text(durationDescription)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(DeepColor.deepPlum.opacity(0.85))
-                            .padding(.top, 2)
-                    }
-                    Spacer(minLength: 0)
-                    VStack(alignment: .trailing, spacing: 6) {
-                        joinButton
-                        Text("You will be notified once we begin")
-                            .font(.system(size: 9))
+                Spacer(minLength: 8)
+
+                CountdownView(target: target)
+                    .layoutPriority(1)
+            }
+
+            HStack(alignment: .bottom, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(scheduleLines, id: \.self) { line in
+                        Text(line)
+                            .font(DeepType.caption)
                             .foregroundStyle(DeepColor.driftGrey)
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 120, alignment: .trailing)
                     }
+                    Text(durationDescription)
+                        .font(DeepType.caption.weight(.medium))
+                        .foregroundStyle(DeepColor.deepPlum.opacity(0.85))
+                        .padding(.top, 2)
+                }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 6) {
+                    joinButton
+                    Text("You will be notified once we begin")
+                        .font(.system(.caption2, design: .default))
+                        .foregroundStyle(DeepColor.driftGrey)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 140, alignment: .trailing)
                 }
             }
         }
@@ -66,13 +58,13 @@ struct NextPauseCard: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: hasJoined ? "checkmark" : "heart.fill")
-                    .font(.system(size: 11, weight: .regular))
+                    .font(.system(.footnote, design: .rounded, weight: .semibold))
                 Text(hasJoined ? "Joined" : "I'll join")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(DeepType.body.weight(.medium))
             }
             .foregroundStyle(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
             .background(
                 Capsule().fill(
                     LinearGradient(
@@ -83,13 +75,9 @@ struct NextPauseCard: View {
                 )
             )
             .shadow(color: DeepColor.lavenderMist.opacity(0.4), radius: 10, x: 0, y: 5)
-            .scaleEffect(pressed ? 0.97 : 1.0)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.softPress)
         .accessibilityLabel(hasJoined ? "You have joined the next global pause" : "Join the next global pause")
-        ._onPressGesture { isPressing in
-            withAnimation(DeepMotion.settle) { pressed = isPressing }
-        }
     }
 }
 
@@ -102,7 +90,7 @@ private struct GlobeOrb: View {
                         colors: [.white.opacity(0.9), DeepColor.softLilac.opacity(0.55), DeepColor.lavenderMist.opacity(0.7)],
                         center: .topLeading,
                         startRadius: 2,
-                        endRadius: 56
+                        endRadius: 52
                     )
                 )
             Image(systemName: "globe.europe.africa.fill")
@@ -119,16 +107,6 @@ private struct GlobeOrb: View {
     }
 }
 
-private extension View {
-    func _onPressGesture(perform action: @escaping (Bool) -> Void) -> some View {
-        simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in action(true) }
-                .onEnded { _ in action(false) }
-        )
-    }
-}
-
 #Preview {
     NextPauseCardPreview()
 }
@@ -140,7 +118,7 @@ private struct NextPauseCardPreview: View {
         NextPauseCard(
             target: Date().addingTimeInterval(seconds),
             scheduleLines: ["Every day, at the same time.", "21:00 Thailand Time"],
-            durationDescription: "10 minute together",
+            durationDescription: "10 minutes together",
             hasJoined: $joined
         )
         .padding()

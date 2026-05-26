@@ -7,9 +7,10 @@ struct VoicesOfPeaceSection: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: "Voices of peace", trailing: "See all")
 
-            VStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 ForEach(voices.prefix(2)) { voice in
-                    VoiceRow(voice: voice)
+                    VoiceCard(voice: voice)
+                        .frame(maxWidth: .infinity)
                 }
             }
             .padding(.horizontal, DeepSpacing.edge)
@@ -17,33 +18,34 @@ struct VoicesOfPeaceSection: View {
     }
 }
 
-private struct VoiceRow: View {
+private struct VoiceCard: View {
     let voice: VoiceOfPeace
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VoiceAvatar(tint: voice.avatarTint, initial: voice.name.first.map(String.init) ?? "?")
-                .frame(width: 40, height: 40)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 8) {
+                VoiceAvatar(tint: voice.avatarTint, initial: voice.name.first.map(String.init) ?? "?")
+                    .frame(width: 32, height: 32)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(voice.name)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(DeepType.body.weight(.medium))
                         .foregroundStyle(DeepColor.deepPlum)
+                        .lineLimit(1)
                     Text(voice.country)
-                        .font(.system(size: 11))
+                        .font(DeepType.caption)
                         .foregroundStyle(DeepColor.driftGrey)
+                        .lineLimit(1)
                 }
-                Text("“\(voice.quote)”")
-                    .font(.system(size: 12))
-                    .foregroundStyle(DeepColor.deepPlum.opacity(0.78))
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
-            Image(systemName: "quote.bubble")
-                .font(.system(size: 12))
-                .foregroundStyle(DeepColor.lavenderMist.opacity(0.55))
+
+            Text("\u{201C}\(voice.quote)\u{201D}")
+                .font(DeepType.caption)
+                .foregroundStyle(DeepColor.deepPlum.opacity(0.78))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
         .frostedCard(cornerRadius: 20)
@@ -64,11 +66,11 @@ private struct VoiceAvatar: View {
                         colors: [.white.opacity(0.95), color.opacity(0.85)],
                         center: .topLeading,
                         startRadius: 1,
-                        endRadius: 28
+                        endRadius: 24
                     )
                 )
             Text(initial)
-                .font(.system(size: 16, weight: .light, design: .serif))
+                .font(.system(.subheadline, design: .serif, weight: .light))
                 .italic()
                 .foregroundStyle(DeepColor.deepPlum.opacity(0.85))
         }

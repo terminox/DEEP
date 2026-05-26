@@ -41,6 +41,7 @@ struct LiveAroundWorldSection: View {
                 }
             }
             .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
         }
     }
 }
@@ -49,33 +50,33 @@ struct SectionHeader: View {
     let title: String
     var subtitle: String? = nil
     var trailing: String? = nil
+    var action: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
-                    .font(.system(size: 17, weight: .medium))
+                    .font(DeepType.sectionTitle)
                     .foregroundStyle(DeepColor.deepPlum)
-                Spacer(minLength: 0)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
                 if let trailing {
-                    Button {
-                        // Reserved for future navigation.
-                    } label: {
+                    Button(action: action) {
                         HStack(spacing: 2) {
                             Text(trailing)
-                                .font(.system(size: 12))
+                                .font(DeepType.caption)
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(.system(.caption2, design: .default, weight: .medium))
                         }
                         .foregroundStyle(DeepColor.lavenderMist)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.softPress)
                     .accessibilityLabel("See all \(title.lowercased())")
                 }
             }
             if let subtitle {
                 Text(subtitle)
-                    .font(.system(size: 12))
+                    .font(DeepType.caption)
                     .foregroundStyle(DeepColor.driftGrey)
             }
         }
