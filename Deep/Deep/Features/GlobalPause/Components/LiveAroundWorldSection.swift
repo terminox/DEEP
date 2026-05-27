@@ -2,27 +2,19 @@ import SwiftUI
 
 struct LiveAroundWorldSection: View {
   let pauses: [CountryPause]
-  @State private var visibleIndex: Int = 0
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      SectionHeader(
-        title: "Live now around the world",
-        subtitle: "Who around the world is pausing for peace?",
-        trailing: "See all"
-      )
+      SectionHeader(title: "Live now around the world")
 
       ScrollView(.horizontal, showsIndicators: false) {
         LazyHStack(spacing: 12) {
-          ForEach(Array(pauses.enumerated()), id: \.element.id) { index, pause in
+          ForEach(pauses) { pause in
             CountryPauseCard(pause: pause)
               .scrollTransition(.animated(DeepMotion.exhale)) { content, phase in
                 content
                   .opacity(phase.isIdentity ? 1 : 0.75)
                   .scaleEffect(phase.isIdentity ? 1 : 0.97)
-              }
-              .onScrollVisibilityChange { isVisible in
-                if isVisible { visibleIndex = index }
               }
           }
         }
@@ -31,17 +23,7 @@ struct LiveAroundWorldSection: View {
       }
       .scrollTargetBehavior(.viewAligned)
       .contentMargins(.horizontal, 0)
-
-      HStack(spacing: 6) {
-        ForEach(pauses.indices, id: \.self) { index in
-          Capsule()
-            .fill(index == visibleIndex ? DeepColor.lavenderMist : DeepColor.driftGrey.opacity(0.25))
-            .frame(width: index == visibleIndex ? 14 : 6, height: 6)
-            .animation(DeepMotion.exhale, value: visibleIndex)
-        }
-      }
-      .frame(maxWidth: .infinity)
-      .accessibilityHidden(true)
+      .scrollClipDisabled()
     }
   }
 }

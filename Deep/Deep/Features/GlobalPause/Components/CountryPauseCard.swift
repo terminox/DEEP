@@ -34,35 +34,25 @@ struct CountryPauseCard: View {
     .shadow(color: DeepColor.lavenderMist.opacity(0.16), radius: 14, x: 0, y: 8)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(
-      "\(pause.countryName), paused at \(pause.localTime), \(pause.participantCount.formatted()) people"
+      "\(pause.countryName), paused at \(pause.localTime)"
     )
   }
 
   private var header: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      HStack(spacing: 6) {
-        Text(pause.flagEmoji)
-          .font(.system(.callout))
-          .accessibilityHidden(true)
-        Text(pause.countryName)
-          .font(DeepType.body.weight(.medium))
-          .foregroundStyle(DeepColor.deepPlum)
-          .lineLimit(1)
-          .minimumScaleFactor(0.85)
-        Spacer(minLength: 4)
-        Text(pause.localTime)
-          .font(.system(.footnote, design: .rounded, weight: .medium))
-          .foregroundStyle(DeepColor.driftGrey)
-          .monospacedDigit()
-      }
-      HStack(spacing: 4) {
-        Image(systemName: "person.fill")
-          .font(.system(.caption2))
-          .foregroundStyle(DeepColor.lavenderMist)
-        Text(pause.participantCount.formatted(.number.grouping(.automatic)))
-          .font(DeepType.caption)
-          .foregroundStyle(DeepColor.driftGrey)
-      }
+    HStack(spacing: 6) {
+      Text(pause.flagEmoji)
+        .font(.system(.callout))
+        .accessibilityHidden(true)
+      Text(pause.countryName)
+        .font(DeepType.body.weight(.medium))
+        .foregroundStyle(DeepColor.deepPlum)
+        .lineLimit(1)
+        .minimumScaleFactor(0.85)
+      Spacer(minLength: 4)
+      Text(pause.localTime)
+        .font(.system(.footnote, design: .rounded, weight: .medium))
+        .foregroundStyle(DeepColor.driftGrey)
+        .monospacedDigit()
     }
   }
 
