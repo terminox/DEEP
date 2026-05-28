@@ -2,24 +2,23 @@
 using namespace metal;
 
 // ───────────────────────────────────────────────────────────────────────────
-// Holographic Earth surface fragment shader.
+// Earth surface fragment shader — crystal-glass orb.
 //
-// Single fullscreen triangle, sphere SDF raymarch, single hit point.
-// Continents come from a bundled equirectangular texture (2048×1024,
-// "specular" polarity: black = land, white = ocean → inverted at sample).
+// Single fullscreen triangle, sphere SDF raymarch, two hits per ray (front
+// surface + refracted back-side exit), so the orb reads as a *solid* piece
+// of glass with continents suspended inside, not a hazy holographic shell.
 //
-// Holographic ingredients (all driven in-shader, no per-frame uniforms
-// needed beyond what we already had):
-//   1. Viewing-angle iridescence walking the design palette
-//      (sky_wash → lavender → lilac → blush → peach)
-//   2. Translucent body — only continents + rim + haze carry alpha
-//   3. Country glow (gaussian accumulator, unchanged)
-//   4. Fresnel rim warmed toward peach
-//   5. Internal "glass" haze so the silhouette feels held, not hollow
-//   6. Breath shimmer (subtle FBM iridescent drift)
+// Glass ingredients (no per-frame uniforms beyond what already existed):
+//   1. Crystal-clear body — ocean area is almost fully transparent.
+//   2. Sharp specular highlight from sun direction (Phong, soft falloff).
+//   3. Bright thin Fresnel rim with a faint warm/cool dispersion split.
+//   4. Refracted back-side bleed — front face transmits a faint ghost of
+//      the far hemisphere's continents, the way a real glass marble does.
+//   5. Continents on the front face still carry iridescence + country glow.
+//   6. Breath shimmer (subtle FBM iridescent drift), kept low.
 //
-// All palette constants are codified from Deep/Theme/DeepTheme.swift, which
-// is the DESIGN.md palette. No high-saturation values anywhere.
+// All palette constants come from Deep/Theme/DeepTheme.swift — the DESIGN.md
+// palette. Pastel only; no high-saturation values anywhere.
 // ───────────────────────────────────────────────────────────────────────────
 
 struct GlowSourceGPU {
@@ -285,37 +284,97 @@ fragment float4 earthSurfaceFragment(
   float3 glowColor = mix(SOFT_LILAC, BLUSH_POWDER, glow);
   glowColor = mix(glowColor, PEACH_CLOUD, smoothstep(0.55, 0.95, glow));
 
-  // ── Fresnel rim ───────────────────────────────────────────────────────────
-  float fresnel = pow(1.0 - ndv, 3.0);
+  // ── Glass body — sharp rim, specular, dispersion ──────────────────────────
+  //
+  // Fresnel split into a soft outer "body" cue and a sharp narrow edge so the
+  // silhouette has a clean glassy outline without losing the held softness
+  // expected from the Deep palette.
+  float fresnelBody = pow(1.0 - ndv, 2.2);   // gentle inner gleam near rim
+  float fresnelRim  = pow(1.0 - ndv, 5.0);   // sharp bright outline
+  float fresnelEdge = pow(1.0 - ndv, 9.0);   // ultra-thin dispersion sliver
 
-  // ── Internal "glass" haze ─────────────────────────────────────────────────
-  // Without this, the orb's ocean is invisible and the silhouette feels
-  // hollow. A subtle inverse-fresnel haze gives the body a soft glass shell.
-  float internalHaze = pow(1.0 - ndv, 1.6) * 0.5 + 0.08;
+  // Sun-driven specular. Phong reflection vector against the view direction,
+  // shininess tuned to read as a soft wet gleam rather than a hard pinpoint.
+  float3 L = normalize(U.sunDirection.xyz);
+  float3 reflLight = reflect(-L, worldNormal);
+  float specular = pow(max(dot(reflLight, -rayDir), 0.0), 64.0);
+  // Fresnel-weight the specular so the highlight feels embedded in the glass.
+  specular *= (0.55 + 0.45 * fresnelBody);
+
+  // Subtle warm/cool chromatic dispersion at the very edge. Stays inside the
+  // Deep palette — no rainbow, just a hint of sky/peach split.
+  float dispAxis = clamp(worldNormal.x * 0.5 + 0.5, 0.0, 1.0);
+  float3 dispersion = mix(SKY_WASH, PEACH_CLOUD, dispAxis);
+  float3 rimColor = mix(MOON_CREAM, dispersion, 0.45);
+
+  // ── Refracted back-side bleed ─────────────────────────────────────────────
+  //
+  // Refract the view ray on entry, march through the sphere to the inner
+  // back surface, and sample the continent map at the exit point. The result
+  // is a faint ghost of the far hemisphere visible through the front face —
+  // the visual cue that says "this is a solid glass ball, not a soap bubble."
+  float ior = 1.0 / 1.45;
+  float3 refr = refract(rayDir, worldNormal, ior);
+  float backGlow = 0.0;
+  float3 backTint = float3(0.0);
+  if (dot(refr, refr) > 1e-4) {
+    // Refracted ray starts on the front surface, points into the glass.
+    float3 oc2 = hit.point - sphereCenter;
+    float b2 = dot(refr, oc2);
+    float c2 = dot(oc2, oc2) - radius * radius;
+    float disc2 = b2 * b2 - c2;
+    if (disc2 > 0.0) {
+      float t2 = -b2 + sqrt(disc2);
+      float3 exitPoint = hit.point + refr * t2;
+      float3 exitNormalLocal = transpose(R) * normalize(exitPoint - sphereCenter);
+      float2 exitUV = sphericalUV(exitNormalLocal);
+      float backSpec = continentTex.sample(texSampler, exitUV).r;
+      float backLand = 1.0 - backSpec;
+      float backContinent = smoothstep(0.30, 0.70, backLand);
+      // Fade the bleed near the rim so it doesn't fight the dispersion edge,
+      // and dim it overall so it stays a whisper.
+      backGlow = backContinent * (0.55 - fresnelRim * 0.45);
+      backTint = iridescent(0.42);
+    }
+  }
 
   // ── Breath shimmer (very low amplitude, iridescent drift) ────────────────
   float shimmerN = fbm3(localNormal * 5.0 + float3(time * 0.04, 0, time * 0.025), 2);
-  float shimmer = (shimmerN - 0.5) * 0.08;
+  float shimmer = (shimmerN - 0.5) * 0.06;
 
   // ── Emissive composition ──────────────────────────────────────────────────
-  // Continents are the strongest emitter, then coast halo, then glow blobs
-  // on top of land only (people are land), then peach rim, then inner haze.
+  //
+  // Order of contribution (front to back, conceptually):
+  //   - Specular highlight (brightest, wet gleam)
+  //   - Rim with dispersion
+  //   - Front-face continents + coast halo + country glow
+  //   - Faint back-side bleed (continents visible through the glass)
+  //   - Soft body gleam near rim
   float3 emissive = float3(0.0);
   emissive += iridContinent * continent * 1.85;
   emissive += iridCoast * coastHalo * 0.85;
   emissive += glowColor * continent * glow * 1.6;
-  emissive += PEACH_CLOUD * fresnel * 0.65;
-  emissive += SKY_WASH * internalHaze * 0.35;
+  emissive += backTint * backGlow * 0.55;
+  emissive += rimColor * fresnelRim * 1.9;
+  emissive += dispersion * fresnelEdge * 1.1;
+  emissive += MOON_CREAM * specular * 1.35;
+  emissive += SKY_WASH * fresnelBody * 0.10;
   emissive += shimmer * MOON_CREAM;
 
   // ── Alpha ─────────────────────────────────────────────────────────────────
-  // Translucent body — continents make it solid, haze + rim fill in the rest
-  // so the silhouette is fully present without being opaque.
+  //
+  // Crystal-clear body: ocean reads almost transparent. Continents remain
+  // solid so the map stays legible. The sharp rim and specular gleam supply
+  // the visual edge that says "glass," and the back-side bleed gives the
+  // interior substance without fogging it out.
   float alpha = saturate(
-      continent * 0.88
-    + coastHalo * 0.45
-    + fresnel * 0.55
-    + internalHaze * 0.45
+      continent * 0.90
+    + coastHalo * 0.40
+    + fresnelRim * 1.05
+    + fresnelEdge * 0.75
+    + specular * 0.95
+    + backGlow * 0.45
+    + fresnelBody * 0.08
   );
 
   return float4(emissive, alpha);
