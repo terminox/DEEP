@@ -12,12 +12,11 @@ using namespace metal;
 // needed beyond what we already had):
 //   1. Viewing-angle iridescence walking the design palette
 //      (sky_wash → lavender → lilac → blush → peach)
-//   2. Lat/lon grid lines (sin-thresholded, faint)
-//   3. Translucent body — only continents + grid + rim carry alpha
-//   4. Country glow (gaussian accumulator, unchanged)
-//   5. Fresnel rim warmed toward peach
-//   6. Internal "glass" haze so the silhouette feels held, not hollow
-//   7. Breath shimmer (subtle FBM iridescent drift)
+//   2. Translucent body — only continents + rim + haze carry alpha
+//   3. Country glow (gaussian accumulator, unchanged)
+//   4. Fresnel rim warmed toward peach
+//   5. Internal "glass" haze so the silhouette feels held, not hollow
+//   6. Breath shimmer (subtle FBM iridescent drift)
 //
 // All palette constants are codified from Deep/Theme/DeepTheme.swift, which
 // is the DESIGN.md palette. No high-saturation values anywhere.
@@ -191,10 +190,12 @@ fragment float4 earthSurfaceFragment(
   constant GlowSourceGPU* glowSources [[buffer(1)]],
   texture2d<float> continentTex [[texture(0)]]
 ) {
+  // Longitude (S) wraps — 0° and 360° are the same meridian. Latitude (T)
+  // clamps — the poles aren't connected. Without repeat on S, sampling at
+  // the dateline edge clamps to the wrong neighbor and prints a seam.
   constexpr sampler texSampler(filter::linear,
                                mip_filter::linear,
-                               address::repeat,
-                               s_address::clamp_to_edge,
+                               s_address::repeat,
                                t_address::clamp_to_edge);
 
   // Reconstruct world-space ray from clip-space NDC.
@@ -245,7 +246,21 @@ fragment float4 earthSurfaceFragment(
   // ── Continents from the bundled texture ───────────────────────────────────
   // Source polarity: black=land, white=ocean. Invert for our continent value.
   float2 uv = sphericalUV(localNormal);
-  float specularSample = continentTex.sample(texSampler, uv).r;
+
+  // Explicit UV gradients computed from the *smooth* localNormal (no atan2
+  // discontinuity) so the dateline seam doesn't trigger huge derivatives →
+  // wrong mip level → visible vertical line at longitude ±180°.
+  float3 dNdx = dfdx(localNormal);
+  float3 dNdy = dfdy(localNormal);
+  float xz_sq = max(localNormal.x * localNormal.x + localNormal.z * localNormal.z, 1e-5);
+  float3 du_dN = float3(localNormal.z, 0.0, -localNormal.x) / (2.0 * M_PI_F * xz_sq);
+  float y_arg = max(1.0 - localNormal.y * localNormal.y, 1e-5);
+  float3 dv_dN = float3(0.0, -1.0 / (M_PI_F * sqrt(y_arg)), 0.0);
+  float2 dUVdx = float2(dot(du_dN, dNdx), dot(dv_dN, dNdx));
+  float2 dUVdy = float2(dot(du_dN, dNdy), dot(dv_dN, dNdy));
+
+  float specularSample = continentTex.sample(texSampler, uv,
+                                              gradient2d(dUVdx, dUVdy)).r;
   float landRaw = 1.0 - specularSample;
   // Soft threshold cleans up JPG artifacts + ignores the fine river/inland
   // detail (which would look like noise on a holographic orb at this scale).
@@ -265,16 +280,6 @@ fragment float4 earthSurfaceFragment(
   float3 iridContinent = iridescent(clamp(0.35 + iridT * 0.55 + iridDrift, 0.0, 1.0));
   float3 iridCoast = iridescent(clamp(0.55 + iridT * 0.4, 0.0, 1.0));
 
-  // ── Lat/lon grid (faint, sin-thresholded) ─────────────────────────────────
-  // 36 meridians × 18 parallels: classic globe density without being busy.
-  // smoothstep edge at 0.985 keeps lines hair-thin so bloom does the heavy
-  // lifting (post-pass turns 1px lines into soft halos).
-  float meridianWave = abs(sin(uv.x * M_PI_F * 36.0));
-  float parallelWave = abs(sin(uv.y * M_PI_F * 18.0));
-  float meridians = smoothstep(0.984, 1.0, meridianWave);
-  float parallels = smoothstep(0.984, 1.0, parallelWave);
-  float grid = max(meridians, parallels);
-
   // ── Country glow ──────────────────────────────────────────────────────────
   float glow = accumulateGlow(localNormal, glowSources, glowCount);
   float3 glowColor = mix(SOFT_LILAC, BLUSH_POWDER, glow);
@@ -293,24 +298,22 @@ fragment float4 earthSurfaceFragment(
   float shimmer = (shimmerN - 0.5) * 0.08;
 
   // ── Emissive composition ──────────────────────────────────────────────────
-  // Continents are the strongest emitter, then coast halo, then grid, then
-  // glow blobs on top of land only (people are land), then peach rim.
+  // Continents are the strongest emitter, then coast halo, then glow blobs
+  // on top of land only (people are land), then peach rim, then inner haze.
   float3 emissive = float3(0.0);
   emissive += iridContinent * continent * 1.85;
   emissive += iridCoast * coastHalo * 0.85;
-  emissive += iridescent(0.5) * grid * 0.45;
   emissive += glowColor * continent * glow * 1.6;
   emissive += PEACH_CLOUD * fresnel * 0.65;
   emissive += SKY_WASH * internalHaze * 0.35;
   emissive += shimmer * MOON_CREAM;
 
   // ── Alpha ─────────────────────────────────────────────────────────────────
-  // Translucent body — continents make it solid, grid + haze + rim fill in
-  // the rest so the silhouette is fully present without being opaque.
+  // Translucent body — continents make it solid, haze + rim fill in the rest
+  // so the silhouette is fully present without being opaque.
   float alpha = saturate(
       continent * 0.88
     + coastHalo * 0.45
-    + grid * 0.35
     + fresnel * 0.55
     + internalHaze * 0.45
   );
