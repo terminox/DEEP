@@ -269,15 +269,38 @@ fragment float4 earthSurfaceFragment(
   float coastHalo = smoothstep(0.15, 0.55, landRaw) - continent;
 
   // ── Iridescent palette walk ───────────────────────────────────────────────
+  //
+  // Continents use a *latitude-anchored* pastel gradient (matches the
+  // reference): SKY/LAVENDER near the north pole → SOFT_LILAC mid-latitudes →
+  // BLUSH → PEACH toward the south. Anchored to localNormal.y so the color
+  // stays tied to geography as the orb rotates (Greenland is always cool,
+  // Australia is always warm), rather than sweeping with the camera.
+  //
+  // Rim/specular/dispersion still use the viewing-angle Fresnel because
+  // those are properties of the *glass*, not the map.
   float ndv = clamp(dot(worldNormal, -rayDir), 0.0, 1.0);
-  // Fresnel-driven hue scrubber. Bias the walk so the center reads as
-  // lavender/lilac and the rim drifts toward peach.
-  float iridT = pow(1.0 - ndv, 1.4);
   // Slow rotation of the palette over time so the orb subtly breathes through
   // its color (very low-frequency — well under 10s per full cycle).
-  float iridDrift = sin(time * 0.18) * 0.08;
-  float3 iridContinent = iridescent(clamp(0.35 + iridT * 0.55 + iridDrift, 0.0, 1.0));
-  float3 iridCoast = iridescent(clamp(0.55 + iridT * 0.4, 0.0, 1.0));
+  float iridDrift = sin(time * 0.18) * 0.06;
+
+  // Latitude → palette position. localNormal.y ∈ [-1, +1] (south→north).
+  // Start at 0.25 — the LAVENDER end of the SKY→LAVENDER band — so the
+  // gradient walks LAVENDER → LILAC → BLUSH → PEACH only. Including SKY_WASH
+  // (G=0.847, an unusually high green channel for a pastel) put a cool/green
+  // cast in the bloom halo around the silhouette.
+  float latT = clamp(0.5 - localNormal.y * 0.5, 0.0, 1.0);
+  latT = smoothstep(0.0, 1.0, latT);  // gentle ease at the poles
+  float continentT = clamp(0.25 + latT * 0.75 + iridDrift, 0.0, 1.0);
+  float3 iridContinent = iridescent(continentT);
+
+  // "Deep inland" mask — tighter threshold than the continent mask itself.
+  // Where this is high, the pixel sits well inside a landmass (not at the
+  // coast). We use it to add a subtle interior brightness boost, which
+  // reads as the continent being *raised* over the body (3D-elevated)
+  // instead of stamped flat. Crucially this avoids any glowing halo on
+  // the *outside* of the coast, which is what was washing to white
+  // against the cream background.
+  float continentInner = smoothstep(0.40, 0.75, landRaw);
 
   // ── Country glow ──────────────────────────────────────────────────────────
   float glow = accumulateGlow(localNormal, glowSources, glowCount);
@@ -290,21 +313,25 @@ fragment float4 earthSurfaceFragment(
   // silhouette has a clean glassy outline without losing the held softness
   // expected from the Deep palette.
   float fresnelBody = pow(1.0 - ndv, 2.2);   // gentle inner gleam near rim
-  float fresnelRim  = pow(1.0 - ndv, 5.0);   // sharp bright outline
-  float fresnelEdge = pow(1.0 - ndv, 9.0);   // ultra-thin dispersion sliver
+  // Rim thickness is controlled by these two exponents — higher = thinner.
+  // Doubled from 5/9 to 10/18 (~50% thinner) and `rimAlpha` below was
+  // doubled in the same way. Adjust together to keep alpha aligned with
+  // the visible bright line.
+  float fresnelRim  = pow(1.0 - ndv, 10.0);  // sharp bright outline
+  float fresnelEdge = pow(1.0 - ndv, 18.0);  // ultra-thin dispersion sliver
 
-  // Sun-driven specular. Phong reflection vector against the view direction,
-  // shininess tuned to read as a soft wet gleam rather than a hard pinpoint.
-  float3 L = normalize(U.sunDirection.xyz);
-  float3 reflLight = reflect(-L, worldNormal);
-  float specular = pow(max(dot(reflLight, -rayDir), 0.0), 64.0);
-  // Fresnel-weight the specular so the highlight feels embedded in the glass.
-  specular *= (0.55 + 0.45 * fresnelBody);
+  // Sun-driven specular highlight removed — it read as a stray reflection/shadow
+  // blob hovering inside the body. The orb's "glass" cue now comes from the
+  // sharp rim line + dispersion sliver only, no Phong hot-spot.
+  // (Sun direction in uniforms is left in place in case we want to re-introduce
+  // diffuse shading later — re-add `pow(max(dot(reflect(-L, N), -rayDir), 0), n)`
+  // if you want the highlight back.)
 
   // Subtle warm/cool chromatic dispersion at the very edge. Stays inside the
-  // Deep palette — no rainbow, just a hint of sky/peach split.
+  // Deep palette — lavender ↔ peach (no sky-wash, which has G=0.847 and would
+  // tint the rim halo greenish against the warm backdrop).
   float dispAxis = clamp(worldNormal.x * 0.5 + 0.5, 0.0, 1.0);
-  float3 dispersion = mix(SKY_WASH, PEACH_CLOUD, dispAxis);
+  float3 dispersion = mix(LAVENDER_MIST, PEACH_CLOUD, dispAxis);
   float3 rimColor = mix(MOON_CREAM, dispersion, 0.45);
 
   // ── Refracted back-side bleed ─────────────────────────────────────────────
@@ -342,23 +369,41 @@ fragment float4 earthSurfaceFragment(
   float shimmerN = fbm3(localNormal * 5.0 + float3(time * 0.04, 0, time * 0.025), 2);
   float shimmer = (shimmerN - 0.5) * 0.06;
 
-  // ── Emissive composition ──────────────────────────────────────────────────
+  // ── Emissive composition (HDR linear) ─────────────────────────────────────
   //
-  // Order of contribution (front to back, conceptually):
-  //   - Specular highlight (brightest, wet gleam)
-  //   - Rim with dispersion
-  //   - Front-face continents + coast halo + country glow
-  //   - Faint back-side bleed (continents visible through the glass)
-  //   - Soft body gleam near rim
+  // Output is rgba16Float; the composite pass tonemaps luminance back into
+  // display range while preserving chroma. So we can push continent emissive
+  // well above 1.0 and the palette hue still survives.
+  //
+  // Continents are the *brightest* deliberate emitter (they're the subject of
+  // the design) — louder than the rim/specular highlights so bloom keys off
+  // their palette hue, not the moon-cream glass cues.
+  //
+  // Country glow blends *into* the continent color (mix, not add) so a hot
+  // region warms toward blush/peach instead of overpowering the gradient.
+  float3 landColor = mix(iridContinent, glowColor, glow * 0.75);
+  float landBrightness = 1.0 + glow * 0.35;
+
+  // Tonemap math: at HDR intensities above ~1.5× palette, the luma-preserving
+  // tonemap starts crushing chroma toward white (each channel approaches 1.0
+  // and the ratios that carry hue flatten). Keep continent intensity in the
+  // 1.0–1.3× range so palette colors survive the composite intact, then let
+  // bloom provide the *halo* glow rather than pushing the body brighter.
   float3 emissive = float3(0.0);
-  emissive += iridContinent * continent * 1.85;
-  emissive += iridCoast * coastHalo * 0.85;
-  emissive += glowColor * continent * glow * 1.6;
-  emissive += backTint * backGlow * 0.55;
-  emissive += rimColor * fresnelRim * 1.9;
-  emissive += dispersion * fresnelEdge * 1.1;
-  emissive += MOON_CREAM * specular * 1.35;
-  emissive += SKY_WASH * fresnelBody * 0.10;
+  // Continent body — palette-natural intensity, no outward halo.
+  emissive += landColor * continent * landBrightness * 1.00;
+  // Inland boost — adds the "raised over the body" feel. Operates *inside*
+  // the continent mask only, so it never produces an outside-the-coast glow.
+  emissive += landColor * continentInner * landBrightness * 0.30;
+  // Glass cues (rim, specular, dispersion) trimmed so they no longer outshout
+  // the continent palette — otherwise their bloom halo washes the orb white.
+  // Rim/edge are boosted (1.5 / 0.90) to compensate for the sharper alpha
+  // curve below — keeps the bright silhouette line visible even though the
+  // orb is now near-fully transparent a couple of pixels inside that line.
+  emissive += backTint * backGlow * 0.40;
+  emissive += rimColor * fresnelRim * 1.50;
+  emissive += dispersion * fresnelEdge * 0.90;
+  emissive += LAVENDER_MIST * fresnelBody * 0.08;
   emissive += shimmer * MOON_CREAM;
 
   // ── Alpha ─────────────────────────────────────────────────────────────────
@@ -367,14 +412,22 @@ fragment float4 earthSurfaceFragment(
   // solid so the map stays legible. The sharp rim and specular gleam supply
   // the visual edge that says "glass," and the back-side bleed gives the
   // interior substance without fogging it out.
+  // Coast halo kept here at small weight purely for soft alpha anti-aliasing
+  // at the continent edge — it no longer contributes any color/emissive, so
+  // it can't produce a visible halo. Just smooths the silhouette.
+  //
+  // Rim alpha uses a *sharp* fresnel — exponent 28 keeps the opaque band
+  // confined to the visible bright rim line and lets alpha collapse to ~0
+  // within a couple of pixels inside it. Doubled from 14 → 28 to match the
+  // 50%-thinner emissive rim above; keep the three exponents proportional
+  // (fresnelRim : fresnelEdge : rimAlpha ≈ 10 : 18 : 28) so the alpha band
+  // doesn't extend past the visible rim or fall short of it.
+  float rimAlpha = pow(1.0 - ndv, 28.0);
   float alpha = saturate(
-      continent * 0.90
-    + coastHalo * 0.40
-    + fresnelRim * 1.05
-    + fresnelEdge * 0.75
-    + specular * 0.95
+      continent * 0.92
+    + coastHalo * 0.18
+    + rimAlpha * 1.20
     + backGlow * 0.45
-    + fresnelBody * 0.08
   );
 
   return float4(emissive, alpha);

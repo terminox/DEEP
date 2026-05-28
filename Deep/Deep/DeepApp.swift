@@ -11,7 +11,10 @@ import SwiftUI
 struct DeepApp: App {
   var body: some Scene {
     WindowGroup {
-      ContentView()
+      ZStack {
+        AtmosphereBackground()
+        Earth3DView(glow: EarthGlowStore.previewCalm)
+      }
     }
   }
 }

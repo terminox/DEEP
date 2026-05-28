@@ -108,9 +108,10 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     desc.label = "Earth.Main"
     desc.vertexFunction = library.makeFunction(name: "earthFullscreenVertex")
     desc.fragmentFunction = library.makeFunction(name: "earthSurfaceFragment")
-    // HDR-ish target so highlight luminance survives for the bloom threshold pass.
-    // BGRA8 is fine; we just over-bright in the shader and clamp at composite.
-    desc.colorAttachments[0].pixelFormat = .bgra8Unorm
+    // HDR target so over-bright continents/rim/specular survive into the
+    // bloom chain without clipping to white. The composite pass tonemaps
+    // them back into the [0,1] display range while preserving palette hue.
+    desc.colorAttachments[0].pixelFormat = .rgba16Float
     desc.colorAttachments[0].isBlendingEnabled = false
     mainPipeline = try device.makeRenderPipelineState(descriptor: desc)
   }
@@ -135,9 +136,12 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
       return try device.makeRenderPipelineState(descriptor: desc)
     }
 
-    thresholdPipeline = try make("Earth.Threshold", fragment: threshFn, pixelFormat: .bgra8Unorm)
-    blurHPipeline = try make("Earth.BlurH", fragment: blurHFn, pixelFormat: .bgra8Unorm)
-    blurVPipeline = try make("Earth.BlurV", fragment: blurVFn, pixelFormat: .bgra8Unorm)
+    // Bloom intermediates stay HDR (rgba16Float) so wide blurs of bright
+    // pixels don't wash to white before reaching composite. Composite is
+    // the only LDR output — it tonemaps and writes to the drawable.
+    thresholdPipeline = try make("Earth.Threshold", fragment: threshFn, pixelFormat: .rgba16Float)
+    blurHPipeline = try make("Earth.BlurH", fragment: blurHFn, pixelFormat: .rgba16Float)
+    blurVPipeline = try make("Earth.BlurV", fragment: blurVFn, pixelFormat: .rgba16Float)
     compositePipeline = try make("Earth.Composite", fragment: compFn, pixelFormat: .bgra8Unorm)
   }
 
@@ -237,7 +241,7 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
 
     func makeTexture(_ label: String) -> MTLTexture? {
       let desc = MTLTextureDescriptor.texture2DDescriptor(
-        pixelFormat: .bgra8Unorm,
+        pixelFormat: .rgba16Float,
         width: w,
         height: h,
         mipmapped: false

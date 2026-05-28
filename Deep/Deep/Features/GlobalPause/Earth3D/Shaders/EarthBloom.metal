@@ -18,9 +18,9 @@ struct FSIn {
 
 // ── Threshold ──────────────────────────────────────────────────────────────
 //
-// Soft luminance threshold: contributes 0 below ~0.62, rises to full at ~0.95.
-// We use a perceptually-weighted luminance so the lavender/blush palette's
-// actual brightness drives bloom (not raw RGB sum).
+// Soft luminance threshold tuned for Deep's pastel palette. Lavender/blush
+// at full saturation have luminance ≈ 0.65–0.75, so the band must catch
+// them — otherwise continents render colored but with no glow halo.
 fragment float4 earthBloomThresholdFragment(
   FSIn in [[stage_in]],
   texture2d<float> src [[texture(0)]]
@@ -30,7 +30,7 @@ fragment float4 earthBloomThresholdFragment(
   uv.y = 1.0 - uv.y;
   float4 c = src.sample(s, uv);
   float luma = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));
-  float weight = smoothstep(0.62, 0.95, luma);
+  float weight = smoothstep(0.42, 0.88, luma);
   return float4(c.rgb * weight, c.a);
 }
 
@@ -74,9 +74,33 @@ fragment float4 earthBloomBlurVFragment(
 
 // ── Final composite ─────────────────────────────────────────────────────────
 //
-// Combines: clamped scene + bloom additive + a 1-2px chromatic shift at the
-// fresnel rim (driven by the scene's alpha gradient) + low-amplitude blue-noise
-// dither to mask 8-bit banding.
+// Reads HDR scene + HDR bloom (both rgba16Float), accumulates, applies a
+// luminance-preserving tonemap to keep palette hue intact, then dithers
+// and outputs to the 8-bit drawable.
+
+// Luminance-preserving tonemap: compress only the brightness component, leave
+// chroma alone. Without this, channels clip independently and palette colors
+// flatten to white at high intensity. After luma compression we soft-desaturate
+// any channel that's still over 1.0 — a small palette-color rescue so a
+// fully-saturated lavender doesn't lose its blue dominance at the 8-bit
+// drawable boundary.
+static float3 tonemapPalette(float3 x) {
+  float luma = dot(x, float3(0.2126, 0.7152, 0.0722));
+  if (luma < 1e-5) return x;
+  // k = 1.5 — keeps mid-range values close to linear; only compresses the
+  // really hot HDR pixels (rim + specular + bloom-piled continents).
+  float compressed = 1.0 - exp(-luma * 1.5);
+  float3 result = x * (compressed / luma);
+
+  // Per-channel safety pull toward white for any over-1 channel.
+  float maxC = max(max(result.r, result.g), result.b);
+  if (maxC > 1.0) {
+    float t = clamp((maxC - 1.0) * 0.8, 0.0, 1.0);
+    result = mix(result, float3(1.0), t * 0.35);
+    result = min(result, float3(1.0));
+  }
+  return result;
+}
 
 constant float3 LAVENDER_DRIFT = float3(0.722, 0.655, 0.910);
 constant float3 PEACH_DRIFT    = float3(0.961, 0.851, 0.769);
@@ -97,32 +121,28 @@ fragment float4 earthCompositeFragment(
   float2 uv = in.ndc * 0.5 + 0.5;
   uv.y = 1.0 - uv.y;
 
-  // Chromatic aberration sampled along the radial direction from the screen center.
-  float2 center = float2(0.5, 0.5);
-  float2 toCenter = uv - center;
-  float dist = length(toCenter);
-  float2 dir = (dist > 0.0001) ? toCenter / dist : float2(0);
-  float caStrength = smoothstep(0.30, 0.50, dist) * 0.0035;
-
+  // Direct sample — no chromatic aberration. The previous CA pass was
+  // asymmetric: it dimmed R (sampled outward, often into transparent),
+  // left G untouched, and barely shifted B. Net result at the rim was
+  // G dominating → visible green tint. Cleaner without it; the bloom
+  // halo already provides the soft "glass edge" cue.
   float4 sBase = scene.sample(s, uv);
-  float4 sR = scene.sample(s, uv + dir * caStrength);
-  float4 sB = scene.sample(s, uv - dir * caStrength);
-  // Split toward lavender ↔ peach at the rim only. Subtle (per DESIGN.md).
-  float3 sceneColor = float3(
-    mix(sBase.r, sR.r * PEACH_DRIFT.r + sBase.r * (1.0 - PEACH_DRIFT.r), caStrength * 40.0),
-    sBase.g,
-    mix(sBase.b, sB.b * LAVENDER_DRIFT.b + sBase.b * (1.0 - LAVENDER_DRIFT.b), caStrength * 40.0)
-  );
-  // Keep alpha from the unshifted sample (preserves the orb silhouette).
+  float3 sceneColor = sBase.rgb;
   float alpha = sBase.a;
 
-  // Additive bloom — generous radius, modest strength.
-  float3 bloomColor = bloom.sample(s, uv).rgb * 0.70;
+  // Additive HDR bloom — generous radius, modest strength.
+  // Tuned so the bloom *halo* around continents is clearly visible while the
+  // bloom *core* (where it overlaps the lit continent itself) doesn't push
+  // chroma toward white through the tonemap.
+  float3 bloomColor = bloom.sample(s, uv).rgb * 0.45;
   // Alpha plumbing: bloom should still contribute outside the silhouette
   // (it's *light spilling into the atmosphere*), so we lift alpha by it.
-  alpha = saturate(alpha + dot(bloomColor, float3(0.333)));
+  // Use the tonemapped bloom luminance so alpha tracks what's actually visible.
+  float bloomLuma = dot(bloomColor, float3(0.2126, 0.7152, 0.0722));
+  alpha = saturate(alpha + (1.0 - exp(-bloomLuma)) * 0.6);
 
-  float3 finalColor = sceneColor + bloomColor;
+  float3 hdrSum = sceneColor + bloomColor;
+  float3 finalColor = tonemapPalette(hdrSum);
 
   // Dither to mask 8-bit banding in the lavender → cream gradient.
   float d = (dither13(in.position.xy) - 0.5) * (1.0 / 255.0);
