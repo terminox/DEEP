@@ -1,0 +1,83 @@
+<style>
+  .np-wrap { display:flex; gap:36px; flex-wrap:wrap; align-items:flex-start; }
+  .phone { width:250px; border-radius:34px; padding:12px;
+    background:linear-gradient(160deg,#E8DCF7,#F3D9E3);
+    box-shadow:0 22px 60px rgba(184,167,232,0.4); border:1px solid rgba(255,255,255,0.7); }
+  .screen { border-radius:26px; height:480px; padding:14px 18px 16px; position:relative; overflow:hidden;
+    background:linear-gradient(180deg,#EFE6FB 0%, #E3D4F3 40%, #F2D2DE 100%); }
+  .handle { width:38px; height:5px; border-radius:3px; background:rgba(61,54,84,0.25); margin:2px auto 18px; }
+  .artwork { width:100%; aspect-ratio:1; border-radius:18px; margin:0 auto 22px;
+    background:linear-gradient(135deg,#C5D8F0,#D4C5F0 55%,#F4C9D4);
+    box-shadow:0 24px 50px rgba(132,110,180,0.45); transition:all .5s; }
+  .artwork.paused { width:84%; box-shadow:0 12px 28px rgba(132,110,180,0.3); }
+  .titlerow { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .t-main { font-size:17px; font-weight:600; color:#3D3654; }
+  .t-sub { font-size:14px; color:#8B82A8; }
+  .more { width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.5);
+    display:flex;align-items:center;justify-content:center;color:#8B82A8;font-size:14px;}
+  .scrub { height:5px; border-radius:3px; background:rgba(184,167,232,0.3); position:relative; margin-bottom:6px;}
+  .scrub::after{content:"";position:absolute;left:0;top:0;height:100%;width:38%;border-radius:3px;background:#B8A7E8;}
+  .times { display:flex; justify-content:space-between; font-size:11px; color:#8B82A8; margin-bottom:22px; }
+  .transport { display:flex; align-items:center; justify-content:center; gap:36px; margin-bottom:26px; color:#3D3654;}
+  .transport .pp { font-size:34px; } .transport .sk { font-size:24px; }
+  .volume { display:flex; align-items:center; gap:10px; color:#8B82A8; margin-bottom:24px; }
+  .vbar { flex:1; height:5px; border-radius:3px; background:rgba(184,167,232,0.3); position:relative;}
+  .vbar::after{content:"";position:absolute;left:0;top:0;height:100%;width:55%;border-radius:3px;background:rgba(184,167,232,0.7);}
+  .bottomrow { display:flex; justify-content:space-around; color:#8B82A8; font-size:18px; }
+  .ann h3 { color:#3D3654; margin:0 0 4px; }
+  .ann .item { background:rgba(255,255,255,0.5); border-radius:14px; padding:10px 12px; margin-bottom:10px;
+    border:0.5px solid rgba(255,255,255,0.7); }
+  .ann .item b { color:#3D3654; } .ann .item span { color:#8B82A8; font-size:13px; }
+  .twin { display:flex; gap:12px; }
+  .mini-demo { width:120px; }
+  .mini-demo .screen { height:200px; }
+  .cap { text-align:center; font-size:11px; color:#8B82A8; margin-top:6px; }
+</style>
+
+<h2>Now Playing — the centerpiece</h2>
+<p class="subtitle">Apple Music's full-screen player, retinted to Deep. Since there's no creator, the subtitle line shows the <b>collection name</b>. Confirm the elements and the animations.</p>
+
+<div class="np-wrap">
+  <div>
+    <div class="phone"><div class="screen">
+      <div class="handle"></div>
+      <div class="artwork"></div>
+      <div class="titlerow">
+        <div><div class="t-main">Drifting Tide</div><div class="t-sub">Ocean Depths</div></div>
+        <div class="more">•••</div>
+      </div>
+      <div class="scrub"></div>
+      <div class="times"><span>2:14</span><span>-3:46</span></div>
+      <div class="transport"><span class="sk">⏮</span><span class="pp">⏸</span><span class="sk">⏭</span></div>
+      <div class="volume"><span>🔉</span><div class="vbar"></div><span>🔊</span></div>
+      <div class="bottomrow"><span>􀉪</span><span>􀈠</span><span>≣</span></div>
+    </div></div>
+    <div class="cap">Full player · playing state</div>
+  </div>
+
+  <div style="flex:1; min-width:300px" class="ann">
+    <h3>Elements (top → bottom)</h3>
+    <div class="item"><b>Grab handle</b> — <span>drag down anywhere to dismiss back to mini-player.</span></div>
+    <div class="item"><b>Large artwork</b> — <span>rounded, soft drop shadow. Scales between play/paused (see below).</span></div>
+    <div class="item"><b>Title + collection</b> + <b>•••</b> menu</div>
+    <div class="item"><b>Scrubber</b> — <span>draggable; thickens & shows exact times while scrubbing.</span></div>
+    <div class="item"><b>Transport</b> — <span>previous · play/pause · next.</span></div>
+    <div class="item"><b>Volume slider</b> — <span>speaker icons either side.</span></div>
+    <div class="item"><b>Bottom row</b> — <span>AirPlay · Queue / Up Next. (No lyrics — instrumental.)</span></div>
+
+    <h3 style="margin-top:18px">Apple-Music animations to replicate</h3>
+    <div class="item"><b>Expand from mini-player</b> — <span>artwork grows from the small thumbnail into the big artwork (matchedGeometry); sheet rises over a blurred backdrop.</span></div>
+    <div class="item"><b>Artwork play/pause scale</b> — <span>full size when playing, shrinks to ~84% with a softer shadow when paused.</span></div>
+    <div class="item"><b>Scrubber & volume drag</b> — <span>track expands on touch, value follows the finger.</span></div>
+    <div class="item"><b>Drag-to-dismiss</b> — <span>sheet follows the downward drag and settles closed or back open.</span></div>
+  </div>
+</div>
+
+<div class="twin" style="margin-top:24px; align-items:flex-end">
+  <div class="mini-demo"><div class="phone"><div class="screen" style="padding-top:20px">
+    <div class="artwork" style="margin-bottom:8px"></div></div></div><div class="cap">▶ playing — full</div></div>
+  <div class="mini-demo"><div class="phone"><div class="screen" style="padding-top:20px">
+    <div class="artwork paused" style="margin-bottom:8px"></div></div></div><div class="cap">⏸ paused — shrinks</div></div>
+</div>
+
+<p class="subtitle" style="margin-top:18px"><b>One taste call:</b> Apple Music's springs are snappy (~0.3s). Deep's system prefers slower "exhale" motion. I'd keep Apple's <i>gestures &amp; behaviors</i> but tune the timing a touch softer so it still feels like Deep. Good? And anything to add/remove from the player?</p>

@@ -1,0 +1,41 @@
+<style>
+  .anim-box { background:rgba(255,255,255,0.4); border-radius:20px; padding:24px 28px;
+    border:0.5px solid rgba(255,255,255,0.7); max-width:720px; }
+  .anim-stage { display:flex; align-items:center; justify-content:center; gap:50px; flex-wrap:wrap; margin-top:8px; }
+  .stage-col { text-align:center; }
+  /* fixed reference frame both states share */
+  .frame { width:210px; height:210px; border-radius:18px; margin:0 auto 14px;
+    border:2px dashed rgba(184,167,232,0.55);
+    display:flex; align-items:center; justify-content:center; position:relative; }
+  .frame .hint { position:absolute; top:-22px; left:0; right:0; font-size:11px; color:#B8A7E8; letter-spacing:.3px; }
+  .aw { border-radius:16px; background:linear-gradient(135deg,#C5D8F0,#D4C5F0 55%,#F4C9D4); }
+  .aw.big { width:210px; height:210px; box-shadow:0 24px 46px rgba(132,110,180,0.5); }
+  .aw.small { width:130px; height:130px; box-shadow:0 10px 20px rgba(132,110,180,0.25); }
+  .state { font-size:16px; font-weight:600; color:#3D3654; }
+  .desc { font-size:12px; color:#8B82A8; margin-top:2px; }
+  .arrow { font-size:30px; color:#B8A7E8; align-self:center; }
+  .icon { font-size:14px; }
+</style>
+
+<h2>Play / pause artwork animation</h2>
+<p class="subtitle">The dashed box is the <b>same fixed space</b> in both states. When you pause, the cover art shrinks inside that space (and its shadow softens); on play it springs back to fill it. This is the Apple Music behavior — here exaggerated so the difference is visible.</p>
+
+<div class="anim-box">
+  <div class="anim-stage">
+    <div class="stage-col">
+      <div class="frame"><div class="hint">— full space —</div><div class="aw big"></div></div>
+      <div class="state">▶ Playing</div>
+      <div class="desc">art fills the frame · 100% · full shadow</div>
+    </div>
+    <div class="arrow">⇄</div>
+    <div class="stage-col">
+      <div class="frame"><div class="hint">— same space —</div><div class="aw small"></div></div>
+      <div class="state">⏸ Paused</div>
+      <div class="desc">art shrinks, centered · softer shadow</div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px">(In the real app the shrink is subtler than this — closer to ~85% — but it animates, so it reads clearly in motion. I exaggerated it here for the still image.)</p>
+
+<p class="subtitle" style="margin-top:12px"><b>Still open:</b> 1) keep Apple's gestures/behaviors but soften the timing slightly to fit Deep — good? &nbsp; 2) anything to add/remove from the player?</p>

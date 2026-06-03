@@ -1,0 +1,80 @@
+<style>
+  .row3 { display:flex; gap:20px; flex-wrap:wrap; }
+  .opt { flex:1; min-width:240px; cursor:pointer; border-radius:24px; padding:10px;
+    border:2px solid transparent; transition:all .3s; }
+  .opt:hover { border-color:#B8A7E8; }
+  .opt.selected { border-color:#B8A7E8; background:rgba(184,167,232,0.08); }
+  .phone { border-radius:30px; padding:10px; background:linear-gradient(160deg,#FBF7FF,#F2E9FC);
+    box-shadow:0 16px 44px rgba(184,167,232,0.3); border:1px solid rgba(255,255,255,0.7); }
+  .screen { border-radius:22px; height:380px; padding:14px 12px 0; overflow:hidden; position:relative;
+    background:linear-gradient(175deg,#FBF7FF 0%, #EFE6FB 50%, #F7DDE6 100%); }
+  .scr-title { font-family:Georgia,serif; font-style:italic; font-weight:300; font-size:22px; color:#3D3654; margin:2px 2px 10px; }
+  .glass { background:rgba(255,255,255,0.55); border:0.5px solid rgba(255,255,255,0.7);
+    border-radius:14px; box-shadow:0 6px 16px rgba(184,167,232,0.18); }
+  .art { border-radius:12px; background:linear-gradient(135deg,#C5D8F0,#D4C5F0); }
+  .art.b { background:linear-gradient(135deg,#F4C9D4,#D4C5F0); }
+  .art.c { background:linear-gradient(135deg,#F5D9C4,#C5D8F0); }
+  .hero { height:120px; width:100%; margin-bottom:10px; border-radius:14px; }
+  .crow { display:flex; gap:8px; margin-bottom:6px; }
+  .sq { width:74px; height:74px; flex:0 0 74px; }
+  .grid2 { display:flex; flex-wrap:wrap; gap:8px; }
+  .gcell { width:calc(50% - 4px); height:60px; border-radius:12px; }
+  .lbl { font-size:10px; color:#8B82A8; margin:8px 2px 4px; text-transform:uppercase; letter-spacing:.5px;}
+  .mini { position:absolute; left:8px; right:8px; bottom:8px; height:38px; border-radius:14px;
+    background:rgba(255,255,255,0.72); display:flex; align-items:center; gap:8px; padding:0 10px;
+    box-shadow:0 8px 20px rgba(184,167,232,0.28); }
+  .minidot{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#C5D8F0,#D4C5F0);}
+  .miniline{height:6px;width:50%;border-radius:3px;background:rgba(184,167,232,0.4);}
+  .opt h3 { color:#3D3654; margin:12px 4px 2px; }
+  .opt p { color:#8B82A8; font-size:13px; margin:0 4px; }
+</style>
+
+<h2>What is the standalone home?</h2>
+<p class="subtitle">No tabs — one scrollable screen. Flow: <b>Home → tap a collection → Collection detail → tap mini-player → Now Playing</b>. Which home layout fits Deep?</p>
+
+<div class="row3">
+  <div class="opt" data-choice="editorial" onclick="toggleSelect(this)">
+    <div class="phone"><div class="screen">
+      <div class="scr-title">Listen now</div>
+      <div class="art hero"></div>
+      <div class="lbl">Made for you</div>
+      <div class="crow"><div class="art sq"></div><div class="art b sq"></div><div class="art c sq"></div></div>
+      <div class="lbl">Recently played</div>
+      <div class="crow"><div class="art b sq"></div><div class="art c sq"></div><div class="art sq"></div></div>
+      <div class="mini"><div class="minidot"></div><div class="miniline"></div><div style="margin-left:auto;color:#B8A7E8">▶</div></div>
+    </div></div>
+    <h3>A · Editorial</h3>
+    <p>A featured hero, then personal carousels: "Made for you", "Recently played". Warm, curated, personal.</p>
+  </div>
+
+  <div class="opt" data-choice="browse" onclick="toggleSelect(this)">
+    <div class="phone"><div class="screen">
+      <div class="scr-title">Sound</div>
+      <div class="lbl">Browse by intention</div>
+      <div class="grid2">
+        <div class="art gcell"></div><div class="art b gcell"></div>
+        <div class="art c gcell"></div><div class="art gcell"></div>
+        <div class="art b gcell"></div><div class="art c gcell"></div>
+      </div>
+      <div class="mini"><div class="minidot"></div><div class="miniline"></div><div style="margin-left:auto;color:#B8A7E8">▶</div></div>
+    </div></div>
+    <h3>B · Browse grid</h3>
+    <p>A catalog: mood/intention category tiles and collections in a grid. Discovery-first, less personal.</p>
+  </div>
+
+  <div class="opt selected" data-choice="merged" onclick="toggleSelect(this)">
+    <div class="phone"><div class="screen">
+      <div class="scr-title">Sound</div>
+      <div class="art hero"></div>
+      <div class="lbl">Continue your practice</div>
+      <div class="crow"><div class="art sq"></div><div class="art b sq"></div><div class="art c sq"></div></div>
+      <div class="lbl">Browse by intention</div>
+      <div class="grid2"><div class="art b gcell"></div><div class="art c gcell"></div></div>
+      <div class="mini"><div class="minidot"></div><div class="miniline"></div><div style="margin-left:auto;color:#B8A7E8">▶</div></div>
+    </div></div>
+    <h3>C · Merged ✦ recommended</h3>
+    <p>Hero feature + a couple of horizontal carousels + an intention grid below. One rich scroll — best fit when there are no tabs.</p>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px">I lean toward <b>C — Merged</b>: with no tabs, one screen should carry both the curated feel and discovery. Pick one, or tell me how to adjust.</p>

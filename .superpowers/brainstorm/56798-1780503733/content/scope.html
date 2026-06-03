@@ -1,0 +1,98 @@
+<style>
+  .frame-wrap { display:flex; gap:32px; flex-wrap:wrap; align-items:flex-start; }
+  .phone {
+    width: 260px; border-radius: 36px; padding: 14px;
+    background: linear-gradient(160deg,#FBF7FF,#F4ECFF);
+    box-shadow: 0 20px 60px rgba(184,167,232,0.35);
+    border: 1px solid rgba(255,255,255,0.7);
+  }
+  .screen {
+    border-radius: 26px; height: 430px; padding: 18px 14px 0;
+    background: linear-gradient(175deg,#FBF7FF 0%, #EFE6FB 45%, #F7DDE6 100%);
+    position: relative; overflow: hidden;
+  }
+  .scr-title { font-family: Georgia, serif; font-style: italic; font-weight: 300;
+    font-size: 26px; color:#3D3654; margin: 6px 2px 14px; }
+  .pill { display:inline-block; padding:6px 12px; border-radius:999px; font-size:11px;
+    background:rgba(255,255,255,0.6); color:#8B82A8; margin:0 6px 8px 0; }
+  .glasscard { background:rgba(255,255,255,0.55); border:0.5px solid rgba(255,255,255,0.7);
+    border-radius:18px; padding:12px; margin-bottom:10px; box-shadow:0 8px 20px rgba(184,167,232,0.18); }
+  .row { display:flex; gap:10px; }
+  .art { border-radius:14px; background:linear-gradient(135deg,#C5D8F0,#D4C5F0); }
+  .a56 { width:56px; height:56px; flex:0 0 56px; }
+  .a90 { width:90px; height:90px; }
+  .bar { height:8px; border-radius:4px; background:rgba(184,167,232,0.35); margin:6px 0; }
+  .bar.short { width:55%; } .bar.tiny { width:35%; height:6px; }
+  .miniplayer { position:absolute; left:10px; right:10px; bottom:54px;
+    background:rgba(255,255,255,0.7); backdrop-filter:blur(20px);
+    border-radius:16px; padding:8px 10px; display:flex; align-items:center; gap:10px;
+    box-shadow:0 10px 24px rgba(184,167,232,0.3); }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:48px;
+    background:rgba(255,255,255,0.65); backdrop-filter:blur(20px);
+    display:flex; justify-content:space-around; align-items:center;
+    border-top:0.5px solid rgba(255,255,255,0.8); font-size:9px; color:#8B82A8; }
+  .tab.active { color:#B8A7E8; font-weight:600; }
+  .dotrow { display:flex; gap:6px; margin-bottom:8px; }
+  .dot { width:7px;height:7px;border-radius:50%;background:#B8A7E8; }
+  .dot.dim{ background:rgba(184,167,232,0.3);}
+</style>
+
+<h2>Deep Sound — screen scope (v1)</h2>
+<p class="subtitle">This mirrors Apple Music's structure, minus Radio, retinted to Deep. Confirm the set of screens, or deselect any you'd cut for v1.</p>
+
+<div class="frame-wrap">
+  <div class="phone">
+    <div class="screen">
+      <div class="scr-title">Listen Now</div>
+      <div class="glasscard"><div class="art a90" style="width:100%;height:120px"></div></div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="art a90"></div><div class="art a90"></div>
+      </div>
+      <div class="glasscard"><div class="row"><div class="art a56"></div>
+        <div style="flex:1"><div class="bar short"></div><div class="bar tiny"></div></div></div></div>
+      <div class="miniplayer">
+        <div class="art" style="width:34px;height:34px;border-radius:8px"></div>
+        <div style="flex:1"><div class="bar short" style="margin:0 0 4px"></div><div class="bar tiny"></div></div>
+        <div style="font-size:14px;color:#B8A7E8">▶</div>
+      </div>
+      <div class="tabbar">
+        <div class="tab active">◎<br>Listen Now</div>
+        <div class="tab">▦<br>Browse</div>
+        <div class="tab">≣<br>Library</div>
+        <div class="tab">⌕<br>Search</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1; min-width:300px">
+    <div class="section">
+      <span class="label">The four tabs</span>
+      <div class="glasscard" style="background:rgba(255,255,255,0.4)">
+        <b>◎ Listen Now</b> — editorial home: a hero feature, "Made for you" rows, recently played, themed collections.
+      </div>
+      <div class="glasscard" style="background:rgba(255,255,255,0.4)">
+        <b>▦ Browse</b> — discovery grid: new collections, mood/intention categories, curated playlists.
+      </div>
+      <div class="glasscard" style="background:rgba(255,255,255,0.4)">
+        <b>≣ Library</b> — saved collections, playlists, downloads — list with section filters.
+      </div>
+      <div class="glasscard" style="background:rgba(255,255,255,0.4)">
+        <b>⌕ Search</b> — search field + browse-by-category tiles when empty.
+      </div>
+    </div>
+    <div class="section">
+      <span class="label">Always present</span>
+      <div class="glasscard" style="background:rgba(255,255,255,0.4)">
+        <b>Mini-player</b> — docked above the tab bar; tap to expand.
+      </div>
+      <div class="glasscard" style="background:rgba(255,255,255,0.4)">
+        <b>Now Playing</b> — full-screen player that slides up: big artwork, scrubber, transport, volume, queue, lyrics-style notes.
+      </div>
+      <div class="glasscard" style="background:rgba(255,255,255,0.4)">
+        <b>Collection / Detail</b> — tap any album → track list with a large header (like an Apple Music album page).
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px">Question: is this the right scope for v1 — all four tabs + mini-player + Now Playing + Collection detail? Tell me in the terminal what to keep or cut.</p>
