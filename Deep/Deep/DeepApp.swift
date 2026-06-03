@@ -11,7 +11,8 @@ import SwiftUI
 struct DeepApp: App {
   var body: some Scene {
     WindowGroup {
-      DeepSoundView()
+      RootTabView()
+        .ignoresSafeArea()
     }
   }
 }

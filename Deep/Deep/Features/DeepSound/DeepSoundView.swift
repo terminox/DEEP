@@ -6,6 +6,9 @@ import SwiftUI
 /// docked at the bottom and Now Playing presented as an overlay so the artwork
 /// can morph between the two via `matchedGeometryEffect`.
 struct DeepSoundView: View {
+  /// Notifies the host (e.g. the UIKit tab bar) when Now Playing opens/closes.
+  var onNowPlayingVisibilityChange: ((Bool) -> Void)? = nil
+
   @State private var player = SoundPlayer()
   @State private var showNowPlaying = false
   @Namespace private var artworkNamespace
@@ -44,6 +47,9 @@ struct DeepSoundView: View {
     }
     .environment(player)
     .preferredColorScheme(.light)
+    .onChange(of: showNowPlaying) { _, isOpen in
+      onNowPlayingVisibilityChange?(isOpen)
+    }
   }
 
   /// Reserve space for the mini-player only while something is playing.
