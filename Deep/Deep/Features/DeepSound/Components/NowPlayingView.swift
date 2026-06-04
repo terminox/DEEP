@@ -4,7 +4,7 @@ import SwiftUI
 /// that contracts when paused, a draggable scrubber, transport, volume, and a
 /// bottom utility row — retinted to Deep and with softened motion.
 struct NowPlayingView: View {
-  @Environment(SoundPlayer.self) private var player
+  @Environment(\.soundPlayer) private var player
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var artworkNamespace: Namespace.ID
   var onDismiss: () -> Void
@@ -16,8 +16,6 @@ struct NowPlayingView: View {
   @State private var dragOffset: CGFloat = 0
 
   var body: some View {
-    @Bindable var player = player
-
     ZStack {
       background
 
@@ -182,12 +180,14 @@ struct NowPlayingView: View {
   }
 
   private var volume: some View {
-    @Bindable var player = player
-    return HStack(spacing: 12) {
+    HStack(spacing: 12) {
       Image(systemName: "speaker.fill")
         .font(.footnote)
         .foregroundStyle(DeepColor.driftGrey)
-      SoundSlider(value: $player.volume, activeColor: DeepColor.lavenderMist.opacity(0.8))
+      SoundSlider(
+        value: Binding(get: { player.volume }, set: { player.volume = $0 }),
+        activeColor: DeepColor.lavenderMist.opacity(0.8)
+      )
       Image(systemName: "speaker.wave.3.fill")
         .font(.footnote)
         .foregroundStyle(DeepColor.driftGrey)
