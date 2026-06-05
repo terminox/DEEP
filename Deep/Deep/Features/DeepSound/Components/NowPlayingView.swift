@@ -4,7 +4,7 @@ import SwiftUI
 /// that contracts when paused, a draggable scrubber, transport, volume, and a
 /// bottom utility row — retinted to Deep and with softened motion.
 struct NowPlayingView: View {
-  @Environment(SoundPlayer.self) private var player
+  @Environment(\.soundPlayer) private var player
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var artworkNamespace: Namespace.ID
   var onDismiss: () -> Void
@@ -16,8 +16,6 @@ struct NowPlayingView: View {
   @State private var dragOffset: CGFloat = 0
 
   var body: some View {
-    @Bindable var player = player
-
     ZStack {
       background
 
@@ -53,8 +51,8 @@ struct NowPlayingView: View {
       LinearGradient(
         colors: [
           .softLilac,
-          Color.lavenderMist.opacity(0.7),
-          Color.blushPowder.opacity(0.6)
+          .lavenderMist.opacity(0.7),
+          .blushPowder.opacity(0.6)
         ],
         startPoint: .top,
         endPoint: .bottom
@@ -68,7 +66,7 @@ struct NowPlayingView: View {
 
   private var grabHandle: some View {
     Capsule()
-      .fill(Color.deepPlum.opacity(0.22))
+      .fill(.deepPlum.opacity(0.22))
       .frame(width: 40, height: 5)
       .padding(.top, 12)
       .padding(.bottom, 4)
@@ -83,7 +81,7 @@ struct NowPlayingView: View {
       .aspectRatio(1, contentMode: .fit)
       .scaleEffect(artworkScale)
       .shadow(
-        color: Color.lavenderMist.opacity(player.isPlaying ? 0.45 : 0.22),
+        color: .lavenderMist.opacity(player.isPlaying ? 0.45 : 0.22),
         radius: player.isPlaying ? 34 : 16,
         x: 0,
         y: player.isPlaying ? 20 : 10
@@ -182,12 +180,14 @@ struct NowPlayingView: View {
   }
 
   private var volume: some View {
-    @Bindable var player = player
-    return HStack(spacing: 12) {
+    HStack(spacing: 12) {
       Image(systemName: "speaker.fill")
         .font(.footnote)
         .foregroundStyle(.driftGrey)
-      SoundSlider(value: $player.volume, activeColor: Color.lavenderMist.opacity(0.8))
+      SoundSlider(
+        value: Binding(get: { player.volume }, set: { player.volume = $0 }),
+        activeColor: .lavenderMist.opacity(0.8)
+      )
       Image(systemName: "speaker.wave.3.fill")
         .font(.footnote)
         .foregroundStyle(.driftGrey)

@@ -3,7 +3,7 @@ import SwiftUI
 /// The large editorial feature at the top of the home screen. The whole card
 /// navigates to the collection; the play button starts it in place.
 struct FeaturedHeroCard: View {
-  @Environment(SoundPlayer.self) private var player
+  @Environment(\.soundPlayer) private var player
   let collection: SoundCollection
 
   var body: some View {
@@ -56,5 +56,13 @@ struct FeaturedHeroCard: View {
     }
     .buttonStyle(.softPress)
     .accessibilityLabel("Play \(collection.title)")
+  }
+}
+
+#Preview("Featured Hero Card") {
+  NavigationStack {
+    FeaturedHeroCard(collection: SoundLibrary.featured)
+      .padding(.edge)
+      .environment(\.soundPlayer, MockSoundPlayer.idle)
   }
 }

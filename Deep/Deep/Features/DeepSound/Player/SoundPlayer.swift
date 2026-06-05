@@ -7,7 +7,7 @@ import Observation
 /// mini-player, and Now Playing artwork all behave like the real thing — the
 /// UI is fully wired and only the audio engine is missing.
 @Observable
-final class SoundPlayer {
+final class SoundPlayer: SoundPlaying {
   private(set) var collection: SoundCollection?
   private(set) var queue: [SoundTrack] = []
   private(set) var index: Int = 0

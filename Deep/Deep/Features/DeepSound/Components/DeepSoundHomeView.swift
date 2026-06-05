@@ -31,6 +31,7 @@ struct DeepSoundHomeView: View {
       .padding(.top, 8)
     }
     .scrollBounceBehavior(.basedOnSize)
+    .background { AtmosphereBackground() }
   }
 
   private var header: some View {
@@ -45,4 +46,9 @@ struct DeepSoundHomeView: View {
     .padding(.horizontal, .edge)
     .padding(.top, 8)
   }
+}
+
+#Preview("Deep Sound — Home") {
+  DeepSoundHomeView(bottomInset: .rhythm)
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

@@ -1,24 +1,34 @@
 import SwiftUI
 
-/// Entry point for the standalone Deep Sound feature.
+/// Coordinator view for the Deep Sound flow — the business-specific composition
+/// root. It owns navigation (home → collection detail) and the player overlay
+/// (mini-player ↔ Now Playing), and nothing else.
 ///
-/// A `NavigationStack` over the home + detail screens, with the mini-player
-/// docked at the bottom and Now Playing presented as an overlay so the artwork
-/// can morph between the two via `matchedGeometryEffect`.
-struct DeepSoundView: View {
+/// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
+/// screen-level styling such as `AtmosphereBackground` lives in the leaf screens
+/// (`DeepSoundHomeView`, `CollectionDetailView`) so it actually renders behind
+/// their content. Placing the atmosphere here would hide it behind the
+/// `NavigationStack`.
+struct DeepSoundCoordinatorView: View {
   /// Notifies the host (e.g. the UIKit tab bar) when Now Playing opens/closes.
   var onNowPlayingVisibilityChange: ((Bool) -> Void)? = nil
 
-  @State private var player = SoundPlayer()
+  @State private var player: any SoundPlaying
   @State private var showNowPlaying = false
   @Namespace private var artworkNamespace
 
   private let miniPlayerInset: CGFloat = 92
 
+  init(
+    player: any SoundPlaying = SoundPlayer(),
+    onNowPlayingVisibilityChange: ((Bool) -> Void)? = nil
+  ) {
+    _player = State(initialValue: player)
+    self.onNowPlayingVisibilityChange = onNowPlayingVisibilityChange
+  }
+
   var body: some View {
     ZStack(alignment: .bottom) {
-      AtmosphereBackground()
-
       NavigationStack {
         DeepSoundHomeView(bottomInset: bottomInset)
           .navigationDestination(for: SoundCollection.self) { collection in
@@ -45,7 +55,7 @@ struct DeepSoundView: View {
         .zIndex(2)
       }
     }
-    .environment(player)
+    .environment(\.soundPlayer, player)
     .preferredColorScheme(.light)
     .onChange(of: showNowPlaying) { _, isOpen in
       onNowPlayingVisibilityChange?(isOpen)
@@ -59,25 +69,9 @@ struct DeepSoundView: View {
 }
 
 #Preview("Deep Sound — Home") {
-  DeepSoundView()
+  DeepSoundCoordinatorView(player: MockSoundPlayer.idle)
 }
 
 #Preview("Deep Sound — Now Playing") {
-  NowPlayingPreview()
-}
-
-/// Drives the player into a playing state so the Now Playing screen can be
-/// previewed directly.
-private struct NowPlayingPreview: View {
-  @State private var player: SoundPlayer = {
-    let p = SoundPlayer()
-    p.play(SoundLibrary.featured)
-    return p
-  }()
-  @Namespace private var ns
-
-  var body: some View {
-    NowPlayingView(artworkNamespace: ns) {}
-      .environment(player)
-  }
+  DeepSoundCoordinatorView(player: MockSoundPlayer.playing)
 }

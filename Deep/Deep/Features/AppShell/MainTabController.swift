@@ -22,7 +22,7 @@ final class MainTabController: UITabBarController {
     // Deep Sound dims the tab bar while Now Playing is open so the player
     // reads as full-screen, the way Apple Music's player covers the bar.
     let sounds = host(
-      DeepSoundView(onNowPlayingVisibilityChange: { [weak self] isOpen in
+      DeepSoundCoordinatorView(onNowPlayingVisibilityChange: { [weak self] isOpen in
         self?.setTabBarHidden(isOpen)
       }),
       title: "Sounds",
@@ -30,7 +30,7 @@ final class MainTabController: UITabBarController {
     )
 
     let garden = host(
-      MindGardenView(),
+      MindGardenCoordinatorView(),
       title: "Garden",
       systemImage: "leaf.fill"
     )

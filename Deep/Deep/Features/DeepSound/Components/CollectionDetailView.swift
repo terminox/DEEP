@@ -3,7 +3,7 @@ import SwiftUI
 /// The album-style detail page: a large header with artwork, title, metadata,
 /// Play / Shuffle actions, then the track list.
 struct CollectionDetailView: View {
-  @Environment(SoundPlayer.self) private var player
+  @Environment(\.soundPlayer) private var player
   let collection: SoundCollection
   var bottomInset: CGFloat
 
@@ -18,6 +18,7 @@ struct CollectionDetailView: View {
       .padding(.top, 12)
     }
     .scrollBounceBehavior(.basedOnSize)
+    .background { AtmosphereBackground() }
     .navigationTitle(collection.title)
     .navigationBarTitleDisplayMode(.inline)
     .toolbarBackground(.hidden, for: .navigationBar)
@@ -141,5 +142,15 @@ private struct TrackRow: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.softPress)
+  }
+}
+
+#Preview("Collection Detail") {
+  NavigationStack {
+    CollectionDetailView(
+      collection: SoundLibrary.featured,
+      bottomInset: .rhythm
+    )
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
   }
 }

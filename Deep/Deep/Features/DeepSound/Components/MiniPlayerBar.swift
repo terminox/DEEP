@@ -4,7 +4,7 @@ import SwiftUI
 /// (other than the transport buttons) expands into Now Playing; the artwork
 /// morphs across via `matchedGeometryEffect`.
 struct MiniPlayerBar: View {
-  @Environment(SoundPlayer.self) private var player
+  @Environment(\.soundPlayer) private var player
   var artworkNamespace: Namespace.ID
   var onExpand: () -> Void
 
