@@ -20,6 +20,7 @@ struct GrowYourGardenSection: View {
         }
         .padding(.horizontal, DeepSpacing.edge)
       }
+      .scrollClipDisabled()
       .scrollBounceBehavior(.basedOnSize)
     }
   }

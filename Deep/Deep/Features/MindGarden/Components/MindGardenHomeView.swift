@@ -16,6 +16,7 @@ struct MindGardenHomeView: View {
   private let heroHeight: CGFloat = 320
   /// How far the greeting card rides up over the hero.
   private let heroOverlap: CGFloat = 52
+  private let heroImageName = "MindGardenHero"
   private let scrollSpace = "gardenScroll"
 
   var body: some View {
@@ -50,8 +51,11 @@ struct MindGardenHomeView: View {
   private var stretchyHero: some View {
     GeometryReader { geo in
       let stretch = max(0, geo.frame(in: .named(scrollSpace)).minY)
-      GardenScene()
+      Image(heroImageName)
+        .resizable()
+        .scaledToFill()
         .frame(width: geo.size.width, height: heroHeight + stretch)
+        .clipped()
         .mask(heroFadeMask)
         .offset(y: -stretch)
     }
