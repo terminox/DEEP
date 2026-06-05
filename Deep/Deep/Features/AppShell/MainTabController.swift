@@ -28,7 +28,7 @@ final class MainTabController: UITabBarController {
     )
 
     let garden = host(
-      MindGardenView(),
+      MindGardenCoordinatorView(),
       title: "Garden",
       systemImage: "leaf.fill"
     )
