@@ -5,7 +5,7 @@ import SwiftUI
 /// fill follows your finger. Timing is softened to fit Deep's motion.
 struct SoundSlider: View {
   @Binding var value: Double
-  var activeColor: Color = DeepColor.lavenderMist
+  var activeColor: Color = .lavenderMist
   var trackHeight: CGFloat = 6
   var onEditingChanged: (Bool) -> Void = { _ in }
 
@@ -18,7 +18,7 @@ struct SoundSlider: View {
 
       ZStack(alignment: .leading) {
         Capsule()
-          .fill(DeepColor.lavenderMist.opacity(0.22))
+          .fill(Color.lavenderMist.opacity(0.22))
         Capsule()
           .fill(activeColor)
           .frame(width: clamped * width)
@@ -40,7 +40,7 @@ struct SoundSlider: View {
             onEditingChanged(false)
           }
       )
-      .animation(DeepMotion.settle, value: isDragging)
+      .animation(.settle, value: isDragging)
     }
     .frame(height: 28)
   }
@@ -52,7 +52,7 @@ struct SoundSlider: View {
     var body: some View {
       SoundSlider(value: $v)
         .padding()
-        .background(DeepColor.moonCream)
+        .background(.moonCream)
     }
   }
   return Demo()

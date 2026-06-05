@@ -8,7 +8,7 @@ struct SoftPressButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .scaleEffect(configuration.isPressed ? pressedScale : 1.0)
-      .animation(DeepMotion.settle, value: configuration.isPressed)
+      .animation(.settle, value: configuration.isPressed)
   }
 }
 

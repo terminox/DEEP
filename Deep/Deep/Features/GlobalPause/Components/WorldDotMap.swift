@@ -12,12 +12,12 @@ enum Continent: CaseIterable, Hashable {
 
   var color: Color {
     switch self {
-    case .northAmerica: return DeepColor.peachCloud
-    case .southAmerica: return DeepColor.skyWash
-    case .europe:       return DeepColor.blushPowder
-    case .africa:       return DeepColor.softLilac
-    case .asia:         return DeepColor.lavenderMist
-    case .oceania:      return DeepColor.peachCloud
+    case .northAmerica: return .peachCloud
+    case .southAmerica: return .skyWash
+    case .europe:       return .blushPowder
+    case .africa:       return .softLilac
+    case .asia:         return .lavenderMist
+    case .oceania:      return .peachCloud
     }
   }
 

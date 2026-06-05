@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FrostedCardBackground: View {
-  var cornerRadius: CGFloat = DeepRadius.card
+  var cornerRadius: CGFloat = .card
 
   var body: some View {
     ZStack {
@@ -14,12 +14,12 @@ struct FrostedCardBackground: View {
       RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         .strokeBorder(.white.opacity(0.45), lineWidth: 0.5)
     }
-    .shadow(color: DeepColor.lavenderMist.opacity(0.18), radius: 24, x: 0, y: 12)
+    .shadow(color: Color.lavenderMist.opacity(0.18), radius: 24, x: 0, y: 12)
   }
 }
 
 extension View {
-  func frostedCard(cornerRadius: CGFloat = DeepRadius.card) -> some View {
+  func frostedCard(cornerRadius: CGFloat = .card) -> some View {
     self.background(FrostedCardBackground(cornerRadius: cornerRadius))
   }
 }

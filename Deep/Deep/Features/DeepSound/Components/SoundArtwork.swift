@@ -4,7 +4,7 @@ import SwiftUI
 /// the dimensional, orb-like quality DESIGN.md calls for without any bitmap.
 struct SoundArtwork: View {
   let palette: ArtworkPalette
-  var cornerRadius: CGFloat = DeepRadius.tile
+  var cornerRadius: CGFloat = .tile
 
   var body: some View {
     let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -26,7 +26,7 @@ struct SoundArtwork: View {
       )
       .overlay(
         RadialGradient(
-          colors: [DeepColor.deepPlum.opacity(0.10), .clear],
+          colors: [Color.deepPlum.opacity(0.10), .clear],
           center: .bottomTrailing,
           startRadius: 2,
           endRadius: 220
@@ -45,5 +45,5 @@ struct SoundArtwork: View {
     }
   }
   .padding()
-  .background(DeepColor.moonCream)
+  .background(.moonCream)
 }

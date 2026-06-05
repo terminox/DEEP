@@ -68,7 +68,7 @@ struct Earth3DView: View {
       Circle()
         .fill(
           RadialGradient(
-            colors: [DeepColor.lavenderMist.opacity(0.32), .clear],
+            colors: [Color.lavenderMist.opacity(0.32), .clear],
             center: .center,
             startRadius: 0,
             endRadius: bloomRadius
@@ -80,7 +80,7 @@ struct Earth3DView: View {
       Ellipse()
         .fill(
           RadialGradient(
-            colors: [DeepColor.blushPowder.opacity(0.22), .clear],
+            colors: [Color.blushPowder.opacity(0.22), .clear],
             center: .center,
             startRadius: 0,
             endRadius: bloomRadius * 0.6
@@ -101,7 +101,7 @@ struct Earth3DView: View {
       Text(name)
         .font(.system(.title3, design: .serif, weight: .light).italic())
         .tracking(0.4)
-        .foregroundStyle(DeepColor.deepPlum.opacity(0.85))
+        .foregroundStyle(Color.deepPlum.opacity(0.85))
         .padding(.horizontal, 18)
         .padding(.vertical, 8)
         .background(Capsule().fill(.ultraThinMaterial))
@@ -123,13 +123,13 @@ struct Earth3DView: View {
     renderer = r
     interaction.onCountryTap = { country in
       revealTask?.cancel()
-      withAnimation(DeepMotion.bloom) {
+      withAnimation(.bloom) {
         revealedName = country.name
       }
       revealTask = Task { @MainActor in
         try? await Task.sleep(nanoseconds: 2_400_000_000)
         guard !Task.isCancelled else { return }
-        withAnimation(DeepMotion.exhale) {
+        withAnimation(.exhale) {
           revealedName = nil
         }
       }

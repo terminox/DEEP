@@ -20,11 +20,11 @@ struct MiniPlayerBar: View {
         VStack(alignment: .leading, spacing: 2) {
           Text(track?.title ?? "Not playing")
             .font(DeepType.body.weight(.medium))
-            .foregroundStyle(DeepColor.deepPlum)
+            .foregroundStyle(.deepPlum)
             .lineLimit(1)
           Text(player.collection?.title ?? "")
             .font(DeepType.caption)
-            .foregroundStyle(DeepColor.driftGrey)
+            .foregroundStyle(.driftGrey)
             .lineLimit(1)
         }
 
@@ -61,13 +61,13 @@ struct MiniPlayerBar: View {
       RoundedRectangle(cornerRadius: 18, style: .continuous)
         .strokeBorder(.white.opacity(0.5), lineWidth: 0.5)
     }
-    .shadow(color: DeepColor.lavenderMist.opacity(0.25), radius: 18, x: 0, y: 8)
+    .shadow(color: Color.lavenderMist.opacity(0.25), radius: 18, x: 0, y: 8)
   }
 
   private var progressLine: some View {
     GeometryReader { geo in
       Capsule()
-        .fill(DeepColor.lavenderMist.opacity(0.7))
+        .fill(Color.lavenderMist.opacity(0.7))
         .frame(width: geo.size.width * player.progress, height: 2)
     }
     .frame(height: 2)
@@ -83,7 +83,7 @@ struct MiniPlayerBar: View {
     Button(action: action) {
       Image(systemName: systemName)
         .font(.system(size: size, weight: .medium))
-        .foregroundStyle(DeepColor.deepPlum)
+        .foregroundStyle(.deepPlum)
         .frame(width: 40, height: 40)
         .contentShape(Rectangle())
     }

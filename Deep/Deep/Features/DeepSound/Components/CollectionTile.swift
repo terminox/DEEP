@@ -11,16 +11,16 @@ struct CollectionTile: View {
       VStack(alignment: .leading, spacing: 8) {
         SoundArtwork(palette: collection.palette)
           .frame(width: size, height: size)
-          .shadow(color: DeepColor.lavenderMist.opacity(0.2), radius: 12, x: 0, y: 8)
+          .shadow(color: Color.lavenderMist.opacity(0.2), radius: 12, x: 0, y: 8)
 
         VStack(alignment: .leading, spacing: 2) {
           Text(collection.title)
             .font(DeepType.body.weight(.medium))
-            .foregroundStyle(DeepColor.deepPlum)
+            .foregroundStyle(.deepPlum)
             .lineLimit(1)
           Text(collection.subtitle)
             .font(DeepType.caption)
-            .foregroundStyle(DeepColor.driftGrey)
+            .foregroundStyle(.driftGrey)
             .lineLimit(1)
         }
         .frame(width: size, alignment: .leading)

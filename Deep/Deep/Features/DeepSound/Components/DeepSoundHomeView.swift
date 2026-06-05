@@ -8,11 +8,11 @@ struct DeepSoundHomeView: View {
 
   var body: some View {
     ScrollView(showsIndicators: false) {
-      VStack(alignment: .leading, spacing: DeepSpacing.rhythm) {
+      VStack(alignment: .leading, spacing: .rhythm) {
         header
 
         FeaturedHeroCard(collection: SoundLibrary.featured)
-          .padding(.horizontal, DeepSpacing.edge)
+          .padding(.horizontal, .edge)
 
         CollectionCarousel(
           title: "Continue your practice",
@@ -37,12 +37,12 @@ struct DeepSoundHomeView: View {
     VStack(alignment: .leading, spacing: 2) {
       Text("Deep Sound")
         .font(DeepType.wordmark)
-        .foregroundStyle(DeepColor.deepPlum)
+        .foregroundStyle(.deepPlum)
       Text("Sound to settle into")
         .font(DeepType.caption)
-        .foregroundStyle(DeepColor.driftGrey)
+        .foregroundStyle(.driftGrey)
     }
-    .padding(.horizontal, DeepSpacing.edge)
+    .padding(.horizontal, .edge)
     .padding(.top, 8)
   }
 }

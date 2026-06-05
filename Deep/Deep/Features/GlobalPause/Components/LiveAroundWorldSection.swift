@@ -11,7 +11,7 @@ struct LiveAroundWorldSection: View {
         LazyHStack(spacing: 12) {
           ForEach(pauses) { pause in
             CountryPauseCard(pause: pause)
-              .scrollTransition(.animated(DeepMotion.exhale)) { content, phase in
+              .scrollTransition(.animated(.exhale)) { content, phase in
                 content
                   .opacity(phase.isIdentity ? 1 : 0.75)
                   .scaleEffect(phase.isIdentity ? 1 : 0.97)
@@ -19,7 +19,7 @@ struct LiveAroundWorldSection: View {
           }
         }
         .scrollTargetLayout()
-        .padding(.horizontal, DeepSpacing.edge)
+        .padding(.horizontal, .edge)
       }
       .scrollTargetBehavior(.viewAligned)
       .contentMargins(.horizontal, 0)
@@ -39,7 +39,7 @@ struct SectionHeader: View {
       HStack(alignment: .firstTextBaseline) {
         Text(title)
           .font(DeepType.sectionTitle)
-          .foregroundStyle(DeepColor.deepPlum)
+          .foregroundStyle(.deepPlum)
           .accessibilityAddTraits(.isHeader)
         Spacer(minLength: 8)
         if let trailing {
@@ -50,7 +50,7 @@ struct SectionHeader: View {
               Image(systemName: "chevron.right")
                 .font(.system(.caption2, design: .default, weight: .medium))
             }
-            .foregroundStyle(DeepColor.lavenderMist)
+            .foregroundStyle(.lavenderMist)
           }
           .buttonStyle(.softPress)
           .accessibilityLabel("See all \(title.lowercased())")
@@ -59,15 +59,15 @@ struct SectionHeader: View {
       if let subtitle {
         Text(subtitle)
           .font(DeepType.caption)
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
       }
     }
-    .padding(.horizontal, DeepSpacing.edge)
+    .padding(.horizontal, .edge)
   }
 }
 
 #Preview {
   LiveAroundWorldSection(pauses: CountryPause.samples)
     .padding(.vertical)
-    .background(DeepColor.moonCream)
+    .background(.moonCream)
 }

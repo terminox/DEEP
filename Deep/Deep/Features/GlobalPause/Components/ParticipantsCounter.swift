@@ -7,12 +7,12 @@ struct ParticipantsCounter: View {
     VStack(spacing: 4) {
       Text(formatted)
         .font(DeepType.bigNumber)
-        .foregroundStyle(DeepColor.deepPlum)
+        .foregroundStyle(.deepPlum)
         .contentTransition(.numericText())
         .monospacedDigit()
       Text("pausing right now")
         .font(DeepType.caption)
-        .foregroundStyle(DeepColor.driftGrey)
+        .foregroundStyle(.driftGrey)
     }
     .frame(maxWidth: .infinity)
     .accessibilityElement(children: .combine)
@@ -27,5 +27,5 @@ struct ParticipantsCounter: View {
 #Preview {
   ParticipantsCounter(count: 128_756)
     .padding()
-    .background(DeepColor.moonCream)
+    .background(.moonCream)
 }

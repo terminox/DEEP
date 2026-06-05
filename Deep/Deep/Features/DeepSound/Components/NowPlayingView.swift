@@ -52,9 +52,9 @@ struct NowPlayingView: View {
     ZStack {
       LinearGradient(
         colors: [
-          DeepColor.softLilac,
-          DeepColor.lavenderMist.opacity(0.7),
-          DeepColor.blushPowder.opacity(0.6)
+          .softLilac,
+          Color.lavenderMist.opacity(0.7),
+          Color.blushPowder.opacity(0.6)
         ],
         startPoint: .top,
         endPoint: .bottom
@@ -68,7 +68,7 @@ struct NowPlayingView: View {
 
   private var grabHandle: some View {
     Capsule()
-      .fill(DeepColor.deepPlum.opacity(0.22))
+      .fill(Color.deepPlum.opacity(0.22))
       .frame(width: 40, height: 5)
       .padding(.top, 12)
       .padding(.bottom, 4)
@@ -83,12 +83,12 @@ struct NowPlayingView: View {
       .aspectRatio(1, contentMode: .fit)
       .scaleEffect(artworkScale)
       .shadow(
-        color: DeepColor.lavenderMist.opacity(player.isPlaying ? 0.45 : 0.22),
+        color: Color.lavenderMist.opacity(player.isPlaying ? 0.45 : 0.22),
         radius: player.isPlaying ? 34 : 16,
         x: 0,
         y: player.isPlaying ? 20 : 10
       )
-      .animation(reduceMotion ? nil : DeepMotion.settle, value: player.isPlaying)
+      .animation(reduceMotion ? nil : .settle, value: player.isPlaying)
   }
 
   private var artworkScale: CGFloat {
@@ -100,17 +100,17 @@ struct NowPlayingView: View {
       VStack(alignment: .leading, spacing: 3) {
         Text(player.currentTrack?.title ?? "")
           .font(.system(.title3, design: .default, weight: .semibold))
-          .foregroundStyle(DeepColor.deepPlum)
+          .foregroundStyle(.deepPlum)
           .lineLimit(1)
         Text(player.collection?.title ?? "")
           .font(DeepType.body)
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
           .lineLimit(1)
       }
       Spacer()
       Image(systemName: "ellipsis")
         .font(.system(.body, weight: .semibold))
-        .foregroundStyle(DeepColor.driftGrey)
+        .foregroundStyle(.driftGrey)
         .frame(width: 34, height: 34)
         .background(Circle().fill(.white.opacity(0.4)))
     }
@@ -141,7 +141,7 @@ struct NowPlayingView: View {
       }
       .font(DeepType.caption)
       .monospacedDigit()
-      .foregroundStyle(DeepColor.driftGrey)
+      .foregroundStyle(.driftGrey)
     }
   }
 
@@ -157,7 +157,7 @@ struct NowPlayingView: View {
       } label: {
         Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
           .font(.system(size: 44, weight: .medium))
-          .foregroundStyle(DeepColor.deepPlum)
+          .foregroundStyle(.deepPlum)
           .frame(width: 64, height: 64)
           .contentShape(Rectangle())
       }
@@ -174,7 +174,7 @@ struct NowPlayingView: View {
     Button(action: action) {
       Image(systemName: systemName)
         .font(.system(size: size, weight: .medium))
-        .foregroundStyle(DeepColor.deepPlum)
+        .foregroundStyle(.deepPlum)
         .frame(width: 56, height: 56)
         .contentShape(Rectangle())
     }
@@ -186,11 +186,11 @@ struct NowPlayingView: View {
     return HStack(spacing: 12) {
       Image(systemName: "speaker.fill")
         .font(.footnote)
-        .foregroundStyle(DeepColor.driftGrey)
-      SoundSlider(value: $player.volume, activeColor: DeepColor.lavenderMist.opacity(0.8))
+        .foregroundStyle(.driftGrey)
+      SoundSlider(value: $player.volume, activeColor: Color.lavenderMist.opacity(0.8))
       Image(systemName: "speaker.wave.3.fill")
         .font(.footnote)
-        .foregroundStyle(DeepColor.driftGrey)
+        .foregroundStyle(.driftGrey)
     }
   }
 
@@ -206,7 +206,7 @@ struct NowPlayingView: View {
   private func utilityButton(_ systemName: String) -> some View {
     Image(systemName: systemName)
       .font(.system(.body, weight: .medium))
-      .foregroundStyle(DeepColor.driftGrey)
+      .foregroundStyle(.driftGrey)
       .frame(width: 44, height: 44)
       .contentShape(Rectangle())
   }
@@ -222,7 +222,7 @@ struct NowPlayingView: View {
         if value.translation.height > 120 || value.predictedEndTranslation.height > 300 {
           onDismiss()
         }
-        withAnimation(DeepMotion.exhale) { dragOffset = 0 }
+        withAnimation(.exhale) { dragOffset = 0 }
       }
   }
 }

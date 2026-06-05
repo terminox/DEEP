@@ -13,15 +13,15 @@ struct IntentionGrid: View {
     VStack(alignment: .leading, spacing: 14) {
       Text("Browse by intention")
         .font(DeepType.sectionTitle)
-        .foregroundStyle(DeepColor.deepPlum)
-        .padding(.horizontal, DeepSpacing.edge)
+        .foregroundStyle(.deepPlum)
+        .padding(.horizontal, .edge)
 
       LazyVGrid(columns: columns, spacing: 12) {
         ForEach(intentions) { intention in
           IntentionCell(intention: intention)
         }
       }
-      .padding(.horizontal, DeepSpacing.edge)
+      .padding(.horizontal, .edge)
     }
   }
 }
@@ -34,7 +34,7 @@ private struct IntentionCell: View {
       SoundArtwork(palette: intention.palette, cornerRadius: 18)
       Text(intention.title)
         .font(.system(.title3, design: .serif, weight: .light))
-        .foregroundStyle(DeepColor.deepPlum)
+        .foregroundStyle(.deepPlum)
         .padding(14)
     }
     .frame(height: 92)

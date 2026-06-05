@@ -86,7 +86,7 @@ struct EarthHaloRipplesOverlay: View {
             width: CGFloat(radius * 2),
             height: CGFloat(radius * 2)
           ))
-          let color = DeepColor.lavenderMist.opacity(Double(opacity))
+          let color = Color.lavenderMist.opacity(Double(opacity))
           ctx.stroke(ring, with: .color(color), lineWidth: 1.4)
 
           // Inner softer ring for depth.
@@ -98,7 +98,7 @@ struct EarthHaloRipplesOverlay: View {
             width: CGFloat(innerR * 2),
             height: CGFloat(innerR * 2)
           ))
-          ctx.stroke(inner, with: .color(DeepColor.blushPowder.opacity(Double(opacity) * 0.5)), lineWidth: 0.8)
+          ctx.stroke(inner, with: .color(Color.blushPowder.opacity(Double(opacity) * 0.5)), lineWidth: 0.8)
         }
       }
       .blur(radius: 0.6)

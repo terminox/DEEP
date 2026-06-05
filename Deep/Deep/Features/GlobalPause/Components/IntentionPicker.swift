@@ -17,13 +17,13 @@ struct IntentionPicker: View {
             label: intention.label,
             isSelected: selection == intention.id
           ) {
-            withAnimation(DeepMotion.settle) {
+            withAnimation(.settle) {
               selection = (selection == intention.id) ? nil : intention.id
             }
           }
         }
       }
-      .padding(.horizontal, DeepSpacing.edge)
+      .padding(.horizontal, .edge)
     }
   }
 }
@@ -37,7 +37,7 @@ private struct Chip: View {
     Button(action: action) {
       Text(label)
         .font(DeepType.body.weight(isSelected ? .medium : .regular))
-        .foregroundStyle(isSelected ? .white : DeepColor.deepPlum.opacity(0.85))
+        .foregroundStyle(isSelected ? .white : Color.deepPlum.opacity(0.85))
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background(
@@ -45,7 +45,7 @@ private struct Chip: View {
             isSelected
             ? AnyShapeStyle(
               LinearGradient(
-                colors: [DeepColor.lavenderMist, DeepColor.blushPowder],
+                colors: [.lavenderMist, .blushPowder],
                 startPoint: .leading,
                 endPoint: .trailing
               )
@@ -58,7 +58,7 @@ private struct Chip: View {
             .strokeBorder(.white.opacity(isSelected ? 0 : 0.6), lineWidth: 0.5)
         )
         .shadow(
-          color: isSelected ? DeepColor.lavenderMist.opacity(0.32) : .clear,
+          color: isSelected ? Color.lavenderMist.opacity(0.32) : .clear,
           radius: 10, x: 0, y: 4
         )
     }
@@ -120,6 +120,6 @@ private struct IntentionPickerPreview: View {
   var body: some View {
     IntentionPicker(intentions: Intention.samples, selection: $selected)
       .padding(.vertical)
-      .background(DeepColor.moonCream)
+      .background(.moonCream)
   }
 }

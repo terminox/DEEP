@@ -14,7 +14,7 @@ struct FeaturePlaceholderView: View {
       VStack(spacing: 20) {
         Image(systemName: systemImage)
           .font(.system(size: 34, weight: .light))
-          .foregroundStyle(DeepColor.lavenderMist)
+          .foregroundStyle(.lavenderMist)
           .frame(width: 96, height: 96)
           .background(
             Circle()
@@ -22,22 +22,22 @@ struct FeaturePlaceholderView: View {
               .background(Circle().fill(.ultraThinMaterial))
           )
           .overlay(Circle().strokeBorder(.white.opacity(0.5), lineWidth: 0.5))
-          .shadow(color: DeepColor.lavenderMist.opacity(0.25), radius: 20, x: 0, y: 10)
+          .shadow(color: Color.lavenderMist.opacity(0.25), radius: 20, x: 0, y: 10)
 
         VStack(spacing: 8) {
           Text(title)
             .font(DeepType.displayTitle)
-            .foregroundStyle(DeepColor.deepPlum)
+            .foregroundStyle(.deepPlum)
           Text(message)
             .font(DeepType.body)
-            .foregroundStyle(DeepColor.driftGrey)
+            .foregroundStyle(.driftGrey)
             .multilineTextAlignment(.center)
         }
 
         Text("Coming soon")
           .font(DeepType.micro)
           .tracking(1.4)
-          .foregroundStyle(DeepColor.lavenderMist)
+          .foregroundStyle(.lavenderMist)
           .padding(.horizontal, 16)
           .padding(.vertical, 7)
           .background(Capsule().fill(.white.opacity(0.45)))

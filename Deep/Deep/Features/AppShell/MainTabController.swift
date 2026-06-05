@@ -60,8 +60,8 @@ final class MainTabController: UITabBarController {
   private func configureAppearance() {
     // Don't install a custom UITabBarAppearance background — that opts out of
     // the system Liquid Glass tab bar on iOS 26. Only tint the items.
-    tabBar.tintColor = UIColor(red: 0.722, green: 0.655, blue: 0.910, alpha: 1) // lavenderMist
-    tabBar.unselectedItemTintColor = UIColor(red: 0.545, green: 0.510, blue: 0.659, alpha: 1) // driftGrey
+    tabBar.tintColor = .lavenderMist
+    tabBar.unselectedItemTintColor = .driftGrey
   }
 
   /// Fade the tab bar without changing layout, so the SwiftUI content behind

@@ -28,7 +28,7 @@ struct DeepSoundView: View {
 
       if player.hasTrack && !showNowPlaying {
         MiniPlayerBar(artworkNamespace: artworkNamespace) {
-          withAnimation(DeepMotion.exhale) { showNowPlaying = true }
+          withAnimation(.exhale) { showNowPlaying = true }
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 6)
@@ -39,7 +39,7 @@ struct DeepSoundView: View {
     .overlay {
       if showNowPlaying {
         NowPlayingView(artworkNamespace: artworkNamespace) {
-          withAnimation(DeepMotion.exhale) { showNowPlaying = false }
+          withAnimation(.exhale) { showNowPlaying = false }
         }
         .transition(.move(edge: .bottom))
         .zIndex(2)
@@ -54,7 +54,7 @@ struct DeepSoundView: View {
 
   /// Reserve space for the mini-player only while something is playing.
   private var bottomInset: CGFloat {
-    player.hasTrack ? miniPlayerInset : DeepSpacing.rhythm
+    player.hasTrack ? miniPlayerInset : .rhythm
   }
 }
 

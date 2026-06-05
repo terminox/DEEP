@@ -20,18 +20,18 @@ struct CountryPauseCard: View {
     }
     .frame(width: 168)
     .background(
-      RoundedRectangle(cornerRadius: DeepRadius.tile, style: .continuous)
+      RoundedRectangle(cornerRadius: .tile, style: .continuous)
         .fill(.white.opacity(0.7))
         .background(
-          RoundedRectangle(cornerRadius: DeepRadius.tile, style: .continuous)
+          RoundedRectangle(cornerRadius: .tile, style: .continuous)
             .fill(.ultraThinMaterial)
         )
     )
     .overlay(
-      RoundedRectangle(cornerRadius: DeepRadius.tile, style: .continuous)
+      RoundedRectangle(cornerRadius: .tile, style: .continuous)
         .strokeBorder(.white.opacity(0.5), lineWidth: 0.5)
     )
-    .shadow(color: DeepColor.lavenderMist.opacity(0.16), radius: 14, x: 0, y: 8)
+    .shadow(color: Color.lavenderMist.opacity(0.16), radius: 14, x: 0, y: 8)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(
       "\(pause.countryName), paused at \(pause.localTime)"
@@ -45,24 +45,24 @@ struct CountryPauseCard: View {
         .accessibilityHidden(true)
       Text(pause.countryName)
         .font(DeepType.body.weight(.medium))
-        .foregroundStyle(DeepColor.deepPlum)
+        .foregroundStyle(.deepPlum)
         .lineLimit(1)
         .minimumScaleFactor(0.85)
       Spacer(minLength: 4)
       Text(pause.localTime)
         .font(.system(.footnote, design: .rounded, weight: .medium))
-        .foregroundStyle(DeepColor.driftGrey)
+        .foregroundStyle(.driftGrey)
         .monospacedDigit()
     }
   }
 
   private var accentColor: Color {
     switch pause.countryName {
-    case "Thailand": DeepColor.blushPowder
-    case "Japan":    DeepColor.softLilac
-    case "France":   DeepColor.skyWash
-    case "Brazil":   DeepColor.peachCloud
-    default:         DeepColor.lavenderMist
+    case "Thailand": .blushPowder
+    case "Japan":    .softLilac
+    case "France":   .skyWash
+    case "Brazil":   .peachCloud
+    default:         .lavenderMist
     }
   }
 }
@@ -72,7 +72,7 @@ private struct CountryImage: View {
   let accent: Color
 
   var body: some View {
-    AsyncImage(url: url, transaction: Transaction(animation: DeepMotion.bloom)) { phase in
+    AsyncImage(url: url, transaction: Transaction(animation: .bloom)) { phase in
       switch phase {
       case .success(let image):
         image
@@ -93,7 +93,7 @@ private struct CountryImage: View {
 
   private var placeholder: some View {
     LinearGradient(
-      colors: [accent.opacity(0.7), DeepColor.softLilac.opacity(0.7)],
+      colors: [accent.opacity(0.7), Color.softLilac.opacity(0.7)],
       startPoint: .topLeading,
       endPoint: .bottomTrailing
     )
@@ -110,5 +110,5 @@ private struct CountryImage: View {
     ForEach(CountryPause.samples.prefix(2)) { CountryPauseCard(pause: $0) }
   }
   .padding()
-  .background(DeepColor.moonCream)
+  .background(.moonCream)
 }

@@ -21,19 +21,19 @@ struct DuskAtmosphereBackground: View {
         endPoint: .bottom
       )
 
-      orb(color: DeepColor.lavenderMist, size: 320, opacity: 0.30)
+      orb(color: .lavenderMist, size: 320, opacity: 0.30)
         .offset(x: drift ? -110 : -150, y: drift ? -300 : -260)
         .blur(radius: 90)
 
-      orb(color: DeepColor.blushPowder, size: 260, opacity: 0.22)
+      orb(color: .blushPowder, size: 260, opacity: 0.22)
         .offset(x: drift ? 150 : 120, y: drift ? -200 : -240)
         .blur(radius: 100)
 
-      orb(color: DeepColor.skyWash, size: 220, opacity: 0.18)
+      orb(color: .skyWash, size: 220, opacity: 0.18)
         .offset(x: drift ? -140 : -110, y: drift ? 360 : 320)
         .blur(radius: 90)
 
-      orb(color: DeepColor.peachCloud, size: 180, opacity: 0.14)
+      orb(color: .peachCloud, size: 180, opacity: 0.14)
         .offset(x: drift ? 160 : 140, y: drift ? 280 : 320)
         .blur(radius: 80)
     }

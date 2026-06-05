@@ -9,7 +9,7 @@ struct CollectionDetailView: View {
 
   var body: some View {
     ScrollView(showsIndicators: false) {
-      VStack(spacing: DeepSpacing.rhythm) {
+      VStack(spacing: .rhythm) {
         artworkHeader
         actions
         trackList
@@ -27,24 +27,24 @@ struct CollectionDetailView: View {
     VStack(spacing: 16) {
       SoundArtwork(palette: collection.palette, cornerRadius: 24)
         .frame(width: 220, height: 220)
-        .shadow(color: DeepColor.lavenderMist.opacity(0.35), radius: 28, x: 0, y: 16)
+        .shadow(color: Color.lavenderMist.opacity(0.35), radius: 28, x: 0, y: 16)
 
       VStack(spacing: 4) {
         Text(collection.title)
           .font(DeepType.displayTitle)
-          .foregroundStyle(DeepColor.deepPlum)
+          .foregroundStyle(.deepPlum)
           .multilineTextAlignment(.center)
         Text(collection.subtitle)
           .font(DeepType.body)
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
           .multilineTextAlignment(.center)
         Text("\(collection.trackCount) tracks · \(collection.totalDuration.minutesString)")
           .font(DeepType.caption)
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
           .padding(.top, 2)
       }
     }
-    .padding(.horizontal, DeepSpacing.edge)
+    .padding(.horizontal, .edge)
   }
 
   private var actions: some View {
@@ -57,7 +57,7 @@ struct CollectionDetailView: View {
         player.play(collection, at: start)
       }
     }
-    .padding(.horizontal, DeepSpacing.edge)
+    .padding(.horizontal, .edge)
   }
 
   private func actionButton(
@@ -72,7 +72,7 @@ struct CollectionDetailView: View {
         Text(title)
           .font(DeepType.body.weight(.medium))
       }
-      .foregroundStyle(DeepColor.deepPlum)
+      .foregroundStyle(.deepPlum)
       .frame(maxWidth: .infinity)
       .padding(.vertical, 13)
       .background(
@@ -100,12 +100,12 @@ struct CollectionDetailView: View {
         }
         if offset < collection.tracks.count - 1 {
           Divider()
-            .overlay(DeepColor.driftGrey.opacity(0.18))
+            .overlay(Color.driftGrey.opacity(0.18))
             .padding(.leading, 52)
         }
       }
     }
-    .padding(.horizontal, DeepSpacing.edge)
+    .padding(.horizontal, .edge)
   }
 
   private func isCurrent(_ track: SoundTrack) -> Bool {
@@ -125,17 +125,17 @@ private struct TrackRow: View {
         Text("\(number)")
           .font(DeepType.body)
           .monospacedDigit()
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
           .frame(width: 24, alignment: .center)
         Text(track.title)
           .font(DeepType.body.weight(isCurrent ? .semibold : .regular))
-          .foregroundStyle(isCurrent ? DeepColor.lavenderMist : DeepColor.deepPlum)
+          .foregroundStyle(isCurrent ? .lavenderMist : .deepPlum)
           .lineLimit(1)
         Spacer()
         Text(track.duration.clockString)
           .font(DeepType.caption)
           .monospacedDigit()
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
       }
       .padding(.vertical, 14)
       .contentShape(Rectangle())

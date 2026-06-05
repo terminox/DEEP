@@ -14,12 +14,12 @@ enum ArtworkPalette: String, CaseIterable, Hashable {
   /// Gradient stops, top-leading → bottom-trailing.
   var colors: [Color] {
     switch self {
-    case .tide:   return [DeepColor.skyWash, DeepColor.softLilac]
-    case .dusk:   return [DeepColor.lavenderMist, DeepColor.blushPowder]
-    case .bloom:  return [DeepColor.blushPowder, DeepColor.softLilac]
-    case .ember:  return [DeepColor.peachCloud, DeepColor.blushPowder]
-    case .mist:   return [DeepColor.softLilac, DeepColor.skyWash]
-    case .aurora: return [DeepColor.skyWash, DeepColor.lavenderMist, DeepColor.blushPowder]
+    case .tide:   return [.skyWash, .softLilac]
+    case .dusk:   return [.lavenderMist, .blushPowder]
+    case .bloom:  return [.blushPowder, .softLilac]
+    case .ember:  return [.peachCloud, .blushPowder]
+    case .mist:   return [.softLilac, .skyWash]
+    case .aurora: return [.skyWash, .lavenderMist, .blushPowder]
     }
   }
 }

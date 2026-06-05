@@ -16,7 +16,7 @@ struct Earth3DDebugHarness: View {
   var body: some View {
     ZStack {
       LinearGradient(
-        colors: [DeepColor.moonCream, DeepColor.softLilac.opacity(0.35)],
+        colors: [.moonCream, Color.softLilac.opacity(0.35)],
         startPoint: .top,
         endPoint: .bottom
       )
@@ -37,7 +37,7 @@ struct Earth3DDebugHarness: View {
   private var controls: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
-        Text("Country").font(DeepType.micro).tracking(1.2).foregroundStyle(DeepColor.driftGrey)
+        Text("Country").font(DeepType.micro).tracking(1.2).foregroundStyle(.driftGrey)
         Spacer()
         Picker("", selection: $selectedISO) {
           ForEach(featured, id: \.self) { iso in
@@ -45,20 +45,20 @@ struct Earth3DDebugHarness: View {
           }
         }
         .pickerStyle(.menu)
-        .tint(DeepColor.lavenderMist)
+        .tint(.lavenderMist)
       }
 
       HStack {
         Text("Participants")
-          .font(DeepType.micro).tracking(1.2).foregroundStyle(DeepColor.driftGrey)
+          .font(DeepType.micro).tracking(1.2).foregroundStyle(.driftGrey)
         Spacer()
         Text("\(Int(slider))")
           .font(DeepType.counter)
-          .foregroundStyle(DeepColor.deepPlum)
+          .foregroundStyle(.deepPlum)
       }
 
       Slider(value: $slider, in: 0...10_000, step: 50)
-        .tint(DeepColor.lavenderMist)
+        .tint(.lavenderMist)
         .onChange(of: slider) { _, newValue in
           counts[selectedISO] = Int(newValue)
           glow.participantsByCountry = counts
@@ -74,7 +74,7 @@ struct Earth3DDebugHarness: View {
           glow.participantsByCountry = [:]
         }
         .buttonStyle(.borderedProminent)
-        .tint(DeepColor.softLilac)
+        .tint(.softLilac)
 
         Button("Sample world") {
           counts = [
@@ -86,7 +86,7 @@ struct Earth3DDebugHarness: View {
           slider = Double(counts[selectedISO] ?? 0)
         }
         .buttonStyle(.borderedProminent)
-        .tint(DeepColor.blushPowder)
+        .tint(.blushPowder)
       }
     }
     .padding(20)

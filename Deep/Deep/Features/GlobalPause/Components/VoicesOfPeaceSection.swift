@@ -13,7 +13,7 @@ struct VoicesOfPeaceSection: View {
             .frame(maxWidth: .infinity)
         }
       }
-      .padding(.horizontal, DeepSpacing.edge)
+      .padding(.horizontal, .edge)
     }
   }
 }
@@ -30,18 +30,18 @@ private struct VoiceCard: View {
         VStack(alignment: .leading, spacing: 1) {
           Text(voice.name)
             .font(DeepType.body.weight(.medium))
-            .foregroundStyle(DeepColor.deepPlum)
+            .foregroundStyle(.deepPlum)
             .lineLimit(1)
           Text(voice.country)
             .font(DeepType.caption)
-            .foregroundStyle(DeepColor.driftGrey)
+            .foregroundStyle(.driftGrey)
             .lineLimit(1)
         }
       }
 
       Text("\u{201C}\(voice.quote)\u{201D}")
         .font(DeepType.caption)
-        .foregroundStyle(DeepColor.deepPlum.opacity(0.78))
+        .foregroundStyle(Color.deepPlum.opacity(0.78))
         .lineSpacing(2)
         .fixedSize(horizontal: false, vertical: true)
         .multilineTextAlignment(.leading)
@@ -72,7 +72,7 @@ private struct VoiceAvatar: View {
       Text(initial)
         .font(.system(.subheadline, design: .serif, weight: .light))
         .italic()
-        .foregroundStyle(DeepColor.deepPlum.opacity(0.85))
+        .foregroundStyle(Color.deepPlum.opacity(0.85))
     }
     .overlay(
       Circle().stroke(.white.opacity(0.7), lineWidth: 0.6)
@@ -82,10 +82,10 @@ private struct VoiceAvatar: View {
 
   private var color: Color {
     switch tint {
-    case .lavender: DeepColor.lavenderMist
-    case .blush:    DeepColor.blushPowder
-    case .sky:      DeepColor.skyWash
-    case .peach:    DeepColor.peachCloud
+    case .lavender: .lavenderMist
+    case .blush:    .blushPowder
+    case .sky:      .skyWash
+    case .peach:    .peachCloud
     }
   }
 }
@@ -93,5 +93,5 @@ private struct VoiceAvatar: View {
 #Preview {
   VoicesOfPeaceSection(voices: VoiceOfPeace.samples)
     .padding(.vertical)
-    .background(DeepColor.moonCream)
+    .background(.moonCream)
 }

@@ -12,11 +12,11 @@ struct NextPauseCard: View {
         Text("Next Global Pause")
           .font(DeepType.caption)
           .tracking(0.4)
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
 
         Text(scheduleLine)
           .font(DeepType.displayTitle)
-          .foregroundStyle(DeepColor.deepPlum)
+          .foregroundStyle(.deepPlum)
           .multilineTextAlignment(.center)
       }
 
@@ -26,7 +26,7 @@ struct NextPauseCard: View {
         notifyButton
         Text("\(rsvpCount.formatted()) people will join")
           .font(DeepType.caption)
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
           .contentTransition(.numericText())
       }
     }
@@ -38,7 +38,7 @@ struct NextPauseCard: View {
 
   private var notifyButton: some View {
     Button {
-      withAnimation(DeepMotion.settle) { isNotifyEnabled.toggle() }
+      withAnimation(.settle) { isNotifyEnabled.toggle() }
     } label: {
       HStack(spacing: 6) {
         Image(systemName: isNotifyEnabled ? "bell.fill" : "bell")
@@ -52,13 +52,13 @@ struct NextPauseCard: View {
       .background(
         Capsule().fill(
           LinearGradient(
-            colors: [DeepColor.lavenderMist, DeepColor.blushPowder],
+            colors: [.lavenderMist, .blushPowder],
             startPoint: .leading,
             endPoint: .trailing
           )
         )
       )
-      .shadow(color: DeepColor.lavenderMist.opacity(0.4), radius: 10, x: 0, y: 5)
+      .shadow(color: Color.lavenderMist.opacity(0.4), radius: 10, x: 0, y: 5)
     }
     .buttonStyle(.softPress)
     .accessibilityLabel(isNotifyEnabled
@@ -82,6 +82,6 @@ private struct NextPauseCardPreview: View {
       isNotifyEnabled: $notify
     )
     .padding()
-    .background(DeepColor.moonCream)
+    .background(.moonCream)
   }
 }

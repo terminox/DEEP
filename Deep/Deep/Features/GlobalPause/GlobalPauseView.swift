@@ -24,14 +24,14 @@ struct GlobalPauseView: View {
         let isActive = remaining != nil
 
         ScrollView(showsIndicators: false) {
-          VStack(spacing: DeepSpacing.rhythm) {
+          VStack(spacing: .rhythm) {
             if let remaining {
               ActiveSessionHero(
                 remaining: remaining,
                 participantCount: liveParticipantCount,
                 hasJoined: $hasJoinedSession
               )
-              .padding(.horizontal, DeepSpacing.edge)
+              .padding(.horizontal, .edge)
               .padding(.top, 32)
 
               LiveAroundWorldSection(pauses: pauses)
@@ -42,14 +42,14 @@ struct GlobalPauseView: View {
                 rsvpCount: rsvpCount,
                 isNotifyEnabled: $isNotifyEnabled
               )
-              .padding(.horizontal, DeepSpacing.edge)
+              .padding(.horizontal, .edge)
               .padding(.top, 56)
             }
 
             Color.clear.frame(height: 32)
           }
           .padding(.top, 16)
-          .animation(DeepMotion.bloom, value: isActive)
+          .animation(.bloom, value: isActive)
         }
         .scrollBounceBehavior(.basedOnSize)
       }
@@ -83,12 +83,12 @@ private struct ActiveSessionHero: View {
         Text("Session in progress")
           .font(DeepType.caption)
           .tracking(0.4)
-          .foregroundStyle(DeepColor.driftGrey)
+          .foregroundStyle(.driftGrey)
 
         Text(remainingLabel)
           .font(DeepType.micro)
           .tracking(1.2)
-          .foregroundStyle(DeepColor.lavenderMist)
+          .foregroundStyle(.lavenderMist)
       }
 
       ParticipantsCounter(count: participantCount)
@@ -108,7 +108,7 @@ private struct ActiveSessionHero: View {
 
   private var joinButton: some View {
     Button {
-      withAnimation(DeepMotion.settle) { hasJoined.toggle() }
+      withAnimation(.settle) { hasJoined.toggle() }
     } label: {
       HStack(spacing: 6) {
         Image(systemName: hasJoined ? "checkmark" : "heart.fill")
@@ -122,13 +122,13 @@ private struct ActiveSessionHero: View {
       .background(
         Capsule().fill(
           LinearGradient(
-            colors: [DeepColor.lavenderMist, DeepColor.blushPowder],
+            colors: [.lavenderMist, .blushPowder],
             startPoint: .leading,
             endPoint: .trailing
           )
         )
       )
-      .shadow(color: DeepColor.lavenderMist.opacity(0.4), radius: 10, x: 0, y: 5)
+      .shadow(color: Color.lavenderMist.opacity(0.4), radius: 10, x: 0, y: 5)
     }
     .buttonStyle(.softPress)
     .accessibilityLabel(hasJoined

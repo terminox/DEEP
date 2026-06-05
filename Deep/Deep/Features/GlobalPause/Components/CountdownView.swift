@@ -23,7 +23,7 @@ struct CountdownView: View {
   private var separator: some View {
     Text(":")
       .font(DeepType.countdown.weight(.light))
-      .foregroundStyle(DeepColor.driftGrey.opacity(0.5))
+      .foregroundStyle(Color.driftGrey.opacity(0.5))
       .padding(.bottom, 12)
       .accessibilityHidden(true)
   }
@@ -32,14 +32,14 @@ struct CountdownView: View {
     VStack(spacing: 2) {
       Text(String(format: "%02d", value))
         .font(DeepType.countdown)
-        .foregroundStyle(DeepColor.deepPlum)
+        .foregroundStyle(.deepPlum)
         .monospacedDigit()
         .contentTransition(.numericText(countsDown: true))
-        .animation(DeepMotion.exhale, value: value)
+        .animation(.exhale, value: value)
       Text(label)
         .font(DeepType.micro)
         .tracking(1.2)
-        .foregroundStyle(DeepColor.driftGrey)
+        .foregroundStyle(.driftGrey)
     }
   }
 
@@ -68,6 +68,6 @@ private struct CountdownPreview: View {
     let seconds: TimeInterval = 3600 + 18 * 60 + 42
     CountdownView(target: Date().addingTimeInterval(seconds))
       .padding()
-      .background(DeepColor.moonCream)
+      .background(.moonCream)
   }
 }

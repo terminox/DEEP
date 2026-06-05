@@ -10,8 +10,8 @@ struct CollectionCarousel: View {
     VStack(alignment: .leading, spacing: 14) {
       Text(title)
         .font(DeepType.sectionTitle)
-        .foregroundStyle(DeepColor.deepPlum)
-        .padding(.horizontal, DeepSpacing.edge)
+        .foregroundStyle(.deepPlum)
+        .padding(.horizontal, .edge)
 
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(alignment: .top, spacing: 16) {
@@ -19,7 +19,7 @@ struct CollectionCarousel: View {
             CollectionTile(collection: collection, size: tileSize)
           }
         }
-        .padding(.horizontal, DeepSpacing.edge)
+        .padding(.horizontal, .edge)
       }
     }
   }
