@@ -7,7 +7,9 @@ final class MainTabController: UITabBarController {
   override func viewDidLoad() {
     super.viewDidLoad()
     configureChildren()
-    configureAppearance()
+    // No custom UITabBarAppearance is installed: that keeps the system Liquid
+    // Glass tab bar (iOS 26). Item colours are baked into the item images in
+    // `host(_:title:systemImage:)` instead — see the note there.
   }
 
   private func configureChildren() {
@@ -49,19 +51,52 @@ final class MainTabController: UITabBarController {
   ) -> UIViewController {
     let controller = UIHostingController(rootView: view)
     controller.view.backgroundColor = .clear
-    controller.tabBarItem = UITabBarItem(
-      title: title,
-      image: UIImage(systemName: systemImage),
-      selectedImage: UIImage(systemName: systemImage)
-    )
+
+    // The iOS 26 Liquid Glass tab bar refuses to tint the unselected (`.normal`)
+    // state: template icons fall back to `UIColor.label` and labels render black,
+    // no matter what we set via `unselectedItemTintColor`, the per-bar/per-item
+    // appearance, or the UIAppearance proxy. To get full control we draw the icon
+    // and label into a single `.alwaysOriginal` image — which the bar displays
+    // verbatim — and clear the system title. Both states use the same image, so
+    // selected and unselected read identically (the glass capsule still marks the
+    // active tab).
+    let image = composedItemImage(systemImage: systemImage, title: title)
+    let tabItem = UITabBarItem(title: nil, image: image, selectedImage: image)
+    tabItem.imageInsets = .zero
+
+    controller.tabBarItem = tabItem
     return controller
   }
 
-  private func configureAppearance() {
-    // Don't install a custom UITabBarAppearance background — that opts out of
-    // the system Liquid Glass tab bar on iOS 26. Only tint the items.
-    tabBar.tintColor = .lavenderMist
-    tabBar.unselectedItemTintColor = .driftGrey
+  /// Renders an SF Symbol above its label as one lavender, `.alwaysOriginal`
+  /// image so the tab bar shows it without applying its own (uncustomisable)
+  /// unselected tint.
+  private func composedItemImage(systemImage: String, title: String) -> UIImage {
+    let tint = UIColor.lavenderMist
+    let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
+    let icon = (UIImage(systemName: systemImage, withConfiguration: symbolConfig) ?? UIImage())
+      .withTintColor(tint, renderingMode: .alwaysOriginal)
+
+    let font = UIFont.systemFont(ofSize: 10, weight: .medium)
+    let textAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: tint]
+    let textSize = (title as NSString).size(withAttributes: textAttributes)
+
+    let gap: CGFloat = 3
+    let width = ceil(max(icon.size.width, textSize.width))
+    let height = ceil(icon.size.height + gap + textSize.height)
+
+    let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: height))
+    let composed = renderer.image { _ in
+      let iconX = (width - icon.size.width) / 2
+      icon.draw(at: CGPoint(x: iconX, y: 0))
+      let textX = (width - textSize.width) / 2
+      (title as NSString).draw(
+        at: CGPoint(x: textX, y: icon.size.height + gap),
+        withAttributes: textAttributes
+      )
+    }
+    // Belt-and-suspenders: keep the composed pixels exactly as drawn.
+    return composed.withRenderingMode(.alwaysOriginal)
   }
 
   /// Fade the tab bar without changing layout, so the SwiftUI content behind
