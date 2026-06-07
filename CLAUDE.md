@@ -29,6 +29,29 @@ Project-specific guidance for the Deep iOS app.
   and never render — as happened in an earlier `DeepSoundView`, where `AtmosphereBackground` sat
   behind the `NavigationStack` and was invisible.
 
+## Theming & design tokens
+
+Design tokens (colours, motion, radii, spacing) follow one pattern. Reuse this principle on any
+project:
+
+- **One private source of truth.** Each token is declared exactly once as raw, framework-agnostic
+  values (e.g. RGB components) inside a `private` palette/scale type. No raw literal (an RGB
+  triple, a duration, a radius number) ever appears anywhere else in the codebase.
+- **Native types are thin projections.** The source token materialises into the framework-native
+  type(s) it's consumed as — a SwiftUI `Color` *and* a UIKit `UIColor` from the same entry — so a
+  token reads identically across layers and can never drift between them.
+- **Expose tokens as first-class, dot-accessible values.** Surface each token by extending the
+  type the call site already expects, so it reads like a built-in: `ShapeStyle where Self == Color`
+  for colours (`.fill(.blushPowder)`, `Color.deepPlum`), `UIColor` for UIKit
+  (`tabBar.tintColor = .lavenderMist`), `Animation` for motion (`.animation(.exhale, value:)`),
+  `CGFloat` for radii and spacing (`RoundedRectangle(cornerRadius: .card)`,
+  `.padding(.horizontal, .edge)`). Never expose a bag of constants like `Theme.colorPrimary`.
+- **Name tokens for meaning, not appearance or value.** Prefer semantic/poetic names tied to the
+  design language (`lavenderMist`, `exhale`, `card`, `edge`) over literal descriptions
+  (`lightPurple`, `animation800ms`, `radius24`), so a value can change without the name lying.
+- **Group by role with `MARK:` sections** (palette, SwiftUI colours, UIKit colours, motion, radii,
+  spacing) so the file stays the single, scannable map of the project's visual language.
+
 ## Naming
 
 - **Never name types after their role-in-the-pattern.** Do not use `…Protocol` for protocols, nor
