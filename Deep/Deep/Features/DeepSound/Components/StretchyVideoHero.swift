@@ -18,6 +18,11 @@ struct StretchyVideoHero: View {
   /// with the content (no parallax); 1 = stays pinned. ~0.4 reads as gentle depth.
   private let parallaxDepth: CGFloat = 0.4
 
+  /// Distance scrolled up over which the hero fully dissolves into the
+  /// atmosphere. Shorter than `height` so it has melted away before it would
+  /// otherwise leave the screen.
+  private let fadeDistance: CGFloat = 220
+
   var body: some View {
     GeometryReader { geo in
       let minY = geo.frame(in: .scrollView(axis: .vertical)).minY
@@ -25,12 +30,16 @@ struct StretchyVideoHero: View {
       let stretch = max(0, minY)
       // Scrolling up (minY < 0) holds the hero back by a fraction of the
       // distance travelled, so it lags behind the content rising over it.
-      let parallax = -min(0, minY) * parallaxDepth
+      let scrolledUp = -min(0, minY)
+      let parallax = scrolledUp * parallaxDepth
+      // ...and as it lags, it melts into the atmosphere behind it.
+      let fade = min(1, scrolledUp / fadeDistance)
       LoopingVideoView(resource: "sky", isAnimating: !reduceMotion)
         .frame(width: geo.size.width, height: height + stretch)
         .clipped()
         .mask(heroFadeMask)
         .offset(y: -stretch + parallax)
+        .opacity(1 - fade)
     }
     .frame(height: height)
   }
