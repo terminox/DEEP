@@ -48,6 +48,8 @@ struct NowPlayingView: View {
 
   private var background: some View {
     ZStack {
+      // Opaque base so the sheet is solid — nothing underneath bleeds through.
+      Color.softLilac
       LinearGradient(
         colors: [
           .softLilac,
@@ -226,3 +228,26 @@ struct NowPlayingView: View {
       }
   }
 }
+
+#if DEBUG
+/// Hosts the `@Namespace` the player needs for its matched-geometry artwork.
+private struct NowPlayingPreviewHost: View {
+  @Namespace private var artworkNamespace
+
+  var body: some View {
+    NowPlayingView(artworkNamespace: artworkNamespace) {}
+  }
+}
+
+#Preview("Now Playing — Playing") {
+  NowPlayingPreviewHost()
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+}
+
+#Preview("Now Playing — Paused") {
+  let player = MockSoundPlayer.playing
+  player.isPlaying = false
+  return NowPlayingPreviewHost()
+    .environment(\.soundPlayer, player)
+}
+#endif

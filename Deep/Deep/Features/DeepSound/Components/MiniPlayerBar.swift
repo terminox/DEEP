@@ -90,3 +90,29 @@ struct MiniPlayerBar: View {
     .buttonStyle(.plain)
   }
 }
+
+#if DEBUG
+/// Hosts the `@Namespace` the bar needs for its matched-geometry artwork.
+private struct MiniPlayerBarPreviewHost: View {
+  @Namespace private var artworkNamespace
+  let player: SoundPlaying
+
+  var body: some View {
+    MiniPlayerBar(artworkNamespace: artworkNamespace) {}
+      .environment(\.soundPlayer, player)
+      .padding(.horizontal, .edge)
+  }
+}
+
+#Preview("Mini Player — Playing") {
+  MiniPlayerBarPreviewHost(player: MockSoundPlayer.playing)
+    .frame(maxHeight: .infinity)
+    .background { AtmosphereBackground() }
+}
+
+#Preview("Mini Player — Idle") {
+  MiniPlayerBarPreviewHost(player: MockSoundPlayer.idle)
+    .frame(maxHeight: .infinity)
+    .background { AtmosphereBackground() }
+}
+#endif
