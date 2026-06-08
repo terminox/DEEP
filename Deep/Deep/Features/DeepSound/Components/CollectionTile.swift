@@ -1,13 +1,16 @@
 import SwiftUI
 
-/// A single artwork tile used inside the home carousels. Tapping navigates to
-/// the collection detail via the enclosing `NavigationStack`.
+/// A single artwork tile used inside the home carousels. Tapping asks the
+/// coordinator to push the collection detail onto its `NavigationPath`.
 struct CollectionTile: View {
+  @Environment(\.openCollection) private var openCollection
   let collection: SoundCollection
   var size: CGFloat = 150
 
   var body: some View {
-    NavigationLink(value: collection) {
+    Button {
+      openCollection(collection)
+    } label: {
       VStack(alignment: .leading, spacing: 8) {
         SoundArtwork(palette: collection.palette)
           .frame(width: size, height: size)

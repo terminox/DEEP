@@ -4,10 +4,13 @@ import SwiftUI
 /// navigates to the collection; the play button starts it in place.
 struct FeaturedHeroCard: View {
   @Environment(\.soundPlayer) private var player
+  @Environment(\.openCollection) private var openCollection
   let collection: SoundCollection
 
   var body: some View {
-    NavigationLink(value: collection) {
+    Button {
+      openCollection(collection)
+    } label: {
       ZStack(alignment: .bottomLeading) {
         SoundArtwork(palette: collection.palette, cornerRadius: .card)
           .frame(height: 220)
@@ -60,9 +63,7 @@ struct FeaturedHeroCard: View {
 }
 
 #Preview("Featured Hero Card") {
-  NavigationStack {
-    FeaturedHeroCard(collection: SoundLibrary.featured)
-      .padding(.edge)
-      .environment(\.soundPlayer, MockSoundPlayer.idle)
-  }
+  FeaturedHeroCard(collection: SoundLibrary.featured)
+    .padding(.edge)
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

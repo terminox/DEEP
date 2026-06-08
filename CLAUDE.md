@@ -22,6 +22,15 @@ Project-specific guidance for the Deep iOS app.
   the composition root that owns navigation or tabs for one specific business flow. A coordinator
   must declare this in its name (e.g. `DeepSoundCoordinatorView`). Leaf screens receive
   navigation only through the coordinator — they never host the container themselves.
+- **Never use `NavigationLink` with `NavigationStack`. Drive navigation through a
+  `NavigationPath` instead.** The coordinator owns a single `@State private var path =
+  NavigationPath()` and uses `NavigationStack(path:)` with `.navigationDestination(for:)`. It
+  exposes a navigation action to its leaf screens — preferably via an environment value (e.g.
+  `@Entry var openCollection: (SoundCollection) -> Void`, matching the design-token / `soundPlayer`
+  injection style) — and the leaf taps a plain `Button` that calls that action to append to the
+  path. Routing stays in one place (the path), is programmatically driveable (deep links, pop to
+  root, back), and leaf screens never host a `NavigationLink`. See `DeepSoundCoordinatorView` and
+  `CollectionTile` / `FeaturedHeroCard` for the reference pattern.
 - **Keep styling minimal in coordinator views.** A coordinator composes screens and wires
   navigation / tabs / state; it should carry as little visual styling as possible. Screen-level
   styling (backgrounds, atmospheres, etc.) belongs in the leaf screens it routes to. Otherwise a

@@ -14,6 +14,7 @@ struct DeepSoundCoordinatorView: View {
   var onNowPlayingVisibilityChange: ((Bool) -> Void)? = nil
 
   @State private var player: any SoundPlaying
+  @State private var path = NavigationPath()
   @State private var showNowPlaying = false
   @Namespace private var artworkNamespace
 
@@ -29,12 +30,13 @@ struct DeepSoundCoordinatorView: View {
 
   var body: some View {
     ZStack(alignment: .bottom) {
-      NavigationStack {
+      NavigationStack(path: $path) {
         DeepSoundHomeView(bottomInset: bottomInset)
           .navigationDestination(for: SoundCollection.self) { collection in
             CollectionDetailView(collection: collection, bottomInset: bottomInset)
           }
       }
+      .environment(\.openCollection, { collection in path.append(collection) })
 
       if player.hasTrack && !showNowPlaying {
         MiniPlayerBar(artworkNamespace: artworkNamespace) {
@@ -66,6 +68,15 @@ struct DeepSoundCoordinatorView: View {
   private var bottomInset: CGFloat {
     player.hasTrack ? miniPlayerInset : .rhythm
   }
+}
+
+extension EnvironmentValues {
+  /// Pushes a collection's detail onto the Deep Sound navigation path. The
+  /// coordinator injects the real append; leaf tiles call it from a `Button`
+  /// instead of hosting a `NavigationLink`, so all routing flows through the
+  /// coordinator's single `NavigationPath`. The default is a no-op fallback that
+  /// keeps previews hermetic.
+  @Entry var openCollection: (SoundCollection) -> Void = { _ in }
 }
 
 #Preview("Deep Sound — Home") {
