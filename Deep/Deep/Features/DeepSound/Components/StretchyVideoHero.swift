@@ -4,7 +4,9 @@ import SwiftUI
 /// plays full-bleed under the status bar; pulling down grows the scene from the
 /// top edge while it stays pinned, and its bottom feathers to transparent so it
 /// dissolves into the atmosphere behind the scroll rather than ending on a hard
-/// line. Purely atmospheric — content rides up over it (see `DeepSoundHomeView`).
+/// line. Scrolling up drifts the scene away at a slower rate than the content
+/// (parallax), so it sinks behind the page with depth. Purely atmospheric —
+/// content rides up over it (see `DeepSoundHomeView`).
 ///
 /// Mirrors `MindGardenHomeView`'s hero, swapping the static image for video.
 struct StretchyVideoHero: View {
@@ -12,14 +14,23 @@ struct StretchyVideoHero: View {
 
   var height: CGFloat = 320
 
+  /// How much slower the hero drifts than the scroll on the way up. 0 = moves
+  /// with the content (no parallax); 1 = stays pinned. ~0.4 reads as gentle depth.
+  private let parallaxDepth: CGFloat = 0.4
+
   var body: some View {
     GeometryReader { geo in
-      let stretch = max(0, geo.frame(in: .scrollView(axis: .vertical)).minY)
+      let minY = geo.frame(in: .scrollView(axis: .vertical)).minY
+      // Pulling down (minY > 0) stretches the scene from the top edge.
+      let stretch = max(0, minY)
+      // Scrolling up (minY < 0) holds the hero back by a fraction of the
+      // distance travelled, so it lags behind the content rising over it.
+      let parallax = -min(0, minY) * parallaxDepth
       LoopingVideoView(resource: "sky", isAnimating: !reduceMotion)
         .frame(width: geo.size.width, height: height + stretch)
         .clipped()
         .mask(heroFadeMask)
-        .offset(y: -stretch)
+        .offset(y: -stretch + parallax)
     }
     .frame(height: height)
   }
