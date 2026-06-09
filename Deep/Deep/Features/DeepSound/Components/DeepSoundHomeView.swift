@@ -13,7 +13,7 @@ struct DeepSoundHomeView: View {
 
   private let heroHeight: CGFloat = 320
   /// How far the content rides up over the hero.
-  private let heroOverlap: CGFloat = 52
+  private let heroOverlap: CGFloat = 80
 
   var body: some View {
     ScrollView {

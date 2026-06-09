@@ -21,6 +21,7 @@ struct NowPlayingView: View {
 
       VStack(spacing: 0) {
         grabHandle
+          .transition(.opacity)
 
         Spacer(minLength: 8)
 
@@ -38,10 +39,19 @@ struct NowPlayingView: View {
         }
         .padding(.horizontal, 32)
         .padding(.bottom, 40)
+        // The controls rise from the bottom as the sheet appears — the spatial
+        // "expand" — while the artwork (matched geometry) morphs independently.
+        .transition(controlsTransition)
       }
     }
     .offset(y: dragOffset)
     .gesture(dismissDrag)
+  }
+
+  /// Bottom controls slide up + fade as Now Playing opens; a plain fade when the
+  /// user has Reduce Motion on.
+  private var controlsTransition: AnyTransition {
+    reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
   }
 
   // MARK: - Background

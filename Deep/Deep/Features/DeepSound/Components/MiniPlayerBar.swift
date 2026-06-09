@@ -1,12 +1,15 @@
 import SwiftUI
 
-/// The docked player that rides above the home content. Tapping anywhere
-/// (other than the transport buttons) expands into Now Playing; the artwork
-/// morphs across via `matchedGeometryEffect`.
+/// The docked player that rides above the home content, finished in iOS 26
+/// Liquid Glass like Apple Music's mini player. Tapping anywhere (other than the
+/// transport buttons) expands into Now Playing; the artwork morphs across via
+/// `matchedGeometryEffect`.
 struct MiniPlayerBar: View {
   @Environment(\.soundPlayer) private var player
   var artworkNamespace: Namespace.ID
   var onExpand: () -> Void
+
+  private let shape = RoundedRectangle(cornerRadius: .card, style: .continuous)
 
   var body: some View {
     let track = player.currentTrack
@@ -41,27 +44,16 @@ struct MiniPlayerBar: View {
           player.next()
         }
       }
-      .padding(.horizontal, 12)
+      .padding(.horizontal, 14)
       .padding(.vertical, 9)
-      .background(miniBackground)
+      .modifier(LiquidGlassBar(shape: shape))
       .overlay(alignment: .bottom) { progressLine }
-      .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      .contentShape(shape)
+      .shadow(color: Color.lavenderMist.opacity(0.22), radius: 16, x: 0, y: 8)
     }
-    .buttonStyle(.softPress)
+    .buttonStyle(.plain)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Now playing \(player.currentTrack?.title ?? ""). Tap to open the player.")
-  }
-
-  private var miniBackground: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .fill(.ultraThinMaterial)
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .fill(.white.opacity(0.4))
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .strokeBorder(.white.opacity(0.5), lineWidth: 0.5)
-    }
-    .shadow(color: Color.lavenderMist.opacity(0.25), radius: 18, x: 0, y: 8)
   }
 
   private var progressLine: some View {
@@ -88,6 +80,31 @@ struct MiniPlayerBar: View {
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
+  }
+}
+
+/// Finishes the mini player in iOS 26 Liquid Glass — the adaptive,
+/// self-illuminating material Apple Music's mini player rides on. `interactive()`
+/// lets the glass react fluidly to touch, so the bar itself is the press
+/// affordance. On iOS 18–25 it falls back to a hand-blended frosted material so
+/// the bar still reads as glass.
+private struct LiquidGlassBar: ViewModifier {
+  let shape: RoundedRectangle
+
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content.glassEffect(.regular.interactive(), in: shape)
+    } else {
+      content.background(fallback)
+    }
+  }
+
+  private var fallback: some View {
+    ZStack {
+      shape.fill(.ultraThinMaterial)
+      shape.fill(.white.opacity(0.4))
+      shape.strokeBorder(.white.opacity(0.5), lineWidth: 0.5)
+    }
   }
 }
 

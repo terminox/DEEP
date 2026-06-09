@@ -44,7 +44,10 @@ struct DeepSoundCoordinatorView: View {
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 6)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        // Crossfade only — never `.move`. The artwork morphs between bar and
+        // sheet via `matchedGeometryEffect`; a move here would slide the bar
+        // (and its matched artwork) away from the morph path and fight it.
+        .transition(.opacity)
         .zIndex(1)
       }
     }
@@ -53,7 +56,10 @@ struct DeepSoundCoordinatorView: View {
         NowPlayingView(artworkNamespace: artworkNamespace) {
           withAnimation(.exhale) { showNowPlaying = false }
         }
-        .transition(.move(edge: .bottom))
+        // The sheet crossfades in while the artwork morphs; the Now Playing
+        // controls handle their own upward rise internally. The container must
+        // not `.move`, or it would double-animate the matched artwork.
+        .transition(.opacity)
         .zIndex(2)
       }
     }
