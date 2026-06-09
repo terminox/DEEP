@@ -18,7 +18,7 @@ struct DeepSoundHomeView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        StretchyVideoHero(height: heroHeight)
+        StretchyVideoHero(resource: "sky", height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
           header

@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// A sticky, stretchy video header for the top of Deep Sound. The sky footage
-/// plays full-bleed under the status bar; pulling down grows the scene from the
-/// top edge while it stays pinned, and its bottom feathers to transparent so it
+/// A sticky, stretchy video header. The footage named by `resource` plays
+/// full-bleed under the status bar; pulling down grows the scene from the top
+/// edge while it stays pinned, and its bottom feathers to transparent so it
 /// dissolves into the atmosphere behind the scroll rather than ending on a hard
 /// line. Scrolling up drifts the scene away at a slower rate than the content
 /// (parallax), so it sinks behind the page with depth. Purely atmospheric —
-/// content rides up over it (see `DeepSoundHomeView`).
-///
-/// Mirrors `MindGardenHomeView`'s hero, swapping the static image for video.
+/// content rides up over it (see `DeepSoundHomeView`, `MindGardenHomeView`).
 struct StretchyVideoHero: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+  /// Name of the bundled looping video to play (without extension).
+  var resource: String
   var height: CGFloat = 320
 
   /// How much slower the hero drifts than the scroll on the way up. 0 = moves
@@ -34,7 +34,7 @@ struct StretchyVideoHero: View {
       let parallax = scrolledUp * parallaxDepth
       // ...and as it lags, it melts into the atmosphere behind it.
       let fade = min(1, scrolledUp / fadeDistance)
-      LoopingVideoView(resource: "sky", isAnimating: !reduceMotion)
+      LoopingVideoView(resource: resource, isAnimating: !reduceMotion)
         .frame(width: geo.size.width, height: height + stretch)
         .clipped()
         .mask(heroFadeMask)
@@ -58,7 +58,7 @@ struct StretchyVideoHero: View {
 
 #Preview("Stretchy Video Hero") {
   ScrollView {
-    StretchyVideoHero()
+    StretchyVideoHero(resource: "sky")
     Color.clear.frame(height: 600)
   }
   .ignoresSafeArea(edges: .top)
