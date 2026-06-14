@@ -14,7 +14,7 @@ final class MainTabController: UITabBarController {
 
   private func configureChildren() {
     let globalPause = host(
-      GlobalPauseView(),
+      GlobalPauseCoordinatorView(),
       title: "Global Pause",
       systemImage: "globe.asia.australia.fill"
     )
