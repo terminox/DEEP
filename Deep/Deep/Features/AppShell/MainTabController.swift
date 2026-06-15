@@ -36,7 +36,7 @@ final class MainTabController: UITabBarController {
     )
 
     let portfolio = host(
-      CompassionPortfolioView(),
+      CompassionPortfolioCoordinatorView(),
       title: "Portfolio",
       systemImage: "heart.fill"
     )
