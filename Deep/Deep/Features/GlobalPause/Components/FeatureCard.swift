@@ -37,18 +37,22 @@ struct FeatureCard: View {
           .clipShape(RoundedRectangle(cornerRadius: .card, style: .continuous))
         )
 
-      VStack(alignment: .leading, spacing: 8) {
-        durationPill
-        Text(item.title)
-          .font(DeepType.displayTitle)
-          .foregroundStyle(.white)
-          .lineLimit(2)
-      }
-      .padding(16)
-
-      playButton
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+      HStack(alignment: .bottom) {
+        VStack(alignment: .leading, spacing: 8) {
+          Text(item.title)
+            .font(DeepType.displayTitle)
+            .foregroundStyle(.white)
+            .lineLimit(2)
+          
+          durationPill
+        }
         .padding(16)
+        .layoutPriority(1)
+        
+        playButton
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+          .padding(16)
+      }
     }
     .frame(width: width, height: height)
     .shadow(color: .lavenderMist.opacity(0.28), radius: 18, x: 0, y: 12)
@@ -64,7 +68,7 @@ struct FeatureCard: View {
     .foregroundStyle(.deepPlum)
     .padding(.horizontal, 9)
     .padding(.vertical, 5)
-    .background(.white.opacity(0.85), in: Capsule())
+    .background(.white.opacity(0.5), in: Capsule())
   }
 
   private var playButton: some View {
@@ -78,17 +82,6 @@ struct FeatureCard: View {
 
   private var authorRow: some View {
     HStack(spacing: 8) {
-      Circle()
-        .fill(
-          LinearGradient(
-            colors: item.palette.colors,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-          )
-        )
-        .frame(width: 26, height: 26)
-        .overlay(Circle().strokeBorder(.white.opacity(0.5), lineWidth: 0.5))
-
       VStack(alignment: .leading, spacing: 1) {
         Text(item.title)
           .font(DeepType.body.weight(.medium))

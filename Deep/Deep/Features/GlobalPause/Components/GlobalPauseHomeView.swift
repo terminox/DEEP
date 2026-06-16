@@ -27,9 +27,9 @@ struct GlobalPauseHomeView: View {
 
           FeatureCarousel(title: "Today's sessions", items: HomeLibrary.todaysSessions, seeAll: {})
 
-          MoodCheckInCard()
+//          MoodCheckInCard()
 
-          RecommendationsSection(items: HomeLibrary.recommended, seeAll: {})
+          RecommendationsSection(items: HomeLibrary.recommended)
 
           ExploreByContentSection()
 

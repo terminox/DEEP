@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// The home's "Explore" section — a row of soft category chips drawn from
-/// `HomeCategory`, mirroring Calm's "Explore by Content".
+/// The home's "Explore" section — a two-column grid of artwork tiles, one per
+/// `HomeCategory`. Mirrors DeepSound's `IntentionGrid` so browsing reads the same
+/// across the two homes: a photograph under the palette wash with the category
+/// name laid over a legibility scrim.
 struct ExploreByContentSection: View {
-  var onSelect: (HomeCategory) -> Void = { _ in }
-
   private let columns = [
     GridItem(.flexible(), spacing: 12),
     GridItem(.flexible(), spacing: 12)
@@ -16,7 +16,7 @@ struct ExploreByContentSection: View {
 
       LazyVGrid(columns: columns, spacing: 12) {
         ForEach(HomeCategory.allCases) { category in
-          ExploreTile(category: category) { onSelect(category) }
+          ExploreTile(category: category)
         }
       }
       .padding(.horizontal, .edge)
@@ -26,28 +26,26 @@ struct ExploreByContentSection: View {
 
 private struct ExploreTile: View {
   let category: HomeCategory
-  var action: () -> Void
 
   var body: some View {
-    Button(action: action) {
-      HStack(spacing: 12) {
-        Image(systemName: category.systemImage)
-          .font(.system(size: 18, weight: .semibold))
-          .foregroundStyle(category.tint)
-          .frame(width: 40, height: 40)
-          .background(category.tint.opacity(0.18), in: Circle())
-
-        Text(category.rawValue)
-          .font(DeepType.body.weight(.medium))
-          .foregroundStyle(.deepPlum)
-
-        Spacer(minLength: 0)
-      }
-      .padding(12)
-      .frostedCard(cornerRadius: 18)
+    ZStack(alignment: .bottomLeading) {
+      HomeArtwork(palette: category.palette, imageURL: category.imageURL, cornerRadius: 18)
+        .overlay(
+          // Scrim so the title stays legible over a photograph.
+          LinearGradient(
+            colors: [.clear, Color.deepPlum.opacity(0.5)],
+            startPoint: .center,
+            endPoint: .bottom
+          )
+          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        )
+      Text(category.rawValue)
+        .font(.system(.title3, design: .serif, weight: .light))
+        .foregroundStyle(.white)
+        .shadow(color: Color.deepPlum.opacity(0.35), radius: 6, y: 1)
+        .padding(14)
     }
-    .buttonStyle(.softPress)
-    .accessibilityLabel("Explore \(category.rawValue)")
+    .frame(height: 92)
   }
 }
 

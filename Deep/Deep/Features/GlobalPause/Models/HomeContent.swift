@@ -84,6 +84,26 @@ enum HomeCategory: String, CaseIterable, Identifiable {
     case .music:      return .blushPowder
     }
   }
+
+  /// Tints the artwork and seeds the gradient fallback while the photo loads.
+  var palette: HomePalette {
+    switch self {
+    case .meditation: return .dusk
+    case .sleep:      return .tide
+    case .breath:     return .bloom
+    case .music:      return .ember
+    }
+  }
+
+  /// Photograph shown beneath the palette wash on the Explore tile.
+  var imageURL: URL? {
+    switch self {
+    case .meditation: return URL(string: "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=600&q=80")
+    case .sleep:      return URL(string: "https://images.unsplash.com/photo-1465101162946-4377e57745c3?w=600&q=80")
+    case .breath:     return URL(string: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&q=80")
+    case .music:      return URL(string: "https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=600&q=80")
+    }
+  }
 }
 
 /// The promotional banner near the top of the feed.

@@ -46,14 +46,16 @@ struct ArtworkImage: View {
     }
   }
 
-  /// The branded gradient kept as a translucent wash over the photo.
+  /// The branded gradient kept as a translucent wash over the photo. Heavy
+  /// enough that the artwork stays unmistakably on-brand while the photograph
+  /// still reads as texture beneath it.
   private var wash: some View {
     LinearGradient(
       colors: colors,
       startPoint: .topLeading,
       endPoint: .bottomTrailing
     )
-    .opacity(0.5)
+    .opacity(0.6)
   }
 
   /// Pure gradient treatment — the original `SoundArtwork` / `HomeArtwork` look,
