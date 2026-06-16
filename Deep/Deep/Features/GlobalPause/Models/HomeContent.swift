@@ -52,6 +52,8 @@ struct HomeItem: Identifiable, Hashable {
   let minutes: Int
   let palette: HomePalette
   let kind: ContentKind
+  /// Photograph shown beneath the palette wash. `nil` keeps the pure gradient.
+  let imageURL: URL?
 
   var durationLabel: String { "\(minutes) min" }
 }
@@ -100,23 +102,23 @@ enum HomeLibrary {
   )
 
   static let popular: [HomeItem] = [
-    HomeItem(title: "One Quiet Minute", author: "Global Pause", minutes: 1, palette: .dawn, kind: .session),
-    HomeItem(title: "Coming Home to Breath", author: "Lina Suwan", minutes: 12, palette: .dusk, kind: .meditation),
-    HomeItem(title: "Tide & Stillness", author: "Deep", minutes: 30, palette: .tide, kind: .soundscape),
-    HomeItem(title: "The Weight of the Day", author: "Akio Mori", minutes: 18, palette: .mist, kind: .story)
+    HomeItem(title: "One Quiet Minute", author: "Global Pause", minutes: 1, palette: .dawn, kind: .session, imageURL: URL(string: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&q=80")),
+    HomeItem(title: "Coming Home to Breath", author: "Lina Suwan", minutes: 12, palette: .dusk, kind: .meditation, imageURL: URL(string: "https://images.unsplash.com/photo-1431274172761-fca41d930114?w=600&q=80")),
+    HomeItem(title: "Tide & Stillness", author: "Deep", minutes: 30, palette: .tide, kind: .soundscape, imageURL: URL(string: "https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=600&q=80")),
+    HomeItem(title: "The Weight of the Day", author: "Akio Mori", minutes: 18, palette: .mist, kind: .story, imageURL: URL(string: "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=600&q=80"))
   ]
 
   static let todaysSessions: [HomeItem] = [
-    HomeItem(title: "Morning Arrival", author: "Daily Pause", minutes: 6, palette: .ember, kind: .session),
-    HomeItem(title: "Soften the Shoulders", author: "Prof. Mara Reix", minutes: 4, palette: .bloom, kind: .meditation),
-    HomeItem(title: "Gratitude for Today", author: "Chiba Okere", minutes: 5, palette: .dawn, kind: .meditation),
-    HomeItem(title: "Evening Wind-Down", author: "Deep", minutes: 20, palette: .dusk, kind: .soundscape)
+    HomeItem(title: "Morning Arrival", author: "Daily Pause", minutes: 6, palette: .ember, kind: .session, imageURL: URL(string: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=600&q=80")),
+    HomeItem(title: "Soften the Shoulders", author: "Prof. Mara Reix", minutes: 4, palette: .bloom, kind: .meditation, imageURL: URL(string: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=600&q=80")),
+    HomeItem(title: "Gratitude for Today", author: "Chiba Okere", minutes: 5, palette: .dawn, kind: .meditation, imageURL: URL(string: "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=600&q=80")),
+    HomeItem(title: "Evening Wind-Down", author: "Deep", minutes: 20, palette: .dusk, kind: .soundscape, imageURL: URL(string: "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=600&q=80"))
   ]
 
   static let recommended: [HomeItem] = [
-    HomeItem(title: "Daily Move", author: "A gentle reset · Focus", minutes: 6, palette: .ember, kind: .session),
-    HomeItem(title: "Infinite Ambient", author: "Generative calm for deep rest", minutes: 45, palette: .tide, kind: .soundscape),
-    HomeItem(title: "Present in the Body", author: "Prof. Mara Reix", minutes: 4, palette: .mist, kind: .meditation)
+    HomeItem(title: "Daily Move", author: "A gentle reset · Focus", minutes: 6, palette: .ember, kind: .session, imageURL: URL(string: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&q=80")),
+    HomeItem(title: "Infinite Ambient", author: "Generative calm for deep rest", minutes: 45, palette: .tide, kind: .soundscape, imageURL: URL(string: "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=600&q=80")),
+    HomeItem(title: "Present in the Body", author: "Prof. Mara Reix", minutes: 4, palette: .mist, kind: .meditation, imageURL: URL(string: "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=600&q=80"))
   ]
 }
 

@@ -1,39 +1,18 @@
 import SwiftUI
 
-/// Abstract gradient artwork for a collection. A soft radial sheen gives it
-/// the dimensional, orb-like quality DESIGN.md calls for without any bitmap.
+/// Artwork for a collection. Shows the collection's photograph beneath a soft
+/// branded wash of its `palette` gradient; with no `imageURL` it falls back to
+/// the pure gradient — the dimensional, orb-like quality DESIGN.md calls for.
+/// A thin wrapper over the shared `ArtworkImage` so DeepSound and Global Pause
+/// render media the same way.
 struct SoundArtwork: View {
   let palette: ArtworkPalette
+  /// Optional photograph shown under the gradient wash.
+  var imageURL: URL? = nil
   var cornerRadius: CGFloat = .tile
 
   var body: some View {
-    let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-    shape
-      .fill(
-        LinearGradient(
-          colors: palette.colors,
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
-      .overlay(
-        RadialGradient(
-          colors: [.white.opacity(0.38), .white.opacity(0.0)],
-          center: .topLeading,
-          startRadius: 2,
-          endRadius: 220
-        )
-      )
-      .overlay(
-        RadialGradient(
-          colors: [Color.deepPlum.opacity(0.10), .clear],
-          center: .bottomTrailing,
-          startRadius: 2,
-          endRadius: 220
-        )
-      )
-      .clipShape(shape)
-      .overlay(shape.strokeBorder(.white.opacity(0.35), lineWidth: 0.5))
+    ArtworkImage(url: imageURL, colors: palette.colors, cornerRadius: cornerRadius)
   }
 }
 

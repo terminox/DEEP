@@ -26,7 +26,7 @@ struct FeatureCard: View {
 
   private var artwork: some View {
     ZStack(alignment: .bottomLeading) {
-      HomeArtwork(palette: item.palette, cornerRadius: .card)
+      HomeArtwork(palette: item.palette, imageURL: item.imageURL, cornerRadius: .card)
         .frame(width: width, height: height)
         .overlay(
           LinearGradient(

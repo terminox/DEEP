@@ -1,40 +1,18 @@
 import SwiftUI
 
-/// Abstract gradient artwork for a home item. A soft radial sheen at the top-left
-/// and a plum shadow at the bottom-right give it an orb-like dimension without any
-/// bitmap — the home's theme-token-driven twin of `SoundArtwork`.
+/// Artwork for a home item. Shows the item's photograph beneath a soft branded
+/// wash of its `palette` gradient; with no `imageURL` it falls back to the pure
+/// gradient — an orb-like dimension without any bitmap. The home's twin of
+/// `SoundArtwork`; both are thin wrappers over the shared `ArtworkImage` so the
+/// two features render media the same way.
 struct HomeArtwork: View {
   let palette: HomePalette
+  /// Optional photograph shown under the gradient wash.
+  var imageURL: URL? = nil
   var cornerRadius: CGFloat = .tile
 
   var body: some View {
-    let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-    shape
-      .fill(
-        LinearGradient(
-          colors: palette.colors,
-          startPoint: .topLeading,
-          endPoint: .bottomTrailing
-        )
-      )
-      .overlay(
-        RadialGradient(
-          colors: [.white.opacity(0.38), .white.opacity(0)],
-          center: .topLeading,
-          startRadius: 2,
-          endRadius: 240
-        )
-      )
-      .overlay(
-        RadialGradient(
-          colors: [Color.deepPlum.opacity(0.12), .clear],
-          center: .bottomTrailing,
-          startRadius: 2,
-          endRadius: 240
-        )
-      )
-      .clipShape(shape)
-      .overlay(shape.strokeBorder(.white.opacity(0.35), lineWidth: 0.5))
+    ArtworkImage(url: imageURL, colors: palette.colors, cornerRadius: cornerRadius)
   }
 }
 

@@ -12,7 +12,7 @@ struct CollectionTile: View {
       openCollection(collection)
     } label: {
       VStack(alignment: .leading, spacing: 8) {
-        SoundArtwork(palette: collection.palette)
+        SoundArtwork(palette: collection.palette, imageURL: collection.imageURL)
           .frame(width: size, height: size)
           .shadow(color: Color.lavenderMist.opacity(0.2), radius: 12, x: 0, y: 8)
 

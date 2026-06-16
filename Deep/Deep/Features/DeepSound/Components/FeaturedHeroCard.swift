@@ -12,7 +12,7 @@ struct FeaturedHeroCard: View {
       openCollection(collection)
     } label: {
       ZStack(alignment: .bottomLeading) {
-        SoundArtwork(palette: collection.palette, cornerRadius: .card)
+        SoundArtwork(palette: collection.palette, imageURL: collection.imageURL, cornerRadius: .card)
           .frame(height: 220)
           .overlay(
             LinearGradient(

@@ -23,8 +23,10 @@ struct SoundCollection: Identifiable, Hashable {
   let title: String
   /// Short descriptor shown under the title, e.g. "Ocean field recording".
   let subtitle: String
-  /// Drives the generated gradient artwork (no bitmap assets yet).
+  /// Tints the artwork and seeds the gradient fallback while the photo loads.
   let palette: ArtworkPalette
+  /// Photograph shown beneath the palette wash. `nil` keeps the pure gradient.
+  let imageURL: URL?
   let tracks: [SoundTrack]
 
   var trackCount: Int { tracks.count }
@@ -36,6 +38,8 @@ struct SoundIntention: Identifiable, Hashable {
   let id = UUID()
   let title: String
   let palette: ArtworkPalette
+  /// Photograph shown beneath the palette wash. `nil` keeps the pure gradient.
+  let imageURL: URL?
 }
 
 extension TimeInterval {

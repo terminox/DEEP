@@ -30,7 +30,7 @@ private struct RecommendationRow: View {
     } label: {
       HStack(spacing: 14) {
         ZStack {
-          HomeArtwork(palette: item.palette, cornerRadius: 16)
+          HomeArtwork(palette: item.palette, imageURL: item.imageURL, cornerRadius: 16)
           Image(systemName: "play.fill")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(.white)

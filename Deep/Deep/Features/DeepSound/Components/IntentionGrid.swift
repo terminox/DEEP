@@ -31,10 +31,21 @@ private struct IntentionCell: View {
 
   var body: some View {
     ZStack(alignment: .bottomLeading) {
-      SoundArtwork(palette: intention.palette, cornerRadius: 18)
+      SoundArtwork(palette: intention.palette, imageURL: intention.imageURL, cornerRadius: 18)
+        .overlay(
+          // Scrim so the title stays legible over a photograph, not just the
+          // light gradient it used to sit on.
+          LinearGradient(
+            colors: [.clear, Color.deepPlum.opacity(0.5)],
+            startPoint: .center,
+            endPoint: .bottom
+          )
+          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        )
       Text(intention.title)
         .font(.system(.title3, design: .serif, weight: .light))
-        .foregroundStyle(.deepPlum)
+        .foregroundStyle(.white)
+        .shadow(color: Color.deepPlum.opacity(0.35), radius: 6, y: 1)
         .padding(14)
     }
     .frame(height: 92)
