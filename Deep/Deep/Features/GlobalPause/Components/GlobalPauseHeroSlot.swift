@@ -11,7 +11,7 @@ import SwiftUI
 /// no end-of-transition pop.
 struct GlobalPauseHeroSlot: View {
   /// Collapsed card height. The expanded state is always full-screen.
-  var cardHeight: CGFloat = 340
+  var cardHeight: CGFloat = 200
 
   @Environment(\.openGlobalPause) private var openGlobalPause
 
