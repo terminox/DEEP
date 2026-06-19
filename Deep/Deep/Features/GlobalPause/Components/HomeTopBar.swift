@@ -9,18 +9,18 @@ struct HomeTopBar: View {
 
   var body: some View {
     HStack {
-      circleButton(systemImage: "person.fill", label: "Profile", action: onProfile)
+//      circleButton(systemImage: "person.fill", label: "Profile", action: onProfile)
+//
+//      Spacer()
 
-      Spacer()
-
-      Text("Global Pause")
+      Text("Home")
         .font(DeepType.wordmark)
         .foregroundStyle(.white)
         .shadow(color: .deepPlum.opacity(0.35), radius: 8, y: 2)
 
-      Spacer()
-
-      circleButton(systemImage: "bell.fill", label: "Notifications", action: onNotifications)
+//      Spacer()
+//
+//      circleButton(systemImage: "bell.fill", label: "Notifications", action: onNotifications)
     }
     .padding(.horizontal, .edge)
   }

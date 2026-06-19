@@ -27,8 +27,6 @@ struct GlobalPauseHomeView: View {
 
           FeatureCarousel(title: "Today's sessions", items: HomeLibrary.todaysSessions, seeAll: {})
 
-//          MoodCheckInCard()
-
           RecommendationsSection(items: HomeLibrary.recommended)
 
           ExploreByContentSection()
@@ -42,10 +40,10 @@ struct GlobalPauseHomeView: View {
     .scrollBounceBehavior(.always)
     .ignoresSafeArea(edges: .top)
     .background { AtmosphereBackground() }
-    .safeAreaInset(edge: .top, spacing: 0) {
-      HomeTopBar()
-        .padding(.top, 8)
-    }
+//    .safeAreaInset(edge: .top, spacing: 0) {
+//      HomeTopBar()
+//        .padding(.top, 8)
+//    }
   }
 
   private var greeting: some View {
