@@ -10,9 +10,10 @@ import SwiftUI
 /// expansion has to hand back to — the collapse lands exactly where it started, with
 /// no end-of-transition pop.
 struct GlobalPauseHeroSlot: View {
-  @Environment(\.openGlobalPause) private var openGlobalPause
+  /// Collapsed card height. The expanded state is always full-screen.
+  var cardHeight: CGFloat = 340
 
-  private let cardHeight: CGFloat = 340
+  @Environment(\.openGlobalPause) private var openGlobalPause
 
   var body: some View {
     Color.clear
