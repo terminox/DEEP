@@ -39,8 +39,6 @@ struct GlobalPauseCardChrome: View {
 
   private var joinPill: some View {
     HStack(spacing: 6) {
-      Image(systemName: "heart.fill")
-        .font(.system(.footnote, design: .rounded, weight: .semibold))
       Text("Join now")
         .font(DeepType.body.weight(.medium))
     }
