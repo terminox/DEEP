@@ -21,9 +21,9 @@ struct Earth3DView: View {
   @State private var revealTask: Task<Void, Never>?
 
   @MainActor
-  init(glow: EarthGlowStore? = nil) {
+  init(glow: EarthGlowStore? = nil, interaction: EarthInteraction? = nil) {
     _glow = State(initialValue: glow ?? EarthGlowStore())
-    _interaction = State(initialValue: EarthInteraction())
+    _interaction = State(initialValue: interaction ?? EarthInteraction())
   }
 
   var body: some View {

@@ -21,7 +21,7 @@ struct GlobalPauseHomeView: View {
         VStack(alignment: .leading, spacing: .rhythm) {
           greeting
 
-          HomePromoBanner(banner: HomeLibrary.banner)
+          GlobalPauseHeroSlot()
 
           FeatureCarousel(title: "Popular now", items: HomeLibrary.popular, seeAll: {})
 
