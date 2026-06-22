@@ -21,8 +21,6 @@ struct DeepSoundHomeView: View {
         StretchyVideoHero(resource: "sky", height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          header
-
           FeaturedHeroCard(collection: SoundLibrary.featured)
             .padding(.horizontal, .edge)
 
@@ -47,18 +45,10 @@ struct DeepSoundHomeView: View {
     .scrollBounceBehavior(.always)
     .ignoresSafeArea(edges: .top)
     .background { AtmosphereBackground() }
-  }
-
-  private var header: some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text("Deep Sound")
-        .font(DeepType.wordmark)
-        .foregroundStyle(.deepPlum)
-      Text("Sound to settle into")
-        .font(DeepType.caption)
-        .foregroundStyle(.driftGrey)
-    }
-    .padding(.horizontal, .edge)
+    .collapsibleHomeHeader(
+      title: "Deep Sound",
+      subtitle: "Sound to settle into"
+    )
   }
 }
 

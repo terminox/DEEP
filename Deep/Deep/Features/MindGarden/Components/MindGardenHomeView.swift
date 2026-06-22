@@ -40,6 +40,10 @@ struct MindGardenHomeView: View {
     .scrollBounceBehavior(.always)
     .ignoresSafeArea(edges: .top)
     .background { AtmosphereBackground() }
+    .collapsibleHomeHeader(
+      title: "Mind Garden",
+      subtitle: "Tend to your calm"
+    )
   }
 }
 

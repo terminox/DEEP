@@ -16,8 +16,8 @@ struct GlobalPauseCoordinatorView: View {
   @State private var heroCardFrame: CGRect = .zero
 
   private let tabBarInset: CGFloat = 100
-  /// Top strip (status bar + `HomeTopBar`) the collapsed card must slide under, not
-  /// over, as it scrolls up the feed.
+  /// Top strip (status bar + the home's collapsible header bar) the collapsed
+  /// card must slide under, not over, as it scrolls up the feed.
   private let topBarClearance: CGFloat = 56
 
   var body: some View {
