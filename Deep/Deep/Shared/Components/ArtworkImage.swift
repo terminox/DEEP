@@ -38,8 +38,8 @@ struct ArtworkImage: View {
         image
           .resizable()
           .scaledToFill()
-          .overlay(wash)
-          .overlay(sheen(opacity: 0.25))
+//          .overlay(wash)
+//          .overlay(sheen(opacity: 0.25))
       default:
         gradient
       }
@@ -66,7 +66,7 @@ struct ArtworkImage: View {
       startPoint: .topLeading,
       endPoint: .bottomTrailing
     )
-    .overlay(sheen(opacity: 0.38))
+//    .overlay(sheen(opacity: 0.38))
     .overlay(
       RadialGradient(
         colors: [Color.deepPlum.opacity(0.12), .clear],
