@@ -4,8 +4,13 @@ import SwiftUI
 /// coordinator's `navigationDestination` end-to-end; content is intentionally
 /// light until real playback is wired in.
 struct HomeItemDetailView: View {
+  @Environment(\.soundPlayer) private var player
   let item: HomeItem
-  @State private var isPlaying = false
+
+  /// True when the shared player is currently playing *this* item.
+  private var isPlayingThis: Bool {
+    player.isPlaying && player.collection?.title == item.title
+  }
 
   var body: some View {
     ScrollView {
@@ -42,11 +47,15 @@ struct HomeItemDetailView: View {
 
   private var playButton: some View {
     Button {
-      withAnimation(.settle) { isPlaying.toggle() }
+      if isPlayingThis {
+        player.togglePlayPause()
+      } else {
+        player.play(item.asSoundCollection)
+      }
     } label: {
       HStack(spacing: 8) {
-        Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-        Text(isPlaying ? "Pause" : "Begin")
+        Image(systemName: isPlayingThis ? "pause.fill" : "play.fill")
+        Text(isPlayingThis ? "Pause" : "Begin")
       }
       .font(DeepType.body.weight(.semibold))
       .foregroundStyle(.white)
@@ -69,4 +78,5 @@ struct HomeItemDetailView: View {
 
 #Preview("Home Item Detail") {
   HomeItemDetailView(item: HomeLibrary.popular[1])
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

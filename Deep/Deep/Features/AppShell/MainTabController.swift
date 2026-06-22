@@ -13,18 +13,20 @@ final class MainTabController: UITabBarController {
   }
 
   private func configureChildren() {
+    // One player shared across the tabs, so a sound started in Global Pause and a
+    // sound started in Sounds drive the same floating mini-player and Now Playing.
+    let sharedPlayer: any SoundPlaying = SoundPlayer()
+
     let globalPause = host(
-      GlobalPauseCoordinatorView(),
+      GlobalPauseCoordinatorView(soundPlayer: sharedPlayer),
       title: "Global Pause",
       systemImage: "globe.asia.australia.fill"
     )
 
-    // Deep Sound dims the tab bar while Now Playing is open so the player
-    // reads as full-screen, the way Apple Music's player covers the bar.
+    // Now Playing presents as a full-screen cover that covers the tab bar on its
+    // own (the way Apple Music's player covers the bar), so no dimming is needed.
     let sounds = host(
-      DeepSoundCoordinatorView(onNowPlayingVisibilityChange: { [weak self] isOpen in
-        self?.setTabBarHidden(isOpen)
-      }),
+      DeepSoundCoordinatorView(player: sharedPlayer),
       title: "Sounds",
       systemImage: "waveform"
     )
@@ -97,13 +99,5 @@ final class MainTabController: UITabBarController {
     }
     // Belt-and-suspenders: keep the composed pixels exactly as drawn.
     return composed.withRenderingMode(.alwaysOriginal)
-  }
-
-  /// Fade the tab bar without changing layout, so the SwiftUI content behind
-  /// it (which already fills the screen) shows through.
-  private func setTabBarHidden(_ hidden: Bool) {
-    UIView.animate(withDuration: 0.45, delay: 0, options: [.curveEaseInOut]) {
-      self.tabBar.alpha = hidden ? 0 : 1
-    }
   }
 }

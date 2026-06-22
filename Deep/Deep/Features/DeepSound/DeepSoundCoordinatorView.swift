@@ -10,64 +10,30 @@ import SwiftUI
 /// their content. Placing the atmosphere here would hide it behind the
 /// `NavigationStack`.
 struct DeepSoundCoordinatorView: View {
-  /// Notifies the host (e.g. the UIKit tab bar) when Now Playing opens/closes.
-  var onNowPlayingVisibilityChange: ((Bool) -> Void)? = nil
-
   @State private var player: any SoundPlaying
   @State private var path = NavigationPath()
-  @State private var showNowPlaying = false
-  @Namespace private var artworkNamespace
 
   private let miniPlayerInset: CGFloat = 92
 
-  init(
-    player: any SoundPlaying = SoundPlayer(),
-    onNowPlayingVisibilityChange: ((Bool) -> Void)? = nil
-  ) {
+  init(player: any SoundPlaying = SoundPlayer()) {
     _player = State(initialValue: player)
-    self.onNowPlayingVisibilityChange = onNowPlayingVisibilityChange
   }
 
   var body: some View {
-    ZStack(alignment: .bottom) {
-      NavigationStack(path: $path) {
-        DeepSoundHomeView(bottomInset: bottomInset)
-          .navigationDestination(for: SoundCollection.self) { collection in
-            CollectionDetailView(collection: collection, bottomInset: bottomInset)
-          }
-      }
-      .environment(\.openCollection, { collection in path.append(collection) })
-
-      if player.hasTrack && !showNowPlaying {
-        MiniPlayerBar(artworkNamespace: artworkNamespace) {
-          withAnimation(.exhale) { showNowPlaying = true }
+    NavigationStack(path: $path) {
+      DeepSoundHomeView(bottomInset: bottomInset)
+        .navigationDestination(for: SoundCollection.self) { collection in
+          CollectionDetailView(collection: collection, bottomInset: bottomInset)
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 6)
-        // Crossfade only — never `.move`. The artwork morphs between bar and
-        // sheet via `matchedGeometryEffect`; a move here would slide the bar
-        // (and its matched artwork) away from the morph path and fight it.
-        .transition(.opacity)
-        .zIndex(1)
-      }
     }
-    .overlay {
-      if showNowPlaying {
-        NowPlayingView(artworkNamespace: artworkNamespace) {
-          withAnimation(.exhale) { showNowPlaying = false }
-        }
-        // The sheet crossfades in while the artwork morphs; the Now Playing
-        // controls handle their own upward rise internally. The container must
-        // not `.move`, or it would double-animate the matched artwork.
-        .transition(.opacity)
-        .zIndex(2)
-      }
-    }
+    .environment(\.openCollection, { collection in path.append(collection) })
+    // The shared mini-player + Apple-Music zoom Now Playing. A full-screen cover
+    // covers the tab bar on its own, so the bar no longer needs to be dimmed.
+    // `.playerSurface()` sits *inside* the player injection so its own
+    // `@Environment(\.soundPlayer)` resolves to this same `player`.
+    .playerSurface()
     .environment(\.soundPlayer, player)
     .preferredColorScheme(.light)
-    .onChange(of: showNowPlaying) { _, isOpen in
-      onNowPlayingVisibilityChange?(isOpen)
-    }
   }
 
   /// Reserve space for the mini-player only while something is playing.

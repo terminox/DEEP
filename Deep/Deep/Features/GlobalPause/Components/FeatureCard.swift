@@ -2,9 +2,11 @@ import SwiftUI
 
 /// A large landscape card for the home's "Popular" / "Today's sessions" shelves.
 /// The artwork carries the title and a duration pill; an author row sits beneath.
-/// Tapping routes through the coordinator via `openHomeItem`.
+/// Tapping the card body routes to detail via `openHomeItem`; the play button
+/// starts the sound in place (the `FeaturedHeroCard` pattern).
 struct FeatureCard: View {
   @Environment(\.openHomeItem) private var openHomeItem
+  @Environment(\.soundPlayer) private var player
   let item: HomeItem
   var width: CGFloat = 300
   var height: CGFloat = 200
@@ -72,12 +74,18 @@ struct FeatureCard: View {
   }
 
   private var playButton: some View {
-    Image(systemName: "play.fill")
-      .font(.system(size: 16, weight: .semibold))
-      .foregroundStyle(.deepPlum)
-      .frame(width: 44, height: 44)
-      .background(.white.opacity(0.9), in: Circle())
-      .shadow(color: .deepPlum.opacity(0.2), radius: 8, x: 0, y: 4)
+    Button {
+      player.play(item.asSoundCollection)
+    } label: {
+      Image(systemName: "play.fill")
+        .font(.system(size: 16, weight: .semibold))
+        .foregroundStyle(.deepPlum)
+        .frame(width: 44, height: 44)
+        .background(.white.opacity(0.9), in: Circle())
+        .shadow(color: .deepPlum.opacity(0.2), radius: 8, x: 0, y: 4)
+    }
+    .buttonStyle(.softPress)
+    .accessibilityLabel("Play \(item.title)")
   }
 
   private var authorRow: some View {
@@ -101,4 +109,5 @@ struct FeatureCard: View {
     AtmosphereBackground()
     FeatureCard(item: HomeLibrary.popular[1])
   }
+  .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

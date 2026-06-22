@@ -6,22 +6,21 @@ import SwiftUI
 struct NowPlayingView: View {
   @Environment(\.soundPlayer) private var player
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  var artworkNamespace: Namespace.ID
   var onDismiss: () -> Void
 
   /// Local scrub state so the timer doesn't fight the finger while dragging.
   @State private var isScrubbing = false
   @State private var scrubValue: Double = 0
-  /// Downward drag offset for swipe-to-dismiss.
-  @State private var dragOffset: CGFloat = 0
 
   var body: some View {
+    // The whole screen expands from (and collapses back into) the mini bar via
+    // the system zoom transition wired in `PlayerSurface`; this view just lays
+    // out its contents and stays opaque so the morph reads cleanly.
     ZStack {
       background
 
       VStack(spacing: 0) {
         grabHandle
-          .transition(.opacity)
 
         Spacer(minLength: 8)
 
@@ -39,19 +38,8 @@ struct NowPlayingView: View {
         }
         .padding(.horizontal, 32)
         .padding(.bottom, 40)
-        // The controls rise from the bottom as the sheet appears — the spatial
-        // "expand" — while the artwork (matched geometry) morphs independently.
-        .transition(controlsTransition)
       }
     }
-    .offset(y: dragOffset)
-    .gesture(dismissDrag)
-  }
-
-  /// Bottom controls slide up + fade as Now Playing opens; a plain fade when the
-  /// user has Reduce Motion on.
-  private var controlsTransition: AnyTransition {
-    reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
   }
 
   // MARK: - Background
@@ -89,7 +77,6 @@ struct NowPlayingView: View {
 
   private var artwork: some View {
     SoundArtwork(palette: player.collection?.palette ?? .mist, cornerRadius: 22)
-      .matchedGeometryEffect(id: SoundPlayerNamespace.artwork, in: artworkNamespace)
       .aspectRatio(1, contentMode: .fit)
       .scaleEffect(artworkScale)
       .shadow(
@@ -222,42 +209,18 @@ struct NowPlayingView: View {
       .frame(width: 44, height: 44)
       .contentShape(Rectangle())
   }
-
-  // MARK: - Dismiss gesture
-
-  private var dismissDrag: some Gesture {
-    DragGesture()
-      .onChanged { value in
-        dragOffset = max(0, value.translation.height)
-      }
-      .onEnded { value in
-        if value.translation.height > 120 || value.predictedEndTranslation.height > 300 {
-          onDismiss()
-        }
-        withAnimation(.exhale) { dragOffset = 0 }
-      }
-  }
 }
 
 #if DEBUG
-/// Hosts the `@Namespace` the player needs for its matched-geometry artwork.
-private struct NowPlayingPreviewHost: View {
-  @Namespace private var artworkNamespace
-
-  var body: some View {
-    NowPlayingView(artworkNamespace: artworkNamespace) {}
-  }
-}
-
 #Preview("Now Playing — Playing") {
-  NowPlayingPreviewHost()
+  NowPlayingView {}
     .environment(\.soundPlayer, MockSoundPlayer.playing)
 }
 
 #Preview("Now Playing — Paused") {
   let player = MockSoundPlayer.playing
   player.isPlaying = false
-  return NowPlayingPreviewHost()
+  return NowPlayingView {}
     .environment(\.soundPlayer, player)
 }
 #endif
