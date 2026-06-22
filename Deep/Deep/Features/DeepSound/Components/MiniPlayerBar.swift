@@ -46,6 +46,10 @@ struct MiniPlayerBar: View {
       .padding(.vertical, 9)
       .modifier(LiquidGlassBar(shape: shape))
       .overlay(alignment: .bottom) { progressLine }
+      // Clip the bar and its progress line together to the bar's shape, so the
+      // full-width line is trimmed by the same rounded corners and stays within
+      // the mini player's bounds. The shadow sits outside the clip.
+      .clipShape(shape)
       .contentShape(shape)
       .shadow(color: Color.lavenderMist.opacity(0.22), radius: 16, x: 0, y: 8)
     }
@@ -61,8 +65,6 @@ struct MiniPlayerBar: View {
         .frame(width: geo.size.width * player.progress, height: 2)
     }
     .frame(height: 2)
-    .padding(.horizontal, 10)
-    .padding(.bottom, 3)
   }
 
   private func transportButton(
