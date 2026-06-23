@@ -11,8 +11,10 @@ import SwiftUI
 struct DeepApp: App {
   var body: some Scene {
     WindowGroup {
-      RootTabView()
-        .ignoresSafeArea()
+      // `AppRootView` gates first-run onboarding vs. the main tab shell and
+      // owns the app-lifetime stores. It manages safe-area insets per branch
+      // (onboarding screens inset themselves; the tab shell ignores them).
+      AppRootView()
     }
   }
 }

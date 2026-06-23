@@ -4,6 +4,23 @@ import SwiftUI
 /// The app's root shell, built in UIKit. Each tab hosts a SwiftUI feature via
 /// `UIHostingController`. New tabs are added by appending to `viewControllers`.
 final class MainTabController: UITabBarController {
+  /// Shared app-lifetime stores threaded in from `AppRootView`, injected into
+  /// the Profile tab so log-out / onboarding-reset act on the same instances
+  /// that drive the app's onboarding gate.
+  private let onboardingStore: any OnboardingProgressStore
+  private let accountStore: any AccountStore
+
+  init(onboardingStore: any OnboardingProgressStore, accountStore: any AccountStore) {
+    self.onboardingStore = onboardingStore
+    self.accountStore = accountStore
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
     configureChildren()
@@ -43,7 +60,15 @@ final class MainTabController: UITabBarController {
       systemImage: "heart.fill"
     )
 
-    viewControllers = [globalPause, sounds, garden, portfolio]
+    let profile = host(
+      ProfileView()
+        .environment(\.onboardingStore, onboardingStore)
+        .environment(\.accountStore, accountStore),
+      title: "You",
+      systemImage: "person.fill"
+    )
+
+    viewControllers = [globalPause, sounds, garden, portfolio, profile]
   }
 
   /// Presents a guided Deep Session full-screen over the tab bar. Presenting from
