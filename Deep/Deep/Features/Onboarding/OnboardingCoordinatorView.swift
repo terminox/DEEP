@@ -17,6 +17,10 @@ struct OnboardingCoordinatorView: View {
       OnboardingIntroView()
         .navigationDestination(for: OnboardingRoute.self) { route in
           destination(for: route)
+            // Onboarding is a forward-only ritual — no back button anywhere,
+            // and the swipe-back pop is disabled with it. Centralised here so
+            // every pushed screen is covered uniformly.
+            .navigationBarBackButtonHidden(true)
         }
     }
     .tint(.lavenderMist)

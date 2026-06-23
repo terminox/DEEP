@@ -9,6 +9,8 @@ struct AuthChoiceView: View {
   @Environment(\.accountStore) private var accountStore
   @Environment(\.onboardingAdvance) private var advance
 
+  private let buttonHeight: CGFloat = 56
+
   var body: some View {
     ZStack {
       AtmosphereBackground()
@@ -29,22 +31,31 @@ struct AuthChoiceView: View {
 
         Spacer()
 
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
           SignInWithAppleButton(.continue, onRequest: { request in
             request.requestedScopes = [.fullName, .email]
           }, onCompletion: handleApple)
-          .signInWithAppleButtonStyle(.whiteOutline)
-          .frame(height: 54)
+          .signInWithAppleButtonStyle(.black)
+          .frame(height: buttonHeight)
           .clipShape(Capsule(style: .continuous))
+          .shadow(color: Color.deepPlum.opacity(0.22), radius: 18, x: 0, y: 10)
 
           Button(action: { advance(.emailSignUp) }) {
-            Label("Continue with Email", systemImage: "envelope.fill")
-              .font(DeepType.sectionTitle)
-              .foregroundStyle(.deepPlum)
-              .frame(maxWidth: .infinity)
-              .frame(height: 54)
-              .background(Capsule(style: .continuous).fill(.moonCream))
-              .overlay(Capsule(style: .continuous).strokeBorder(.white.opacity(0.6), lineWidth: 0.5))
+            HStack(spacing: 10) {
+              Image(systemName: "envelope.fill")
+                .font(.system(size: 16, weight: .medium))
+              Text("Continue with Email")
+                .font(.system(size: 17, weight: .medium))
+            }
+            .foregroundStyle(.deepPlum)
+            .frame(maxWidth: .infinity)
+            .frame(height: buttonHeight)
+            .background(Capsule(style: .continuous).fill(.white))
+            .overlay(
+              Capsule(style: .continuous)
+                .strokeBorder(Color.lavenderMist.opacity(0.25), lineWidth: 1)
+            )
+            .shadow(color: Color.lavenderMist.opacity(0.3), radius: 18, x: 0, y: 10)
           }
           .buttonStyle(.softPress)
         }

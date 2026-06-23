@@ -54,7 +54,6 @@ struct OnboardingQuizView: View {
       .padding(.bottom, .rhythm)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .navigationBarBackButtonHidden(false)
     .onAppear { selectedOptionID = store.state.quizAnswers[question.id] }
   }
 
