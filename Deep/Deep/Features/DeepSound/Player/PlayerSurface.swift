@@ -23,7 +23,9 @@ struct PlayerSurface: ViewModifier {
             // cover is up so the morph has an anchor to expand from and pull back
             // into — hence no `&& !showNowPlaying` guard here.
             .matchedTransitionSource(id: SoundPlayerNamespace.player, in: playerZoom)
-            .padding(.horizontal, 12)
+            // Align to the content gutter (and roughly the tab bar width) so the
+            // bar reads as part of the same layout rhythm as the content above it.
+            .padding(.horizontal, .edge)
             .padding(.bottom, 6)
             // Fade only — for the bar appearing/disappearing as playback
             // starts/stops. The expand itself is owned by the zoom transition.
