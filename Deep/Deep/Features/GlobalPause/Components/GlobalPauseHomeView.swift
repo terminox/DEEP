@@ -7,8 +7,6 @@ import SwiftUI
 /// coordinator injects; this view hosts no navigation container itself.
 struct GlobalPauseHomeView: View {
   var bottomInset: CGFloat = .rhythm
-  /// Injectable so previews and tests can pin a deterministic greeting.
-  var now: Date = .now
 
   private let heroHeight: CGFloat = 320
   private let heroOverlap: CGFloat = 80
@@ -19,8 +17,6 @@ struct GlobalPauseHomeView: View {
         StretchyVideoHero(resource: "sky", height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          greeting
-
           GlobalPauseHeroSlot()
 
           FeatureCarousel(title: "Popular now", items: HomeLibrary.popular, seeAll: {})
@@ -40,31 +36,10 @@ struct GlobalPauseHomeView: View {
     .scrollBounceBehavior(.always)
     .ignoresSafeArea(edges: .top)
     .background { AtmosphereBackground() }
-//    .safeAreaInset(edge: .top, spacing: 0) {
-//      HomeTopBar()
-//        .padding(.top, 8)
-//    }
-  }
-
-  private var greeting: some View {
-    VStack(alignment: .leading, spacing: 3) {
-      Text(timeGreeting)
-        .font(DeepType.displayTitle)
-        .foregroundStyle(.deepPlum)
-      Text("Take a breath with the world today")
-        .font(DeepType.caption)
-        .foregroundStyle(.driftGrey)
-    }
-    .padding(.horizontal, .edge)
-  }
-
-  private var timeGreeting: String {
-    switch Calendar.current.component(.hour, from: now) {
-    case 5..<12:  return "Good morning"
-    case 12..<17: return "Good afternoon"
-    case 17..<22: return "Good evening"
-    default:      return "Good night"
-    }
+    .collapsibleHomeHeader(
+      title: "Global Pause",
+      subtitle: "Take a breath with the world today"
+    )
   }
 }
 

@@ -41,7 +41,25 @@ struct CompassionPortfolioHomeView: View {
     .scrollBounceBehavior(.always)
     .ignoresSafeArea(edges: .top)
     .background { AtmosphereBackground() }
-    .safeAreaInset(edge: .top) { CompassionTopBar() }
+    .collapsibleHomeHeader(
+      title: "Compassion",
+      subtitle: "Where your hearts go"
+    ) {
+      HeaderHeartBalance()
+    }
+  }
+}
+
+/// The live heart balance for the home header's trailing slot. Reads the ledger
+/// and the header's over-hero state so the chip flips its light/plum treatment
+/// in step with the collapsing title — keeping `CollapsibleHomeHeader` ignorant
+/// of the ledger.
+private struct HeaderHeartBalance: View {
+  @Environment(\.heartLedger) private var ledger
+  @Environment(\.headerOverDarkHero) private var overDarkHero
+
+  var body: some View {
+    HeartBalanceChip(balance: ledger.balance, overDarkHero: overDarkHero)
   }
 }
 
