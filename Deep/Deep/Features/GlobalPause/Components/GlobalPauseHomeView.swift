@@ -19,6 +19,9 @@ struct GlobalPauseHomeView: View {
         VStack(alignment: .leading, spacing: .rhythm) {
           GlobalPauseHeroSlot()
 
+          DeepSessionEntryCard(session: DeepSessionLibrary.balancingBreath)
+            .padding(.horizontal, .edge)
+
           FeatureCarousel(title: "Popular now", items: HomeLibrary.popular, seeAll: {})
 
           FeatureCarousel(title: "Today's sessions", items: HomeLibrary.todaysSessions, seeAll: {})

@@ -13,6 +13,10 @@ struct MindGardenHomeView: View {
   /// Extra bottom space so content clears the tab bar / any docked chrome.
   var bottomInset: CGFloat = .rhythm
 
+  /// Today's practice is a guided breath. The card stays a dumb button; the
+  /// screen decides what tapping it does.
+  @Environment(\.startDeepSession) private var startDeepSession
+
   private let heroHeight: CGFloat = 320
   /// How far the greeting card rides up over the hero.
   private let heroOverlap: CGFloat = 52
@@ -26,8 +30,10 @@ struct MindGardenHomeView: View {
           GardenGreetingCard(state: state)
             .padding(.horizontal, .edge)
 
-          DailyPracticeCard(minutesRemaining: state.minutesRemaining)
-            .padding(.horizontal, .edge)
+          DailyPracticeCard(minutesRemaining: state.minutesRemaining) {
+            startDeepSession(DeepSessionLibrary.balancingBreath)
+          }
+          .padding(.horizontal, .edge)
 
           GrowYourGardenSection(stages: state.stages)
 

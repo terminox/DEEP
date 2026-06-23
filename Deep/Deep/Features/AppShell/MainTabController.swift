@@ -46,12 +46,32 @@ final class MainTabController: UITabBarController {
     viewControllers = [globalPause, sounds, garden, portfolio]
   }
 
+  /// Presents a guided Deep Session full-screen over the tab bar. Presenting from
+  /// the tab controller (rather than a per-tab cover) guarantees a single
+  /// presentation that always covers the bar, no matter which tab launched it.
+  private func presentDeepSession(_ session: DeepSession) {
+    guard presentedViewController == nil else { return }
+
+    let root = DeepSessionCoordinatorView(session: session) { [weak self] in
+      self?.dismiss(animated: true)
+    }
+    let host = UIHostingController(rootView: root)
+    host.modalPresentationStyle = .overFullScreen
+    host.view.backgroundColor = .clear
+    present(host, animated: true)
+  }
+
   private func host<Content: View>(
     _ view: Content,
     title: String,
     systemImage: String
   ) -> UIViewController {
-    let controller = UIHostingController(rootView: view)
+    // Every tab can launch a Deep Session from anywhere in its tree. Leaf screens
+    // depend only on this abstract action; the shell owns presentation.
+    let rootView = view.environment(\.startDeepSession) { [weak self] session in
+      self?.presentDeepSession(session)
+    }
+    let controller = UIHostingController(rootView: rootView)
     controller.view.backgroundColor = .clear
 
     // The iOS 26 Liquid Glass tab bar refuses to tint the unselected (`.normal`)
