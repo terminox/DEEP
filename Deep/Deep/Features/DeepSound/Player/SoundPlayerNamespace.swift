@@ -1,7 +1,8 @@
 import Foundation
 
-/// Stable identifiers shared between the mini-player and Now Playing so their
-/// artwork can morph into one another via `matchedGeometryEffect`.
+/// Stable identifier shared between the mini-player (the zoom *source*) and Now
+/// Playing (the zoom *destination*) so the whole bar morphs into the full player
+/// via `matchedTransitionSource` / `navigationTransition(.zoom)`.
 enum SoundPlayerNamespace {
-  static let artwork = "deepSound.artwork"
+  static let player = "deepSound.player"
 }

@@ -2,11 +2,10 @@ import SwiftUI
 
 /// The docked player that rides above the home content, finished in iOS 26
 /// Liquid Glass like Apple Music's mini player. Tapping anywhere (other than the
-/// transport buttons) expands into Now Playing; the artwork morphs across via
-/// `matchedGeometryEffect`.
+/// transport buttons) expands into Now Playing. The whole bar is the zoom
+/// transition's source — see `PlayerSurface`.
 struct MiniPlayerBar: View {
   @Environment(\.soundPlayer) private var player
-  var artworkNamespace: Namespace.ID
   var onExpand: () -> Void
 
   private let shape = RoundedRectangle(cornerRadius: .card, style: .continuous)
@@ -18,7 +17,6 @@ struct MiniPlayerBar: View {
       HStack(spacing: 12) {
         SoundArtwork(palette: player.collection?.palette ?? .mist, cornerRadius: 10)
           .frame(width: 44, height: 44)
-          .matchedGeometryEffect(id: SoundPlayerNamespace.artwork, in: artworkNamespace)
 
         VStack(alignment: .leading, spacing: 2) {
           Text(track?.title ?? "Not playing")
@@ -48,6 +46,10 @@ struct MiniPlayerBar: View {
       .padding(.vertical, 9)
       .modifier(LiquidGlassBar(shape: shape))
       .overlay(alignment: .bottom) { progressLine }
+      // Clip the bar and its progress line together to the bar's shape, so the
+      // full-width line is trimmed by the same rounded corners and stays within
+      // the mini player's bounds. The shadow sits outside the clip.
+      .clipShape(shape)
       .contentShape(shape)
       .shadow(color: Color.lavenderMist.opacity(0.22), radius: 16, x: 0, y: 8)
     }
@@ -63,8 +65,6 @@ struct MiniPlayerBar: View {
         .frame(width: geo.size.width * player.progress, height: 2)
     }
     .frame(height: 2)
-    .padding(.horizontal, 10)
-    .padding(.bottom, 3)
   }
 
   private func transportButton(
@@ -109,26 +109,18 @@ private struct LiquidGlassBar: ViewModifier {
 }
 
 #if DEBUG
-/// Hosts the `@Namespace` the bar needs for its matched-geometry artwork.
-private struct MiniPlayerBarPreviewHost: View {
-  @Namespace private var artworkNamespace
-  let player: SoundPlaying
-
-  var body: some View {
-    MiniPlayerBar(artworkNamespace: artworkNamespace) {}
-      .environment(\.soundPlayer, player)
-      .padding(.horizontal, .edge)
-  }
-}
-
 #Preview("Mini Player — Playing") {
-  MiniPlayerBarPreviewHost(player: MockSoundPlayer.playing)
+  MiniPlayerBar {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .padding(.horizontal, .edge)
     .frame(maxHeight: .infinity)
     .background { AtmosphereBackground() }
 }
 
 #Preview("Mini Player — Idle") {
-  MiniPlayerBarPreviewHost(player: MockSoundPlayer.idle)
+  MiniPlayerBar {}
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
+    .padding(.horizontal, .edge)
     .frame(maxHeight: .infinity)
     .background { AtmosphereBackground() }
 }

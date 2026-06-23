@@ -9,6 +9,7 @@ import SwiftUI
 /// is one instance the whole time — collapsed, expanding, full-screen, collapsing —
 /// the close lands exactly back on the feed with nothing to swap and nothing to pop.
 struct GlobalPauseCoordinatorView: View {
+  @State private var player: any SoundPlaying
   @State private var path = NavigationPath()
   @State private var earthGlow = EarthGlowStore()
   @State private var heroExpanded = false
@@ -16,9 +17,20 @@ struct GlobalPauseCoordinatorView: View {
   @State private var heroCardFrame: CGRect = .zero
 
   private let tabBarInset: CGFloat = 100
-  /// Top strip (status bar + the home's collapsible header bar) the collapsed
-  /// card must slide under, not over, as it scrolls up the feed.
+  /// Extra room the mini-player needs above the tab bar while something is playing.
+  private let miniPlayerExtra: CGFloat = 84
+  /// Top strip (status bar + `HomeTopBar`) the collapsed card must slide under, not
+  /// over, as it scrolls up the feed.
   private let topBarClearance: CGFloat = 56
+
+  init(soundPlayer: any SoundPlaying = SoundPlayer()) {
+    _player = State(initialValue: soundPlayer)
+  }
+
+  /// Reserve space for the mini-player only while something is playing.
+  private var bottomInset: CGFloat {
+    player.hasTrack ? tabBarInset + miniPlayerExtra : tabBarInset
+  }
 
   var body: some View {
     GeometryReader { rootGeo in
@@ -26,7 +38,7 @@ struct GlobalPauseCoordinatorView: View {
 
       ZStack {
         NavigationStack(path: $path) {
-          GlobalPauseHomeView(bottomInset: tabBarInset)
+          GlobalPauseHomeView(bottomInset: bottomInset)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: HomeItem.self) { item in
               HomeItemDetailView(item: item)
@@ -47,6 +59,12 @@ struct GlobalPauseCoordinatorView: View {
     }
     .environment(\.openHomeItem) { item in path.append(item) }
     .environment(\.openGlobalPause, openGlobalPause)
+    // The shared mini-player + Apple-Music zoom Now Playing — identical to the
+    // Sounds tab, driven by the same player instance. `.playerSurface()` sits
+    // *inside* the player injection so its own `@Environment(\.soundPlayer)`
+    // resolves to this same `player`.
+    .playerSurface()
+    .environment(\.soundPlayer, player)
     .preferredColorScheme(.light)
   }
 
@@ -145,5 +163,9 @@ extension EnvironmentValues {
 }
 
 #Preview("Global Pause Coordinator") {
-  GlobalPauseCoordinatorView()
+  GlobalPauseCoordinatorView(soundPlayer: MockSoundPlayer.idle)
+}
+
+#Preview("Global Pause — Playing") {
+  GlobalPauseCoordinatorView(soundPlayer: MockSoundPlayer.playing)
 }
