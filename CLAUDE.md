@@ -2,6 +2,16 @@
 
 Project-specific guidance for the Deep iOS app.
 
+## Testing on the simulator
+
+- **Always use `baguette` for headless simulator control when testing.** Do not drive the
+  Simulator app via AppleScript / System Events clicks. `baguette` (`/opt/homebrew/bin/baguette`)
+  boots a simulator headlessly and sends real gestures by UDID:
+  `baguette boot`, `baguette tap --udid <udid> --x <x> --y <y> --width <w> --height <h>`,
+  plus `swipe`, `pinch`, `pan`, `press`, and `stream`. Use `baguette list` for UDIDs.
+  Install/launch with `xcrun simctl <udid> install|launch` and capture with
+  `xcrun simctl io <udid> screenshot`.
+
 ## Code style
 
 - **Indentation: always 2 spaces per indent level (1 tab = 2 spaces). No tabs, no 4-space indents.**
