@@ -227,8 +227,17 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     cmd.addCompletedHandler { [inflightSemaphore] _ in
       inflightSemaphore.signal()
     }
-    cmd.present(drawable)
-    cmd.commit()
+    if (view.layer as? CAMetalLayer)?.presentsWithTransaction == true {
+      // Transactional present (mid-resize, main thread): commit, wait until
+      // scheduled, then present so the drawable rides the current CATransaction
+      // and commits atomically with the layer's new bounds.
+      cmd.commit()
+      cmd.waitUntilScheduled()
+      drawable.present()
+    } else {
+      cmd.present(drawable)
+      cmd.commit()
+    }
   }
 
   // MARK: - Offscreen targets
@@ -237,13 +246,26 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     let w = Int(currentDrawableSize.width)
     let h = Int(currentDrawableSize.height)
     if w == 0 || h == 0 { return }
-    if let t = sceneTexture, t.width == w, t.height == h { return }
 
-    func makeTexture(_ label: String) -> MTLTexture? {
+    // The scene is rendered at full drawable resolution (sharp orb). The bloom
+    // chain runs at a FIXED reference resolution: its blur steps a constant
+    // number of texels, so a drawable-sized bloom texture would make the glow
+    // a constant number of pixels — visibly popping wider/tighter whenever the
+    // card-lift transition swaps between card- and lobby-scale renders. Every
+    // pass samples by normalized UV, so the resolutions can differ freely.
+    let bloomH = EarthRendererConstants.bloomReferenceHeight
+    let bloomW = max(1, Int((Double(w) / Double(h)) * Double(bloomH)))
+
+    if let scene = sceneTexture, scene.width == w, scene.height == h,
+       let bloom = bloomTexA, bloom.width == bloomW, bloom.height == bloomH {
+      return
+    }
+
+    func makeTexture(_ label: String, width: Int, height: Int) -> MTLTexture? {
       let desc = MTLTextureDescriptor.texture2DDescriptor(
         pixelFormat: .rgba16Float,
-        width: w,
-        height: h,
+        width: width,
+        height: height,
         mipmapped: false
       )
       desc.usage = [.shaderRead, .renderTarget]
@@ -252,9 +274,9 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
       t?.label = label
       return t
     }
-    sceneTexture = makeTexture("Earth.Scene")
-    bloomTexA = makeTexture("Earth.BloomA")
-    bloomTexB = makeTexture("Earth.BloomB")
+    sceneTexture = makeTexture("Earth.Scene", width: w, height: h)
+    bloomTexA = makeTexture("Earth.BloomA", width: bloomW, height: bloomH)
+    bloomTexB = makeTexture("Earth.BloomB", width: bloomW, height: bloomH)
   }
 
   // MARK: - Render passes

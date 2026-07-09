@@ -1,12 +1,17 @@
 import SwiftUI
 
 /// The Global Pause tab's content home — a stretchy video hero with a content
-/// feed riding up over it (greeting, promo banner, carousels, mood check-in,
+/// feed riding up over it (greeting, the Global Pause card, carousels,
 /// recommendations, explore). Modeled on the Calm iOS Home reference, themed in
-/// the Deep design system. Leaf screens route via the `openHomeItem` action the
-/// coordinator injects; this view hosts no navigation container itself.
+/// the Deep design system. Leaf screens route via the `openHomeItem` /
+/// `openGlobalPause` actions the coordinator injects; this view hosts no
+/// navigation container itself.
+///
+/// The Global Pause card is the coordinator-owned UIKit `GlobalPauseCardView`,
+/// seated here through `GlobalPauseCardSlot` — the card-lift transition
+/// re-parents that one instance between this feed and the lobby.
 struct GlobalPauseHomeView: View {
-  var bottomInset: CGFloat = .rhythm
+  var card: GlobalPauseCardView
 
   private let heroHeight: CGFloat = 320
   private let heroOverlap: CGFloat = 80
@@ -17,7 +22,9 @@ struct GlobalPauseHomeView: View {
         StretchyVideoHero(resource: "sky", height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          GlobalPauseHeroSlot()
+          GlobalPauseCardSlot(card: card)
+            .frame(height: 200)
+            .padding(.horizontal, .edge)
 
           DeepSessionEntryCard(session: DeepSessionLibrary.balancingBreath)
             .padding(.horizontal, .edge)
@@ -30,7 +37,9 @@ struct GlobalPauseHomeView: View {
 
           ExploreByContentSection()
 
-          Color.clear.frame(height: bottomInset)
+          // The tab bar and mini player are real safe-area insets now; this is
+          // just breathing room after the last section.
+          Color.clear.frame(height: .rhythm)
         }
         .padding(.top, -heroOverlap)
       }
@@ -47,5 +56,5 @@ struct GlobalPauseHomeView: View {
 }
 
 #Preview("Global Pause Home") {
-  GlobalPauseHomeView(bottomInset: 100)
+  GlobalPauseHomeView(card: GlobalPauseCardView(scene: .preview))
 }

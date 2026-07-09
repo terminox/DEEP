@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The standalone home — one scroll combining a stretchy video hero, a featured
-/// collection, curated carousels, and the browse-by-intention grid.
+/// The standalone home — one scroll combining a stretchy video hero, the
+/// Breathe doorway into Deep Session, and five category carousels.
 ///
 /// This is the leaf screen, so it owns its screen-level styling: the video hero
 /// bleeds under the status bar and `AtmosphereBackground` sits behind the scroll
@@ -21,20 +21,33 @@ struct DeepSoundHomeView: View {
         StretchyVideoHero(resource: "sky", height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          FeaturedHeroCard(collection: SoundLibrary.featured)
+          BreatheHeroCard(session: DeepSessionLibrary.balancingBreath)
             .padding(.horizontal, .edge)
 
           CollectionCarousel(
-            title: "Continue your practice",
-            collections: SoundLibrary.recent
+            title: "Calm",
+            collections: SoundLibrary.calm
           )
 
           CollectionCarousel(
-            title: "Made for you",
-            collections: SoundLibrary.madeForYou
+            title: "Morning",
+            collections: SoundLibrary.morning
           )
 
-          IntentionGrid(intentions: SoundLibrary.intentions)
+          CollectionCarousel(
+            title: "Sleep",
+            collections: SoundLibrary.sleep
+          )
+
+          CollectionCarousel(
+            title: "Deep Teacher",
+            collections: SoundLibrary.deepTeacher
+          )
+
+          CollectionCarousel(
+            title: "Deep Kids",
+            collections: SoundLibrary.deepKids
+          )
 
           Color.clear.frame(height: bottomInset)
         }
@@ -47,7 +60,7 @@ struct DeepSoundHomeView: View {
     .background { AtmosphereBackground() }
     .collapsibleHomeHeader(
       title: "Deep Sound",
-      subtitle: "Sound to settle into"
+      subtitle: "Breathe and listen"
     )
   }
 }

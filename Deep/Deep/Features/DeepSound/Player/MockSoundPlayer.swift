@@ -80,10 +80,10 @@ extension MockSoundPlayer {
   /// Nothing loaded — the default home state.
   static var idle: MockSoundPlayer { MockSoundPlayer() }
 
-  /// Mid-track on the featured collection, for player-centric screens.
+  /// Mid-track on a collection, for player-centric screens.
   static var playing: MockSoundPlayer {
     let player = MockSoundPlayer()
-    player.play(SoundLibrary.featured)
+    player.play(SoundLibrary.sleep[0])
     player.elapsed = min(42, player.duration)
     return player
   }

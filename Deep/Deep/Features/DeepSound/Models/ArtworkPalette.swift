@@ -10,6 +10,7 @@ enum ArtworkPalette: String, CaseIterable, Hashable {
   case ember
   case mist
   case aurora
+  case dawn
 
   /// Gradient stops, top-leading → bottom-trailing.
   var colors: [Color] {
@@ -20,6 +21,7 @@ enum ArtworkPalette: String, CaseIterable, Hashable {
     case .ember:  return [.peachCloud, .blushPowder]
     case .mist:   return [.softLilac, .skyWash]
     case .aurora: return [.skyWash, .lavenderMist, .blushPowder]
+    case .dawn:   return [.moonCream, .peachCloud]
     }
   }
 }

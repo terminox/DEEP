@@ -45,11 +45,13 @@ final class MainTabController: UITabBarController {
   }
 
   private func configureChildren() {
-    let globalPause = host(
-      GlobalPauseCoordinatorView(soundPlayer: sharedPlayer),
-      title: "Global Pause",
-      systemImage: "globe.asia.australia.fill"
-    )
+    // Global Pause is a UIKit coordinator, so it slots in directly — no hosting
+    // wrapper — and receives the deep-session action explicitly (the SwiftUI
+    // environment can't cross this boundary).
+    let globalPause = GlobalPauseCoordinatorController(
+      soundPlayer: sharedPlayer,
+      startDeepSession: { [weak self] session in self?.presentDeepSession(session) })
+    globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
 
     // While a track is loaded, the shared player surfaces globally as the tab
     // bar's bottom accessory — see `observeHasTrack()`.
@@ -65,8 +67,6 @@ final class MainTabController: UITabBarController {
       systemImage: "leaf.fill"
     )
 
-    // TEMPORARY: Portfolio content swapped for the known-good debug scroll to
-    // isolate content vs tab-position in the minimize investigation. Restore.
     let portfolio = host(
       CompassionPortfolioCoordinatorView(),
       title: "Portfolio",
@@ -174,21 +174,24 @@ final class MainTabController: UITabBarController {
     }
     let controller = UIHostingController(rootView: rootView)
     controller.view.backgroundColor = .clear
-
-    // The iOS 26 Liquid Glass tab bar refuses to tint the unselected (`.normal`)
-    // state: template icons fall back to `UIColor.label` and labels render black,
-    // no matter what we set via `unselectedItemTintColor`, the per-bar/per-item
-    // appearance, or the UIAppearance proxy. To get full control we draw the icon
-    // and label into a single `.alwaysOriginal` image — which the bar displays
-    // verbatim — and clear the system title. Both states use the same image, so
-    // selected and unselected read identically (the glass capsule still marks the
-    // active tab).
-    let image = composedItemImage(systemImage: systemImage, title: title)
-    let tabItem = UITabBarItem(title: nil, image: image, selectedImage: image)
-    tabItem.imageInsets = .zero
-
-    controller.tabBarItem = tabItem
+    controller.tabBarItem = tabItem(title: title, systemImage: systemImage)
     return controller
+  }
+
+  /// Builds a tab item whose icon and label are baked into one image. The iOS 26
+  /// Liquid Glass tab bar refuses to tint the unselected (`.normal`) state:
+  /// template icons fall back to `UIColor.label` and labels render black, no
+  /// matter what we set via `unselectedItemTintColor`, the per-bar/per-item
+  /// appearance, or the UIAppearance proxy. To get full control we draw the icon
+  /// and label into a single `.alwaysOriginal` image — which the bar displays
+  /// verbatim — and clear the system title. Both states use the same image, so
+  /// selected and unselected read identically (the glass capsule still marks the
+  /// active tab).
+  private func tabItem(title: String, systemImage: String) -> UITabBarItem {
+    let image = composedItemImage(systemImage: systemImage, title: title)
+    let item = UITabBarItem(title: nil, image: image, selectedImage: image)
+    item.imageInsets = .zero
+    return item
   }
 
   /// Renders an SF Symbol above its label as one lavender, `.alwaysOriginal`

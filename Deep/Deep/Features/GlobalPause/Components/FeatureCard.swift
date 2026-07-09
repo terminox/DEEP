@@ -3,7 +3,7 @@ import SwiftUI
 /// A large landscape card for the home's "Popular" / "Today's sessions" shelves.
 /// The artwork carries the title and a duration pill; an author row sits beneath.
 /// Tapping the card body routes to detail via `openHomeItem`; the play button
-/// starts the sound in place (the `FeaturedHeroCard` pattern).
+/// starts the sound in place.
 struct FeatureCard: View {
   @Environment(\.openHomeItem) private var openHomeItem
   @Environment(\.soundPlayer) private var player

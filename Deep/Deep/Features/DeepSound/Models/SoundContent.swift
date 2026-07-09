@@ -33,15 +33,6 @@ struct SoundCollection: Identifiable, Hashable {
   var totalDuration: TimeInterval { tracks.reduce(0) { $0 + $1.duration } }
 }
 
-/// A browse-by-intention category tile.
-struct SoundIntention: Identifiable, Hashable {
-  let id = UUID()
-  let title: String
-  let palette: ArtworkPalette
-  /// Photograph shown beneath the palette wash. `nil` keeps the pure gradient.
-  let imageURL: URL?
-}
-
 extension TimeInterval {
   /// Clock string like "4:05" used by track rows and the scrubber.
   var clockString: String {
