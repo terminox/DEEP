@@ -34,32 +34,12 @@ struct OnboardingPrimaryButton: View {
   }
 }
 
-/// A quieter, text-only action — the gentle "Maybe later" / "Skip" affordance.
-/// Deep never pressures; secondary paths read as a soft offer, not a dead end.
-struct OnboardingGhostButton: View {
-  let title: String
-  let action: () -> Void
-
-  var body: some View {
-    Button(action: action) {
-      Text(title)
-        .font(DeepType.body)
-        .foregroundStyle(.driftGrey)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
-        .contentShape(Rectangle())
-    }
-    .buttonStyle(.plain)
-  }
-}
-
-#Preview("Primary / ghost buttons") {
+#Preview("Primary button") {
   ZStack {
     AtmosphereBackground()
     VStack(spacing: .rhythm) {
       OnboardingPrimaryButton(title: "Continue", action: {})
       OnboardingPrimaryButton(title: "Next", isEnabled: false, action: {})
-      OnboardingGhostButton(title: "Maybe later", action: {})
     }
     .padding(.horizontal, .edge)
   }

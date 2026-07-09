@@ -33,14 +33,8 @@ struct OnboardingCoordinatorView: View {
   private func destination(for route: OnboardingRoute) -> some View {
     switch route {
     case .quiz(let index): OnboardingQuizView(index: index)
+    case .mindTree: MindTreePickerView()
     case .craftingSpace: CraftingSpaceView()
-    case .rhythmPicker: DailyRhythmView()
-    case .recommendations: RecommendationsView()
-    case .referral: ReferralSourceView()
-    case .auth: AuthChoiceView()
-    case .emailSignUp: EmailSignUpView()
-    case .welcome: WelcomeView()
-    case .paywall: OnboardingPaywallView()
     }
   }
 }
@@ -48,6 +42,4 @@ struct OnboardingCoordinatorView: View {
 #Preview("Onboarding — Full flow") {
   OnboardingCoordinatorView()
     .environment(\.onboardingStore, MockOnboardingStore.fresh)
-    .environment(\.accountStore, MockAccountStore.signedOut)
-    .environment(\.subscriptionStore, MockSubscriptionStore.free)
 }

@@ -19,68 +19,28 @@ struct QuizQuestion: Identifiable, Hashable {
 }
 
 extension QuizQuestion {
-  /// The six questions, re-themed from the Calm "sleep plan" quiz to Deep's
-  /// emotional-wellness domain (pause · breathe · connect · heal).
+  /// The two questions, phrased in Deep's emotional-wellness domain
+  /// (pause · breathe · connect · heal). The Mind Tree picker follows as the
+  /// flow's third and final step.
   static let all: [QuizQuestion] = [
     QuizQuestion(
-      id: "weighing",
-      prompt: "What's been weighing on you lately?",
+      id: "arrival",
+      prompt: "What brings you here today?",
       options: [
-        QuizOption(id: "stress", title: "Stress and overwhelm", palette: .ember),
-        QuizOption(id: "loneliness", title: "Loneliness", palette: .dusk),
-        QuizOption(id: "restlessness", title: "A restless mind", palette: .mist),
-        QuizOption(id: "grief", title: "Grief or heaviness", palette: .tide),
-        QuizOption(id: "nothing", title: "Nothing in particular", palette: .bloom),
+        QuizOption(id: "slow-down", title: "To slow down", palette: .tide),
+        QuizOption(id: "clarity", title: "To find clarity", palette: .mist),
+        QuizOption(id: "recharge", title: "To recharge", palette: .ember),
+        QuizOption(id: "exploring", title: "Just exploring", palette: .bloom),
       ]
     ),
     QuizQuestion(
       id: "longing",
-      prompt: "When you pause, what do you long for?",
+      prompt: "What do you long for right now?",
       options: [
         QuizOption(id: "calm", title: "Calm", palette: .tide),
         QuizOption(id: "connection", title: "Connection", palette: .dusk),
         QuizOption(id: "clarity", title: "Clarity", palette: .mist),
         QuizOption(id: "healing", title: "Healing", palette: .bloom),
-      ]
-    ),
-    QuizQuestion(
-      id: "difficult-feelings",
-      prompt: "How do you usually meet difficult feelings?",
-      options: [
-        QuizOption(id: "sit", title: "I sit with them", palette: .tide),
-        QuizOption(id: "distract", title: "I distract myself", palette: .ember),
-        QuizOption(id: "push", title: "I push them away", palette: .mist),
-        QuizOption(id: "unsure", title: "I'm still learning how", palette: .aurora),
-      ]
-    ),
-    QuizQuestion(
-      id: "gentleness",
-      prompt: "Where would a little more gentleness help?",
-      options: [
-        QuizOption(id: "self", title: "How I speak to myself", palette: .bloom),
-        QuizOption(id: "rest", title: "Letting myself rest", palette: .tide),
-        QuizOption(id: "others", title: "My patience with others", palette: .dusk),
-        QuizOption(id: "body", title: "Listening to my body", palette: .ember),
-      ]
-    ),
-    QuizQuestion(
-      id: "good-day",
-      prompt: "What does a good day feel like to you?",
-      options: [
-        QuizOption(id: "steady", title: "Steady and unhurried", palette: .mist),
-        QuizOption(id: "present", title: "Present and awake", palette: .aurora),
-        QuizOption(id: "warm", title: "Warm and connected", palette: .dusk),
-        QuizOption(id: "light", title: "Light and free", palette: .bloom),
-      ]
-    ),
-    QuizQuestion(
-      id: "company",
-      prompt: "How would you like Deep to keep you company?",
-      options: [
-        QuizOption(id: "sounds", title: "Soothing sounds", palette: .tide),
-        QuizOption(id: "pauses", title: "Shared moments of pause", palette: .dusk),
-        QuizOption(id: "growth", title: "A quiet sense of growth", palette: .bloom),
-        QuizOption(id: "all", title: "A little of everything", palette: .aurora),
       ]
     ),
   ]

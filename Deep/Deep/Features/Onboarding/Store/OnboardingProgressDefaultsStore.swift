@@ -32,14 +32,6 @@ final class OnboardingProgressDefaultsStore: OnboardingProgressStore {
     state.quizAnswers[questionID] = optionID
   }
 
-  func setDailyPauseTime(_ time: DateComponents) {
-    state.dailyPauseTime = time
-  }
-
-  func setReferralSource(_ source: String?) {
-    state.referralSource = source
-  }
-
   func completeOnboarding() {
     state.hasCompletedOnboarding = true
   }

@@ -3,14 +3,10 @@ import Foundation
 /// Everything the onboarding flow gathers, persisted as one small Codable blob.
 ///
 /// Quiz answers are kept as a flat `questionID -> optionID` map so adding or
-/// reordering questions never breaks decoding of an older saved state. The
-/// daily pause time stores only hour/minute (the calendar date is irrelevant —
-/// it's a recurring reminder).
+/// reordering questions never breaks decoding of an older saved state.
 struct OnboardingState: Codable, Equatable {
   var hasCompletedOnboarding: Bool = false
   var quizAnswers: [String: String] = [:]
-  var dailyPauseTime: DateComponents? = nil
-  var referralSource: String? = nil
 }
 
 extension OnboardingState {

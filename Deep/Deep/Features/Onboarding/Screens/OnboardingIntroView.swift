@@ -1,58 +1,35 @@
 import SwiftUI
 
-/// The opening of onboarding — a calm welcome that names the few gentle areas
-/// Deep will explore together. Adapted from the Calm reference's "Let's start by
-/// building your perfect sleep plan" list, re-voiced and re-themed to Deep.
+/// The opening of onboarding — a glowing, breathing welcome. A soft aura of
+/// light rings a heart above the wordmark and tagline; one calm invitation to
+/// begin. The aura breathes on a slow cycle, stilled when Reduce Motion is on.
 struct OnboardingIntroView: View {
   @Environment(\.onboardingAdvance) private var advance
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  private struct Area: Identifiable {
-    let id = UUID()
-    let symbol: String
-    let title: String
-  }
-
-  private let areas: [Area] = [
-    Area(symbol: "cloud.fill", title: "Your inner weather"),
-    Area(symbol: "wind", title: "Moments of pause"),
-    Area(symbol: "waveform", title: "Sounds that soothe you"),
-    Area(symbol: "leaf.fill", title: "A quiet sense of growth"),
-    Area(symbol: "heart.fill", title: "Caring, for self and others"),
-  ]
+  @State private var isBreathing = false
 
   var body: some View {
     ZStack {
       AtmosphereBackground()
 
-      VStack(alignment: .leading, spacing: .rhythm) {
-        VStack(alignment: .leading, spacing: 12) {
-          Text("Let's shape a little space for you.")
-            .font(DeepType.displayTitle)
+      VStack(spacing: .rhythm) {
+        Spacer(minLength: 0)
+
+        aura
+          .padding(.bottom, 12)
+
+        VStack(spacing: 10) {
+          Text("Deep")
+            .font(DeepType.wordmark)
             .foregroundStyle(.deepPlum)
-          Text("A few soft questions — there are no wrong answers.")
+          Text("A space to pause,\nbreathe, and reconnect.")
             .font(DeepType.body)
             .foregroundStyle(.driftGrey)
-        }
-        .padding(.top, 8)
-
-        VStack(spacing: 18) {
-          ForEach(areas) { area in
-            HStack(spacing: 16) {
-              Image(systemName: area.symbol)
-                .font(.system(size: 17, weight: .regular))
-                .foregroundStyle(.lavenderMist)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(.white.opacity(0.5)))
-                .overlay(Circle().strokeBorder(.white.opacity(0.5), lineWidth: 0.5))
-              Text(area.title)
-                .font(DeepType.body)
-                .foregroundStyle(.deepPlum)
-              Spacer(minLength: 0)
-            }
-          }
+            .multilineTextAlignment(.center)
         }
 
-        Spacer()
+        Spacer(minLength: 0)
 
         OnboardingPrimaryButton(title: "Begin") {
           advance(.quiz(index: 0))
@@ -60,11 +37,65 @@ struct OnboardingIntroView: View {
       }
       .padding(.horizontal, .edge)
       .padding(.bottom, .rhythm)
-      .frame(maxWidth: .infinity, alignment: .leading)
+      .frame(maxWidth: .infinity)
     }
+    .onAppear {
+      guard !reduceMotion else { return }
+      withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
+        isBreathing = true
+      }
+    }
+  }
+
+  /// Concentric rings of pastel light around a softly glowing heart.
+  private var aura: some View {
+    ZStack {
+      RadialGradient(
+        colors: [Color.lavenderMist.opacity(0.5), Color.blushPowder.opacity(0.22), .clear],
+        center: .center,
+        startRadius: 10,
+        endRadius: 150
+      )
+      .frame(width: 300, height: 300)
+
+      Circle()
+        .strokeBorder(
+          AngularGradient(
+            colors: [.skyWash, .lavenderMist, .blushPowder, .peachCloud, .skyWash],
+            center: .center
+          ),
+          lineWidth: 2
+        )
+        .frame(width: 248, height: 248)
+        .blur(radius: 0.5)
+        .scaleEffect(isBreathing ? 1.05 : 0.98)
+
+      Circle()
+        .strokeBorder(.white.opacity(0.7), lineWidth: 1.5)
+        .frame(width: 192, height: 192)
+        .scaleEffect(isBreathing ? 1.03 : 0.99)
+
+      Circle()
+        .fill(
+          RadialGradient(
+            colors: [.white.opacity(0.9), Color.blushPowder.opacity(0.35), .clear],
+            center: .center,
+            startRadius: 4,
+            endRadius: 95
+          )
+        )
+        .frame(width: 190, height: 190)
+
+      Image(systemName: "heart.fill")
+        .font(.system(size: 44))
+        .foregroundStyle(.white)
+        .shadow(color: .white.opacity(0.85), radius: 16)
+        .scaleEffect(isBreathing ? 1.06 : 1.0)
+    }
+    .accessibilityHidden(true)
   }
 }
 
-#Preview("Onboarding — Intro") {
+#Preview("Onboarding — Welcome") {
   OnboardingIntroView()
 }

@@ -17,14 +17,6 @@ final class MockOnboardingStore: OnboardingProgressStore {
     state.quizAnswers[questionID] = optionID
   }
 
-  func setDailyPauseTime(_ time: DateComponents) {
-    state.dailyPauseTime = time
-  }
-
-  func setReferralSource(_ source: String?) {
-    state.referralSource = source
-  }
-
   func completeOnboarding() {
     state.hasCompletedOnboarding = true
   }
@@ -41,7 +33,7 @@ extension MockOnboardingStore {
   /// A couple of answers already recorded, partway through the quiz.
   static var midQuiz: MockOnboardingStore {
     MockOnboardingStore(
-      state: OnboardingState(quizAnswers: ["weighing": "stress", "longing": "calm"])
+      state: OnboardingState(quizAnswers: ["arrival": "slow-down", "longing": "calm"])
     )
   }
 }

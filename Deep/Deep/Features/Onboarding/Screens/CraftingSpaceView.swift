@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// A gentle loading beat after the quiz: a short checklist ticks itself off,
-/// then the flow drifts on to the rhythm picker. No progress %, no urgency —
-/// just a breath. Adapted from the Calm reference's "We're crafting your sleep
-/// plan" screen.
+/// A gentle loading beat after the Mind Tree is chosen: a short checklist
+/// ticks itself off, then onboarding finishes and the app crossfades in. No
+/// progress %, no urgency — just a breath. Adapted from the Calm reference's
+/// "We're crafting your sleep plan" screen.
 struct CraftingSpaceView: View {
-  @Environment(\.onboardingAdvance) private var advance
+  @Environment(\.onboardingFinish) private var finish
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   private let steps = [
@@ -51,7 +51,7 @@ struct CraftingSpaceView: View {
       withAnimation(.bloom) { completedCount = step }
     }
     try? await Task.sleep(nanoseconds: 450_000_000)
-    advance(.rhythmPicker)
+    finish()
   }
 }
 

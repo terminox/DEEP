@@ -2,7 +2,7 @@ import SwiftUI
 
 /// One single-select quiz question. Reads its question from `QuizQuestion.all`
 /// by `index`, shows the top progress bar, and records the choice before
-/// advancing — to the next question, or to the crafting loader after the last.
+/// advancing — to the next question, or to the Mind Tree picker after the last.
 struct OnboardingQuizView: View {
   let index: Int
 
@@ -12,8 +12,10 @@ struct OnboardingQuizView: View {
   @State private var selectedOptionID: String?
 
   private var question: QuizQuestion { QuizQuestion.all[index] }
-  private var total: Int { QuizQuestion.all.count }
-  private var isLast: Bool { index == total - 1 }
+  /// The Mind Tree picker counts as the flow's final step, so progress reads
+  /// "1 of 3", "2 of 3" here and completes at "3 of 3" on that screen.
+  private var totalSteps: Int { QuizQuestion.all.count + 1 }
+  private var isLast: Bool { index == QuizQuestion.all.count - 1 }
 
   var body: some View {
     ZStack {
@@ -21,8 +23,8 @@ struct OnboardingQuizView: View {
 
       VStack(alignment: .leading, spacing: .rhythm) {
         OnboardingProgressBar(
-          progress: Double(index + 1) / Double(total),
-          fractionLabel: "\(index + 1) of \(total)"
+          progress: Double(index + 1) / Double(totalSteps),
+          fractionLabel: "\(index + 1) of \(totalSteps)"
         )
         .padding(.top, 8)
 
@@ -46,7 +48,7 @@ struct OnboardingQuizView: View {
         }
         .scrollIndicators(.hidden)
 
-        OnboardingPrimaryButton(title: isLast ? "See my space" : "Next", isEnabled: selectedOptionID != nil) {
+        OnboardingPrimaryButton(title: "Continue", isEnabled: selectedOptionID != nil) {
           advanceFromQuiz()
         }
       }
@@ -64,7 +66,7 @@ struct OnboardingQuizView: View {
 
   private func advanceFromQuiz() {
     if isLast {
-      advance(.craftingSpace)
+      advance(.mindTree)
     } else {
       advance(.quiz(index: index + 1))
     }

@@ -11,8 +11,6 @@ protocol OnboardingProgressStore: AnyObject, Observable {
   var hasCompletedOnboarding: Bool { get }
 
   func recordAnswer(questionID: String, optionID: String)
-  func setDailyPauseTime(_ time: DateComponents)
-  func setReferralSource(_ source: String?)
   /// Marks onboarding finished — flips the gate that reveals the main app.
   func completeOnboarding()
   /// Clears all progress so the flow can be replayed (debug aid).
