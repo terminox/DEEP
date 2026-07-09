@@ -1,9 +1,8 @@
 import SwiftUI
 
 /// The home's "Explore" section — a two-column grid of artwork tiles, one per
-/// `HomeCategory`. Mirrors DeepSound's `IntentionGrid` so browsing reads the same
-/// across the two homes: a photograph under the palette wash with the category
-/// name laid over a legibility scrim.
+/// `HomeCategory`: a photograph under the palette wash with the category name
+/// laid over a legibility scrim.
 struct ExploreByContentSection: View {
   private let columns = [
     GridItem(.flexible(), spacing: 12),

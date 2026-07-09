@@ -148,7 +148,7 @@ private struct TrackRow: View {
 #Preview("Collection Detail") {
   NavigationStack {
     CollectionDetailView(
-      collection: SoundLibrary.featured,
+      collection: SoundLibrary.sleep[0],
       bottomInset: .rhythm
     )
     .environment(\.soundPlayer, MockSoundPlayer.idle)
