@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// Coordinator view for the Deep Sound flow — the business-specific composition
-/// root. It owns navigation (home → collection detail) and the player overlay
-/// (mini-player ↔ Now Playing), and nothing else.
+/// root. It owns navigation (home → collection detail), and nothing else. The
+/// mini player lives in the tab bar's bottom accessory, owned by the app shell
+/// (`MainTabController`), not by this tab.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
 /// screen-level styling such as `AtmosphereBackground` lives in the leaf screens
@@ -13,32 +14,24 @@ struct DeepSoundCoordinatorView: View {
   @State private var player: any SoundPlaying
   @State private var path = NavigationPath()
 
-  private let miniPlayerInset: CGFloat = 92
-
   init(player: any SoundPlaying = SoundPlayer()) {
     _player = State(initialValue: player)
   }
 
   var body: some View {
     NavigationStack(path: $path) {
-      DeepSoundHomeView(bottomInset: bottomInset)
+      // The bottom accessory participates in the safe area, so content clears
+      // the mini player natively; `.rhythm` is pure breathing room.
+      DeepSoundHomeView(bottomInset: .rhythm)
         .navigationDestination(for: SoundCollection.self) { collection in
-          CollectionDetailView(collection: collection, bottomInset: bottomInset)
+          CollectionDetailView(collection: collection, bottomInset: .rhythm)
         }
     }
     .environment(\.openCollection, { collection in path.append(collection) })
-    // The shared mini-player + Apple-Music zoom Now Playing. A full-screen cover
-    // covers the tab bar on its own, so the bar no longer needs to be dimmed.
-    // `.playerSurface()` sits *inside* the player injection so its own
-    // `@Environment(\.soundPlayer)` resolves to this same `player`.
-    .playerSurface()
+    // Leaf play buttons drive the same shared player that feeds the shell's
+    // bottom-accessory mini player.
     .environment(\.soundPlayer, player)
     .preferredColorScheme(.light)
-  }
-
-  /// Reserve space for the mini-player only while something is playing.
-  private var bottomInset: CGFloat {
-    player.hasTrack ? miniPlayerInset : .rhythm
   }
 }
 

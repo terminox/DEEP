@@ -17,8 +17,6 @@ struct GlobalPauseCoordinatorView: View {
   @State private var heroCardFrame: CGRect = .zero
 
   private let tabBarInset: CGFloat = 100
-  /// Extra room the mini-player needs above the tab bar while something is playing.
-  private let miniPlayerExtra: CGFloat = 84
   /// Top strip (status bar + `HomeTopBar`) the collapsed card must slide under, not
   /// over, as it scrolls up the feed.
   private let topBarClearance: CGFloat = 56
@@ -27,18 +25,15 @@ struct GlobalPauseCoordinatorView: View {
     _player = State(initialValue: soundPlayer)
   }
 
-  /// Reserve space for the mini-player only while something is playing.
-  private var bottomInset: CGFloat {
-    player.hasTrack ? tabBarInset + miniPlayerExtra : tabBarInset
-  }
-
   var body: some View {
     GeometryReader { rootGeo in
       let safeTop = rootGeo.safeAreaInsets.top
 
       ZStack {
         NavigationStack(path: $path) {
-          GlobalPauseHomeView(bottomInset: bottomInset)
+          // The mini player rides in the tab bar's bottom accessory, which
+          // participates in the safe area — no extra playing-state inset needed.
+          GlobalPauseHomeView(bottomInset: tabBarInset)
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: HomeItem.self) { item in
               HomeItemDetailView(item: item)
@@ -59,11 +54,8 @@ struct GlobalPauseCoordinatorView: View {
     }
     .environment(\.openHomeItem) { item in path.append(item) }
     .environment(\.openGlobalPause, openGlobalPause)
-    // The shared mini-player + Apple-Music zoom Now Playing — identical to the
-    // Sounds tab, driven by the same player instance. `.playerSurface()` sits
-    // *inside* the player injection so its own `@Environment(\.soundPlayer)`
-    // resolves to this same `player`.
-    .playerSurface()
+    // Leaf play buttons drive the same shared player that feeds the shell's
+    // bottom-accessory mini player — identical to the Sounds tab.
     .environment(\.soundPlayer, player)
     .preferredColorScheme(.light)
   }

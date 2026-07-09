@@ -10,6 +10,13 @@ final class MainTabController: UITabBarController {
   private let onboardingStore: any OnboardingProgressStore
   private let accountStore: any AccountStore
 
+  /// One player shared across the tabs, so a sound started in Global Pause and
+  /// a sound started in Sounds drive the same bottom accessory and Now Playing.
+  private let sharedPlayer: any SoundPlaying = SoundPlayer()
+  /// Hosts the mini player inside the tab bar's bottom accessory. Created on
+  /// first playback and kept as a child VC for the controller's lifetime.
+  private var accessoryHost: PlayerAccessoryHostingController?
+
   init(onboardingStore: any OnboardingProgressStore, accountStore: any AccountStore) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
@@ -27,21 +34,25 @@ final class MainTabController: UITabBarController {
     // No custom UITabBarAppearance is installed: that keeps the system Liquid
     // Glass tab bar (iOS 26). Item colours are baked into the item images in
     // `host(_:title:systemImage:)` instead — see the note there.
+
+    // Scrolling down collapses the tab bar and the bottom accessory condenses
+    // into an inline pill beside it (the Apple Music behaviour). UIKit only
+    // engages this once a tab's scroll view has enough overflow (~a screen's
+    // worth); today's fixture feeds sit under that, so the bar stays put
+    // until real content lengthens them — verified against a long feed.
+    tabBarMinimizeBehavior = .onScrollDown
+    observeHasTrack()
   }
 
   private func configureChildren() {
-    // One player shared across the tabs, so a sound started in Global Pause and a
-    // sound started in Sounds drive the same floating mini-player and Now Playing.
-    let sharedPlayer: any SoundPlaying = SoundPlayer()
-
     let globalPause = host(
       GlobalPauseCoordinatorView(soundPlayer: sharedPlayer),
       title: "Global Pause",
       systemImage: "globe.asia.australia.fill"
     )
 
-    // Now Playing presents as a full-screen cover that covers the tab bar on its
-    // own (the way Apple Music's player covers the bar), so no dimming is needed.
+    // While a track is loaded, the shared player surfaces globally as the tab
+    // bar's bottom accessory — see `observeHasTrack()`.
     let sounds = host(
       DeepSoundCoordinatorView(player: sharedPlayer),
       title: "Sounds",
@@ -54,6 +65,8 @@ final class MainTabController: UITabBarController {
       systemImage: "leaf.fill"
     )
 
+    // TEMPORARY: Portfolio content swapped for the known-good debug scroll to
+    // isolate content vs tab-position in the minimize investigation. Restore.
     let portfolio = host(
       CompassionPortfolioCoordinatorView(),
       title: "Portfolio",
@@ -69,6 +82,69 @@ final class MainTabController: UITabBarController {
     )
 
     viewControllers = [globalPause, sounds, garden, portfolio, profile]
+  }
+
+  // MARK: - Bottom accessory (mini player)
+
+  /// Re-arming observation loop on the `@Observable` player: attach the mini
+  /// player accessory while a track is loaded, remove it when playback clears.
+  /// `onChange` fires at willSet, so the new value is read on the next
+  /// main-actor hop, which also naturally coalesces bursts of changes.
+  private func observeHasTrack() {
+    let hasTrack = withObservationTracking {
+      sharedPlayer.hasTrack
+    } onChange: { [weak self] in
+      Task { @MainActor [weak self] in self?.observeHasTrack() }
+    }
+    updateAccessory(hasTrack: hasTrack)
+  }
+
+  private func updateAccessory(hasTrack: Bool) {
+    if hasTrack {
+      guard bottomAccessory == nil else { return }
+      let host = accessoryHost ?? makeAccessoryHost()
+      // The system supplies the Liquid Glass pill; we only hand it content.
+      setBottomAccessory(UITabAccessory(contentView: host.view), animated: true)
+    } else if bottomAccessory != nil {
+      setBottomAccessory(nil, animated: true)
+    }
+  }
+
+  /// The accessory API takes a bare view, but the hosting controller must be a
+  /// child of this controller so it participates in the view-controller
+  /// hierarchy (traits, appearance callbacks) like any other tab chrome.
+  private func makeAccessoryHost() -> PlayerAccessoryHostingController {
+    let host = PlayerAccessoryHostingController(player: sharedPlayer) { [weak self] in
+      self?.presentNowPlaying()
+    }
+    addChild(host)
+    host.didMove(toParent: self)
+    accessoryHost = host
+    return host
+  }
+
+  /// Expands the accessory into the full Now Playing, Apple-Music style. The
+  /// shell owns this presentation: a `fullScreenCover` presented from inside
+  /// the accessory's own tree renders but receives no touches (the accessory's
+  /// system container hit-tests only the pill), so we present from the tab
+  /// controller and keep the morph with UIKit's zoom transition, sourced from
+  /// the accessory view. Dismissal (button or interactive swipe) pulls the
+  /// player back into the pill.
+  private func presentNowPlaying() {
+    guard presentedViewController == nil else { return }
+
+    let root = NowPlayingView { [weak self] in
+      self?.dismiss(animated: true)
+    }
+    .environment(\.soundPlayer, sharedPlayer)
+    .preferredColorScheme(.light)
+
+    let host = UIHostingController(rootView: root)
+    host.modalPresentationStyle = .fullScreen
+    host.preferredTransition = .zoom { [weak self] _ in
+      self?.accessoryHost?.view
+    }
+    present(host, animated: true)
   }
 
   /// Presents a guided Deep Session full-screen over the tab bar. Presenting from
