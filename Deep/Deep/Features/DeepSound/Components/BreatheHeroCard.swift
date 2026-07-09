@@ -17,6 +17,13 @@ struct BreatheHeroCard: View {
       ZStack(alignment: .bottomLeading) {
         SoundArtwork(palette: .mist, imageURL: imageURL, cornerRadius: .card)
           .frame(height: 220)
+          // Progressive blur so the text stays readable over bright clouds:
+          // strongest at the bottom edge, dissolving to nothing mid-card.
+          .overlay(alignment: .bottom) {
+            VariableBlurView(maxBlurRadius: 4, direction: .blurredBottomClearTop)
+              .frame(height: 80)
+              .clipShape(RoundedRectangle(cornerRadius: .card, style: .continuous))
+          }
           .overlay(
             LinearGradient(
               colors: [.clear, Color.deepPlum.opacity(0.28)],
