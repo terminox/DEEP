@@ -24,7 +24,7 @@ final class GlobalPauseCardChromeView: UIView {
   )
   private let pillLabel = UILabel()
   /// Carries the pill's shadow so the pill itself can clip to its capsule.
-  private let pillShadow = UIView()
+  private let pillShadow = PillShadowView()
 
   init(caption: String) {
     super.init(frame: .zero)
@@ -94,12 +94,22 @@ final class GlobalPauseCardChromeView: UIView {
     fatalError("init(coder:) has not been implemented")
   }
 
+}
+
+/// Sizes the pill; rounding and the shadow path must happen HERE (the pass
+/// that lays the pill out), not in the chrome's `layoutSubviews` — one level
+/// up, the pill's frame is still zero on the first pass and the capsule
+/// renders as a rectangle until the next layout invalidation.
+private final class PillShadowView: UIView {
   override func layoutSubviews() {
     super.layoutSubviews()
-    pill.layer.cornerRadius = pill.bounds.height / 2
-    pillShadow.layer.shadowPath = UIBezierPath(
-      roundedRect: pill.bounds,
-      cornerRadius: pill.bounds.height / 2
+    // The pill is edge-pinned to this view, so our bounds are its bounds.
+    for pill in subviews {
+      pill.layer.cornerRadius = bounds.height / 2
+    }
+    layer.shadowPath = UIBezierPath(
+      roundedRect: bounds,
+      cornerRadius: bounds.height / 2
     ).cgPath
   }
 }
