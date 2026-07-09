@@ -39,6 +39,16 @@ enum EarthRendererConstants {
   // Earth axial tilt — matches design plan ("23.5° tilt") for the off-axis feel.
   static let axialTiltRadians: Float = 23.5 * .pi / 180
 
+  /// Bloom-chain render height in pixels, fixed across drawable sizes. The
+  /// blur kernel steps a fixed number of texels, so tying the bloom textures
+  /// to the drawable makes the glow a constant number of PIXELS —
+  /// proportionally ~3× wider on the 200pt card than in the fullscreen lobby,
+  /// which popped visibly when the card-lift transition swapped render scales
+  /// at its endpoints. A fixed bloom resolution makes the halo a constant
+  /// fraction of view height instead (scale-invariant). 600 = the card's
+  /// drawable height (200pt @3x), preserving the card's original look.
+  static let bloomReferenceHeight: Int = 600
+
   /// Orb's screen-space radius as a fraction of the view *height* in points.
   /// The perspective projection is fov-Y based, so vertical extent is the
   /// invariant — multiply this by `geo.size.height` to get the on-screen radius.

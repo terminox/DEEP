@@ -28,6 +28,35 @@ struct EarthMetalView: UIViewRepresentable {
 final class EarthMTKView: MTKView {
   weak var interaction: EarthInteraction?
 
+  /// Drawable size at the end of the previous layout pass. `drawableSize`
+  /// itself is already updated (by autoResizeDrawable, from setFrame:) by the
+  /// time layoutSubviews runs, so it cannot be its own change-baseline.
+  private var lastLayoutDrawableSize: CGSize = .zero
+
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    let newSize = drawableSize
+    let oldSize = lastLayoutDrawableSize
+    lastLayoutDrawableSize = newSize
+
+    // Glitch-free resize: render + present one frame inside THIS layout
+    // transaction so the resized CAMetalLayer and its matching drawable commit
+    // atomically. Otherwise Core Animation stretches the last-presented
+    // (old-aspect) texture into the new bounds until the next present — a
+    // visible blink when the globe lands back in the card after the lobby
+    // dismissal (and, masked by motion, at lift-off).
+    guard window != nil,
+          oldSize != .zero,
+          newSize != oldSize,
+          newSize.width > 0, newSize.height > 0,
+          let metalLayer = layer as? CAMetalLayer
+    else { return }
+
+    metalLayer.presentsWithTransaction = true
+    draw()
+    metalLayer.presentsWithTransaction = false
+  }
+
   /// The one blessed configuration for an Earth Metal view, shared by the
   /// SwiftUI bridge above and the UIKit `EarthSceneView`.
   static func configured(renderer: EarthRenderer, interaction: EarthInteraction) -> EarthMTKView {
