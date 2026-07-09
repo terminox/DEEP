@@ -11,6 +11,7 @@ import SwiftUI
 /// player and pulls back on dismiss (with interactive swipe-to-dismiss for free).
 struct PlayerSurface: ViewModifier {
   @Environment(\.soundPlayer) private var player
+  @Environment(\.miniPlayerFrameChanged) private var miniPlayerFrameChanged
   @State private var showNowPlaying = false
   @Namespace private var playerZoom
 
@@ -23,6 +24,13 @@ struct PlayerSurface: ViewModifier {
             // cover is up so the morph has an anchor to expand from and pull back
             // into — hence no `&& !showNowPlaying` guard here.
             .matchedTransitionSource(id: SoundPlayerNamespace.player, in: playerZoom)
+            // Reports the bar's on-screen frame to a UIKit host (if any), so a
+            // passthrough overlay can hit-test exactly the bar. Before the
+            // paddings, so the frame is the bar itself, not its gutters.
+            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) {
+              miniPlayerFrameChanged($0)
+            }
+            .onDisappear { miniPlayerFrameChanged(nil) }
             // Align to the content gutter (and roughly the tab bar width) so the
             // bar reads as part of the same layout rhythm as the content above it.
             .padding(.horizontal, .edge)
@@ -47,6 +55,14 @@ extension View {
   func playerSurface() -> some View {
     modifier(PlayerSurface())
   }
+}
+
+extension EnvironmentValues {
+  /// Reports the mini bar's on-screen (`.global`) frame whenever it moves, and
+  /// `nil` when the bar unmounts. UIKit hosts (see `MiniPlayerOverlayController`)
+  /// use it to hit-test only the bar and pass every other touch through. No-op
+  /// default for pure-SwiftUI surfaces like the Sounds tab.
+  @Entry var miniPlayerFrameChanged: (CGRect?) -> Void = { _ in }
 }
 
 #if DEBUG

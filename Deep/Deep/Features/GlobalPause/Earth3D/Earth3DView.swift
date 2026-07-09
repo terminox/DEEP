@@ -99,7 +99,7 @@ struct Earth3DView: View {
   private var revealLabel: some View {
     if let name = revealedName {
       Text(name)
-        .font(.system(.title3, design: .serif, weight: .light).italic())
+        .font(DeepType.revealTitle)
         .tracking(0.4)
         .foregroundStyle(Color.deepPlum.opacity(0.85))
         .padding(.horizontal, 18)

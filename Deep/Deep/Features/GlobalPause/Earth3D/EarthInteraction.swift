@@ -43,13 +43,18 @@ final class EarthInteraction {
 
   // MARK: - Public API used by EarthRenderer
 
-  /// Composed rotation matrix: axial tilt × user orientation × idle drift.
+  /// Composed rotation matrix: axial tilt × user orientation.
+  ///
+  /// Idle drift is integrated INTO `orientation` (see `advance`), never
+  /// composed on top of it. Two bugs live in the composed-on-top design: the
+  /// tap raycast inverts an orientation the renderer never showed (so after a
+  /// minute of drift, taps resolve continents away), and touching the globe
+  /// snaps the accumulated drift to zero (the globe teleports under the
+  /// finger).
   func orientationMatrix(time: Float) -> simd_float4x4 {
     advance(time: TimeInterval(time))
-    let driftQuat = idleDriftQuaternion(time: time)
-    let composed = orientation * driftQuat
     let tilt = simd_float4x4(rotationAroundZ: EarthRendererConstants.axialTiltRadians)
-    return tilt * simd_float4x4(composed)
+    return tilt * simd_float4x4(orientation)
   }
 
   // MARK: - Per-frame integration
@@ -74,20 +79,17 @@ final class EarthInteraction {
     } else {
       momentum = .zero
     }
-  }
 
-  private func idleDriftQuaternion(time: Float) -> simd_quatf {
-    let idleFor = lastFrameTime.map { $0 - lastInteractionTime } ?? 0
-    let strength: Float = idleFor > idleAfterSeconds
-      ? min(1.0, Float(idleFor - idleAfterSeconds) / 1.5)
-      : 0
-    if strength <= 0 { return simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0)) }
-    // Lissajous: prime-ratio periods so the loop never visibly repeats.
-    let yaw = idleDriftSpeed * time * strength
-    let pitch = sin(time * 0.097) * 0.04 * strength
-    let q1 = simd_quatf(angle: yaw, axis: SIMD3<Float>(0, 1, 0))
-    let q2 = simd_quatf(angle: pitch, axis: SIMD3<Float>(1, 0, 0))
-    return q1 * q2
+    // Idle Lissajous drift, integrated incrementally. Prime-ratio periods so
+    // the loop never visibly repeats; the pitch term is the derivative of the
+    // original `sin(t · 0.097) · 0.04` sweep.
+    let idleFor = time - lastInteractionTime
+    if idleFor > idleAfterSeconds, dt > 0 {
+      let strength = min(1.0, Float(idleFor - idleAfterSeconds) / 1.5)
+      let yaw = idleDriftSpeed * dt * strength
+      let pitch = cos(Float(time) * 0.097) * 0.04 * 0.097 * dt * strength
+      applyAngularDelta(yaw: yaw, pitch: pitch)
+    }
   }
 
   private func applyAngularDelta(yaw: Float, pitch: Float) {
@@ -101,7 +103,6 @@ final class EarthInteraction {
   func touchBegan(at point: CGPoint, viewSize: CGSize) {
     lastTouchPoint = point
     momentum = .zero
-    lastInteractionTime = CACurrentMediaTime() - (lastFrameTime ?? 0)
     lastInteractionTime = lastFrameTime ?? 0
   }
 
