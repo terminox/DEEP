@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Coordinator view for the Deep Sound flow — the business-specific composition
-/// root. It owns navigation (home → collection detail) and the player overlay
-/// (mini-player ↔ Now Playing), and nothing else.
+/// root. It owns navigation (home → collection detail, home → session intro)
+/// and the player overlay (mini-player ↔ Now Playing), and nothing else.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
 /// screen-level styling such as `AtmosphereBackground` lives in the leaf screens
@@ -25,8 +25,12 @@ struct DeepSoundCoordinatorView: View {
         .navigationDestination(for: SoundCollection.self) { collection in
           CollectionDetailView(collection: collection, bottomInset: bottomInset)
         }
+        .navigationDestination(for: DeepSession.self) { session in
+          DeepSessionIntroView(session: session)
+        }
     }
     .environment(\.openCollection, { collection in path.append(collection) })
+    .environment(\.openSessionIntro, { session in path.append(session) })
     // The shared mini-player + Apple-Music zoom Now Playing. A full-screen cover
     // covers the tab bar on its own, so the bar no longer needs to be dimmed.
     // `.playerSurface()` sits *inside* the player injection so its own
@@ -49,6 +53,12 @@ extension EnvironmentValues {
   /// coordinator's single `NavigationPath`. The default is a no-op fallback that
   /// keeps previews hermetic.
   @Entry var openCollection: (SoundCollection) -> Void = { _ in }
+
+  /// Pushes a session's intro onto the Deep Sound navigation path. Same
+  /// mechanics as `openCollection`: the coordinator injects the real append,
+  /// the Breathe hero card calls it from a `Button`, and the no-op default
+  /// keeps previews hermetic.
+  @Entry var openSessionIntro: (DeepSession) -> Void = { _ in }
 }
 
 #Preview("Deep Sound — Home") {
