@@ -12,6 +12,25 @@ struct EarthMetalView: UIViewRepresentable {
   let interaction: EarthInteraction
 
   func makeUIView(context: Context) -> EarthMTKView {
+    EarthMTKView.configured(renderer: renderer, interaction: interaction)
+  }
+
+  func updateUIView(_ uiView: EarthMTKView, context: Context) {
+    uiView.interaction = interaction
+  }
+}
+
+/// MTKView subclass that forwards touches to EarthInteraction.
+///
+/// We override touchesBegan/Moved/Ended (instead of using a SwiftUI DragGesture
+/// outside the view) so we receive precise touch locations in the MTKView's
+/// own coordinate space — needed for the tap raycast against the sphere.
+final class EarthMTKView: MTKView {
+  weak var interaction: EarthInteraction?
+
+  /// The one blessed configuration for an Earth Metal view, shared by the
+  /// SwiftUI bridge above and the UIKit `EarthSceneView`.
+  static func configured(renderer: EarthRenderer, interaction: EarthInteraction) -> EarthMTKView {
     let view = EarthMTKView(frame: .zero, device: renderer.device)
     view.delegate = renderer
     view.colorPixelFormat = .bgra8Unorm
@@ -27,19 +46,6 @@ struct EarthMetalView: UIViewRepresentable {
     view.isMultipleTouchEnabled = false
     return view
   }
-
-  func updateUIView(_ uiView: EarthMTKView, context: Context) {
-    uiView.interaction = interaction
-  }
-}
-
-/// MTKView subclass that forwards touches to EarthInteraction.
-///
-/// We override touchesBegan/Moved/Ended (instead of using a SwiftUI DragGesture
-/// outside the view) so we receive precise touch locations in the MTKView's
-/// own coordinate space — needed for the tap raycast against the sphere.
-final class EarthMTKView: MTKView {
-  weak var interaction: EarthInteraction?
 
   override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
     guard let touch = touches.first else { return }
