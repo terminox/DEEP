@@ -13,17 +13,17 @@ struct MiniPlayerBar: View {
     let track = player.currentTrack
 
     Button(action: onExpand) {
-      HStack(spacing: 12) {
-        SoundArtwork(palette: player.collection?.palette ?? .mist, cornerRadius: 10)
-          .frame(width: 44, height: 44)
+      HStack(spacing: 10) {
+        SoundArtwork(palette: player.collection?.palette ?? .mist, cornerRadius: 8)
+          .frame(width: 36, height: 36)
 
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 1) {
           Text(track?.title ?? "Not playing")
-            .font(DeepType.body.weight(.medium))
+            .font(DeepType.caption.weight(.medium))
             .foregroundStyle(.deepPlum)
             .lineLimit(1)
           Text(player.collection?.title ?? "")
-            .font(DeepType.caption)
+            .font(DeepType.micro)
             .foregroundStyle(.driftGrey)
             .lineLimit(1)
         }
@@ -41,9 +41,9 @@ struct MiniPlayerBar: View {
           player.next()
         }
       }
-      .padding(.horizontal, 14)
+      .padding(.horizontal, 12)
       .frame(maxWidth: .infinity)
-      .frame(height: 56)
+      .frame(height: 48)
       .overlay(alignment: .bottom) { progressLine }
       // Clip the content and its progress line together to the accessory's
       // capsule silhouette, so the full-width line is trimmed by the same

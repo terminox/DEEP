@@ -17,6 +17,20 @@ final class MainTabController: UITabBarController {
   /// first playback and kept as a child VC for the controller's lifetime.
   private var accessoryHost: PlayerAccessoryHostingController?
 
+  /// A tab item with both of its baked image variants. The minimized bar's
+  /// pill must be icon-only while the expanded bar shows icon + label, and
+  /// because the label is baked into the image (the unselected-tint
+  /// workaround — see `tabItem(title:systemImage:)`), the system can't drop
+  /// the text itself; `setTabItemsIconOnly(_:)` swaps the variants by hand.
+  private struct ComposedTabItem {
+    let item: UITabBarItem
+    let full: UIImage
+    let iconOnly: UIImage
+  }
+
+  private var composedItems: [ComposedTabItem] = []
+  private var isTabBarMinimized = false
+
   init(onboardingStore: any OnboardingProgressStore, accountStore: any AccountStore) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
@@ -107,6 +121,9 @@ final class MainTabController: UITabBarController {
       setBottomAccessory(UITabAccessory(contentView: host.view), animated: true)
     } else if bottomAccessory != nil {
       setBottomAccessory(nil, animated: true)
+      // The accessory was the minimize signal; without it the items could be
+      // stranded icon-only, so restore the labelled variants.
+      setTabItemsIconOnly(false)
     }
   }
 
@@ -120,6 +137,16 @@ final class MainTabController: UITabBarController {
     addChild(host)
     host.didMove(toParent: self)
     accessoryHost = host
+
+    // The accessory's trait collection is the only public signal of the tab
+    // bar minimizing (`.inline` while collapsed) — mirror it onto the tab
+    // items so the minimized pill is icon-only. See `setTabItemsIconOnly(_:)`.
+    host.view.registerForTraitChanges([UITraitTabAccessoryEnvironment.self]) {
+      [weak self] (accessoryView: UIView, _) in
+      self?.setTabItemsIconOnly(
+        accessoryView.traitCollection.tabAccessoryEnvironment == .inline
+      )
+    }
     return host
   }
 
@@ -188,16 +215,38 @@ final class MainTabController: UITabBarController {
   /// selected and unselected read identically (the glass capsule still marks the
   /// active tab).
   private func tabItem(title: String, systemImage: String) -> UITabBarItem {
-    let image = composedItemImage(systemImage: systemImage, title: title)
-    let item = UITabBarItem(title: nil, image: image, selectedImage: image)
+    let full = composedItemImage(systemImage: systemImage, title: title)
+    let iconOnly = composedItemImage(systemImage: systemImage, title: nil)
+    let item = UITabBarItem(title: nil, image: full, selectedImage: full)
     item.imageInsets = .zero
+    composedItems.append(ComposedTabItem(item: item, full: full, iconOnly: iconOnly))
     return item
   }
 
-  /// Renders an SF Symbol above its label as one lavender, `.alwaysOriginal`
-  /// image so the tab bar shows it without applying its own (uncustomisable)
-  /// unselected tint.
-  private func composedItemImage(systemImage: String, title: String) -> UIImage {
+  /// Swaps every item between its icon+label and icon-only image as the tab
+  /// bar minimizes/expands: the system's minimized pill is icon-only, but our
+  /// labels are baked into the images, so the swap is manual. There is no
+  /// public "minimized" state on UITabBarController (verified: no layout pass,
+  /// no trait change, no contentLayoutGuide movement reaches this controller
+  /// when the bar collapses) — but the bottom accessory's trait collection
+  /// flips to `.inline` exactly then, so while a track is loaded (the
+  /// accessory exists) the swap tracks minimize precisely. With no accessory
+  /// there is no signal and the pill keeps its label — accepted trade-off.
+  private func setTabItemsIconOnly(_ iconOnly: Bool) {
+    guard iconOnly != isTabBarMinimized else { return }
+    isTabBarMinimized = iconOnly
+
+    for entry in composedItems {
+      let image = iconOnly ? entry.iconOnly : entry.full
+      entry.item.image = image
+      entry.item.selectedImage = image
+    }
+  }
+
+  /// Renders an SF Symbol above its label (or alone, when `title` is nil — the
+  /// minimized bar's variant) as one lavender, `.alwaysOriginal` image so the
+  /// tab bar shows it without applying its own (uncustomisable) unselected tint.
+  private func composedItemImage(systemImage: String, title: String?) -> UIImage {
     let tint = UIColor.lavenderMist
     let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
     let icon = (UIImage(systemName: systemImage, withConfiguration: symbolConfig) ?? UIImage())
@@ -205,9 +254,9 @@ final class MainTabController: UITabBarController {
 
     let font = UIFont.systemFont(ofSize: 10, weight: .medium)
     let textAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: tint]
-    let textSize = (title as NSString).size(withAttributes: textAttributes)
+    let textSize = title.map { ($0 as NSString).size(withAttributes: textAttributes) } ?? .zero
 
-    let gap: CGFloat = 3
+    let gap: CGFloat = title == nil ? 0 : 3
     let width = ceil(max(icon.size.width, textSize.width))
     let height = ceil(icon.size.height + gap + textSize.height)
 
@@ -215,11 +264,13 @@ final class MainTabController: UITabBarController {
     let composed = renderer.image { _ in
       let iconX = (width - icon.size.width) / 2
       icon.draw(at: CGPoint(x: iconX, y: 0))
-      let textX = (width - textSize.width) / 2
-      (title as NSString).draw(
-        at: CGPoint(x: textX, y: icon.size.height + gap),
-        withAttributes: textAttributes
-      )
+      if let title {
+        let textX = (width - textSize.width) / 2
+        (title as NSString).draw(
+          at: CGPoint(x: textX, y: icon.size.height + gap),
+          withAttributes: textAttributes
+        )
+      }
     }
     // Belt-and-suspenders: keep the composed pixels exactly as drawn.
     return composed.withRenderingMode(.alwaysOriginal)
