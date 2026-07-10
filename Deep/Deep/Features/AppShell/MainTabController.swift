@@ -241,6 +241,13 @@ final class MainTabController: UITabBarController {
       entry.item.image = image
       entry.item.selectedImage = image
     }
+
+    // Unselected items repaint immediately, but the *selected* item's Liquid
+    // Glass capsule keeps rendering the old image for a couple of seconds
+    // after an in-place `selectedImage` change (verified on expand — the
+    // selected tab sat label-less while its siblings were already restored).
+    // Reasserting the selection forces the capsule to rebuild right away.
+    selectedIndex = selectedIndex
   }
 
   /// Renders an SF Symbol above its label (or alone, when `title` is nil — the
