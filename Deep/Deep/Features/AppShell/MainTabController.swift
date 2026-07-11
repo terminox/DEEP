@@ -215,8 +215,8 @@ final class MainTabController: UITabBarController {
   /// selected and unselected read identically (the glass capsule still marks the
   /// active tab).
   private func tabItem(title: String, systemImage: String) -> UITabBarItem {
-    let full = composedItemImage(systemImage: systemImage, title: title)
-    let iconOnly = composedItemImage(systemImage: systemImage, title: nil)
+    let full = composedItemImage(systemImage: systemImage, title: title, showsTitle: true)
+    let iconOnly = composedItemImage(systemImage: systemImage, title: title, showsTitle: false)
     let item = UITabBarItem(title: nil, image: full, selectedImage: full)
     item.imageInsets = .zero
     composedItems.append(ComposedTabItem(item: item, full: full, iconOnly: iconOnly))
@@ -245,15 +245,29 @@ final class MainTabController: UITabBarController {
     // Unselected items repaint immediately, but the *selected* item's Liquid
     // Glass capsule keeps rendering the old image for a couple of seconds
     // after an in-place `selectedImage` change (verified on expand — the
-    // selected tab sat label-less while its siblings were already restored).
-    // Reasserting the selection forces the capsule to rebuild right away.
+    // selected tab sat stale while its siblings were already restored).
+    // Reasserting the selection repaints the capsule's *content* right away;
+    // its *geometry* never changes because both image variants share one
+    // canvas (see `composedItemImage`). No delegate is installed, so the
+    // reassignment has no selection side effects.
     selectedIndex = selectedIndex
   }
 
-  /// Renders an SF Symbol above its label (or alone, when `title` is nil — the
-  /// minimized bar's variant) as one lavender, `.alwaysOriginal` image so the
-  /// tab bar shows it without applying its own (uncustomisable) unselected tint.
-  private func composedItemImage(systemImage: String, title: String?) -> UIImage {
+  /// Renders an SF Symbol above its label (or alone, when `showsTitle` is
+  /// false — the minimized bar's variant) as one lavender, `.alwaysOriginal`
+  /// image so the tab bar shows it without applying its own (uncustomisable)
+  /// unselected tint.
+  ///
+  /// Both variants are drawn on the SAME canvas — sized for icon + gap + label
+  /// even when the label is omitted, with the lone icon vertically centred.
+  /// This is deliberate: the images are swapped while the tab bar's
+  /// minimize/expand animation is in flight, and the system animator owns the
+  /// selected capsule's frame during that transition. A variant with different
+  /// dimensions changes the item's intrinsic size mid-flight, which the
+  /// animator absorbs for a couple of seconds — the selected tab rendered its
+  /// new image clipped to the old capsule bounds. Identical canvases make the
+  /// swap pixels-only, so there is no geometry for the animator to fight.
+  private func composedItemImage(systemImage: String, title: String, showsTitle: Bool) -> UIImage {
     let tint = UIColor.lavenderMist
     let symbolConfig = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
     let icon = (UIImage(systemName: systemImage, withConfiguration: symbolConfig) ?? UIImage())
@@ -261,22 +275,24 @@ final class MainTabController: UITabBarController {
 
     let font = UIFont.systemFont(ofSize: 10, weight: .medium)
     let textAttributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: tint]
-    let textSize = title.map { ($0 as NSString).size(withAttributes: textAttributes) } ?? .zero
+    let textSize = (title as NSString).size(withAttributes: textAttributes)
 
-    let gap: CGFloat = title == nil ? 0 : 3
+    let gap: CGFloat = 3
     let width = ceil(max(icon.size.width, textSize.width))
     let height = ceil(icon.size.height + gap + textSize.height)
 
     let renderer = UIGraphicsImageRenderer(size: CGSize(width: width, height: height))
     let composed = renderer.image { _ in
       let iconX = (width - icon.size.width) / 2
-      icon.draw(at: CGPoint(x: iconX, y: 0))
-      if let title {
+      if showsTitle {
+        icon.draw(at: CGPoint(x: iconX, y: 0))
         let textX = (width - textSize.width) / 2
         (title as NSString).draw(
           at: CGPoint(x: textX, y: icon.size.height + gap),
           withAttributes: textAttributes
         )
+      } else {
+        icon.draw(at: CGPoint(x: iconX, y: (height - icon.size.height) / 2))
       }
     }
     // Belt-and-suspenders: keep the composed pixels exactly as drawn.
