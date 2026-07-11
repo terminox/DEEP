@@ -49,12 +49,9 @@ final class MainTabController: UITabBarController {
     // Glass tab bar (iOS 26). Item colours are baked into the item images in
     // `host(_:title:systemImage:)` instead — see the note there.
 
-    // Scrolling down collapses the tab bar and the bottom accessory condenses
-    // into an inline pill beside it (the Apple Music behaviour). UIKit only
-    // engages this once a tab's scroll view has enough overflow (~a screen's
-    // worth); today's fixture feeds sit under that, so the bar stays put
-    // until real content lengthens them — verified against a long feed.
-    tabBarMinimizeBehavior = .onScrollDown
+    // The tab bar starts non-collapsible; `updateAccessory(hasTrack:)` allows
+    // minimize-on-scroll only while a track is loaded — see the note there.
+    tabBarMinimizeBehavior = .never
     observeHasTrack()
   }
 
@@ -113,14 +110,23 @@ final class MainTabController: UITabBarController {
     updateAccessory(hasTrack: hasTrack)
   }
 
+  /// The bar may collapse on scroll only while the accessory exists (the
+  /// Apple Music behaviour: bar and mini player condense together). The
+  /// accessory's trait flip is also the only signal driving the icon-only
+  /// pill swap, so with no track loaded a minimized pill would be stuck with
+  /// its baked label — scrolling must not collapse the bar then.
+  /// (UIKit additionally engages minimize only once a tab's scroll view has
+  /// ~a screen's worth of overflow; today's fixture feeds sit under that.)
   private func updateAccessory(hasTrack: Bool) {
     if hasTrack {
       guard bottomAccessory == nil else { return }
       let host = accessoryHost ?? makeAccessoryHost()
       // The system supplies the Liquid Glass pill; we only hand it content.
       setBottomAccessory(UITabAccessory(contentView: host.view), animated: true)
+      tabBarMinimizeBehavior = .onScrollDown
     } else if bottomAccessory != nil {
       setBottomAccessory(nil, animated: true)
+      tabBarMinimizeBehavior = .never
       // The accessory was the minimize signal; without it the items could be
       // stranded icon-only, so restore the labelled variants.
       setTabItemsIconOnly(false)
