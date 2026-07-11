@@ -14,7 +14,7 @@ struct NowPlayingView: View {
 
   var body: some View {
     // The whole screen expands from (and collapses back into) the mini bar via
-    // the system zoom transition wired in `PlayerSurface`; this view just lays
+    // the system zoom transition wired in `PlayerAccessoryView`; this view just lays
     // out its contents and stays opaque so the morph reads cleanly.
     ZStack {
       background

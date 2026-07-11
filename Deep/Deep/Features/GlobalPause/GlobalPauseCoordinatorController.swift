@@ -2,18 +2,18 @@ import SwiftUI
 import UIKit
 
 /// Composition root for the Global Pause tab, in UIKit. Owns the navigation
-/// controller, the shared Earth scene, the ONE `GlobalPauseCardView` (which
-/// the card-lift transition re-parents between the feed and the lobby), and
-/// the floating mini-player overlay. Leaf content stays SwiftUI and routes
-/// back through the injected environment actions (`openHomeItem`,
-/// `openGlobalPause`), so no leaf ever hosts a navigation container.
+/// controller, the shared Earth scene, and the ONE `GlobalPauseCardView`
+/// (which the card-lift transition re-parents between the feed and the
+/// lobby). Leaf content stays SwiftUI and routes back through the injected
+/// environment actions (`openHomeItem`, `openGlobalPause`), so no leaf ever
+/// hosts a navigation container. The mini player is not this tab's concern:
+/// it lives in the tab bar's bottom accessory, owned by `MainTabController`,
+/// and extends the bottom safe area here automatically.
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let startDeepSession: (DeepSession) -> Void
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
-  /// Extra room the mini player needs above the tab bar while something plays.
-  private let miniPlayerInset: CGFloat = 84
 
   /// The single shared card — feed hero and lobby content in one instance.
   private lazy var card: GlobalPauseCardView = {
@@ -26,7 +26,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private lazy var cardLiftTransition = GlobalPauseCardLiftTransition(
     card: { [weak self] in self?.card }
   )
-  private lazy var playerOverlay = MiniPlayerOverlayController(player: player)
 
   init(soundPlayer: any SoundPlaying, startDeepSession: @escaping (DeepSession) -> Void) {
     self.player = soundPlayer
@@ -48,7 +47,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
     navigation.delegate = self
 
     embedNavigation()
-    embedPlayerOverlay()
 
     // Hiding the bar kills the edge-swipe pop: UIKit clears the recognizer's
     // delegate-driven activation and re-disables it around every transition.
@@ -56,8 +54,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
     // screens can always swipe back.
     navigation.interactivePopGestureRecognizer?.delegate = self
     navigation.interactivePopGestureRecognizer?.isEnabled = true
-
-    observePlayer()
   }
 
   // MARK: - Children
@@ -68,24 +64,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
     navigation.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     view.addSubview(navigation.view)
     navigation.didMove(toParent: self)
-  }
-
-  /// The mini player floats above the whole navigation stack (home and pushed
-  /// details alike), in a passthrough layer that only intercepts the bar.
-  private func embedPlayerOverlay() {
-    let passthrough = MiniPlayerPassthroughView()
-    passthrough.frame = view.bounds
-    passthrough.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    passthrough.interactiveFrameInWindow = { [weak self] in
-      self?.playerOverlay.miniBarFrameInWindow
-    }
-    view.addSubview(passthrough)
-
-    addChild(playerOverlay)
-    playerOverlay.view.frame = passthrough.bounds
-    playerOverlay.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    passthrough.addSubview(playerOverlay.view)
-    playerOverlay.didMove(toParent: self)
   }
 
   private func makeHomeController() -> UIViewController {
@@ -125,21 +103,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
     lobby.presentationController?.delegate = self
 
     present(lobby, animated: true)
-  }
-
-  // MARK: - Player observation
-
-  /// Reserves mini-player room via real safe-area insets — no hard-coded tab
-  /// bar heights. Applies to home and every pushed detail alike.
-  private func observePlayer() {
-    withObservationTracking { [weak self] in
-      guard let self else { return }
-      navigation.additionalSafeAreaInsets.bottom = player.hasTrack ? miniPlayerInset : 0
-    } onChange: { [weak self] in
-      Task { @MainActor [weak self] in
-        self?.observePlayer()
-      }
-    }
   }
 }
 
