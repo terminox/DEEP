@@ -9,6 +9,10 @@ Mechanical work → fast-worker
 Codex (/codex:rescue --background) is a cracked engineer on par with deep-reasoner, from a different perspective. Treat as a peer, not a reviewer.
 High-stakes decisions: task Opus + Codex on the same problem in parallel, synthesize the best of both, without showing either the other's answer. Keep your own context lean.
 
+## Git
+
+Don't commit unless I explicitly tell you to do so.
+
 ## Testing on the simulator
 
 - **Always use `baguette` for headless simulator control when testing.** Do not drive the
