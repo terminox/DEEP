@@ -1,0 +1,53 @@
+import path from "node:path";
+import fs from "node:fs";
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
+import { ZodError } from "zod";
+import { env } from "./env.js";
+import { ApiError } from "./lib/errors.js";
+import { authRoutes } from "./routes/auth.js";
+import { onboardingRoutes } from "./routes/onboarding.js";
+import { soundRoutes } from "./routes/sound.js";
+import { adminRoutes } from "./routes/admin.js";
+
+export function buildApp() {
+  const app = Fastify({ logger: true, trustProxy: true });
+
+  app.register(cors, { origin: true });
+  app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
+
+  // Serve uploaded/seeded media at /media (progressive HTTP; AVPlayer-friendly).
+  const mediaRoot = path.resolve(env.MEDIA_DIR);
+  fs.mkdirSync(path.join(mediaRoot, "audio"), { recursive: true });
+  app.register(fastifyStatic, { root: mediaRoot, prefix: "/media/" });
+
+  app.setErrorHandler((error, _req, reply) => {
+    if (error instanceof ApiError) {
+      return reply
+        .status(error.statusCode)
+        .send({ error: { code: error.code, message: error.message } });
+    }
+    if (error instanceof ZodError) {
+      return reply.status(400).send({
+        error: { code: "validation_error", message: "Invalid request", issues: error.issues },
+      });
+    }
+    // Prisma unique-constraint etc. surface as 500 unless mapped above.
+    reply.log.error(error);
+    const e = error as { statusCode?: number; message?: string };
+    return reply
+      .status(e.statusCode ?? 500)
+      .send({ error: { code: "internal_error", message: e.message ?? "Error" } });
+  });
+
+  app.get("/health", async () => ({ ok: true, env: "deep-api" }));
+
+  app.register(authRoutes);
+  app.register(onboardingRoutes);
+  app.register(soundRoutes);
+  app.register(adminRoutes);
+
+  return app;
+}

@@ -112,10 +112,13 @@ struct ProfileView: View {
   }
 
   private func logOut() {
-    accountStore.signOut()
-    // Resetting onboarding flips `hasCompletedOnboarding`, which `AppRootView`
-    // observes — it crossfades back to the onboarding flow.
-    onboardingStore.reset()
+    Task {
+      await accountStore.logOut()
+      // Resetting onboarding flips `hasCompletedOnboarding`, which `AppRootView`
+      // observes — together with the now-signed-out state it crossfades back to
+      // the welcome flow.
+      onboardingStore.reset()
+    }
   }
 }
 

@@ -1,0 +1,180 @@
+// Deep backend schema.
+// Covers three features: auth (users + rotating refresh sessions),
+// onboarding (server-driven config + per-user profile), and Deep Sound
+// (categories -> collections -> tracks -> multi-language lyrics).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TrackKind {
+  INSTRUMENTAL
+  GUIDED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions   AuthSession[]
+  onboarding OnboardingProfile?
+
+  @@map("users")
+}
+
+// DB-backed refresh sessions with rotation + reuse detection.
+model AuthSession {
+  id                   String    @id @default(uuid())
+  userId               String
+  refreshTokenHash     String    @unique
+  prevRefreshTokenHash String?
+  userAgent            String?
+  ip                   String?
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  createdAt            DateTime  @default(now())
+  lastUsedAt           DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+// Per-user onboarding answers. quizAnswers is the flat questionId -> optionId
+// map the iOS app already uses, kept as JSON so questions can be added or
+// reordered without breaking older saved state.
+model OnboardingProfile {
+  userId      String    @id
+  quizAnswers Json      @default("{}")
+  mindTree    String?
+  completedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_profiles")
+}
+
+// ---- Onboarding config (server-driven; seeded from iOS fixtures) ----
+
+model QuizQuestion {
+  id           String       @id
+  prompt       String
+  displayOrder Int          @default(0)
+  options      QuizOption[]
+
+  @@map("quiz_questions")
+}
+
+model QuizOption {
+  id           String  @id @default(uuid())
+  questionId   String
+  // Per-question stable id the client records as the answer value
+  // (e.g. "slow-down"). Unique within a question, not globally.
+  key          String
+  title        String
+  subtitle     String?
+  palette      String
+  displayOrder Int     @default(0)
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, key])
+  @@index([questionId])
+  @@map("quiz_options")
+}
+
+model MindTree {
+  id           String @id
+  name         String
+  tagline      String
+  imageUrl     String?
+  palette      String
+  displayOrder Int    @default(0)
+
+  @@map("mind_trees")
+}
+
+// ---- Deep Sound content ----
+
+model SoundCategory {
+  id           String            @id @default(uuid())
+  slug         String            @unique
+  title        String
+  displayOrder Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  collections  SoundCollection[]
+
+  @@map("sound_categories")
+}
+
+model SoundCollection {
+  id           String   @id @default(uuid())
+  categoryId   String
+  title        String
+  subtitle     String
+  palette      String
+  imageUrl     String?
+  displayOrder Int      @default(0)
+  isPremium    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category SoundCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tracks   SoundTrack[]
+
+  @@index([categoryId])
+  @@map("sound_collections")
+}
+
+model SoundTrack {
+  id              String       @id @default(uuid())
+  collectionId    String
+  title           String
+  durationSeconds Int
+  kind            TrackKind    @default(INSTRUMENTAL)
+  // Relative media path (e.g. /media/audio/xyz.mp3); served absolute to clients.
+  audioPath       String?
+  displayOrder    Int          @default(0)
+  isPremium       Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  collection SoundCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  lyrics     TrackLyrics[]
+
+  @@index([collectionId])
+  @@map("sound_tracks")
+}
+
+model TrackLyrics {
+  id           String   @id @default(uuid())
+  trackId      String
+  languageCode String
+  content      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  track SoundTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([trackId, languageCode])
+  @@index([trackId])
+  @@map("track_lyrics")
+}

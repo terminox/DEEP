@@ -4,6 +4,8 @@ import SwiftUI
 /// purely visual for now — nothing is persisted; the Mind Garden wiring comes
 /// later — so the screen keeps its choice in local state and simply moves on.
 struct MindTreePickerView: View {
+  @Environment(\.onboardingStore) private var store
+  @Environment(\.onboardingConfig) private var config
   @Environment(\.onboardingAdvance) private var advance
 
   @State private var selectedTreeID: String?
@@ -33,12 +35,14 @@ struct MindTreePickerView: View {
 
         ScrollView {
           LazyVGrid(columns: columns, spacing: 14) {
-            ForEach(MindTree.all) { tree in
+            ForEach(config.mindTrees) { tree in
               MindTreeCard(
                 tree: tree,
                 isSelected: selectedTreeID == tree.id
               ) {
                 withAnimation(.settle) { selectedTreeID = tree.id }
+                // Persist the choice now (the Mind Garden will read it later).
+                store.recordMindTree(tree.id)
               }
             }
           }
@@ -46,17 +50,19 @@ struct MindTreePickerView: View {
         }
         .scrollIndicators(.hidden)
 
-        OnboardingPrimaryButton(title: "See My Space", isEnabled: selectedTreeID != nil) {
-          advance(.craftingSpace)
+        OnboardingPrimaryButton(title: "Continue", isEnabled: selectedTreeID != nil) {
+          advance(.signUp)
         }
       }
       .padding(.horizontal, .edge)
       .padding(.bottom, .rhythm)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
+    .onAppear { selectedTreeID = store.state.mindTree }
   }
 }
 
 #Preview("Onboarding — Mind Tree") {
   MindTreePickerView()
+    .environment(\.onboardingStore, MockOnboardingStore.fresh)
 }

@@ -1,36 +1,75 @@
 import SwiftUI
 
-/// The app's SwiftUI root. It decides between first-run onboarding and the main
-/// UIKit-backed tab shell based on a persisted flag, and owns the app-lifetime
-/// stores so both onboarding and (later) settings can read them.
+/// The app's SwiftUI root and composition point. It owns `AppDependencies`
+/// (the API client + all app-lifetime stores) and decides among three phases:
 ///
-/// The swap is a `.bloom` crossfade — never a hard cut — in keeping with Deep's
-/// motion language. `RootTabView` keeps its `.ignoresSafeArea()` so the UIKit
-/// tab bar still fills the screen; onboarding leaf screens manage their own
-/// safe-area insets.
+///  - **restoring** — a calm launch beat while any saved session is confirmed
+///    with the backend, so a returning user never flashes the welcome screen.
+///  - **flow** — the onboarding + auth flow (welcome → quiz → mind tree →
+///    sign-up → shaping, or welcome → log in).
+///  - **main** — the UIKit tab shell, once the user is authenticated *and* their
+///    onboarding is complete.
+///
+/// Transitions are a `.bloom` crossfade, never a hard cut, per Deep's motion
+/// language. Dependencies are injected into the environment for both branches.
 struct AppRootView: View {
-  @State private var onboardingStore: any OnboardingProgressStore = OnboardingProgressDefaultsStore()
-  @State private var accountStore: any AccountStore = KeychainlessAccountStore()
-  @State private var subscriptionStore: any SubscriptionStore = StoreKitSubscriptionStore()
+  @State private var deps = AppDependencies()
+  @State private var didRestore = false
+
+  private enum Phase: Equatable { case restoring, flow, main }
+
+  private var phase: Phase {
+    guard didRestore else { return .restoring }
+    return (deps.accountStore.isSignedIn && deps.onboardingStore.hasCompletedOnboarding)
+      ? .main : .flow
+  }
 
   var body: some View {
     ZStack {
-      if onboardingStore.hasCompletedOnboarding {
-        RootTabView(onboardingStore: onboardingStore, accountStore: accountStore)
-          .ignoresSafeArea()
-          .transition(.opacity)
-      } else {
+      switch phase {
+      case .restoring:
+        ZStack {
+          AtmosphereBackground()
+          LoadingOrb()
+        }
+        .transition(.opacity)
+      case .main:
+        RootTabView(
+          onboardingStore: deps.onboardingStore,
+          accountStore: deps.accountStore,
+          soundRepository: deps.soundRepository,
+          soundPlayer: deps.soundPlayer
+        )
+        .ignoresSafeArea()
+        .transition(.opacity)
+      case .flow:
         OnboardingCoordinatorView()
           .transition(.opacity)
       }
     }
-    .animation(.bloom, value: onboardingStore.hasCompletedOnboarding)
-    .environment(\.onboardingStore, onboardingStore)
-    .environment(\.accountStore, accountStore)
-    .environment(\.subscriptionStore, subscriptionStore)
+    .animation(.bloom, value: phase)
+    .environment(\.accountStore, deps.accountStore)
+    .environment(\.onboardingStore, deps.onboardingStore)
+    .environment(\.onboardingRemote, deps.onboardingRemote)
+    .environment(\.subscriptionStore, deps.subscriptionStore)
+    .environment(\.soundContentRepository, deps.soundRepository)
+    .task { await bootstrap() }
+  }
+
+  private func bootstrap() async {
+    await deps.accountStore.restore()
+    if deps.accountStore.isSignedIn,
+       let profile = try? await deps.onboardingRemote.fetchProfile() {
+      deps.onboardingStore.hydrate(
+        quizAnswers: profile.quizAnswers,
+        mindTree: profile.mindTree,
+        completed: profile.completed
+      )
+    }
+    withAnimation(.bloom) { didRestore = true }
   }
 }
 
-#Preview("App root — onboarding") {
+#Preview("App root") {
   AppRootView()
 }

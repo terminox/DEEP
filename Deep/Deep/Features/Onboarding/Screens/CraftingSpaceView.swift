@@ -5,7 +5,8 @@ import SwiftUI
 /// progress %, no urgency — just a breath. Adapted from the Calm reference's
 /// "We're crafting your sleep plan" screen.
 struct CraftingSpaceView: View {
-  @Environment(\.onboardingFinish) private var finish
+  @Environment(\.onboardingStore) private var store
+  @Environment(\.onboardingRemote) private var remote
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   private let steps = [
@@ -51,10 +52,24 @@ struct CraftingSpaceView: View {
       withAnimation(.bloom) { completedCount = step }
     }
     try? await Task.sleep(nanoseconds: 450_000_000)
-    finish()
+    await syncAndFinish()
+  }
+
+  /// The loader's real work: push everything onboarding gathered to the backend,
+  /// then flip the local completion flag (which opens `AppRootView`'s gate). If
+  /// the network is unavailable we still complete locally so the user is never
+  /// stranded — the answers persist and can sync later.
+  private func syncAndFinish() async {
+    try? await remote.save(
+      quizAnswers: store.state.quizAnswers,
+      mindTree: store.state.mindTree,
+      completed: true
+    )
+    store.completeOnboarding()
   }
 }
 
 #Preview("Onboarding — Crafting") {
   CraftingSpaceView()
+    .environment(\.onboardingStore, MockOnboardingStore.fresh)
 }

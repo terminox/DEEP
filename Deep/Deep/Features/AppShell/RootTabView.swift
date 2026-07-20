@@ -2,16 +2,23 @@ import SwiftUI
 
 /// Bridges the UIKit `MainTabController` into the SwiftUI app entry point.
 ///
-/// The shared onboarding/account stores are passed down so the Profile tab can
-/// drive sign-out and onboarding reset on the *same* instances `AppRootView`
-/// watches — the tab shell's hosting controllers don't inherit the SwiftUI
-/// environment across the UIKit boundary, so we inject explicitly.
+/// The shared stores + Deep Sound dependencies are passed down explicitly: the
+/// tab shell's hosting controllers don't inherit the SwiftUI environment across
+/// the UIKit boundary, so the Profile tab (sign-out / onboarding reset) and the
+/// Sounds tab (content + player) act on the same instances `AppRootView` owns.
 struct RootTabView: UIViewControllerRepresentable {
   let onboardingStore: any OnboardingProgressStore
   let accountStore: any AccountStore
+  let soundRepository: any SoundContentRepository
+  let soundPlayer: any SoundPlaying
 
   func makeUIViewController(context: Context) -> MainTabController {
-    MainTabController(onboardingStore: onboardingStore, accountStore: accountStore)
+    MainTabController(
+      onboardingStore: onboardingStore,
+      accountStore: accountStore,
+      soundRepository: soundRepository,
+      soundPlayer: soundPlayer
+    )
   }
 
   func updateUIViewController(_ controller: MainTabController, context: Context) {}
@@ -20,7 +27,9 @@ struct RootTabView: UIViewControllerRepresentable {
 #Preview {
   RootTabView(
     onboardingStore: OnboardingProgressDefaultsStore(),
-    accountStore: KeychainlessAccountStore()
+    accountStore: PreviewAccountStore(),
+    soundRepository: FixtureSoundContentRepository(),
+    soundPlayer: SoundPlayer()
   )
   .ignoresSafeArea()
 }

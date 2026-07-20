@@ -11,6 +11,7 @@ struct NowPlayingView: View {
   /// Local scrub state so the timer doesn't fight the finger while dragging.
   @State private var isScrubbing = false
   @State private var scrubValue: Double = 0
+  @State private var showLyrics = false
 
   var body: some View {
     // The whole screen expands from (and collapses back into) the mini bar via
@@ -38,6 +39,13 @@ struct NowPlayingView: View {
         }
         .padding(.horizontal, 32)
         .padding(.bottom, 40)
+      }
+    }
+    .sheet(isPresented: $showLyrics) {
+      if let track = player.currentTrack {
+        LyricsSheet(track: track)
+          .presentationDetents([.medium, .large])
+          .presentationBackground(.ultraThinMaterial)
       }
     }
   }
@@ -195,19 +203,23 @@ struct NowPlayingView: View {
 
   private var bottomRow: some View {
     HStack {
-      utilityButton("airplayaudio")
+      utilityButton("airplayaudio") {}
       Spacer()
-      utilityButton("list.bullet")
+      // Lyrics — opens the (multi-language) lyrics sheet for the current track.
+      utilityButton("list.bullet") { showLyrics = true }
     }
     .padding(.horizontal, 24)
   }
 
-  private func utilityButton(_ systemName: String) -> some View {
-    Image(systemName: systemName)
-      .font(.system(.body, weight: .medium))
-      .foregroundStyle(.driftGrey)
-      .frame(width: 44, height: 44)
-      .contentShape(Rectangle())
+  private func utilityButton(_ systemName: String, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      Image(systemName: systemName)
+        .font(.system(.body, weight: .medium))
+        .foregroundStyle(.driftGrey)
+        .frame(width: 44, height: 44)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.softPress)
   }
 }
 

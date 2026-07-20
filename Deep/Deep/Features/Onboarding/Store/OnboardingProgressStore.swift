@@ -11,8 +11,13 @@ protocol OnboardingProgressStore: AnyObject, Observable {
   var hasCompletedOnboarding: Bool { get }
 
   func recordAnswer(questionID: String, optionID: String)
+  /// Records the chosen Mind Tree (persisted; the Mind Garden reads it later).
+  func recordMindTree(_ id: String?)
   /// Marks onboarding finished — flips the gate that reveals the main app.
   func completeOnboarding()
+  /// Replaces local state with a server-fetched profile (used after log-in so a
+  /// returning user's completed onboarding is reflected locally).
+  func hydrate(quizAnswers: [String: String], mindTree: String?, completed: Bool)
   /// Clears all progress so the flow can be replayed (debug aid).
   func reset()
 }

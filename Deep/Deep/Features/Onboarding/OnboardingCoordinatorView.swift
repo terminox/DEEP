@@ -9,8 +9,13 @@ import SwiftUI
 /// `AtmosphereBackground`, so nothing is hidden behind the `NavigationStack`.
 struct OnboardingCoordinatorView: View {
   @Environment(\.onboardingStore) private var store
+  @Environment(\.onboardingRemote) private var remote
 
   @State private var path = NavigationPath()
+  /// Server-driven questions + mind trees; starts as the bundled fixtures and
+  /// is replaced once the backend copy loads. Screens read it via the
+  /// `onboardingConfig` environment value.
+  @State private var config: OnboardingConfig = .fixture
 
   var body: some View {
     NavigationStack(path: $path) {
@@ -24,9 +29,16 @@ struct OnboardingCoordinatorView: View {
         }
     }
     .tint(.lavenderMist)
+    .environment(\.onboardingConfig, config)
     .environment(\.onboardingAdvance, { route in path.append(route) })
     .environment(\.onboardingFinish, { store.completeOnboarding() })
     .preferredColorScheme(.light)
+    .task {
+      // Best-effort: fall back to the bundled fixtures if the fetch fails.
+      if let fetched = try? await remote.fetchConfig() {
+        config = fetched
+      }
+    }
   }
 
   @ViewBuilder
@@ -34,6 +46,8 @@ struct OnboardingCoordinatorView: View {
     switch route {
     case .quiz(let index): OnboardingQuizView(index: index)
     case .mindTree: MindTreePickerView()
+    case .signUp: SignUpView()
+    case .logIn: LogInView()
     case .craftingSpace: CraftingSpaceView()
     }
   }

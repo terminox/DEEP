@@ -10,9 +10,14 @@ final class MainTabController: UITabBarController {
   private let onboardingStore: any OnboardingProgressStore
   private let accountStore: any AccountStore
 
+  /// Backend-backed Deep Sound content, injected into every hosted tab (and the
+  /// Now Playing lyrics sheet) since the SwiftUI environment can't cross the
+  /// UIKit boundary.
+  private let soundRepository: any SoundContentRepository
+
   /// One player shared across the tabs, so a sound started in Global Pause and
   /// a sound started in Sounds drive the same bottom accessory and Now Playing.
-  private let sharedPlayer: any SoundPlaying = SoundPlayer()
+  private let sharedPlayer: any SoundPlaying
   /// Hosts the mini player inside the tab bar's bottom accessory. Created on
   /// first playback and kept as a child VC for the controller's lifetime.
   private var accessoryHost: PlayerAccessoryHostingController?
@@ -31,9 +36,16 @@ final class MainTabController: UITabBarController {
   private var composedItems: [ComposedTabItem] = []
   private var isTabBarMinimized = false
 
-  init(onboardingStore: any OnboardingProgressStore, accountStore: any AccountStore) {
+  init(
+    onboardingStore: any OnboardingProgressStore,
+    accountStore: any AccountStore,
+    soundRepository: any SoundContentRepository,
+    soundPlayer: any SoundPlaying
+  ) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
+    self.soundRepository = soundRepository
+    self.sharedPlayer = soundPlayer
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -170,6 +182,7 @@ final class MainTabController: UITabBarController {
       self?.dismiss(animated: true)
     }
     .environment(\.soundPlayer, sharedPlayer)
+    .environment(\.soundContentRepository, soundRepository)
     .preferredColorScheme(.light)
 
     let host = UIHostingController(rootView: root)
@@ -202,9 +215,11 @@ final class MainTabController: UITabBarController {
   ) -> UIViewController {
     // Every tab can launch a Deep Session from anywhere in its tree. Leaf screens
     // depend only on this abstract action; the shell owns presentation.
-    let rootView = view.environment(\.startDeepSession) { [weak self] session in
-      self?.presentDeepSession(session)
-    }
+    let rootView = view
+      .environment(\.startDeepSession) { [weak self] session in
+        self?.presentDeepSession(session)
+      }
+      .environment(\.soundContentRepository, soundRepository)
     let controller = UIHostingController(rootView: rootView)
     controller.view.backgroundColor = .clear
     controller.tabBarItem = tabItem(title: title, systemImage: systemImage)

@@ -31,8 +31,19 @@ struct OnboardingIntroView: View {
 
         Spacer(minLength: 0)
 
-        OnboardingPrimaryButton(title: "Begin") {
-          advance(.quiz(index: 0))
+        VStack(spacing: 14) {
+          OnboardingPrimaryButton(title: "Begin") {
+            advance(.quiz(index: 0))
+          }
+
+          Button {
+            advance(.logIn)
+          } label: {
+            Text("I already have an account")
+              .font(DeepType.caption)
+              .foregroundStyle(.driftGrey)
+          }
+          .buttonStyle(.plain)
         }
       }
       .padding(.horizontal, .edge)

@@ -1,0 +1,36 @@
+import type { FastifyReply, FastifyRequest } from "fastify";
+import type { Role } from "@prisma/client";
+import { ApiError } from "../lib/errors.js";
+import { verifyAccessToken, type AccessClaims } from "./tokens.js";
+
+declare module "fastify" {
+  interface FastifyRequest {
+    auth?: AccessClaims;
+  }
+}
+
+function readBearer(req: FastifyRequest): AccessClaims {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    throw ApiError.unauthorized("Missing bearer token");
+  }
+  try {
+    return verifyAccessToken(header.slice("Bearer ".length).trim());
+  } catch {
+    throw ApiError.unauthorized("Invalid or expired token");
+  }
+}
+
+// preHandler: require any authenticated user.
+export async function requireAuth(req: FastifyRequest, _reply: FastifyReply) {
+  req.auth = readBearer(req);
+}
+
+// preHandler factory: require a specific role.
+export function requireRole(role: Role) {
+  return async (req: FastifyRequest, _reply: FastifyReply) => {
+    const claims = readBearer(req);
+    if (claims.role !== role) throw ApiError.forbidden();
+    req.auth = claims;
+  };
+}

@@ -1,0 +1,17 @@
+#include "Base.xcconfig"
+
+// ---- Environment ----
+APP_ENV = prod
+API_BASE_URL = https:/$()/api.deep.app
+// Production keeps the plain bundle id (no suffix).
+BUNDLE_ID_SUFFIX =
+APP_DISPLAY_NAME = Deep
+
+// ---- Release build profile ----
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+ENABLE_NS_ASSERTIONS = NO
+MTL_ENABLE_DEBUG_INFO = NO
+SWIFT_COMPILATION_MODE = wholemodule
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = PROD $(inherited)
+VALIDATE_PRODUCT = YES

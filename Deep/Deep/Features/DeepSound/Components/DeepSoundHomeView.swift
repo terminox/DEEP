@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The standalone home — one scroll combining a stretchy video hero, the
-/// Breathe doorway into Deep Session, and five category carousels.
+/// Breathe doorway into Deep Session, and the category carousels fetched from
+/// the backend.
 ///
 /// This is the leaf screen, so it owns its screen-level styling: the video hero
 /// bleeds under the status bar and `AtmosphereBackground` sits behind the scroll
@@ -10,6 +11,12 @@ import SwiftUI
 struct DeepSoundHomeView: View {
   /// Extra bottom space so content clears the docked mini-player.
   var bottomInset: CGFloat
+
+  @Environment(\.soundContentRepository) private var repository
+
+  private enum LoadState: Equatable { case loading, loaded, failed }
+  @State private var shelves: [SoundShelf] = []
+  @State private var loadState: LoadState = .loading
 
   private let heroHeight: CGFloat = 320
   /// How far the content rides up over the hero.
@@ -24,30 +31,7 @@ struct DeepSoundHomeView: View {
           BreatheHeroCard(session: DeepSessionLibrary.balancingBreath)
             .padding(.horizontal, .edge)
 
-          CollectionCarousel(
-            title: "Calm",
-            collections: SoundLibrary.calm
-          )
-
-          CollectionCarousel(
-            title: "Morning",
-            collections: SoundLibrary.morning
-          )
-
-          CollectionCarousel(
-            title: "Sleep",
-            collections: SoundLibrary.sleep
-          )
-
-          CollectionCarousel(
-            title: "Deep Teacher",
-            collections: SoundLibrary.deepTeacher
-          )
-
-          CollectionCarousel(
-            title: "Deep Kids",
-            collections: SoundLibrary.deepKids
-          )
+          shelvesContent
 
           Color.clear.frame(height: bottomInset)
         }
@@ -62,6 +46,52 @@ struct DeepSoundHomeView: View {
       title: "Deep Sound",
       subtitle: "Breathe and listen"
     )
+    .task { await load() }
+  }
+
+  @ViewBuilder
+  private var shelvesContent: some View {
+    switch loadState {
+    case .loading:
+      LoadingOrb(message: "Gathering sounds…")
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 64)
+    case .failed:
+      VStack(spacing: 14) {
+        Text("We couldn't gather the sounds just now.")
+          .font(DeepType.body)
+          .foregroundStyle(.driftGrey)
+          .multilineTextAlignment(.center)
+        Button {
+          Task { await load() }
+        } label: {
+          Text("Try again")
+            .font(DeepType.body.weight(.medium))
+            .foregroundStyle(.deepPlum)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 12)
+            .frostedCard(cornerRadius: .chip)
+        }
+        .buttonStyle(.softPress)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.horizontal, .edge)
+      .padding(.vertical, 48)
+    case .loaded:
+      ForEach(shelves) { shelf in
+        CollectionCarousel(title: shelf.title, collections: shelf.collections)
+      }
+    }
+  }
+
+  private func load() async {
+    if shelves.isEmpty { loadState = .loading }
+    do {
+      shelves = try await repository.home()
+      loadState = .loaded
+    } catch {
+      loadState = shelves.isEmpty ? .failed : .loaded
+    }
   }
 }
 

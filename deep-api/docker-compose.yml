@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:15
+    container_name: deep_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deep
+      POSTGRES_PASSWORD: deep
+      POSTGRES_DB: deep_dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - deep_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deep -d deep_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  deep_pgdata:

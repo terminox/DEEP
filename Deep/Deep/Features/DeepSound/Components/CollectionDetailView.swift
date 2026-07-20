@@ -4,8 +4,11 @@ import SwiftUI
 /// Play / Shuffle actions, then the track list.
 struct CollectionDetailView: View {
   @Environment(\.soundPlayer) private var player
+  @Environment(\.subscriptionStore) private var subscriptionStore
   let collection: SoundCollection
   var bottomInset: CGFloat
+
+  @State private var showPremiumGate = false
 
   var body: some View {
     ScrollView(showsIndicators: false) {
@@ -22,6 +25,25 @@ struct CollectionDetailView: View {
     .navigationTitle(collection.title)
     .navigationBarTitleDisplayMode(.inline)
     .toolbarBackground(.hidden, for: .navigationBar)
+    .alert("A premium sound", isPresented: $showPremiumGate) {
+      Button("Maybe later", role: .cancel) {}
+    } message: {
+      Text("This one is part of Deep Premium. It'll be here whenever you're ready.")
+    }
+  }
+
+  private func isLocked(_ track: SoundTrack) -> Bool {
+    (collection.isPremium || track.isPremium) && !subscriptionStore.isSubscribed
+  }
+
+  /// Play through the premium gate: locked content shows a gentle note instead.
+  private func attemptPlay(at index: Int) {
+    guard collection.tracks.indices.contains(index) else { return }
+    if isLocked(collection.tracks[index]) {
+      showPremiumGate = true
+    } else {
+      player.play(collection, at: index)
+    }
   }
 
   private var artworkHeader: some View {
@@ -51,11 +73,11 @@ struct CollectionDetailView: View {
   private var actions: some View {
     HStack(spacing: 12) {
       actionButton(title: "Play", systemName: "play.fill") {
-        player.play(collection)
+        attemptPlay(at: 0)
       }
       actionButton(title: "Shuffle", systemName: "shuffle") {
         let start = Int.random(in: 0..<max(1, collection.trackCount))
-        player.play(collection, at: start)
+        attemptPlay(at: start)
       }
     }
     .padding(.horizontal, .edge)
@@ -95,9 +117,10 @@ struct CollectionDetailView: View {
         TrackRow(
           number: offset + 1,
           track: track,
-          isCurrent: isCurrent(track)
+          isCurrent: isCurrent(track),
+          isLocked: isLocked(track)
         ) {
-          player.play(collection, at: offset)
+          attemptPlay(at: offset)
         }
         if offset < collection.tracks.count - 1 {
           Divider()
@@ -118,6 +141,7 @@ private struct TrackRow: View {
   let number: Int
   let track: SoundTrack
   let isCurrent: Bool
+  var isLocked: Bool = false
   let action: () -> Void
 
   var body: some View {
@@ -133,6 +157,11 @@ private struct TrackRow: View {
           .foregroundStyle(isCurrent ? .lavenderMist : .deepPlum)
           .lineLimit(1)
         Spacer()
+        if isLocked {
+          Image(systemName: "lock.fill")
+            .font(.caption)
+            .foregroundStyle(.driftGrey)
+        }
         Text(track.duration.clockString)
           .font(DeepType.caption)
           .monospacedDigit()

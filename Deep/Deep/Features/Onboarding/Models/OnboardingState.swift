@@ -7,6 +7,9 @@ import Foundation
 struct OnboardingState: Codable, Equatable {
   var hasCompletedOnboarding: Bool = false
   var quizAnswers: [String: String] = [:]
+  /// The chosen Mind Tree id (e.g. "oak"). Persisted now — the Mind Garden will
+  /// read it later. Optional, so older saved states decode with `nil`.
+  var mindTree: String? = nil
 }
 
 extension OnboardingState {

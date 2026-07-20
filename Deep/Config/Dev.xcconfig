@@ -1,0 +1,19 @@
+#include "Base.xcconfig"
+
+// ---- Environment ----
+APP_ENV = dev
+// `$()` keeps xcconfig from reading `//` as a comment.
+API_BASE_URL = http:/$()/localhost:8080
+BUNDLE_ID_SUFFIX = .dev
+APP_DISPLAY_NAME = Deep Dev
+
+// ---- Debug build profile ----
+DEBUG_INFORMATION_FORMAT = dwarf
+ENABLE_TESTABILITY = YES
+GCC_DYNAMIC_NO_PIC = NO
+GCC_OPTIMIZATION_LEVEL = 0
+GCC_PREPROCESSOR_DEFINITIONS = DEBUG=1 $(inherited)
+MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE
+ONLY_ACTIVE_ARCH = YES
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG DEV $(inherited)
+SWIFT_OPTIMIZATION_LEVEL = -Onone

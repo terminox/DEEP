@@ -7,15 +7,17 @@ struct OnboardingQuizView: View {
   let index: Int
 
   @Environment(\.onboardingStore) private var store
+  @Environment(\.onboardingConfig) private var config
   @Environment(\.onboardingAdvance) private var advance
 
   @State private var selectedOptionID: String?
 
-  private var question: QuizQuestion { QuizQuestion.all[index] }
+  private var questions: [QuizQuestion] { config.questions }
+  private var question: QuizQuestion { questions[index] }
   /// The Mind Tree picker counts as the flow's final step, so progress reads
   /// "1 of 3", "2 of 3" here and completes at "3 of 3" on that screen.
-  private var totalSteps: Int { QuizQuestion.all.count + 1 }
-  private var isLast: Bool { index == QuizQuestion.all.count - 1 }
+  private var totalSteps: Int { questions.count + 1 }
+  private var isLast: Bool { index == questions.count - 1 }
 
   var body: some View {
     ZStack {

@@ -2,27 +2,21 @@
 import Foundation
 import Observation
 
-/// In-memory `AccountStore` for previews and tests. Sign-up validates exactly
-/// like the real store but persists nothing.
+/// In-memory `AccountStore` for previews and tests — no networking, no
+/// persistence. Sign-up/log-in fabricate a local `Account`.
 @MainActor
 @Observable
 final class MockAccountStore: AccountStore {
   private(set) var account: Account?
+  private(set) var isRestoring = false
 
   init(account: Account? = nil) {
     self.account = account
   }
 
-  func signInWithApple(_ credential: AppleCredential) {
-    account = Account(
-      displayName: "Miyu",
-      email: credential.email,
-      method: .apple,
-      appleUserID: credential.userID
-    )
-  }
+  func restore() async {}
 
-  func createAccount(name: String, email: String, password: String) throws {
+  func signUp(name: String, email: String, password: String) async throws {
     let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedName.isEmpty else { throw AccountError.emptyName }
     guard email.contains("@"), email.contains(".") else { throw AccountError.invalidEmail }
@@ -30,7 +24,11 @@ final class MockAccountStore: AccountStore {
     account = Account(displayName: trimmedName, email: email, method: .email, appleUserID: nil)
   }
 
-  func signOut() {
+  func logIn(email: String, password: String) async throws {
+    account = Account(displayName: "Alex", email: email, method: .email, appleUserID: nil)
+  }
+
+  func logOut() async {
     account = nil
   }
 }

@@ -10,9 +10,13 @@ enum OnboardingRoute: Hashable {
   /// Single-select quiz question at `index` (0-based). The Mind Tree picker
   /// follows the last question.
   case quiz(index: Int)
-  /// Choose a Mind Tree — the last choice before the space is shaped.
+  /// Choose a Mind Tree — the last choice before creating an account.
   case mindTree
-  /// Gentle "shaping your space" loader; finishes onboarding when its
-  /// checklist fills.
+  /// Create an account (email/password) — new users, after the Mind Tree.
+  case signUp
+  /// Log in — returning users, reached from the welcome screen.
+  case logIn
+  /// Gentle "shaping your space" loader; syncs onboarding to the backend and
+  /// finishes when its checklist fills.
   case craftingSpace
 }

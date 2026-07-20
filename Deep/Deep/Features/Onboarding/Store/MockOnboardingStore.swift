@@ -17,8 +17,20 @@ final class MockOnboardingStore: OnboardingProgressStore {
     state.quizAnswers[questionID] = optionID
   }
 
+  func recordMindTree(_ id: String?) {
+    state.mindTree = id
+  }
+
   func completeOnboarding() {
     state.hasCompletedOnboarding = true
+  }
+
+  func hydrate(quizAnswers: [String: String], mindTree: String?, completed: Bool) {
+    state = OnboardingState(
+      hasCompletedOnboarding: completed,
+      quizAnswers: quizAnswers,
+      mindTree: mindTree
+    )
   }
 
   func reset() {
