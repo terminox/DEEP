@@ -43,3 +43,4 @@ Deep/**/.idea/
 Deep/**/.vscode/
 Deep/**/*.swp
 Deep/**/*.swo
+.gstack/

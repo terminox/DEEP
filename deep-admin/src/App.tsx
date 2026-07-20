@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import LoginPage from './pages/Login'
 import DashboardPage from './pages/Dashboard'
 import CategoriesPage from './pages/Categories'
+import CategoryDetailPage from './pages/CategoryDetail'
 import CollectionsPage from './pages/Collections'
 import CollectionDetailPage from './pages/CollectionDetail'
 import UsersPage from './pages/Users'
@@ -23,6 +24,7 @@ function App() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/categories/:id" element={<CategoryDetailPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/collections/:id" element={<CollectionDetailPage />} />
           <Route path="/users" element={<UsersPage />} />

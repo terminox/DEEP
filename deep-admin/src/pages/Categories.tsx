@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createCategory,
@@ -58,7 +59,9 @@ function CategoryRow({
             placeholder="Title"
           />
         ) : (
-          <span className="title-cell">{category.title}</span>
+          <Link to={`/categories/${category.id}`} className="title-cell">
+            {category.title}
+          </Link>
         )}
         {error && <div className="error-banner" style={{ marginTop: 8 }}>{error}</div>}
       </td>

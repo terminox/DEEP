@@ -1,13 +1,21 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createTrack,
   deleteTrack,
   getCollection,
+  listCategories,
   reorderTracks,
+  updateCollection,
 } from '../api/endpoints'
-import { TRACK_KINDS, type CollectionDetail, type TrackKind } from '../api/types'
+import {
+  PALETTES,
+  TRACK_KINDS,
+  type CollectionDetail,
+  type Palette,
+  type TrackKind,
+} from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
@@ -23,13 +31,64 @@ function CollectionDetailPage() {
     enabled: !!id,
   })
 
+  const categories = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => listCategories(),
+  })
+
   const [title, setTitle] = useState('')
   const [duration, setDuration] = useState('60')
   const [kind, setKind] = useState<TrackKind>('INSTRUMENTAL')
   const [isPremium, setIsPremium] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  // ---- Collection edit form (populated once the collection loads) ----
+  type EditState = {
+    categoryId: string
+    title: string
+    subtitle: string
+    palette: Palette
+    imageUrl: string
+    isPremium: boolean
+  }
+  const [edit, setEdit] = useState<EditState | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (data && !edit) {
+      setEdit({
+        categoryId: data.categoryId,
+        title: data.title,
+        subtitle: data.subtitle,
+        palette: data.palette,
+        imageUrl: data.imageUrl ?? '',
+        isPremium: data.isPremium,
+      })
+    }
+  }, [data, edit])
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['collection', id] })
+
+  const saveCollection = useMutation({
+    mutationFn: () => {
+      if (!edit) throw new Error('not ready')
+      return updateCollection(id, {
+        categoryId: edit.categoryId,
+        title: edit.title,
+        subtitle: edit.subtitle,
+        palette: edit.palette,
+        imageUrl: edit.imageUrl.trim() ? edit.imageUrl.trim() : null,
+        isPremium: edit.isPremium,
+      })
+    },
+    onSuccess: () => {
+      setEditError(null)
+      invalidate()
+      qc.invalidateQueries({ queryKey: ['collections'] })
+      qc.invalidateQueries({ queryKey: ['categories'] })
+    },
+    onError: (e) => setEditError(apiErrorMessage(e)),
+  })
 
   const create = useMutation({
     mutationFn: () =>
@@ -71,10 +130,12 @@ function CollectionDetailPage() {
     if (ids) reorder.mutate(ids)
   }
 
+  const backTo = data ? `/categories/${data.categoryId}` : '/collections'
+
   return (
     <div>
-      <Link to="/collections" className="back-link">
-        ← Back to collections
+      <Link to={backTo} className="back-link">
+        ← Back
       </Link>
 
       {error && <div className="error-banner">{apiErrorMessage(error)}</div>}
@@ -93,6 +154,91 @@ function CollectionDetailPage() {
               {data.isPremium && <span className="badge badge-premium">Premium</span>}
             </div>
           </div>
+
+          {edit && (
+            <div className="panel">
+              <div className="panel-title">Edit collection</div>
+              {editError && <div className="error-banner">{editError}</div>}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  saveCollection.mutate()
+                }}
+              >
+                <div className="form-row">
+                  <div className="field">
+                    <label>Category</label>
+                    <select
+                      value={edit.categoryId}
+                      onChange={(e) => setEdit({ ...edit, categoryId: e.target.value })}
+                      required
+                    >
+                      {categories.data?.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Palette</label>
+                    <select
+                      value={edit.palette}
+                      onChange={(e) =>
+                        setEdit({ ...edit, palette: e.target.value as Palette })
+                      }
+                    >
+                      {PALETTES.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Title</label>
+                  <input
+                    value={edit.title}
+                    onChange={(e) => setEdit({ ...edit, title: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Subtitle</label>
+                  <input
+                    value={edit.subtitle}
+                    onChange={(e) => setEdit({ ...edit, subtitle: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label>Cover image URL</label>
+                  <input
+                    type="url"
+                    value={edit.imageUrl}
+                    onChange={(e) => setEdit({ ...edit, imageUrl: e.target.value })}
+                    placeholder="https://…"
+                  />
+                </div>
+                <div className="field checkbox-field">
+                  <input
+                    id="editColPremium"
+                    type="checkbox"
+                    checked={edit.isPremium}
+                    style={{ width: 'auto' }}
+                    onChange={(e) => setEdit({ ...edit, isPremium: e.target.checked })}
+                  />
+                  <label htmlFor="editColPremium">Premium</label>
+                </div>
+                <div className="form-actions">
+                  <button className="btn" type="submit" disabled={saveCollection.isPending}>
+                    Save collection
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           <div className="panel">
             <div className="panel-title">Add track</div>

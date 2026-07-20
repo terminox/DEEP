@@ -318,11 +318,10 @@ tr:last-child td {
   color: var(--text-soft);
 }
 
-input[type='text'],
-input[type='email'],
-input[type='password'],
-input[type='number'],
-input[type='url'],
+/* Style every text-like input. Using an attribute-specific selector
+   (input[type='text']) misses bare <input> elements that have no explicit
+   type, which is why some fields looked unstyled. */
+input:not([type='checkbox']):not([type='radio']):not([type='file']),
 select,
 textarea {
   width: 100%;
