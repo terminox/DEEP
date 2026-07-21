@@ -11,6 +11,9 @@ struct LoopingVideoView: UIViewRepresentable {
   /// When false (e.g. Reduce Motion is on) the video holds on its first frame
   /// instead of looping.
   var isAnimating = true
+  /// Playback speed — 1 is natural speed, 0.25 quarter speed. Applied whenever
+  /// the video is animating.
+  var playbackRate: Float = 1
 
   func makeCoordinator() -> Coordinator {
     Coordinator(resource: resource, fileExtension: fileExtension)
@@ -20,12 +23,12 @@ struct LoopingVideoView: UIViewRepresentable {
     let view = VideoLayerView()
     view.playerLayer.player = context.coordinator.player
     view.playerLayer.videoGravity = .resizeAspectFill
-    context.coordinator.setAnimating(isAnimating)
+    context.coordinator.setAnimating(isAnimating, rate: playbackRate)
     return view
   }
 
   func updateUIView(_ uiView: VideoLayerView, context: Context) {
-    context.coordinator.setAnimating(isAnimating)
+    context.coordinator.setAnimating(isAnimating, rate: playbackRate)
   }
 
   static func dismantleUIView(_ uiView: VideoLayerView, coordinator: Coordinator) {
@@ -51,9 +54,9 @@ struct LoopingVideoView: UIViewRepresentable {
       player = queue
     }
 
-    func setAnimating(_ animating: Bool) {
+    func setAnimating(_ animating: Bool, rate: Float) {
       guard let player else { return }
-      if animating { player.play() } else { player.pause() }
+      if animating { player.rate = rate } else { player.pause() }
     }
 
     func stop() {

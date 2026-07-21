@@ -1,33 +1,36 @@
 import SwiftUI
 
-/// The opening of onboarding — a glowing, breathing welcome. A soft aura of
-/// light rings a heart above the wordmark and tagline; one calm invitation to
-/// begin. The aura breathes on a slow cycle, stilled when Reduce Motion is on.
+/// The opening of onboarding — a sunrise over a still mountain lake, looping
+/// softly behind the wordmark. Moon-cream veils keep the wordmark and actions
+/// legible over the footage; the video stills itself when Reduce Motion is on.
 struct OnboardingIntroView: View {
   @Environment(\.onboardingAdvance) private var advance
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-  @State private var isBreathing = false
+  @Environment(\.colorSchemeContrast) private var contrast
 
   var body: some View {
     ZStack {
       AtmosphereBackground()
 
+      LoopingVideoView(resource: "welcome", isAnimating: !reduceMotion, playbackRate: 1.0)
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+
+      veils
+
       VStack(spacing: .rhythm) {
-        Spacer(minLength: 0)
-
-        aura
-          .padding(.bottom, 12)
-
         VStack(spacing: 10) {
           Text("Deep")
             .font(DeepType.wordmark)
             .foregroundStyle(.deepPlum)
+            .accessibilityAddTraits(.isHeader)
           Text("A space to pause,\nbreathe, and reconnect.")
             .font(DeepType.body)
-            .foregroundStyle(.driftGrey)
+            .foregroundStyle(.deepPlum)
             .multilineTextAlignment(.center)
         }
+        .shadow(color: .moonCream.opacity(0.8), radius: 12)
+        .padding(.top, .rhythm * 2)
 
         Spacer(minLength: 0)
 
@@ -39,9 +42,11 @@ struct OnboardingIntroView: View {
           Button {
             advance(.logIn)
           } label: {
-            Text("I already have an account")
+            (Text("Already have an account? ") + Text("Log in").bold().underline())
               .font(DeepType.caption)
-              .foregroundStyle(.driftGrey)
+              .foregroundStyle(.deepPlum)
+              .frame(minHeight: 44)
+              .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
         }
@@ -50,60 +55,37 @@ struct OnboardingIntroView: View {
       .padding(.bottom, .rhythm)
       .frame(maxWidth: .infinity)
     }
-    .onAppear {
-      guard !reduceMotion else { return }
-      withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
-        isBreathing = true
-      }
-    }
   }
 
-  /// Concentric rings of pastel light around a softly glowing heart.
-  private var aura: some View {
-    ZStack {
-      RadialGradient(
-        colors: [Color.lavenderMist.opacity(0.5), Color.blushPowder.opacity(0.22), .clear],
-        center: .center,
-        startRadius: 10,
-        endRadius: 150
+  /// Soft moon-cream gradients that guarantee text contrast against the
+  /// footage: a light wash over the sky behind the wordmark, and a near-solid
+  /// scrim under the actions. Both go solid when Increase Contrast is on.
+  private var veils: some View {
+    let increased = contrast == .increased
+    return VStack(spacing: 0) {
+      LinearGradient(
+        colors: [Color.moonCream.opacity(increased ? 1 : 0.55), .clear],
+        startPoint: .top,
+        endPoint: .bottom
       )
-      .frame(width: 300, height: 300)
+      .frame(maxHeight: .infinity)
 
-      Circle()
-        .strokeBorder(
-          AngularGradient(
-            colors: [.skyWash, .lavenderMist, .blushPowder, .peachCloud, .skyWash],
-            center: .center
-          ),
-          lineWidth: 2
-        )
-        .frame(width: 248, height: 248)
-        .blur(radius: 0.5)
-        .scaleEffect(isBreathing ? 1.05 : 0.98)
+      Spacer(minLength: 0)
+        .frame(maxHeight: .infinity)
 
-      Circle()
-        .strokeBorder(.white.opacity(0.7), lineWidth: 1.5)
-        .frame(width: 192, height: 192)
-        .scaleEffect(isBreathing ? 1.03 : 0.99)
-
-      Circle()
-        .fill(
-          RadialGradient(
-            colors: [.white.opacity(0.9), Color.blushPowder.opacity(0.35), .clear],
-            center: .center,
-            startRadius: 4,
-            endRadius: 95
-          )
-        )
-        .frame(width: 190, height: 190)
-
-      Image(systemName: "heart.fill")
-        .font(.system(size: 44))
-        .foregroundStyle(.white)
-        .shadow(color: .white.opacity(0.85), radius: 16)
-        .scaleEffect(isBreathing ? 1.06 : 1.0)
+      LinearGradient(
+        stops: [
+          .init(color: .clear, location: 0),
+          .init(color: Color.moonCream.opacity(increased ? 1 : 0.85), location: 0.55),
+          .init(color: .moonCream, location: 1),
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .frame(maxHeight: .infinity)
     }
-    .accessibilityHidden(true)
+    .ignoresSafeArea()
+    .allowsHitTesting(false)
   }
 }
 
