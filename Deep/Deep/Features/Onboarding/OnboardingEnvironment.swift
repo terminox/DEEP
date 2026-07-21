@@ -1,10 +1,10 @@
 import SwiftUI
 
 extension EnvironmentValues {
-  /// Pushes the next onboarding route onto the coordinator's `NavigationPath`.
-  /// The coordinator injects the real `path.append`; leaf screens call this from
-  /// a plain `Button` instead of hosting a `NavigationLink`, so all routing flows
-  /// through the single path. The default is a hermetic no-op for previews.
+  /// Appends the next onboarding route to the coordinator's route stack. Leaf
+  /// screens call this from a plain `Button`, so all routing flows through the
+  /// coordinator's single stack (which also drives the calm drift transition
+  /// and the persistent chrome). The default is a hermetic no-op for previews.
   @Entry var onboardingAdvance: (OnboardingRoute) -> Void = { _ in }
 
   /// Marks onboarding finished — the gate in `AppRootView` then crossfades into

@@ -20,9 +20,6 @@ struct MindTreePickerView: View {
       AtmosphereBackground()
 
       VStack(alignment: .leading, spacing: .rhythm) {
-        OnboardingProgressBar(progress: 1.0, fractionLabel: "3 of 3")
-          .padding(.top, 8)
-
         VStack(alignment: .leading, spacing: 6) {
           Text("Choose your Mind Tree")
             .font(DeepType.displayTitle)
@@ -46,9 +43,10 @@ struct MindTreePickerView: View {
               }
             }
           }
-          .padding(.vertical, 2)
         }
         .scrollIndicators(.hidden)
+        // Let the frosted cards' soft shadows breathe past the viewport edges.
+        .scrollClipDisabled()
 
         OnboardingPrimaryButton(title: "Continue", isEnabled: selectedTreeID != nil) {
           advance(.signUp)

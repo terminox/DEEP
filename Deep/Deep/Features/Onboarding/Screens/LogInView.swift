@@ -66,7 +66,6 @@ struct LogInView: View {
         LoadingOrb()
       }
     }
-    .navigationBarBackButtonHidden(true)
   }
 
   private func submit() {

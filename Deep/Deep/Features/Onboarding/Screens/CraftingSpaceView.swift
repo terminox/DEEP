@@ -41,7 +41,6 @@ struct CraftingSpaceView: View {
       .padding(.bottom, .rhythm)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .navigationBarBackButtonHidden(true)
     .task { await runSequence() }
   }
 

@@ -83,7 +83,6 @@ struct SignUpView: View {
         LoadingOrb()
       }
     }
-    .navigationBarBackButtonHidden(true)
   }
 
   private func submit() {
