@@ -24,16 +24,19 @@ struct CraftingSpaceView: View {
       AtmosphereBackground()
 
       VStack(alignment: .leading, spacing: .rhythm) {
-        Text("We're shaping your space")
-          .font(DeepType.displayTitle)
-          .foregroundStyle(.deepPlum)
-          .padding(.top, 8)
+        VStack(alignment: .leading, spacing: .rhythm) {
+          Text("We're shaping your space")
+            .font(DeepType.displayTitle)
+            .foregroundStyle(.deepPlum)
+            .padding(.top, 8)
 
-        VStack(alignment: .leading, spacing: 20) {
-          ForEach(Array(steps.enumerated()), id: \.offset) { offset, step in
-            CraftingChecklistRow(title: step, isDone: offset < completedCount)
+          VStack(alignment: .leading, spacing: 20) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { offset, step in
+              CraftingChecklistRow(title: step, isDone: offset < completedCount)
+            }
           }
         }
+        .onboardingContentRise()
 
         Spacer()
       }
@@ -41,7 +44,6 @@ struct CraftingSpaceView: View {
       .padding(.bottom, .rhythm)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .navigationBarBackButtonHidden(true)
     .task { await runSequence() }
   }
 

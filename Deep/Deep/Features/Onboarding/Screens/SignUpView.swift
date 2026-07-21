@@ -26,39 +26,42 @@ struct SignUpView: View {
       AtmosphereBackground()
 
       VStack(alignment: .leading, spacing: .rhythm) {
-        VStack(alignment: .leading, spacing: 6) {
-          Text("Create your space")
-            .font(DeepType.displayTitle)
-            .foregroundStyle(.deepPlum)
-          Text("So your practice stays with you.")
-            .font(DeepType.caption)
-            .foregroundStyle(.driftGrey)
-        }
-        .padding(.top, 8)
+        VStack(alignment: .leading, spacing: .rhythm) {
+          VStack(alignment: .leading, spacing: 6) {
+            Text("Create your space")
+              .font(DeepType.displayTitle)
+              .foregroundStyle(.deepPlum)
+            Text("So your practice stays with you.")
+              .font(DeepType.caption)
+              .foregroundStyle(.driftGrey)
+          }
+          .padding(.top, 8)
 
-        VStack(spacing: 14) {
-          AuthField(
-            placeholder: "Your name", text: $name,
-            textContentType: .name, autocapitalization: .words
-          )
-          AuthField(
-            placeholder: "Email", text: $email,
-            keyboard: .emailAddress, textContentType: .emailAddress
-          )
-          AuthField(
-            placeholder: "Password (8+ characters)", text: $password,
-            isSecure: true, textContentType: .newPassword,
-            submitLabel: .go, onSubmit: submit
-          )
-        }
+          VStack(spacing: 14) {
+            AuthField(
+              placeholder: "Your name", text: $name,
+              textContentType: .name, autocapitalization: .words
+            )
+            AuthField(
+              placeholder: "Email", text: $email,
+              keyboard: .emailAddress, textContentType: .emailAddress
+            )
+            AuthField(
+              placeholder: "Password (8+ characters)", text: $password,
+              isSecure: true, textContentType: .newPassword,
+              submitLabel: .go, onSubmit: submit
+            )
+          }
 
-        if let errorMessage {
-          Text(errorMessage)
-            .font(DeepType.caption)
-            .foregroundStyle(.deepPlum)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .transition(.opacity)
+          if let errorMessage {
+            Text(errorMessage)
+              .font(DeepType.caption)
+              .foregroundStyle(.deepPlum)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .transition(.opacity)
+          }
         }
+        .onboardingContentRise()
 
         Spacer()
 
@@ -83,7 +86,6 @@ struct SignUpView: View {
         LoadingOrb()
       }
     }
-    .navigationBarBackButtonHidden(true)
   }
 
   private func submit() {

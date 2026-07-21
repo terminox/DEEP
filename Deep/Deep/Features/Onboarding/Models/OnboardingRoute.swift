@@ -2,10 +2,11 @@ import Foundation
 
 /// The ordered steps of the first-run onboarding flow.
 ///
-/// The welcome screen is the `NavigationStack` root and is *not* a case here;
-/// every other screen is pushed onto the coordinator's `NavigationPath`. Leaf
-/// screens advance by calling the injected `onboardingAdvance` action with the
-/// next route — they never host a `NavigationLink`.
+/// The welcome screen is the coordinator's resting state (an empty route
+/// stack) and is *not* a case here; every other screen is appended to the
+/// coordinator's route stack. Leaf screens advance by calling the injected
+/// `onboardingAdvance` action with the next route — routing never leaves the
+/// coordinator.
 enum OnboardingRoute: Hashable {
   /// Single-select quiz question at `index` (0-based). The Mind Tree picker
   /// follows the last question.

@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// One single-select quiz question. Reads its question from `QuizQuestion.all`
-/// by `index`, shows the top progress bar, and records the choice before
-/// advancing — to the next question, or to the Mind Tree picker after the last.
+/// by `index` and records the choice before advancing — to the next question,
+/// or to the Mind Tree picker after the last. The progress bar lives in the
+/// coordinator's persistent chrome, not here.
 struct OnboardingQuizView: View {
   let index: Int
 
@@ -14,9 +15,6 @@ struct OnboardingQuizView: View {
 
   private var questions: [QuizQuestion] { config.questions }
   private var question: QuizQuestion { questions[index] }
-  /// The Mind Tree picker counts as the flow's final step, so progress reads
-  /// "1 of 3", "2 of 3" here and completes at "3 of 3" on that screen.
-  private var totalSteps: Int { questions.count + 1 }
   private var isLast: Bool { index == questions.count - 1 }
 
   var body: some View {
@@ -24,31 +22,29 @@ struct OnboardingQuizView: View {
       AtmosphereBackground()
 
       VStack(alignment: .leading, spacing: .rhythm) {
-        OnboardingProgressBar(
-          progress: Double(index + 1) / Double(totalSteps),
-          fractionLabel: "\(index + 1) of \(totalSteps)"
-        )
-        .padding(.top, 8)
+        VStack(alignment: .leading, spacing: .rhythm) {
+          Text(question.prompt)
+            .font(DeepType.displayTitle)
+            .foregroundStyle(.deepPlum)
+            .fixedSize(horizontal: false, vertical: true)
 
-        Text(question.prompt)
-          .font(DeepType.displayTitle)
-          .foregroundStyle(.deepPlum)
-          .fixedSize(horizontal: false, vertical: true)
-
-        ScrollView {
-          VStack(spacing: 14) {
-            ForEach(question.options) { option in
-              QuizOptionCard(
-                option: option,
-                isSelected: selectedOptionID == option.id
-              ) {
-                select(option)
+          ScrollView {
+            VStack(spacing: 14) {
+              ForEach(question.options) { option in
+                QuizOptionCard(
+                  option: option,
+                  isSelected: selectedOptionID == option.id
+                ) {
+                  select(option)
+                }
               }
             }
           }
-          .padding(.vertical, 2)
+          .scrollIndicators(.hidden)
+          // Let the frosted cards' soft shadows breathe past the viewport edges.
+          .scrollClipDisabled()
         }
-        .scrollIndicators(.hidden)
+        .onboardingContentRise()
 
         OnboardingPrimaryButton(title: "Continue", isEnabled: selectedOptionID != nil) {
           advanceFromQuiz()

@@ -71,6 +71,9 @@ extension Animation {
   /// A wave set loose and left to calm — quick launch, long deceleration.
   /// Drives the welcome screen's ripple-reveal transition.
   static let ripple = Animation.timingCurve(0.25, 0.45, 0.35, 1.0, duration: 1.35)
+  /// A leaf carried between screens — prompt to move, soft to land. Calm but
+  /// never sluggish; drives the onboarding screen hand-off.
+  static let drift  = Animation.timingCurve(0.3, 0.0, 0.2, 1.0, duration: 0.4)
 }
 
 // MARK: - Corner radii
