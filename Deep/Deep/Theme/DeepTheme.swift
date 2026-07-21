@@ -68,6 +68,9 @@ extension Animation {
   static let exhale = Animation.timingCurve(0.32, 0.0, 0.36, 1.0, duration: 0.8)
   static let bloom  = Animation.timingCurve(0.22, 0.61, 0.36, 1.0, duration: 0.7)
   static let settle = Animation.spring(response: 0.55, dampingFraction: 0.78)
+  /// A wave set loose and left to calm — quick launch, long deceleration.
+  /// Drives the welcome screen's ripple-reveal transition.
+  static let ripple = Animation.timingCurve(0.25, 0.45, 0.35, 1.0, duration: 1.35)
 }
 
 // MARK: - Corner radii

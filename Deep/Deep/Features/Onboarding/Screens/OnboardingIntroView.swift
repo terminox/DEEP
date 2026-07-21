@@ -4,6 +4,18 @@ import SwiftUI
 /// softly behind the wordmark. Moon-cream veils keep the wordmark and actions
 /// legible over the footage; the video stills itself when Reduce Motion is on.
 struct OnboardingIntroView: View {
+  /// How the sunrise footage renders. `.live` plays the looping video — the
+  /// optional grabber lets the coordinator freeze the current frame when a CTA
+  /// is tapped. `.still` re-renders the whole screen as pure SwiftUI around
+  /// that frozen frame, which is what the ripple transition's Metal shader
+  /// dissolves (layer effects can't sample an `AVPlayerLayer`).
+  enum VideoMode {
+    case live(frameGrabber: LoopingVideoFrameGrabber? = nil)
+    case still(frame: UIImage?)
+  }
+
+  var videoMode: VideoMode = .live()
+
   @Environment(\.onboardingAdvance) private var advance
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorSchemeContrast) private var contrast
@@ -12,7 +24,7 @@ struct OnboardingIntroView: View {
     ZStack {
       AtmosphereBackground()
 
-      LoopingVideoView(resource: "welcome", isAnimating: !reduceMotion, playbackRate: 1.0)
+      video
         .ignoresSafeArea()
         .accessibilityHidden(true)
 
@@ -54,6 +66,32 @@ struct OnboardingIntroView: View {
       .padding(.horizontal, .edge)
       .padding(.bottom, .rhythm)
       .frame(maxWidth: .infinity)
+    }
+  }
+
+  /// The looping footage, or its frozen frame drawn with the same centred
+  /// aspect-fill the player layer uses so the two are pixel-aligned. A nil
+  /// still frame renders nothing and the atmosphere shows through.
+  @ViewBuilder
+  private var video: some View {
+    switch videoMode {
+    case .live(let frameGrabber):
+      LoopingVideoView(
+        resource: "welcome",
+        isAnimating: !reduceMotion,
+        playbackRate: 1.0,
+        frameGrabber: frameGrabber
+      )
+    case .still(let frame):
+      if let frame {
+        GeometryReader { geo in
+          Image(uiImage: frame)
+            .resizable()
+            .scaledToFill()
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
+        }
+      }
     }
   }
 
