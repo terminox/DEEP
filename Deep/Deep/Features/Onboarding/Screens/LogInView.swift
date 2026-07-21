@@ -24,35 +24,38 @@ struct LogInView: View {
       AtmosphereBackground()
 
       VStack(alignment: .leading, spacing: .rhythm) {
-        VStack(alignment: .leading, spacing: 6) {
-          Text("Welcome back")
-            .font(DeepType.displayTitle)
-            .foregroundStyle(.deepPlum)
-          Text("Pick up right where you left off.")
-            .font(DeepType.caption)
-            .foregroundStyle(.driftGrey)
-        }
-        .padding(.top, 8)
+        VStack(alignment: .leading, spacing: .rhythm) {
+          VStack(alignment: .leading, spacing: 6) {
+            Text("Welcome back")
+              .font(DeepType.displayTitle)
+              .foregroundStyle(.deepPlum)
+            Text("Pick up right where you left off.")
+              .font(DeepType.caption)
+              .foregroundStyle(.driftGrey)
+          }
+          .padding(.top, 8)
 
-        VStack(spacing: 14) {
-          AuthField(
-            placeholder: "Email", text: $email,
-            keyboard: .emailAddress, textContentType: .emailAddress
-          )
-          AuthField(
-            placeholder: "Password", text: $password,
-            isSecure: true, textContentType: .password,
-            submitLabel: .go, onSubmit: submit
-          )
-        }
+          VStack(spacing: 14) {
+            AuthField(
+              placeholder: "Email", text: $email,
+              keyboard: .emailAddress, textContentType: .emailAddress
+            )
+            AuthField(
+              placeholder: "Password", text: $password,
+              isSecure: true, textContentType: .password,
+              submitLabel: .go, onSubmit: submit
+            )
+          }
 
-        if let errorMessage {
-          Text(errorMessage)
-            .font(DeepType.caption)
-            .foregroundStyle(.deepPlum)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .transition(.opacity)
+          if let errorMessage {
+            Text(errorMessage)
+              .font(DeepType.caption)
+              .foregroundStyle(.deepPlum)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .transition(.opacity)
+          }
         }
+        .onboardingContentRise()
 
         Spacer()
 

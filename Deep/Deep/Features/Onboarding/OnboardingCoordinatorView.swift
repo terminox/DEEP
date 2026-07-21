@@ -2,10 +2,12 @@ import SwiftUI
 
 /// Composition root for the first-run onboarding flow. It owns the route stack
 /// (`routes`, empty = welcome screen) and renders the current screen directly,
-/// handing off between screens with the calm `SoftDriftTransition` instead of
-/// a navigation push. Persistent chrome — a frosted back button and, on the
-/// quiz / Mind Tree steps, the progress bar — floats above the transitioning
-/// content, so only the screen beneath it changes. Leaf screens navigate
+/// handing off between screens with a calm crossfade instead of a navigation
+/// push — screens fade in place, so fixed elements (footer CTAs) never move,
+/// while each screen's content block adds its own gentle `RiseInTransition`.
+/// Persistent chrome — a frosted back button and, on the quiz / Mind Tree
+/// steps, the progress bar — floats above the transitioning content, so only
+/// the screen beneath it changes. Leaf screens navigate
 /// solely through the injected `@Entry` actions; routing stays in this one
 /// place, and going back is a plain stack pop (button or edge swipe),
 /// everywhere except the crafting loader.
@@ -27,8 +29,6 @@ struct OnboardingCoordinatorView: View {
 
   /// The route stack; empty means the welcome screen is showing.
   @State private var routes: [OnboardingRoute] = []
-  /// Which way the next hand-off drifts; set alongside every route mutation.
-  @State private var direction: SoftDriftTransition.Direction = .forward
   /// Server-driven questions + mind trees; starts as the bundled fixtures and
   /// is replaced once the backend copy loads. Screens read it via the
   /// `onboardingConfig` environment value.
@@ -81,11 +81,7 @@ struct OnboardingCoordinatorView: View {
 
       screen(for: currentRoute)
         .id(currentRoute)
-        .transition(
-          reduceMotion
-            ? AnyTransition.opacity
-            : AnyTransition(SoftDriftTransition(direction: direction))
-        )
+        .transition(.opacity)
 
       if showsChrome {
         OnboardingChromeBar(
@@ -140,8 +136,7 @@ struct OnboardingCoordinatorView: View {
   private func advance(to route: OnboardingRoute) {
     guard routes.isEmpty, !reduceMotion, ripple == nil, !isRipplePending else {
       guard route != currentRoute else { return }
-      direction = .forward
-      withAnimation(.bloom) {
+      withAnimation(.drift) {
         if case .logIn = currentRoute, case .quiz = route {
           // Post-login resume: replace the stack so back from the first
           // question returns to welcome, not a stale login form.
@@ -160,19 +155,16 @@ struct OnboardingCoordinatorView: View {
       transaction.disablesAnimations = true
       withTransaction(transaction) {
         ripple = RippleContext(stillFrame: frame, origin: origin)
-        direction = .forward
         routes.append(route)
         isRipplePending = false
       }
     }
   }
 
-  /// Pops one step with the drift mirrored. A no-op on the welcome screen and
-  /// the crafting loader.
+  /// Pops one step. A no-op on the welcome screen and the crafting loader.
   private func goBack() {
     guard !routes.isEmpty, currentRoute != .craftingSpace else { return }
-    direction = .backward
-    withAnimation(.bloom) { _ = routes.removeLast() }
+    withAnimation(.drift) { _ = routes.removeLast() }
   }
 
   @ViewBuilder

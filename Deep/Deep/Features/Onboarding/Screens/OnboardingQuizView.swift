@@ -22,26 +22,29 @@ struct OnboardingQuizView: View {
       AtmosphereBackground()
 
       VStack(alignment: .leading, spacing: .rhythm) {
-        Text(question.prompt)
-          .font(DeepType.displayTitle)
-          .foregroundStyle(.deepPlum)
-          .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: .rhythm) {
+          Text(question.prompt)
+            .font(DeepType.displayTitle)
+            .foregroundStyle(.deepPlum)
+            .fixedSize(horizontal: false, vertical: true)
 
-        ScrollView {
-          VStack(spacing: 14) {
-            ForEach(question.options) { option in
-              QuizOptionCard(
-                option: option,
-                isSelected: selectedOptionID == option.id
-              ) {
-                select(option)
+          ScrollView {
+            VStack(spacing: 14) {
+              ForEach(question.options) { option in
+                QuizOptionCard(
+                  option: option,
+                  isSelected: selectedOptionID == option.id
+                ) {
+                  select(option)
+                }
               }
             }
           }
+          .scrollIndicators(.hidden)
+          // Let the frosted cards' soft shadows breathe past the viewport edges.
+          .scrollClipDisabled()
         }
-        .scrollIndicators(.hidden)
-        // Let the frosted cards' soft shadows breathe past the viewport edges.
-        .scrollClipDisabled()
+        .onboardingContentRise()
 
         OnboardingPrimaryButton(title: "Continue", isEnabled: selectedOptionID != nil) {
           advanceFromQuiz()
