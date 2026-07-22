@@ -1,9 +1,10 @@
 import SwiftUI
 
 /// Coordinator view for the Deep Sound flow — the business-specific composition
-/// root. It owns navigation (home → collection detail, home → session intro),
-/// and nothing else. The mini player lives in the tab bar's bottom accessory,
-/// owned by the app shell (`MainTabController`), not by this tab.
+/// root. It owns navigation (home → collection detail), and nothing else. The
+/// mini player lives in the tab bar's bottom accessory, owned by the app shell
+/// (`MainTabController`), not by this tab. The Breathe hero presents the Deep
+/// Session flow full-screen itself — it never routes through this stack.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
 /// screen-level styling such as `AtmosphereBackground` lives in the leaf screens
@@ -26,12 +27,8 @@ struct DeepSoundCoordinatorView: View {
         .navigationDestination(for: SoundCollection.self) { collection in
           CollectionDetailView(collection: collection, bottomInset: .rhythm)
         }
-        .navigationDestination(for: DeepSession.self) { session in
-          DeepSessionIntroView(session: session)
-        }
     }
     .environment(\.openCollection, { collection in path.append(collection) })
-    .environment(\.openSessionIntro, { session in path.append(session) })
     // Leaf play buttons drive the same shared player that feeds the shell's
     // bottom-accessory mini player.
     .environment(\.soundPlayer, player)
@@ -46,12 +43,6 @@ extension EnvironmentValues {
   /// coordinator's single `NavigationPath`. The default is a no-op fallback that
   /// keeps previews hermetic.
   @Entry var openCollection: (SoundCollection) -> Void = { _ in }
-
-  /// Pushes a session's intro onto the Deep Sound navigation path. Same
-  /// mechanics as `openCollection`: the coordinator injects the real append,
-  /// the Breathe hero card calls it from a `Button`, and the no-op default
-  /// keeps previews hermetic.
-  @Entry var openSessionIntro: (DeepSession) -> Void = { _ in }
 }
 
 #Preview("Deep Sound — Home") {

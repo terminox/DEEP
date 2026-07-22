@@ -11,7 +11,6 @@ import UIKit
 /// and extends the bottom safe area here automatically.
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
-  private let startDeepSession: StartDeepSessionAction
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
 
@@ -27,9 +26,8 @@ final class GlobalPauseCoordinatorController: UIViewController {
     card: { [weak self] in self?.card }
   )
 
-  init(soundPlayer: any SoundPlaying, startDeepSession: StartDeepSessionAction) {
+  init(soundPlayer: any SoundPlaying) {
     self.player = soundPlayer
-    self.startDeepSession = startDeepSession
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -70,7 +68,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
     let root = GlobalPauseHomeView(card: card)
       .environment(\.openHomeItem) { [weak self] item in self?.showHomeItem(item) }
       .environment(\.openGlobalPause) { [weak self] in self?.presentLobby() }
-      .environment(\.startDeepSession, startDeepSession)
       .environment(\.soundPlayer, player)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
@@ -83,7 +80,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private func showHomeItem(_ item: HomeItem) {
     let leaf = HomeItemDetailView(item: item)
       .environment(\.soundPlayer, player)
-      .environment(\.startDeepSession, startDeepSession)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: leaf)
     host.view.backgroundColor = .clear

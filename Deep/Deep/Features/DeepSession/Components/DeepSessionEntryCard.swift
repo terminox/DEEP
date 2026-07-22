@@ -1,19 +1,16 @@
 import SwiftUI
 
-/// Home-feed doorway into a guided Deep Session. The card stays a dumb button:
-/// it reads the shell-provided `startDeepSession` action from the environment
-/// and hands it the session, so hosts only say *which* session to offer.
+/// Home-feed doorway into a guided Deep Session. Hosts only say *which*
+/// session to offer; the card presents the full flow (intro → session) itself,
+/// zooming out of its own frame via `deepSessionLaunch`.
 struct DeepSessionEntryCard: View {
   var session: DeepSession
 
-  @Environment(\.startDeepSession) private var startDeepSession
-
-  /// The card's UIKit backing — the frame the session zooms out of.
-  @State private var zoomAnchor: UIView?
+  @State private var isPresented = false
 
   var body: some View {
     Button {
-      startDeepSession(session, from: zoomAnchor)
+      isPresented = true
     } label: {
       HStack(spacing: 16) {
         VStack(alignment: .leading, spacing: 5) {
@@ -35,7 +32,7 @@ struct DeepSessionEntryCard: View {
       .frostedCard()
     }
     .buttonStyle(.softPress)
-    .zoomTransitionAnchor($zoomAnchor)
+    .deepSessionLaunch(session: session, isPresented: $isPresented)
     .accessibilityLabel("Begin \(session.title), a \(session.durationMinutes) minute guided breathing session")
   }
 
