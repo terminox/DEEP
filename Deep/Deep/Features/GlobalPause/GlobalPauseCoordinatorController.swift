@@ -13,7 +13,6 @@ import UIKit
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
-  private let startDeepSession: StartDeepSessionAction
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
 
@@ -29,14 +28,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
     card: { [weak self] in self?.card }
   )
 
-  init(
-    soundPlayer: any SoundPlaying,
-    soundRepository: any SoundContentRepository,
-    startDeepSession: StartDeepSessionAction
-  ) {
+  init(soundPlayer: any SoundPlaying, soundRepository: any SoundContentRepository) {
     self.player = soundPlayer
     self.soundRepository = soundRepository
-    self.startDeepSession = startDeepSession
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -82,7 +76,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
         self?.showCollectionList(title: title, collections: collections)
       }
       .environment(\.openGlobalPause) { [weak self] in self?.presentLobby() }
-      .environment(\.startDeepSession, startDeepSession)
       .environment(\.soundPlayer, player)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)

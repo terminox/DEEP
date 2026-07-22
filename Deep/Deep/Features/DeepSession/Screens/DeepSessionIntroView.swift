@@ -1,23 +1,20 @@
 import SwiftUI
 
 /// The threshold before a Deep Session — a quiet page that shows what the
-/// practice holds (pattern, length) and offers one way in. Pushed inside a
-/// host feature's navigation stack (e.g. from Deep Sound's Breathe card); the
-/// session itself then presents full-screen via `startDeepSession`, and this
-/// screen is the natural landing place when it closes.
+/// practice holds (pattern, length) and offers one way in. First stage of the
+/// presented flow: `DeepSessionCoordinatorView` shows it full-screen over the
+/// shell, Begin crossfades into the session, and the close button dismisses
+/// the whole flow.
 ///
 /// Leaf screen, so it owns its screen-level styling (per the coordinator
 /// rules).
 struct DeepSessionIntroView: View {
   let session: DeepSession
-
-  @Environment(\.startDeepSession) private var startDeepSession
+  var onBegin: () -> Void = {}
+  var onClose: () -> Void = {}
 
   /// A slow idle drift so the orb already breathes while you decide.
   @State private var swell: CGFloat = 0.5
-
-  /// The Begin button's UIKit backing — the frame the session zooms out of.
-  @State private var zoomAnchor: UIView?
 
   var body: some View {
     ZStack {
@@ -60,7 +57,10 @@ struct DeepSessionIntroView: View {
       }
       .padding(.horizontal, .edge)
     }
-    .toolbarBackground(.hidden, for: .navigationBar)
+    .overlay(alignment: .topLeading) {
+      GlassCloseButton(action: onClose)
+        .padding(.edge)
+    }
     .onAppear {
       withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
         swell = 0.7
@@ -70,7 +70,7 @@ struct DeepSessionIntroView: View {
 
   private var beginButton: some View {
     Button {
-      startDeepSession(session, from: zoomAnchor)
+      onBegin()
     } label: {
       Text("Begin")
         .font(DeepType.body.weight(.semibold))
@@ -86,13 +86,10 @@ struct DeepSessionIntroView: View {
         .shadow(color: .lavenderMist.opacity(0.4), radius: 12, x: 0, y: 6)
     }
     .buttonStyle(.softPress)
-    .zoomTransitionAnchor($zoomAnchor)
     .accessibilityLabel("Begin \(session.title)")
   }
 }
 
 #Preview("Deep session intro") {
-  NavigationStack {
-    DeepSessionIntroView(session: DeepSessionLibrary.balancingBreath)
-  }
+  DeepSessionIntroView(session: DeepSessionLibrary.balancingBreath)
 }

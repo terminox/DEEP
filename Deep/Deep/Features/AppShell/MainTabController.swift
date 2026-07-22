@@ -68,15 +68,12 @@ final class MainTabController: UITabBarController {
   }
 
   private func configureChildren() {
-    // Global Pause is a UIKit coordinator, so it slots in directly — no hosting
-    // wrapper — and receives the deep-session action explicitly (the SwiftUI
-    // environment can't cross this boundary).
+    // Global Pause is a UIKit coordinator, so it slots in directly — no
+    // hosting wrapper.
     let globalPause = GlobalPauseCoordinatorController(
       soundPlayer: sharedPlayer,
-      soundRepository: soundRepository,
-      startDeepSession: StartDeepSessionAction { [weak self] session, anchor in
-        self?.presentDeepSession(session, from: anchor)
-      })
+      soundRepository: soundRepository
+    )
     globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
 
     // While a track is loaded, the shared player surfaces globally as the tab
@@ -196,44 +193,17 @@ final class MainTabController: UITabBarController {
     present(host, animated: true)
   }
 
-  /// Presents a guided Deep Session full-screen over the tab bar. Presenting from
-  /// the tab controller (rather than a per-tab cover) guarantees a single
-  /// presentation that always covers the bar, no matter which tab launched it.
-  /// The session zooms out of the tapped entry control (the anchor captured by
-  /// `zoomTransitionAnchor(_:)`), mirroring the Now Playing morph above.
-  private func presentDeepSession(_ session: DeepSession, from anchor: UIView?) {
-    guard presentedViewController == nil else { return }
-
-    // A guided breath and ambient audio don't mix — the session begins in
-    // silence. The track stays loaded, so the mini player is waiting on return.
-    sharedPlayer.pause()
-
-    let root = DeepSessionCoordinatorView(session: session) { [weak self] in
-      self?.dismiss(animated: true)
-    }
-    .preferredColorScheme(.light)
-    let host = UIHostingController(rootView: root)
-    host.modalPresentationStyle = .fullScreen
-    // Opaque backdrop behind the atmosphere's translucent stops: the launching
-    // screen must never show through, including mid-zoom.
-    host.view.backgroundColor = .moonCream
-    if let anchor {
-      host.preferredTransition = .zoom { [weak anchor] _ in anchor }
-    }
-    present(host, animated: true)
-  }
-
   private func host<Content: View>(
     _ view: Content,
     title: String,
     systemImage: String
   ) -> UIViewController {
-    // Every tab can launch a Deep Session from anywhere in its tree. Leaf screens
-    // depend only on this abstract action; the shell owns presentation.
+    // Every tab gets the shared player: the Deep Session flow presents itself
+    // as a full-screen cover from inside a tab's tree and pauses playback on
+    // entry — without this it would reach the environment's throwaway default
+    // player and silence nobody.
     let rootView = view
-      .environment(\.startDeepSession, StartDeepSessionAction { [weak self] session, anchor in
-        self?.presentDeepSession(session, from: anchor)
-      })
+      .environment(\.soundPlayer, sharedPlayer)
       .environment(\.soundContentRepository, soundRepository)
     let controller = UIHostingController(rootView: rootView)
     controller.view.backgroundColor = .clear
