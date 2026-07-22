@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// The promotional banner near the top of the feed.
+struct HomeBanner: Hashable {
+  let title: String
+  let message: String
+  let systemImage: String
+}
+
 /// A full-width frosted banner promoting the next Global Pause — the home's
 /// equivalent of Calm's "Special Offer" row. Tapping it is a stubbed CTA.
 struct HomePromoBanner: View {
@@ -50,6 +57,10 @@ struct HomePromoBanner: View {
 #Preview("Promo Banner") {
   ZStack {
     AtmosphereBackground()
-    HomePromoBanner(banner: HomeLibrary.banner)
+    HomePromoBanner(banner: HomeBanner(
+      title: "Pause with the world",
+      message: "Join the next synchronized Global Pause — thousands breathing together.",
+      systemImage: "globe.asia.australia.fill"
+    ))
   }
 }

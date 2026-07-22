@@ -5,17 +5,18 @@ import SwiftUI
 /// `CollectionTile`s) so the two homes present their personalised shelves the
 /// same way. Each tile routes through the coordinator on tap.
 struct RecommendationsSection: View {
-  let items: [HomeItem]
+  let title: String
+  let collections: [SoundCollection]
   var tileSize: CGFloat = 150
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      HomeSectionHeader(title: "Made for you")
+      HomeSectionHeader(title: title)
 
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(alignment: .top, spacing: 16) {
-          ForEach(items) { item in
-            HomeTile(item: item, size: tileSize)
+          ForEach(collections) { collection in
+            HomeTile(collection: collection, size: tileSize)
           }
         }
         .padding(.horizontal, .edge)
@@ -26,9 +27,10 @@ struct RecommendationsSection: View {
 
 #Preview("Recommendations") {
   ScrollView {
-    RecommendationsSection(items: HomeLibrary.recommended)
+    RecommendationsSection(title: "Made for you", collections: SoundLibrary.sleep)
       .padding(.vertical, 24)
   }
   .background { AtmosphereBackground() }
-  .environment(\.openHomeItem, { _ in })
+  .environment(\.openCollection, { _ in })
+  .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

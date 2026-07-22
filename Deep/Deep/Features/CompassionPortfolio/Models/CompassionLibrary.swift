@@ -1,8 +1,8 @@
 import Foundation
 
 /// Static sample catalogue for the Compassion portfolio — five causes, their
-/// partners and projects, plus a "from the field" feed. Mirrors `SoundLibrary`
-/// and `HomeLibrary`: hand-authored mock data until a backend exists.
+/// partners and projects, plus a "from the field" feed. Mirrors `SoundLibrary`:
+/// hand-authored mock data until a backend exists.
 enum CompassionLibrary {
   static let categories: [CompassionCategory] = [
     peace, healthcare, education, nature, community,

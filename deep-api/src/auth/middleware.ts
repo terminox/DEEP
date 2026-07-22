@@ -26,6 +26,19 @@ export async function requireAuth(req: FastifyRequest, _reply: FastifyReply) {
   req.auth = readBearer(req);
 }
 
+// preHandler: attach claims when a valid bearer token is present, stay
+// anonymous otherwise. Never 401s — endpoints using this degrade gracefully
+// (e.g. /pause/home falls back to non-personalized picks).
+export async function optionalAuth(req: FastifyRequest, _reply: FastifyReply) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return;
+  try {
+    req.auth = verifyAccessToken(header.slice("Bearer ".length).trim());
+  } catch {
+    // Invalid/expired token → anonymous rather than an error.
+  }
+}
+
 // preHandler factory: require a specific role.
 export function requireRole(role: Role) {
   return async (req: FastifyRequest, _reply: FastifyReply) => {

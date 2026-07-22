@@ -73,6 +73,7 @@ final class MainTabController: UITabBarController {
     // environment can't cross this boundary).
     let globalPause = GlobalPauseCoordinatorController(
       soundPlayer: sharedPlayer,
+      soundRepository: soundRepository,
       startDeepSession: { [weak self] session in self?.presentDeepSession(session) })
     globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
 

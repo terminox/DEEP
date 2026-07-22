@@ -4,7 +4,7 @@ import SwiftUI
 /// "Popular now" / "Today's sessions" sections.
 struct FeatureCarousel: View {
   let title: String
-  let items: [HomeItem]
+  let collections: [SoundCollection]
   var seeAll: (() -> Void)? = nil
 
   var body: some View {
@@ -13,8 +13,8 @@ struct FeatureCarousel: View {
 
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(alignment: .top, spacing: 16) {
-          ForEach(items) { item in
-            FeatureCard(item: item)
+          ForEach(collections) { collection in
+            FeatureCard(collection: collection)
           }
         }
         .padding(.horizontal, .edge)
@@ -27,8 +27,10 @@ struct FeatureCarousel: View {
 
 #Preview("Feature Carousel") {
   ScrollView {
-    FeatureCarousel(title: "Popular now", items: HomeLibrary.popular, seeAll: {})
+    FeatureCarousel(title: "Popular now", collections: SoundLibrary.calm, seeAll: {})
       .padding(.vertical, 24)
   }
   .background { AtmosphereBackground() }
+  .environment(\.openCollection, { _ in })
+  .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

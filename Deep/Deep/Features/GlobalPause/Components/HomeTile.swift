@@ -3,30 +3,30 @@ import SwiftUI
 /// A single square artwork tile used inside the home's "Made for you" carousel.
 /// The GlobalPause twin of DeepSound's `CollectionTile` — same shape and rhythm
 /// (square artwork over a title and a secondary line) so the two homes' carousels
-/// read identically. Tapping the tile body routes to detail via `openHomeItem`;
-/// the play button starts the sound in place.
+/// read identically. Tapping the tile body pushes the collection detail via
+/// `openCollection`; the play button starts the collection in place.
 struct HomeTile: View {
-  @Environment(\.openHomeItem) private var openHomeItem
+  @Environment(\.openCollection) private var openCollection
   @Environment(\.soundPlayer) private var player
-  let item: HomeItem
+  let collection: SoundCollection
   var size: CGFloat = 150
 
   var body: some View {
     Button {
-      openHomeItem(item)
+      openCollection(collection)
     } label: {
       VStack(alignment: .leading, spacing: 8) {
-        HomeArtwork(palette: item.palette, imageURL: item.imageURL)
+        SoundArtwork(palette: collection.palette, imageURL: collection.imageURL)
           .frame(width: size, height: size)
           .overlay(alignment: .bottomTrailing) { playButton }
           .shadow(color: Color.lavenderMist.opacity(0.2), radius: 12, x: 0, y: 8)
 
         VStack(alignment: .leading, spacing: 2) {
-          Text(item.title)
+          Text(collection.title)
             .font(DeepType.body.weight(.medium))
             .foregroundStyle(.deepPlum)
             .lineLimit(1)
-          Text(item.author)
+          Text(collection.subtitle)
             .font(DeepType.caption)
             .foregroundStyle(.driftGrey)
             .lineLimit(1)
@@ -36,12 +36,12 @@ struct HomeTile: View {
     }
     .buttonStyle(.softPress)
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("\(item.title), \(item.kind.label), \(item.durationLabel)")
+    .accessibilityLabel("\(collection.title), \(collection.kindLabel), \(collection.totalDuration.minutesString)")
   }
 
   private var playButton: some View {
     Button {
-      player.play(item.asSoundCollection)
+      player.play(collection)
     } label: {
       Image(systemName: "play.fill")
         .font(.system(size: 12, weight: .semibold))
@@ -52,16 +52,16 @@ struct HomeTile: View {
     }
     .buttonStyle(.softPress)
     .padding(8)
-    .accessibilityLabel("Play \(item.title)")
+    .accessibilityLabel("Play \(collection.title)")
   }
 }
 
 #Preview("Home Tile") {
   HStack(spacing: 16) {
-    ForEach(HomeLibrary.recommended) { HomeTile(item: $0) }
+    ForEach(Array(SoundLibrary.morning.prefix(2))) { HomeTile(collection: $0) }
   }
   .padding()
   .background { AtmosphereBackground() }
-  .environment(\.openHomeItem, { _ in })
+  .environment(\.openCollection, { _ in })
   .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

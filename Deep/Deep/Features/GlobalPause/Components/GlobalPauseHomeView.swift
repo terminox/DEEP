@@ -1,9 +1,10 @@
 import SwiftUI
 
 /// The Global Pause tab's content home — a stretchy video hero with a content
-/// feed riding up over it (greeting, the Global Pause card, carousels,
-/// recommendations, explore). Modeled on the Calm iOS Home reference, themed in
-/// the Deep design system. Leaf screens route via the `openHomeItem` /
+/// feed riding up over it (the Global Pause card, a Deep Session doorway, then
+/// server-composed shelves and the Explore grid fetched from the backend).
+/// Modeled on the Calm iOS Home reference, themed in the Deep design system.
+/// Leaf screens route via the `openCollection` / `openCollectionList` /
 /// `openGlobalPause` actions the coordinator injects; this view hosts no
 /// navigation container itself.
 ///
@@ -12,6 +13,13 @@ import SwiftUI
 /// re-parents that one instance between this feed and the lobby.
 struct GlobalPauseHomeView: View {
   var card: GlobalPauseCardView
+
+  @Environment(\.soundContentRepository) private var repository
+  @Environment(\.openCollectionList) private var openCollectionList
+
+  private enum LoadState: Equatable { case loading, loaded, failed }
+  @State private var home: PauseHome?
+  @State private var loadState: LoadState = .loading
 
   private let heroHeight: CGFloat = 320
   private let heroOverlap: CGFloat = 80
@@ -29,13 +37,7 @@ struct GlobalPauseHomeView: View {
           DeepSessionEntryCard(session: DeepSessionLibrary.balancingBreath)
             .padding(.horizontal, .edge)
 
-          FeatureCarousel(title: "Popular now", items: HomeLibrary.popular, seeAll: {})
-
-          FeatureCarousel(title: "Today's sessions", items: HomeLibrary.todaysSessions, seeAll: {})
-
-          RecommendationsSection(items: HomeLibrary.recommended)
-
-          ExploreByContentSection()
+          feedContent
 
           // The tab bar and mini player are real safe-area insets now; this is
           // just breathing room after the last section.
@@ -52,9 +54,68 @@ struct GlobalPauseHomeView: View {
       title: "Global Pause",
       subtitle: "Take a breath with the world today"
     )
+    .task { await load() }
+  }
+
+  @ViewBuilder
+  private var feedContent: some View {
+    switch loadState {
+    case .loading:
+      LoadingOrb(message: "Gathering today's pauses…")
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 64)
+    case .failed:
+      VStack(spacing: 14) {
+        Text("We couldn't gather today's content just now.")
+          .font(DeepType.body)
+          .foregroundStyle(.driftGrey)
+          .multilineTextAlignment(.center)
+        Button {
+          Task { await load() }
+        } label: {
+          Text("Try again")
+            .font(DeepType.body.weight(.medium))
+            .foregroundStyle(.deepPlum)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 12)
+            .frostedCard(cornerRadius: .chip)
+        }
+        .buttonStyle(.softPress)
+      }
+      .frame(maxWidth: .infinity)
+      .padding(.horizontal, .edge)
+      .padding(.vertical, 48)
+    case .loaded:
+      if let home {
+        ForEach(home.sections) { section in
+          if section.id == "forYou" {
+            RecommendationsSection(title: section.title, collections: section.collections)
+          } else {
+            FeatureCarousel(
+              title: section.title,
+              collections: section.collections,
+              seeAll: { openCollectionList(section.title, section.collections) }
+            )
+          }
+        }
+
+        ExploreByContentSection(categories: home.categories)
+      }
+    }
+  }
+
+  private func load() async {
+    if home == nil { loadState = .loading }
+    do {
+      home = try await repository.pauseHome()
+      loadState = .loaded
+    } catch {
+      loadState = home == nil ? .failed : .loaded
+    }
   }
 }
 
 #Preview("Global Pause Home") {
   GlobalPauseHomeView(card: GlobalPauseCardView(scene: .preview))
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

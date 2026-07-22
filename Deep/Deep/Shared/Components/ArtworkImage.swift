@@ -7,7 +7,7 @@ import SwiftUI
 /// pure gradient treatment, identical to the app's original look.
 ///
 /// Generalises the `CountryImage` pattern so DeepSound and Global Pause render
-/// media the same way. `SoundArtwork` and `HomeArtwork` are thin wrappers over it.
+/// media the same way. `SoundArtwork` is a thin wrapper over it.
 struct ArtworkImage: View {
   /// Remote photograph. A `nil`, loading, or failed load shows the gradient alone.
   let url: URL?
@@ -58,7 +58,7 @@ struct ArtworkImage: View {
     .opacity(0.6)
   }
 
-  /// Pure gradient treatment — the original `SoundArtwork` / `HomeArtwork` look,
+  /// Pure gradient treatment — the original `SoundArtwork` look,
   /// shown while loading, offline, or when no image is set.
   private var gradient: some View {
     LinearGradient(

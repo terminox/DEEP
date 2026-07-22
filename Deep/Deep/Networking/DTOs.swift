@@ -143,6 +143,20 @@ struct CollectionDetailDTO: Decodable {
   let collection: CollectionDTO
 }
 
+// MARK: - Global Pause home
+
+struct PauseSectionDTO: Decodable {
+  let key: String
+  let title: String
+  let personalized: Bool?
+  let collections: [CollectionDTO]
+}
+
+struct PauseHomeDTO: Decodable {
+  let sections: [PauseSectionDTO]
+  let categories: [CategoryDTO]
+}
+
 struct LyricsDTO: Decodable {
   let id: String
   let trackId: String

@@ -10,6 +10,7 @@ import { ApiError } from "./lib/errors.js";
 import { authRoutes } from "./routes/auth.js";
 import { onboardingRoutes } from "./routes/onboarding.js";
 import { soundRoutes } from "./routes/sound.js";
+import { pauseRoutes } from "./routes/pause.js";
 import { adminRoutes } from "./routes/admin.js";
 
 export function buildApp() {
@@ -47,6 +48,7 @@ export function buildApp() {
   app.register(authRoutes);
   app.register(onboardingRoutes);
   app.register(soundRoutes);
+  app.register(pauseRoutes);
   app.register(adminRoutes);
 
   return app;

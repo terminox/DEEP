@@ -1,34 +1,34 @@
 import SwiftUI
 
 /// A large landscape card for the home's "Popular" / "Today's sessions" shelves.
-/// The artwork carries the title and a duration pill; an author row sits beneath.
-/// Tapping the card body routes to detail via `openHomeItem`; the play button
-/// starts the sound in place.
+/// The artwork carries the title and a duration pill; a title row sits beneath.
+/// Tapping the card body pushes the collection detail via `openCollection`; the
+/// play button starts the collection in place.
 struct FeatureCard: View {
-  @Environment(\.openHomeItem) private var openHomeItem
+  @Environment(\.openCollection) private var openCollection
   @Environment(\.soundPlayer) private var player
-  let item: HomeItem
+  let collection: SoundCollection
   var width: CGFloat = 300
   var height: CGFloat = 200
 
   var body: some View {
     Button {
-      openHomeItem(item)
+      openCollection(collection)
     } label: {
       VStack(alignment: .leading, spacing: 10) {
         artwork
-        authorRow
+        titleRow
       }
       .frame(width: width)
     }
     .buttonStyle(.softPress)
     .accessibilityElement(children: .combine)
-    .accessibilityLabel("\(item.title), \(item.kind.label), \(item.durationLabel)")
+    .accessibilityLabel("\(collection.title), \(collection.kindLabel), \(collection.totalDuration.minutesString)")
   }
 
   private var artwork: some View {
     ZStack(alignment: .bottomLeading) {
-      HomeArtwork(palette: item.palette, imageURL: item.imageURL, cornerRadius: .card)
+      SoundArtwork(palette: collection.palette, imageURL: collection.imageURL, cornerRadius: .card)
         .frame(width: width, height: height)
         .overlay(
           LinearGradient(
@@ -41,16 +41,16 @@ struct FeatureCard: View {
 
       HStack(alignment: .bottom) {
         VStack(alignment: .leading, spacing: 8) {
-          Text(item.title)
+          Text(collection.title)
             .font(DeepType.displayTitle)
             .foregroundStyle(.white)
             .lineLimit(2)
-          
+
           durationPill
         }
         .padding(16)
         .layoutPriority(1)
-        
+
         playButton
           .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
           .padding(16)
@@ -64,7 +64,7 @@ struct FeatureCard: View {
     HStack(spacing: 4) {
       Image(systemName: "play.fill")
         .font(.system(size: 9, weight: .bold))
-      Text(item.durationLabel)
+      Text(collection.totalDuration.minutesString)
         .font(DeepType.micro)
     }
     .foregroundStyle(.deepPlum)
@@ -75,7 +75,7 @@ struct FeatureCard: View {
 
   private var playButton: some View {
     Button {
-      player.play(item.asSoundCollection)
+      player.play(collection)
     } label: {
       Image(systemName: "play.fill")
         .font(.system(size: 16, weight: .semibold))
@@ -85,17 +85,17 @@ struct FeatureCard: View {
         .shadow(color: .deepPlum.opacity(0.2), radius: 8, x: 0, y: 4)
     }
     .buttonStyle(.softPress)
-    .accessibilityLabel("Play \(item.title)")
+    .accessibilityLabel("Play \(collection.title)")
   }
 
-  private var authorRow: some View {
+  private var titleRow: some View {
     HStack(spacing: 8) {
       VStack(alignment: .leading, spacing: 1) {
-        Text(item.title)
+        Text(collection.title)
           .font(DeepType.body.weight(.medium))
           .foregroundStyle(.deepPlum)
           .lineLimit(1)
-        Text("\(item.kind.label) · \(item.author)")
+        Text("\(collection.kindLabel) · \(collection.subtitle)")
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
           .lineLimit(1)
@@ -104,10 +104,18 @@ struct FeatureCard: View {
   }
 }
 
+extension SoundCollection {
+  /// Small self-describing tag for home cards: any guided track makes the
+  /// collection read as guided; otherwise it's a soundscape.
+  var kindLabel: String {
+    tracks.contains { $0.kind == .guided } ? "Guided" : "Soundscape"
+  }
+}
+
 #Preview("Feature Card") {
   ZStack {
     AtmosphereBackground()
-    FeatureCard(item: HomeLibrary.popular[1])
+    FeatureCard(collection: SoundLibrary.calm[0])
   }
   .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

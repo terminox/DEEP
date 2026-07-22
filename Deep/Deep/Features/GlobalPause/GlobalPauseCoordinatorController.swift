@@ -5,12 +5,14 @@ import UIKit
 /// controller, the shared Earth scene, and the ONE `GlobalPauseCardView`
 /// (which the card-lift transition re-parents between the feed and the
 /// lobby). Leaf content stays SwiftUI and routes back through the injected
-/// environment actions (`openHomeItem`, `openGlobalPause`), so no leaf ever
-/// hosts a navigation container. The mini player is not this tab's concern:
-/// it lives in the tab bar's bottom accessory, owned by `MainTabController`,
-/// and extends the bottom safe area here automatically.
+/// environment actions (`openCollection`, `openCollectionList`,
+/// `openGlobalPause`), so no leaf ever hosts a navigation container. The mini
+/// player is not this tab's concern: it lives in the tab bar's bottom
+/// accessory, owned by `MainTabController`, and extends the bottom safe area
+/// here automatically.
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
+  private let soundRepository: any SoundContentRepository
   private let startDeepSession: (DeepSession) -> Void
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
@@ -27,8 +29,13 @@ final class GlobalPauseCoordinatorController: UIViewController {
     card: { [weak self] in self?.card }
   )
 
-  init(soundPlayer: any SoundPlaying, startDeepSession: @escaping (DeepSession) -> Void) {
+  init(
+    soundPlayer: any SoundPlaying,
+    soundRepository: any SoundContentRepository,
+    startDeepSession: @escaping (DeepSession) -> Void
+  ) {
     self.player = soundPlayer
+    self.soundRepository = soundRepository
     self.startDeepSession = startDeepSession
     super.init(nibName: nil, bundle: nil)
   }
@@ -44,6 +51,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
     navigation.setViewControllers([makeHomeController()], animated: false)
     navigation.setNavigationBarHidden(true, animated: false)
+    navigation.navigationBar.tintColor = .deepPlum
     navigation.delegate = self
 
     embedNavigation()
@@ -68,7 +76,11 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
   private func makeHomeController() -> UIViewController {
     let root = GlobalPauseHomeView(card: card)
-      .environment(\.openHomeItem) { [weak self] item in self?.showHomeItem(item) }
+      .environment(\.soundContentRepository, soundRepository)
+      .environment(\.openCollection) { [weak self] collection in self?.showCollection(collection) }
+      .environment(\.openCollectionList) { [weak self] title, collections in
+        self?.showCollectionList(title: title, collections: collections)
+      }
       .environment(\.openGlobalPause) { [weak self] in self?.presentLobby() }
       .environment(\.startDeepSession, startDeepSession)
       .environment(\.soundPlayer, player)
@@ -80,12 +92,29 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
   // MARK: - Routing
 
-  private func showHomeItem(_ item: HomeItem) {
-    let leaf = HomeItemDetailView(item: item)
-      .environment(\.soundPlayer, player)
-      .environment(\.startDeepSession, startDeepSession)
-      .preferredColorScheme(.light)
-    let host = UIHostingController(rootView: leaf)
+  /// Pushes the real Deep Sound collection detail. `subscriptionStore` stays on
+  /// its environment default here — the same behaviour the Sounds tab has today,
+  /// since the SwiftUI environment can't cross the UIKit tab boundary.
+  private func showCollection(_ collection: SoundCollection) {
+    push(
+      CollectionDetailView(collection: collection, bottomInset: .rhythm)
+        .environment(\.soundPlayer, player)
+        .environment(\.soundContentRepository, soundRepository)
+    )
+  }
+
+  private func showCollectionList(title: String, collections: [SoundCollection]) {
+    push(
+      CollectionListView(title: title, collections: collections)
+        .environment(\.soundPlayer, player)
+        .environment(\.openCollection) { [weak self] collection in
+          self?.showCollection(collection)
+        }
+    )
+  }
+
+  private func push(_ leaf: some View) {
+    let host = UIHostingController(rootView: leaf.preferredColorScheme(.light))
     host.view.backgroundColor = .clear
     navigation.pushViewController(host, animated: true)
   }
@@ -127,6 +156,19 @@ extension GlobalPauseCoordinatorController: UIGestureRecognizerDelegate {
 }
 
 extension GlobalPauseCoordinatorController: UINavigationControllerDelegate {
+  /// The root feed owns its chrome (no bar); pushed leaves need the system bar
+  /// for the back button and their inline title, so visibility follows depth.
+  func navigationController(
+    _ navigationController: UINavigationController,
+    willShow viewController: UIViewController,
+    animated: Bool
+  ) {
+    navigationController.setNavigationBarHidden(
+      viewController === navigationController.viewControllers.first,
+      animated: animated
+    )
+  }
+
   func navigationController(
     _ navigationController: UINavigationController,
     didShow viewController: UIViewController,
