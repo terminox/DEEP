@@ -48,7 +48,7 @@ struct CollectionDetailView: View {
 
   private var artworkHeader: some View {
     VStack(spacing: 16) {
-      SoundArtwork(palette: collection.palette, cornerRadius: 24)
+      SoundArtwork(palette: collection.palette, imageURL: collection.imageURL, cornerRadius: 24)
         .frame(width: 220, height: 220)
         .shadow(color: Color.lavenderMist.opacity(0.35), radius: 28, x: 0, y: 16)
 
