@@ -14,7 +14,11 @@ struct MiniPlayerBar: View {
 
     Button(action: onExpand) {
       HStack(spacing: 10) {
-        SoundArtwork(palette: player.collection?.palette ?? .mist, cornerRadius: 8)
+        SoundArtwork(
+          palette: player.collection?.palette ?? .mist,
+          imageURL: player.collection?.imageURL,
+          cornerRadius: 8
+        )
           .frame(width: 36, height: 36)
 
         VStack(alignment: .leading, spacing: 1) {
@@ -76,7 +80,11 @@ struct MiniPlayerInlineBar: View {
   var body: some View {
     Button(action: onExpand) {
       HStack(spacing: 10) {
-        SoundArtwork(palette: player.collection?.palette ?? .mist, cornerRadius: 7)
+        SoundArtwork(
+          palette: player.collection?.palette ?? .mist,
+          imageURL: player.collection?.imageURL,
+          cornerRadius: 7
+        )
           .frame(width: 28, height: 28)
 
         Text(player.currentTrack?.title ?? "Not playing")

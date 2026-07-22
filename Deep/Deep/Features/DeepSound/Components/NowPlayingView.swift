@@ -84,7 +84,11 @@ struct NowPlayingView: View {
   }
 
   private var artwork: some View {
-    SoundArtwork(palette: player.collection?.palette ?? .mist, cornerRadius: 22)
+    SoundArtwork(
+      palette: player.collection?.palette ?? .mist,
+      imageURL: player.collection?.imageURL,
+      cornerRadius: 22
+    )
       .aspectRatio(1, contentMode: .fit)
       .scaleEffect(artworkScale)
       .shadow(
