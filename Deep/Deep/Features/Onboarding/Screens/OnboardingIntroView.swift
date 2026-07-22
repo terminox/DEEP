@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The opening of onboarding — a sunrise over a still mountain lake, looping
-/// softly behind the wordmark. Moon-cream veils keep the wordmark and actions
+/// softly behind the logo. Moon-cream veils keep the logo and actions
 /// legible over the footage; the video stills itself when Reduce Motion is on.
 struct OnboardingIntroView: View {
   /// How the sunrise footage renders. `.live` plays the looping video — the
@@ -31,18 +31,13 @@ struct OnboardingIntroView: View {
       veils
 
       VStack(spacing: .rhythm) {
-        VStack(spacing: 10) {
-          Text("Deep")
-            .font(DeepType.wordmark)
-            .foregroundStyle(.deepPlum)
-            .accessibilityAddTraits(.isHeader)
-          Text("A space to pause,\nbreathe, and reconnect.")
-            .font(DeepType.body)
-            .foregroundStyle(.deepPlum)
-            .multilineTextAlignment(.center)
-        }
-        .shadow(color: .moonCream.opacity(0.8), radius: 12)
-        .padding(.top, .rhythm * 2)
+        Image("OnboardingLogo")
+          .resizable()
+          .scaledToFit()
+          .frame(maxWidth: 300)
+          .accessibilityAddTraits(.isHeader)
+          .accessibilityLabel("Deep — your peaceful space")
+          .shadow(color: .moonCream.opacity(0.8), radius: 12)
 
         Spacer(minLength: 0)
 
@@ -96,7 +91,7 @@ struct OnboardingIntroView: View {
   }
 
   /// Soft moon-cream gradients that guarantee text contrast against the
-  /// footage: a light wash over the sky behind the wordmark, and a near-solid
+  /// footage: a light wash over the sky behind the logo, and a near-solid
   /// scrim under the actions. Both go solid when Increase Contrast is on.
   private var veils: some View {
     let increased = contrast == .increased

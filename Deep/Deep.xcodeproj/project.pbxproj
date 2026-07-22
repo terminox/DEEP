@@ -177,6 +177,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B1 /* Dev.xcconfig */;
 			buildSettings = {
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Dev;
 		};
@@ -184,6 +189,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B2 /* Staging.xcconfig */;
 			buildSettings = {
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Staging;
 		};
@@ -191,6 +201,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B3 /* Pilot.xcconfig */;
 			buildSettings = {
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Pilot;
 		};
@@ -198,6 +213,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B4 /* Prod.xcconfig */;
 			buildSettings = {
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Prod;
 		};
