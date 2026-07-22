@@ -16,8 +16,14 @@ struct DeepSessionIntroView: View {
   /// A slow idle drift so the orb already breathes while you decide.
   @State private var swell: CGFloat = 0.5
 
+  /// The Begin button's UIKit backing — the frame the session zooms out of.
+  @State private var zoomAnchor: UIView?
+
   var body: some View {
     ZStack {
+      // Opaque base under the atmosphere's translucent stops: nothing beneath
+      // this screen may ever show through.
+      Color.moonCream.ignoresSafeArea()
       AtmosphereBackground()
 
       VStack(spacing: 0) {
@@ -64,7 +70,7 @@ struct DeepSessionIntroView: View {
 
   private var beginButton: some View {
     Button {
-      startDeepSession(session)
+      startDeepSession(session, from: zoomAnchor)
     } label: {
       Text("Begin")
         .font(DeepType.body.weight(.semibold))
@@ -80,6 +86,7 @@ struct DeepSessionIntroView: View {
         .shadow(color: .lavenderMist.opacity(0.4), radius: 12, x: 0, y: 6)
     }
     .buttonStyle(.softPress)
+    .zoomTransitionAnchor($zoomAnchor)
     .accessibilityLabel("Begin \(session.title)")
   }
 }
