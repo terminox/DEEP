@@ -11,22 +11,24 @@ struct CreateAccountView: View {
     ZStack {
       AtmosphereBackground()
 
-      VStack(alignment: .leading, spacing: .rhythm) {
-        VStack(alignment: .leading, spacing: 6) {
-          Text("Keep your space")
-            .font(DeepType.displayTitle)
-            .foregroundStyle(.deepPlum)
-          Text("An account holds your Mind Tree, your answers, and everything you grow here.")
-            .font(DeepType.caption)
-            .foregroundStyle(.driftGrey)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.top, 8)
-        .onboardingContentRise()
-
+      VStack(alignment: .center, spacing: .rhythm) {
+        Image("OnboardingLogo")
+          .resizable()
+          .scaledToFit()
+          .frame(maxWidth: 300)
+          .accessibilityAddTraits(.isHeader)
+          .accessibilityLabel("Deep — your peaceful space")
+          .shadow(color: .moonCream.opacity(0.8), radius: 12)
+        
         Spacer()
+        
+        Text("Create an account to save your progress")
+          .font(DeepType.displayTitle)
+          .foregroundStyle(.deepPlum)
+          .multilineTextAlignment(.center)
+          .onboardingContentRise()
 
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
           OnboardingPrimaryButton(title: "Continue with Email", systemImage: "envelope") {
             advance(.signUp)
           }
