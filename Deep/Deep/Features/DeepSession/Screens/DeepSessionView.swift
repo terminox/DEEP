@@ -16,6 +16,10 @@ struct DeepSessionView: View {
 
   var body: some View {
     ZStack {
+      // Opaque base under the atmosphere's translucent stops: the session is
+      // presented over the shell, and the launching screen must never show
+      // through — including mid-zoom.
+      Color.moonCream.ignoresSafeArea()
       AtmosphereBackground()
 
       VStack(spacing: 0) {

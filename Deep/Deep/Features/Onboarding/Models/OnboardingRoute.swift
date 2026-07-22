@@ -13,7 +13,10 @@ enum OnboardingRoute: Hashable {
   case quiz(index: Int)
   /// Choose a Mind Tree — the last choice before creating an account.
   case mindTree
-  /// Create an account (email/password) — new users, after the Mind Tree.
+  /// Account gateway after the Mind Tree — presents the available sign-up
+  /// methods (email today; room for more later) plus the log-in escape.
+  case createAccount
+  /// Email/password sign-up form, reached from `.createAccount`.
   case signUp
   /// Log in — returning users, reached from the welcome screen.
   case logIn

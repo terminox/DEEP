@@ -21,6 +21,15 @@ struct SignUpView: View {
       && !isSubmitting
   }
 
+  /// Mirrors the submit-time check so the trailing checkmark never lies.
+  private var emailLooksValid: Bool {
+    email.contains("@") && email.contains(".")
+  }
+
+  private var passwordIsLongEnough: Bool {
+    password.count >= 8
+  }
+
   var body: some View {
     ZStack {
       AtmosphereBackground()
@@ -39,18 +48,31 @@ struct SignUpView: View {
 
           VStack(spacing: 14) {
             AuthField(
-              placeholder: "Your name", text: $name,
+              placeholder: "Your name", text: $name, icon: "person",
               textContentType: .name, autocapitalization: .words
             )
             AuthField(
-              placeholder: "Email", text: $email,
+              placeholder: "Email", text: $email, icon: "envelope",
+              isValid: emailLooksValid ? true : nil,
               keyboard: .emailAddress, textContentType: .emailAddress
             )
             AuthField(
-              placeholder: "Password (8+ characters)", text: $password,
+              placeholder: "Password", text: $password, icon: "lock",
               isSecure: true, textContentType: .newPassword,
               submitLabel: .go, onSubmit: submit
             )
+
+            HStack(spacing: 8) {
+              Image(systemName: passwordIsLongEnough ? "checkmark.circle.fill" : "circle")
+                .font(DeepType.caption)
+                .foregroundStyle(passwordIsLongEnough ? Color.lavenderMist : Color.driftGrey)
+              Text("At least 8 characters")
+                .font(DeepType.caption)
+                .foregroundStyle(.driftGrey)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 18)
+            .animation(.exhale, value: passwordIsLongEnough)
           }
 
           if let errorMessage {
@@ -65,18 +87,7 @@ struct SignUpView: View {
 
         Spacer()
 
-        VStack(spacing: 14) {
-          OnboardingPrimaryButton(title: "Create account", isEnabled: canSubmit, action: submit)
-
-          Button {
-            advance(.logIn)
-          } label: {
-            Text("I already have an account")
-              .font(DeepType.caption)
-              .foregroundStyle(.driftGrey)
-          }
-          .buttonStyle(.plain)
-        }
+        OnboardingPrimaryButton(title: "Create account", isEnabled: canSubmit, action: submit)
       }
       .padding(.horizontal, .edge)
       .padding(.bottom, .rhythm)

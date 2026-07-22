@@ -33,6 +33,13 @@ extension SoundPlaying {
   func play(_ collection: SoundCollection) {
     play(collection, at: 0)
   }
+
+  /// Pause playback if something is playing; otherwise a no-op. Guided flows
+  /// (Deep Session) call this on entry — the track stays loaded so the mini
+  /// player picks up right where the listener left off.
+  func pause() {
+    if isPlaying { togglePlayPause() }
+  }
 }
 
 extension EnvironmentValues {

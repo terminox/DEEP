@@ -176,6 +176,8 @@ struct OnboardingCoordinatorView: View {
       routed(OnboardingQuizView(index: index))
     case .mindTree:
       routed(MindTreePickerView())
+    case .createAccount:
+      routed(CreateAccountView())
     case .signUp:
       routed(SignUpView())
     case .logIn:

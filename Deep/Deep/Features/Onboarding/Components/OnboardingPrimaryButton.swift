@@ -7,15 +7,22 @@ import SwiftUI
 /// dimmed "Next" before a choice is made — but never feels like an error.
 struct OnboardingPrimaryButton: View {
   let title: String
+  var systemImage: String? = nil
   var isEnabled: Bool = true
   let action: () -> Void
 
   var body: some View {
     Button(action: action) {
-      Text(title)
-        .font(DeepType.sectionTitle)
-        .foregroundStyle(.deepPlum)
-        .frame(maxWidth: .infinity)
+      HStack(spacing: 10) {
+        if let systemImage {
+          Image(systemName: systemImage)
+            .font(DeepType.body.weight(.medium))
+        }
+        Text(title)
+      }
+      .font(DeepType.sectionTitle)
+      .foregroundStyle(.deepPlum)
+      .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
         .background(
           Capsule(style: .continuous)
@@ -39,6 +46,7 @@ struct OnboardingPrimaryButton: View {
     AtmosphereBackground()
     VStack(spacing: .rhythm) {
       OnboardingPrimaryButton(title: "Continue", action: {})
+      OnboardingPrimaryButton(title: "Continue with Email", systemImage: "envelope", action: {})
       OnboardingPrimaryButton(title: "Next", isEnabled: false, action: {})
     }
     .padding(.horizontal, .edge)

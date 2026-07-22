@@ -8,9 +8,12 @@ struct DeepSessionEntryCard: View {
 
   @Environment(\.startDeepSession) private var startDeepSession
 
+  /// The card's UIKit backing — the frame the session zooms out of.
+  @State private var zoomAnchor: UIView?
+
   var body: some View {
     Button {
-      startDeepSession(session)
+      startDeepSession(session, from: zoomAnchor)
     } label: {
       HStack(spacing: 16) {
         VStack(alignment: .leading, spacing: 5) {
@@ -32,6 +35,7 @@ struct DeepSessionEntryCard: View {
       .frostedCard()
     }
     .buttonStyle(.softPress)
+    .zoomTransitionAnchor($zoomAnchor)
     .accessibilityLabel("Begin \(session.title), a \(session.durationMinutes) minute guided breathing session")
   }
 

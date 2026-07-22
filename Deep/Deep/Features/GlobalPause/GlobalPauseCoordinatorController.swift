@@ -13,7 +13,7 @@ import UIKit
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
-  private let startDeepSession: (DeepSession) -> Void
+  private let startDeepSession: StartDeepSessionAction
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
 
@@ -32,7 +32,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
   init(
     soundPlayer: any SoundPlaying,
     soundRepository: any SoundContentRepository,
-    startDeepSession: @escaping (DeepSession) -> Void
+    startDeepSession: StartDeepSessionAction
   ) {
     self.player = soundPlayer
     self.soundRepository = soundRepository
