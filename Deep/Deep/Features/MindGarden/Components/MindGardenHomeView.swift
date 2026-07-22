@@ -17,6 +17,9 @@ struct MindGardenHomeView: View {
   /// screen decides what tapping it does.
   @Environment(\.startDeepSession) private var startDeepSession
 
+  /// The practice card's UIKit backing — the frame the session zooms out of.
+  @State private var practiceAnchor: UIView?
+
   private let heroHeight: CGFloat = 320
   /// How far the greeting card rides up over the hero.
   private let heroOverlap: CGFloat = 52
@@ -31,8 +34,9 @@ struct MindGardenHomeView: View {
             .padding(.horizontal, .edge)
 
           DailyPracticeCard(minutesRemaining: state.minutesRemaining) {
-            startDeepSession(DeepSessionLibrary.balancingBreath)
+            startDeepSession(DeepSessionLibrary.balancingBreath, from: practiceAnchor)
           }
+          .zoomTransitionAnchor($practiceAnchor)
           .padding(.horizontal, .edge)
 
           GrowYourGardenSection(stages: state.stages)

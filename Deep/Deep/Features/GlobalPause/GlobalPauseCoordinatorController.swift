@@ -11,7 +11,7 @@ import UIKit
 /// and extends the bottom safe area here automatically.
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
-  private let startDeepSession: (DeepSession) -> Void
+  private let startDeepSession: StartDeepSessionAction
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
 
@@ -27,7 +27,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     card: { [weak self] in self?.card }
   )
 
-  init(soundPlayer: any SoundPlaying, startDeepSession: @escaping (DeepSession) -> Void) {
+  init(soundPlayer: any SoundPlaying, startDeepSession: StartDeepSessionAction) {
     self.player = soundPlayer
     self.startDeepSession = startDeepSession
     super.init(nibName: nil, bundle: nil)
