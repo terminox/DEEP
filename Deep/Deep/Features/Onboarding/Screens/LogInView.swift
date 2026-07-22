@@ -37,11 +37,11 @@ struct LogInView: View {
 
           VStack(spacing: 14) {
             AuthField(
-              placeholder: "Email", text: $email,
+              placeholder: "Email", text: $email, icon: "envelope",
               keyboard: .emailAddress, textContentType: .emailAddress
             )
             AuthField(
-              placeholder: "Password", text: $password,
+              placeholder: "Password", text: $password, icon: "lock",
               isSecure: true, textContentType: .password,
               submitLabel: .go, onSubmit: submit
             )

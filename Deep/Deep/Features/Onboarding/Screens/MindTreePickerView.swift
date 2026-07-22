@@ -52,7 +52,7 @@ struct MindTreePickerView: View {
         .onboardingContentRise()
 
         OnboardingPrimaryButton(title: "Continue", isEnabled: selectedTreeID != nil) {
-          advance(.signUp)
+          advance(.createAccount)
         }
       }
       .padding(.horizontal, .edge)
