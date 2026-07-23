@@ -2,5 +2,8 @@ node_modules/
 dist/
 .env
 media/audio/*.mp3
+!media/audio/global-pause.mp3
+!media/audio/inner-light.mp3
+!media/audio/ivory.mp3
 !media/audio/.gitkeep
 *.log

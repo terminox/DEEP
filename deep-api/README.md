@@ -5,7 +5,6 @@ Backend for the Deep app — auth (email/password), onboarding, and Deep Sound c
 ## Requirements
 - Node 22+
 - Docker (for local Postgres)
-- ffmpeg (to generate sample audio; already on most dev machines)
 
 ## First-time setup
 
@@ -14,7 +13,6 @@ npm install
 cp .env.example .env          # already present for local dev
 npm run db:up                 # start Postgres (docker, host port 5434)
 npm run db:migrate            # apply schema
-npm run gen:audio             # generate ambient sample loops into media/audio
 npm run db:seed               # seed 5 categories / 20 collections / 67 tracks + onboarding config
 npm run dev                   # start on http://localhost:8080 (watch mode)
 ```
@@ -38,4 +36,4 @@ Admin (role=ADMIN): `POST /admin/auth/login`; CRUD + `/reorder` for `/admin/cate
 Auth is JWT access token + rotating refresh session (reuse detection revokes the session).
 
 ## Scripts
-`dev` · `start` · `build` · `typecheck` · `db:up` · `db:down` · `db:migrate` · `db:reset` · `db:seed` · `gen:audio`
+`dev` · `start` · `build` · `typecheck` · `db:up` · `db:down` · `db:migrate` · `db:reset` · `db:seed`
