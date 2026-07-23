@@ -27,6 +27,9 @@ private enum DeepPalette {
   static let moonCream    = DeepColorToken(red: 0.984, green: 0.969, blue: 1.000) // #FBF7FF
   static let deepPlum     = DeepColorToken(red: 0.239, green: 0.212, blue: 0.329) // #3D3654
   static let driftGrey    = DeepColorToken(red: 0.545, green: 0.510, blue: 0.659) // #8B82A8
+  /// Destructive accent — a rose dimmed to dusk, red enough to warn without
+  /// breaking the pastel register. For irreversible actions (delete account).
+  static let duskRose     = DeepColorToken(red: 0.761, green: 0.369, blue: 0.431) // #C25E6E
 }
 
 // MARK: - SwiftUI colours
@@ -44,6 +47,7 @@ extension ShapeStyle where Self == Color {
   static var moonCream: Color { DeepPalette.moonCream.color }
   static var deepPlum: Color { DeepPalette.deepPlum.color }
   static var driftGrey: Color { DeepPalette.driftGrey.color }
+  static var duskRose: Color { DeepPalette.duskRose.color }
 }
 
 // MARK: - UIKit colours
@@ -58,6 +62,7 @@ extension UIColor {
   static var moonCream: UIColor { DeepPalette.moonCream.uiColor }
   static var deepPlum: UIColor { DeepPalette.deepPlum.uiColor }
   static var driftGrey: UIColor { DeepPalette.driftGrey.uiColor }
+  static var duskRose: UIColor { DeepPalette.duskRose.uiColor }
 }
 
 // MARK: - Motion
