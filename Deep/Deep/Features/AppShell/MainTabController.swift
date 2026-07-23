@@ -35,6 +35,10 @@ final class MainTabController: UITabBarController {
 
   private var composedItems: [ComposedTabItem] = []
   private var isTabBarMinimized = false
+  /// True only while `setTabItemsIconOnly(_:)` reasserts `selectedIndex` for
+  /// its repaint trick, so the delegate can tell that reassignment apart from
+  /// a real same-tab tap — see `tabBarController(_:shouldSelect:)`.
+  private var isReassertingSelection = false
 
   init(
     onboardingStore: any OnboardingProgressStore,
@@ -57,6 +61,9 @@ final class MainTabController: UITabBarController {
   override func viewDidLoad() {
     super.viewDidLoad()
     configureChildren()
+    // Same-tab taps scroll the visible screen back to the top — see
+    // `tabBarController(_:shouldSelect:)`.
+    delegate = self
     // No custom UITabBarAppearance is installed: that keeps the system Liquid
     // Glass tab bar (iOS 26). Item colours are baked into the item images in
     // `host(_:title:systemImage:)` instead — see the note there.
@@ -254,9 +261,13 @@ final class MainTabController: UITabBarController {
     // selected tab sat stale while its siblings were already restored).
     // Reasserting the selection repaints the capsule's *content* right away;
     // its *geometry* never changes because both image variants share one
-    // canvas (see `composedItemImage`). No delegate is installed, so the
-    // reassignment has no selection side effects.
+    // canvas (see `composedItemImage`). Programmatic selection changes don't
+    // fire the delegate, but `isReassertingSelection` guards the same-tab
+    // scroll-to-top anyway: `isTabBarMinimized` was just cleared above, so a
+    // spurious callback here would otherwise scroll on every bar expansion.
+    isReassertingSelection = true
     selectedIndex = selectedIndex
+    isReassertingSelection = false
   }
 
   /// Renders an SF Symbol above its label (or alone, when `showsTitle` is
@@ -303,5 +314,58 @@ final class MainTabController: UITabBarController {
     }
     // Belt-and-suspenders: keep the composed pixels exactly as drawn.
     return composed.withRenderingMode(.alwaysOriginal)
+  }
+
+  // MARK: - Scroll to top on same-tab tap
+
+  private func scrollSelectedTabToTop() {
+    guard let root = selectedViewController?.view,
+          let scrollView = Self.frontmostVerticalScrollView(in: root) else { return }
+    scrollView.setContentOffset(
+      CGPoint(x: scrollView.contentOffset.x, y: -scrollView.adjustedContentInset.top),
+      animated: true
+    )
+  }
+
+  /// Finds the scroll view the user perceives as "the screen": a frontmost-first
+  /// DFS (reversed sibling order, so a pushed detail beats anything left behind
+  /// it) over the visible hierarchy, matching the node before its children so
+  /// the outer home scroll view wins over anything nested inside it. The
+  /// vertical-scrollability filter skips the horizontal shelf scroll views.
+  /// Screens without a scroll view (the Profile tab) yield nil — a no-op.
+  private static func frontmostVerticalScrollView(in view: UIView) -> UIScrollView? {
+    guard view.window != nil, !view.isHidden, view.alpha > 0.01 else { return nil }
+    if let scrollView = view as? UIScrollView, isVerticallyScrollable(scrollView) {
+      return scrollView
+    }
+    for subview in view.subviews.reversed() {
+      if let found = frontmostVerticalScrollView(in: subview) { return found }
+    }
+    return nil
+  }
+
+  private static func isVerticallyScrollable(_ scrollView: UIScrollView) -> Bool {
+    guard scrollView.bounds.height > 0 else { return false }
+    let insets = scrollView.adjustedContentInset
+    let visibleHeight = scrollView.bounds.height - insets.top - insets.bottom
+    return scrollView.contentSize.height > visibleHeight + 1 || scrollView.alwaysBounceVertical
+  }
+}
+
+extension MainTabController: UITabBarControllerDelegate {
+  func tabBarController(
+    _ tabBarController: UITabBarController,
+    shouldSelect viewController: UIViewController
+  ) -> Bool {
+    // Tapping the tab you're already on scrolls it back to the top — but only
+    // while the bar is expanded (a minimized-pill tap just expands the bar),
+    // never for the repaint reassertion, and never underneath a modal.
+    if viewController === selectedViewController,
+       !isTabBarMinimized,
+       !isReassertingSelection,
+       viewController.presentedViewController == nil {
+      scrollSelectedTabToTop()
+    }
+    return true
   }
 }
