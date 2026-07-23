@@ -17,7 +17,7 @@ struct CreateAccountView: View {
           .scaledToFit()
           .frame(maxWidth: 300)
           .accessibilityAddTraits(.isHeader)
-          .accessibilityLabel("Deep — your peaceful space")
+          .accessibilityLabel("DEEP — your peaceful space")
           .shadow(color: .moonCream.opacity(0.8), radius: 12)
         
         Spacer()

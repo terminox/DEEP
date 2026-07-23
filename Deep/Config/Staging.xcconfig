@@ -4,7 +4,7 @@
 APP_ENV = staging
 API_BASE_URL = https:/$()/staging-api.deep.app
 BUNDLE_ID_SUFFIX = .staging
-APP_DISPLAY_NAME = Deep Staging
+APP_DISPLAY_NAME = DEEP Staging
 
 // ---- Release build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym

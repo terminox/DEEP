@@ -5,7 +5,7 @@ APP_ENV = prod
 API_BASE_URL = https:/$()/api.deep.app
 // Production keeps the plain bundle id (no suffix).
 BUNDLE_ID_SUFFIX =
-APP_DISPLAY_NAME = Deep
+APP_DISPLAY_NAME = DEEP
 
 // ---- Release build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym

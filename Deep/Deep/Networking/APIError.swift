@@ -19,7 +19,7 @@ enum APIError: LocalizedError, Equatable {
     case let .http(_, _, message):
       return message
     case .transport:
-      return "We couldn't reach Deep just now. Check your connection and try again."
+      return "We couldn't reach DEEP just now. Check your connection and try again."
     case .decoding:
       return "Something looked off in the response. Please try again."
     }

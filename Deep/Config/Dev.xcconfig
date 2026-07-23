@@ -5,7 +5,7 @@ APP_ENV = dev
 // `$()` keeps xcconfig from reading `//` as a comment.
 API_BASE_URL = http:/$()/localhost:8080
 BUNDLE_ID_SUFFIX = .dev
-APP_DISPLAY_NAME = Deep Dev
+APP_DISPLAY_NAME = DEEP Dev
 
 // ---- Debug build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf

@@ -1,9 +1,9 @@
 import SwiftUI
 import StoreKit
 
-/// The "You" tab — identity up top, then Calm-inspired grouped settings:
-/// membership (status / manage / restore) and account (log out / delete),
-/// closing on a quiet version footer.
+/// The "You" tab — identity (with the non-actionable plan chip) up top, then
+/// Calm-inspired cards of purely actionable rows: subscription (manage /
+/// restore) and account (log out / delete), closing on a quiet version footer.
 ///
 /// It reads the *shared* stores (threaded down from `AppRootView` through the
 /// tab shell), so resetting onboarding here flips the gate `AppRootView`
@@ -46,7 +46,7 @@ struct ProfileView: View {
     .task { await subscriptionStore.loadPlans() }
     .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
     .confirmationDialog(
-      "Log out of Deep?",
+      "Log out of DEEP?",
       isPresented: $showLogoutConfirm,
       titleVisibility: .visible
     ) {
@@ -61,7 +61,7 @@ struct ProfileView: View {
     } message: {
       Text(
         "This permanently erases your account and everything you've shared. "
-        + "If you have a Deep Pro subscription, cancel it separately in your "
+        + "If you have a DEEP Pro subscription, cancel it separately in your "
         + "App Store settings — deleting your account doesn't cancel billing."
       )
     }
@@ -85,8 +85,12 @@ struct ProfileView: View {
         Text(email)
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
+      } else if account?.method == .apple {
+        Text("Signed in with Apple")
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
       }
-      methodChip
+      planChip
     }
     .frame(maxWidth: .infinity)
     .padding(.top, .rhythm)
@@ -112,19 +116,30 @@ struct ProfileView: View {
       .shadow(color: Color.lavenderMist.opacity(0.4), radius: 18, y: 8)
   }
 
-  @ViewBuilder
-  private var methodChip: some View {
-    if let method = account?.method {
-      Label(
-        method == .apple ? "Signed in with Apple" : "Signed in with email",
-        systemImage: method == .apple ? "applelogo" : "envelope.fill"
-      )
+  /// The non-actionable membership status, worn as part of the identity —
+  /// the cards below stay purely actionable.
+  private var planChip: some View {
+    Label(planLabel, systemImage: "sparkles")
       .font(DeepType.micro)
       .foregroundStyle(.driftGrey)
       .padding(.horizontal, 12)
       .padding(.vertical, 6)
       .background(Capsule().fill(.white.opacity(0.5)))
       .padding(.top, 4)
+  }
+
+  private var planLabel: String {
+    switch subscriptionStore.status {
+    case .subscribed(let productID):
+      switch productID {
+      case DeepProduct.yearly: return "DEEP Pro · Yearly"
+      case DeepProduct.monthly: return "DEEP Pro · Monthly"
+      default: return "DEEP Pro"
+      }
+    case .none:
+      return "Free plan"
+    case .unknown:
+      return "Checking…"
     }
   }
 
@@ -138,12 +153,7 @@ struct ProfileView: View {
 
   private var membershipSection: some View {
     VStack(alignment: .leading, spacing: 8) {
-      SettingsSection(title: "Membership") {
-        SettingsRow(
-          icon: "sparkles",
-          title: membershipTitle,
-          accessory: membershipAccessory
-        )
+      SettingsSection {
         SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {
           showManageSubscriptions = true
         }
@@ -160,29 +170,6 @@ struct ProfileView: View {
           .foregroundStyle(.driftGrey)
           .padding(.horizontal, 8)
       }
-    }
-  }
-
-  private var membershipTitle: String {
-    switch subscriptionStore.status {
-    case .subscribed: return "Deep Pro"
-    case .none: return "Free plan"
-    case .unknown: return "Membership"
-    }
-  }
-
-  private var membershipAccessory: SettingsRow.Accessory {
-    switch subscriptionStore.status {
-    case .subscribed(let productID):
-      switch productID {
-      case DeepProduct.yearly: return .value("Yearly")
-      case DeepProduct.monthly: return .value("Monthly")
-      default: return .value("Active")
-      }
-    case .none:
-      return .none
-    case .unknown:
-      return .value("Checking…")
     }
   }
 
@@ -216,7 +203,7 @@ struct ProfileView: View {
   // MARK: - Account
 
   private var accountSection: some View {
-    SettingsSection(title: "Account") {
+    SettingsSection {
       SettingsRow(
         icon: "rectangle.portrait.and.arrow.right",
         title: "Log out",
@@ -264,23 +251,18 @@ struct ProfileView: View {
   // MARK: - Footer
 
   private var footer: some View {
-    VStack(spacing: 4) {
-      Text(versionLine)
-      if let email = account?.email {
-        Text("Signed in as \(email)")
-      }
-    }
-    .font(DeepType.micro)
-    .foregroundStyle(.driftGrey.opacity(0.8))
-    .frame(maxWidth: .infinity)
-    .padding(.top, 8)
+    Text(versionLine)
+      .font(DeepType.micro)
+      .foregroundStyle(.driftGrey.opacity(0.8))
+      .frame(maxWidth: .infinity)
+      .padding(.top, 8)
   }
 
   private var versionLine: String {
     let info = Bundle.main.infoDictionary
     let version = info?["CFBundleShortVersionString"] as? String ?? "—"
     let build = info?["CFBundleVersion"] as? String ?? "—"
-    return "Deep v\(version) (\(build))"
+    return "DEEP v\(version) (\(build))"
   }
 }
 

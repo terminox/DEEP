@@ -28,7 +28,7 @@ struct CollectionDetailView: View {
     .alert("A premium sound", isPresented: $showPremiumGate) {
       Button("Maybe later", role: .cancel) {}
     } message: {
-      Text("This one is part of Deep Premium. It'll be here whenever you're ready.")
+      Text("This one is part of DEEP Premium. It'll be here whenever you're ready.")
     }
   }
 

@@ -4,7 +4,7 @@
 APP_ENV = pilot
 API_BASE_URL = https:/$()/pilot-api.deep.app
 BUNDLE_ID_SUFFIX = .pilot
-APP_DISPLAY_NAME = Deep Pilot
+APP_DISPLAY_NAME = DEEP Pilot
 
 // ---- Release build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym

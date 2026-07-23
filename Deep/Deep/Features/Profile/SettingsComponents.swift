@@ -115,11 +115,11 @@ struct SettingsRow: View {
     AtmosphereBackground()
     VStack(spacing: .rhythm) {
       SettingsSection(title: "Membership") {
-        SettingsRow(icon: "sparkles", title: "Deep Pro", accessory: .value("Yearly"))
+        SettingsRow(icon: "sparkles", title: "DEEP Pro", accessory: .value("Yearly"))
         SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {}
         SettingsRow(icon: "arrow.clockwise", title: "Restore purchases", accessory: .progress) {}
       }
-      SettingsSection(title: "Account") {
+      SettingsSection {
         SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Log out", role: .destructive) {}
         SettingsRow(icon: "trash", title: "Delete account", role: .destructive) {}
       }
