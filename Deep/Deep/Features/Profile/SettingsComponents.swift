@@ -58,6 +58,9 @@ struct SettingsRow: View {
   let title: String
   var accessory: Accessory = .none
   var role: ButtonRole? = nil
+  /// Overrides the plum icon/title colour — e.g. `.duskRose` for rows whose
+  /// action is irreversible.
+  var tint: Color? = nil
   var action: (() -> Void)? = nil
 
   var body: some View {
@@ -73,11 +76,11 @@ struct SettingsRow: View {
     HStack(spacing: 14) {
       Image(systemName: icon)
         .font(DeepType.body)
-        .foregroundStyle(.deepPlum.opacity(0.7))
+        .foregroundStyle((tint ?? .deepPlum).opacity(0.7))
         .frame(width: 24, height: 24)
       Text(title)
         .font(DeepType.body)
-        .foregroundStyle(.deepPlum)
+        .foregroundStyle(tint ?? .deepPlum)
         .multilineTextAlignment(.leading)
       Spacer(minLength: 12)
       accessoryView
@@ -119,9 +122,9 @@ struct SettingsRow: View {
         SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {}
         SettingsRow(icon: "arrow.clockwise", title: "Restore purchases", accessory: .progress) {}
       }
-      SettingsSection {
+      SettingsSection(title: "Account") {
         SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Log out", role: .destructive) {}
-        SettingsRow(icon: "trash", title: "Delete account", role: .destructive) {}
+        SettingsRow(icon: "trash", title: "Delete account", role: .destructive, tint: .duskRose) {}
       }
     }
     .padding(.horizontal, .edge)
