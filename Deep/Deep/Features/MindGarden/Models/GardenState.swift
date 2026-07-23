@@ -21,6 +21,18 @@ struct GardenState {
 }
 
 extension GardenState {
+  /// The live garden — a projection of the shared practice journal, re-derived
+  /// wherever it's read so a finished session shows up everywhere at once.
+  @MainActor
+  init(practice: any PracticeStore) {
+    self.init(
+      minutesToday: practice.minutesToday,
+      dailyGoalMinutes: practice.dailyGoalMinutes,
+      streakDays: practice.currentStreakDays,
+      stages: GardenStage.journey(unlockedForLongestStreak: practice.longestStreakDays)
+    )
+  }
+
   static let sample = GardenState(
     minutesToday: 7,
     dailyGoalMinutes: 10,

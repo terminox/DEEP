@@ -12,6 +12,7 @@ struct ProfileView: View {
   @Environment(\.accountStore) private var accountStore
   @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.subscriptionStore) private var subscriptionStore
+  @Environment(\.practiceStore) private var practiceStore
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -228,8 +229,10 @@ struct ProfileView: View {
       await accountStore.logOut()
       // Resetting onboarding flips `hasCompletedOnboarding`, which `AppRootView`
       // observes — together with the now-signed-out state it crossfades back to
-      // the welcome flow.
+      // the welcome flow. The practice journal belongs to the account, so it
+      // leaves with it.
       onboardingStore.reset()
+      practiceStore.reset()
     }
   }
 
@@ -241,6 +244,7 @@ struct ProfileView: View {
         // Same exit as log out; the shell crossfades to the welcome flow, so
         // the in-flight state never needs resetting on success.
         onboardingStore.reset()
+        practiceStore.reset()
       } catch {
         isDeletingAccount = false
         deleteFailed = true

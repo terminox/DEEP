@@ -12,6 +12,8 @@ struct RootTabView: UIViewControllerRepresentable {
   let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  let practiceStore: any PracticeStore
+  let heartLedger: HeartLedger
 
   func makeUIViewController(context: Context) -> MainTabController {
     MainTabController(
@@ -19,7 +21,9 @@ struct RootTabView: UIViewControllerRepresentable {
       accountStore: accountStore,
       subscriptionStore: subscriptionStore,
       soundRepository: soundRepository,
-      soundPlayer: soundPlayer
+      soundPlayer: soundPlayer,
+      practiceStore: practiceStore,
+      heartLedger: heartLedger
     )
   }
 
@@ -32,7 +36,9 @@ struct RootTabView: UIViewControllerRepresentable {
     accountStore: PreviewAccountStore(),
     subscriptionStore: PreviewSubscriptionStore(),
     soundRepository: FixtureSoundContentRepository(),
-    soundPlayer: SoundPlayer()
+    soundPlayer: SoundPlayer(),
+    practiceStore: MockPracticeStore(),
+    heartLedger: .sample
   )
   .ignoresSafeArea()
 }

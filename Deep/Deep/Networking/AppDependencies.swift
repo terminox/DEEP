@@ -15,6 +15,10 @@ final class AppDependencies {
   let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  let practiceStore: any PracticeStore
+  /// App-lifetime ledger so hearts earned in a session show up in Portfolio.
+  /// Still the in-memory sample — nothing persists it yet.
+  let heartLedger: HeartLedger
 
   init() {
     let config = AppConfig.current
@@ -27,5 +31,7 @@ final class AppDependencies {
     self.subscriptionStore = StoreKitSubscriptionStore()
     self.soundRepository = APISoundContentRepository(client: client)
     self.soundPlayer = StreamingSoundPlayer()
+    self.practiceStore = PracticeDefaultsStore(remote: APIPracticeRemote(client: client))
+    self.heartLedger = .sample
   }
 }

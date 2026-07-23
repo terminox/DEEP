@@ -11,6 +11,7 @@ import { authRoutes } from "./routes/auth.js";
 import { onboardingRoutes } from "./routes/onboarding.js";
 import { soundRoutes } from "./routes/sound.js";
 import { pauseRoutes } from "./routes/pause.js";
+import { practiceRoutes } from "./routes/practice.js";
 import { adminRoutes } from "./routes/admin.js";
 
 export function buildApp() {
@@ -49,6 +50,7 @@ export function buildApp() {
   app.register(onboardingRoutes);
   app.register(soundRoutes);
   app.register(pauseRoutes);
+  app.register(practiceRoutes);
   app.register(adminRoutes);
 
   return app;

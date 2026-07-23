@@ -74,6 +74,23 @@ extension Animation {
   /// A leaf carried between screens — prompt to move, soft to land. Calm but
   /// never sluggish; drives the onboarding screen hand-off.
   static let drift  = Animation.timingCurve(0.3, 0.0, 0.2, 1.0, duration: 0.4)
+
+  /// The breath itself — the exhale curve stretched over a whole breath phase,
+  /// the one motion in the app allowed to take entire seconds. Drives the Deep
+  /// Session orb.
+  static func breath(over seconds: TimeInterval) -> Animation {
+    .timingCurve(0.32, 0.0, 0.36, 1.0, duration: seconds)
+  }
+}
+
+/// The breath's easing as a bare curve, for sampling where the animation runs
+/// (the Deep Session pause freeze reads the orb's true mid-flight position).
+/// Same control points as `Animation.breath(over:)` — keep them in step.
+extension UnitCurve {
+  static let breath = UnitCurve.bezier(
+    startControlPoint: UnitPoint(x: 0.32, y: 0.0),
+    endControlPoint: UnitPoint(x: 0.36, y: 1.0)
+  )
 }
 
 // MARK: - Corner radii
