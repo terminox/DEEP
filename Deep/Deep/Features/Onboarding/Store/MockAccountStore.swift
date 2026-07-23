@@ -31,6 +31,14 @@ final class MockAccountStore: AccountStore {
   func logOut() async {
     account = nil
   }
+
+  /// Flip on in a preview to exercise the delete-account failure path.
+  var deleteShouldFail = false
+
+  func deleteAccount() async throws {
+    if deleteShouldFail { throw URLError(.cannotConnectToHost) }
+    account = nil
+  }
 }
 
 extension MockAccountStore {

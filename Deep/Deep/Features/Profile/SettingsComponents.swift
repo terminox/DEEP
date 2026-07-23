@@ -1,0 +1,129 @@
+import SwiftUI
+
+// MARK: - Section
+
+/// A Calm-style settings group: an optional whisper of a title above a frosted
+/// card of rows, with hairline separators inset past the icon column so the
+/// lines read as part of the text block, not the card.
+struct SettingsSection<Content: View>: View {
+  var title: String? = nil
+  @ViewBuilder var content: Content
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      if let title {
+        Text(title)
+          .font(DeepType.micro)
+          .foregroundStyle(.driftGrey)
+          .padding(.horizontal, 8)
+      }
+      Group(subviews: content) { rows in
+        VStack(spacing: 0) {
+          ForEach(rows.indices, id: \.self) { index in
+            rows[index]
+            if index < rows.count - 1 {
+              separator
+            }
+          }
+        }
+      }
+      .frostedCard(cornerRadius: .card)
+    }
+  }
+
+  /// Inset matches a row's leading padding + icon column + gap, so separators
+  /// align with the titles.
+  private var separator: some View {
+    Rectangle()
+      .fill(Color.deepPlum.opacity(0.08))
+      .frame(height: 1)
+      .padding(.leading, 56)
+  }
+}
+
+// MARK: - Row
+
+/// One settings line: SF Symbol in a fixed column, a title, and an optional
+/// trailing accessory. With an action it becomes a soft-press button; without
+/// one it renders as a static (informational) row.
+struct SettingsRow: View {
+  enum Accessory: Equatable {
+    case none
+    case chevron
+    case value(String)
+    case progress
+  }
+
+  let icon: String
+  let title: String
+  var accessory: Accessory = .none
+  var role: ButtonRole? = nil
+  var action: (() -> Void)? = nil
+
+  var body: some View {
+    if let action {
+      Button(role: role, action: action) { label }
+        .buttonStyle(.softPress)
+    } else {
+      label
+    }
+  }
+
+  private var label: some View {
+    HStack(spacing: 14) {
+      Image(systemName: icon)
+        .font(DeepType.body)
+        .foregroundStyle(.deepPlum.opacity(0.7))
+        .frame(width: 24, height: 24)
+      Text(title)
+        .font(DeepType.body)
+        .foregroundStyle(.deepPlum)
+        .multilineTextAlignment(.leading)
+      Spacer(minLength: 12)
+      accessoryView
+    }
+    .padding(.vertical, 16)
+    .padding(.horizontal, 18)
+    .contentShape(Rectangle())
+  }
+
+  @ViewBuilder
+  private var accessoryView: some View {
+    switch accessory {
+    case .none:
+      EmptyView()
+    case .chevron:
+      Image(systemName: "chevron.right")
+        .font(DeepType.micro)
+        .foregroundStyle(.driftGrey)
+    case .value(let text):
+      Text(text)
+        .font(DeepType.caption)
+        .foregroundStyle(.driftGrey)
+    case .progress:
+      ProgressView()
+        .controlSize(.small)
+        .tint(.driftGrey)
+    }
+  }
+}
+
+// MARK: - Previews
+
+#Preview("Settings section") {
+  ZStack {
+    AtmosphereBackground()
+    VStack(spacing: .rhythm) {
+      SettingsSection(title: "Membership") {
+        SettingsRow(icon: "sparkles", title: "Deep Pro", accessory: .value("Yearly"))
+        SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {}
+        SettingsRow(icon: "arrow.clockwise", title: "Restore purchases", accessory: .progress) {}
+      }
+      SettingsSection(title: "Account") {
+        SettingsRow(icon: "rectangle.portrait.and.arrow.right", title: "Log out", role: .destructive) {}
+        SettingsRow(icon: "trash", title: "Delete account", role: .destructive) {}
+      }
+    }
+    .padding(.horizontal, .edge)
+  }
+}

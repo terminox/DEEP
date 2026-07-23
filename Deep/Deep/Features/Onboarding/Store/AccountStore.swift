@@ -20,6 +20,10 @@ protocol AccountStore: AnyObject, Observable {
   func signUp(name: String, email: String, password: String) async throws
   func logIn(email: String, password: String) async throws
   func logOut() async
+  /// Permanently delete the account server-side, then clear local session state.
+  /// Throws without clearing anything if the backend call fails, so the user
+  /// stays signed in and can retry.
+  func deleteAccount() async throws
 }
 
 extension AccountStore {
@@ -49,6 +53,10 @@ final class PreviewAccountStore: AccountStore {
   }
 
   func logOut() async {
+    account = nil
+  }
+
+  func deleteAccount() async throws {
     account = nil
   }
 }

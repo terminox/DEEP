@@ -9,6 +9,7 @@ import SwiftUI
 struct RootTabView: UIViewControllerRepresentable {
   let onboardingStore: any OnboardingProgressStore
   let accountStore: any AccountStore
+  let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
 
@@ -16,6 +17,7 @@ struct RootTabView: UIViewControllerRepresentable {
     MainTabController(
       onboardingStore: onboardingStore,
       accountStore: accountStore,
+      subscriptionStore: subscriptionStore,
       soundRepository: soundRepository,
       soundPlayer: soundPlayer
     )
@@ -28,6 +30,7 @@ struct RootTabView: UIViewControllerRepresentable {
   RootTabView(
     onboardingStore: OnboardingProgressDefaultsStore(),
     accountStore: PreviewAccountStore(),
+    subscriptionStore: PreviewSubscriptionStore(),
     soundRepository: FixtureSoundContentRepository(),
     soundPlayer: SoundPlayer()
   )
