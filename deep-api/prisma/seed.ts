@@ -3,16 +3,24 @@
 //  - Onboarding config: 2 quiz questions + 4 mind trees (from the iOS fixtures)
 //  - A couple of multi-language lyrics to exercise the lyrics feature
 // Idempotent: wipes content tables and re-inserts. Users/sessions are untouched.
+import fs from "node:fs";
+import path from "node:path";
 import { PrismaClient, type TrackKind } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const img = (id: string) => `https://images.unsplash.com/photo-${id}?w=600&q=80`;
-const m = (min: number, sec: number) => min * 60 + sec;
+
+// The three real audio files shipped in media/audio/. Every track plays one of
+// these, assigned round-robin; durationSeconds mirrors the file's real length.
+const REAL_TRACKS = [
+  { file: "/media/audio/global-pause.mp3", durationSeconds: 132 },
+  { file: "/media/audio/inner-light.mp3", durationSeconds: 120 },
+  { file: "/media/audio/ivory.mp3", durationSeconds: 183 },
+] as const;
 
 interface SeedTrack {
   title: string;
-  duration: number;
 }
 interface SeedCollection {
   title: string;
@@ -26,7 +34,6 @@ interface SeedCategory {
   slug: string;
   title: string;
   kind: TrackKind;
-  audio: string; // relative media path shared by the category's tracks
   collections: SeedCollection[];
 }
 
@@ -35,7 +42,6 @@ const CATEGORIES: SeedCategory[] = [
     slug: "calm",
     title: "Calm",
     kind: "INSTRUMENTAL",
-    audio: "/media/audio/calm.mp3",
     collections: [
       {
         title: "Northern Calm",
@@ -43,10 +49,10 @@ const CATEGORIES: SeedCategory[] = [
         palette: "aurora",
         image: img("1483347756197-71ef80e95f73"),
         tracks: [
-          { title: "Aurora Drift", duration: m(9, 16) },
-          { title: "Polar Stillness", duration: m(7, 48) },
-          { title: "Open Sky", duration: m(6, 30) },
-          { title: "Far Horizon", duration: m(8, 2) },
+          { title: "Aurora Drift" },
+          { title: "Polar Stillness" },
+          { title: "Open Sky" },
+          { title: "Far Horizon" },
         ],
       },
       {
@@ -55,10 +61,10 @@ const CATEGORIES: SeedCategory[] = [
         palette: "bloom",
         image: img("1457089328109-e5d9bd499191"),
         tracks: [
-          { title: "First Blossom", duration: m(5, 50) },
-          { title: "Soft Unfolding", duration: m(7, 14) },
-          { title: "Drifting Petals", duration: m(6, 22) },
-          { title: "Resting Garden", duration: m(9, 40) },
+          { title: "First Blossom" },
+          { title: "Soft Unfolding" },
+          { title: "Drifting Petals" },
+          { title: "Resting Garden" },
         ],
       },
       {
@@ -67,9 +73,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "mist",
         image: img("1441974231531-c6227db76b6e"),
         tracks: [
-          { title: "Under the Canopy", duration: m(7, 26) },
-          { title: "Moss and Shade", duration: m(6, 54) },
-          { title: "Leaf Light", duration: m(8, 12) },
+          { title: "Under the Canopy" },
+          { title: "Moss and Shade" },
+          { title: "Leaf Light" },
         ],
       },
       {
@@ -78,10 +84,10 @@ const CATEGORIES: SeedCategory[] = [
         palette: "aurora",
         image: img("1469474968028-56623f02e42e"),
         tracks: [
-          { title: "High Meadow", duration: m(6, 8) },
-          { title: "Ridge Line", duration: m(7, 34) },
-          { title: "Snowmelt", duration: m(5, 46) },
-          { title: "Summit Stillness", duration: m(8, 50) },
+          { title: "High Meadow" },
+          { title: "Ridge Line" },
+          { title: "Snowmelt" },
+          { title: "Summit Stillness" },
         ],
       },
     ],
@@ -90,7 +96,6 @@ const CATEGORIES: SeedCategory[] = [
     slug: "morning",
     title: "Morning",
     kind: "INSTRUMENTAL",
-    audio: "/media/audio/morning.mp3",
     collections: [
       {
         title: "Morning Mist",
@@ -98,9 +103,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "mist",
         image: img("1470071459604-3b5ec3a7fe05"),
         tracks: [
-          { title: "First Light", duration: m(5, 12) },
-          { title: "Dew", duration: m(6, 58) },
-          { title: "Slow Waking", duration: m(8, 24) },
+          { title: "First Light" },
+          { title: "Dew" },
+          { title: "Slow Waking" },
         ],
       },
       {
@@ -109,9 +114,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "dawn",
         image: img("1470252649378-9c29740c9fa8"),
         tracks: [
-          { title: "Horizon Glow", duration: m(6, 18) },
-          { title: "Waking Fields", duration: m(7, 42) },
-          { title: "Gold Through Mist", duration: m(5, 36) },
+          { title: "Horizon Glow" },
+          { title: "Waking Fields" },
+          { title: "Gold Through Mist" },
         ],
       },
       {
@@ -120,10 +125,10 @@ const CATEGORIES: SeedCategory[] = [
         palette: "ember",
         image: img("1472214103451-9374bd1c798e"),
         tracks: [
-          { title: "Harvest Hush", duration: m(7, 8) },
-          { title: "Wind in the Wheat", duration: m(6, 46) },
-          { title: "Late Morning", duration: m(8, 20) },
-          { title: "Open Path", duration: m(5, 58) },
+          { title: "Harvest Hush" },
+          { title: "Wind in the Wheat" },
+          { title: "Late Morning" },
+          { title: "Open Path" },
         ],
       },
       {
@@ -132,9 +137,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "dawn",
         image: img("1475924156734-496f6cac6ec1"),
         tracks: [
-          { title: "Pale Tide", duration: m(6, 32) },
-          { title: "Early Gulls", duration: m(5, 44) },
-          { title: "Salt and Light", duration: m(7, 56) },
+          { title: "Pale Tide" },
+          { title: "Early Gulls" },
+          { title: "Salt and Light" },
         ],
       },
     ],
@@ -143,7 +148,6 @@ const CATEGORIES: SeedCategory[] = [
     slug: "sleep",
     title: "Sleep",
     kind: "INSTRUMENTAL",
-    audio: "/media/audio/sleep.mp3",
     collections: [
       {
         title: "Ocean Depths",
@@ -151,10 +155,10 @@ const CATEGORIES: SeedCategory[] = [
         palette: "tide",
         image: img("1505144808419-1957a94ca61e"),
         tracks: [
-          { title: "Drifting Tide", duration: m(6, 12) },
-          { title: "Beneath the Surface", duration: m(8, 40) },
-          { title: "Moonlit Current", duration: m(5, 28) },
-          { title: "Still Water", duration: m(9, 4) },
+          { title: "Drifting Tide" },
+          { title: "Beneath the Surface" },
+          { title: "Moonlit Current" },
+          { title: "Still Water" },
         ],
       },
       {
@@ -163,9 +167,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "dusk",
         image: img("1500530855697-b586d89ba3ee"),
         tracks: [
-          { title: "Last Warmth", duration: m(7, 2) },
-          { title: "Fading Gold", duration: m(6, 36) },
-          { title: "Quiet Sky", duration: m(8, 18) },
+          { title: "Last Warmth" },
+          { title: "Fading Gold" },
+          { title: "Quiet Sky" },
         ],
       },
       {
@@ -174,9 +178,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "ember",
         image: img("1518495973542-4542c06a5843"),
         tracks: [
-          { title: "Low Embers", duration: m(8, 6) },
-          { title: "Candle Hour", duration: m(6, 44) },
-          { title: "Held Warmth", duration: m(7, 30) },
+          { title: "Low Embers" },
+          { title: "Candle Hour" },
+          { title: "Held Warmth" },
         ],
       },
       {
@@ -186,10 +190,10 @@ const CATEGORIES: SeedCategory[] = [
         image: img("1419242902214-272b3f66ee7a"),
         premium: true,
         tracks: [
-          { title: "Falling Slow", duration: m(8, 34) },
-          { title: "Midnight Meadow", duration: m(7, 12) },
-          { title: "Deep Dark", duration: m(9, 48) },
-          { title: "Before Dreams", duration: m(6, 26) },
+          { title: "Falling Slow" },
+          { title: "Midnight Meadow" },
+          { title: "Deep Dark" },
+          { title: "Before Dreams" },
         ],
       },
     ],
@@ -198,7 +202,6 @@ const CATEGORIES: SeedCategory[] = [
     slug: "deep-teacher",
     title: "Deep Teacher",
     kind: "GUIDED",
-    audio: "/media/audio/teacher.mp3",
     collections: [
       {
         title: "Roots of Attention",
@@ -206,10 +209,10 @@ const CATEGORIES: SeedCategory[] = [
         palette: "aurora",
         image: img("1447752875215-b2761acb3c5d"),
         tracks: [
-          { title: "Arriving", duration: m(5, 20) },
-          { title: "Softening the Shoulders", duration: m(6, 48) },
-          { title: "Naming the Breath", duration: m(7, 16) },
-          { title: "Staying a While", duration: m(8, 4) },
+          { title: "Arriving" },
+          { title: "Softening the Shoulders" },
+          { title: "Naming the Breath" },
+          { title: "Staying a While" },
         ],
       },
       {
@@ -218,9 +221,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "dusk",
         image: img("1476673160081-cf065607f449"),
         tracks: [
-          { title: "Setting Down the Day", duration: m(6, 30) },
-          { title: "Unclenching", duration: m(5, 52) },
-          { title: "The Long Exhale", duration: m(7, 38) },
+          { title: "Setting Down the Day" },
+          { title: "Unclenching" },
+          { title: "The Long Exhale" },
         ],
       },
       {
@@ -229,9 +232,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "mist",
         image: img("1502082553048-f009c37129b9"),
         tracks: [
-          { title: "Crown and Brow", duration: m(6, 14) },
-          { title: "Heart Space", duration: m(7, 26) },
-          { title: "Grounding the Feet", duration: m(5, 40) },
+          { title: "Crown and Brow" },
+          { title: "Heart Space" },
+          { title: "Grounding the Feet" },
         ],
       },
       {
@@ -241,9 +244,9 @@ const CATEGORIES: SeedCategory[] = [
         image: img("1519681393784-d120267933ba"),
         premium: true,
         tracks: [
-          { title: "What Softened Today", duration: m(6, 2) },
-          { title: "Gratitude Hour", duration: m(7, 44) },
-          { title: "Closing the Day", duration: m(8, 28) },
+          { title: "What Softened Today" },
+          { title: "Gratitude Hour" },
+          { title: "Closing the Day" },
         ],
       },
     ],
@@ -252,7 +255,6 @@ const CATEGORIES: SeedCategory[] = [
     slug: "deep-kids",
     title: "Deep Kids",
     kind: "INSTRUMENTAL",
-    audio: "/media/audio/kids.mp3",
     collections: [
       {
         title: "Sleepy Stars",
@@ -260,9 +262,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "tide",
         image: img("1462331940025-496dfbfc7564"),
         tracks: [
-          { title: "Counting Starlight", duration: m(4, 36) },
-          { title: "The Moon's Blanket", duration: m(5, 22) },
-          { title: "Goodnight Sky", duration: m(6, 10) },
+          { title: "Counting Starlight" },
+          { title: "The Moon's Blanket" },
+          { title: "Goodnight Sky" },
         ],
       },
       {
@@ -271,9 +273,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "dawn",
         image: img("1507525428034-b723cf961d3e"),
         tracks: [
-          { title: "The Smallest Wave", duration: m(5, 8) },
-          { title: "Seashell Whispers", duration: m(4, 54) },
-          { title: "Sandcastle Dreams", duration: m(6, 32) },
+          { title: "The Smallest Wave" },
+          { title: "Seashell Whispers" },
+          { title: "Sandcastle Dreams" },
         ],
       },
       {
@@ -282,9 +284,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "bloom",
         image: img("1465146344425-f00d5f5c8f07"),
         tracks: [
-          { title: "Buttercup Waves Hello", duration: m(4, 42) },
-          { title: "The Bumblebee Parade", duration: m(5, 16) },
-          { title: "Petal Naps", duration: m(6, 4) },
+          { title: "Buttercup Waves Hello" },
+          { title: "The Bumblebee Parade" },
+          { title: "Petal Naps" },
         ],
       },
       {
@@ -293,9 +295,9 @@ const CATEGORIES: SeedCategory[] = [
         palette: "tide",
         image: img("1518837695005-2083093ee35b"),
         tracks: [
-          { title: "Splash and Glide", duration: m(5, 30) },
-          { title: "The Whale's Hum", duration: m(6, 46) },
-          { title: "Drifting to Shore", duration: m(4, 58) },
+          { title: "Splash and Glide" },
+          { title: "The Whale's Hum" },
+          { title: "Drifting to Shore" },
         ],
       },
     ],
@@ -361,6 +363,14 @@ const MIND_TREES = [
 ];
 
 async function main() {
+  const mediaAudioDir = path.resolve("media/audio");
+  for (const t of REAL_TRACKS) {
+    const file = path.join(mediaAudioDir, path.basename(t.file));
+    if (!fs.existsSync(file)) {
+      throw new Error(`Missing real audio file: ${file} — copy the reference mp3s into media/audio/ first.`);
+    }
+  }
+
   // Wipe content (cascades to collections/tracks/lyrics + options).
   await prisma.trackLyrics.deleteMany();
   await prisma.soundTrack.deleteMany();
@@ -394,6 +404,7 @@ async function main() {
 
   // Deep Sound
   let firstGuidedTrackId: string | null = null;
+  let audioCursor = 0;
   for (const [ci, cat] of CATEGORIES.entries()) {
     const category = await prisma.soundCategory.create({
       data: { slug: cat.slug, title: cat.title, displayOrder: ci },
@@ -411,13 +422,14 @@ async function main() {
         },
       });
       for (const [ti, tr] of col.tracks.entries()) {
+        const real = REAL_TRACKS[audioCursor++ % REAL_TRACKS.length];
         const track = await prisma.soundTrack.create({
           data: {
             collectionId: collection.id,
             title: tr.title,
-            durationSeconds: tr.duration,
+            durationSeconds: real.durationSeconds,
             kind: cat.kind,
-            audioPath: cat.audio,
+            audioPath: real.file,
             isPremium: col.premium ?? false,
             displayOrder: ti,
           },

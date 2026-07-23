@@ -14,7 +14,6 @@
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force",
     "db:seed": "tsx prisma/seed.ts",
-    "gen:audio": "bash scripts/gen-audio.sh",
     "typecheck": "tsc --noEmit"
   },
   "prisma": {
