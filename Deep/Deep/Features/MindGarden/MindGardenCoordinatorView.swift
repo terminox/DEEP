@@ -8,15 +8,13 @@ import SwiftUI
 /// live in the leaf screen (`MindGardenHomeView`) so they render in front of the
 /// `NavigationStack` rather than being hidden behind it.
 struct MindGardenCoordinatorView: View {
-  @State private var state: GardenState
-
-  init(state: GardenState = .sample) {
-    _state = State(initialValue: state)
-  }
+  @Environment(\.practiceStore) private var practice
 
   var body: some View {
     NavigationStack {
-      MindGardenHomeView(state: state)
+      // Derived in body, so reading the journal's observable aggregates keeps
+      // the garden live: a session finished anywhere regrows this screen.
+      MindGardenHomeView(state: GardenState(practice: practice))
         .toolbar(.hidden, for: .navigationBar)
     }
     .preferredColorScheme(.light)
@@ -25,8 +23,10 @@ struct MindGardenCoordinatorView: View {
 
 #Preview("Mind Garden") {
   MindGardenCoordinatorView()
+    .environment(\.practiceStore, MockPracticeStore())
 }
 
 #Preview("Mind Garden — Fresh") {
-  MindGardenCoordinatorView(state: .fresh)
+  MindGardenCoordinatorView()
+    .environment(\.practiceStore, MockPracticeStore.fresh)
 }

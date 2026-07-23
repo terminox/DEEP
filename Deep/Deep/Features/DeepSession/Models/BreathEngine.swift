@@ -45,7 +45,19 @@ final class BreathEngine {
     advanceTask = nil
   }
 
-  private func pause() {
+  /// Seconds left in the current phase — live while the clock runs, frozen
+  /// while paused. `nil` before `begin()` and once finished.
+  var remainingInPhase: TimeInterval? {
+    pausedRemaining ?? phaseEnds.map { max(0, $0.timeIntervalSinceNow) }
+  }
+
+  /// The full length of the phase we're currently in.
+  var currentPhaseDuration: TimeInterval { duration(of: phase) }
+
+  /// Internal (not just `togglePaused`'s half) so the coordinator can settle
+  /// the practice when the app leaves the foreground.
+  func pause() {
+    guard phase != .finished, !isPaused else { return }
     isPaused = true
     pausedRemaining = phaseEnds.map { max(0, $0.timeIntervalSinceNow) }
     cancel()

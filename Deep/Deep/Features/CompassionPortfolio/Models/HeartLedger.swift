@@ -49,6 +49,14 @@ final class HeartLedger {
     categories.first { $0.id == id }
   }
 
+  /// Credits hearts earned through practice — a completed Deep Session calls
+  /// this. Animated so the balance settles softly wherever it's shown.
+  func earn(_ hearts: Int = 1) {
+    withAnimation(.exhale) {
+      balance += hearts
+    }
+  }
+
   /// Send a single heart to a cause — and, when given, the specific project the
   /// user tapped. No-op once the balance reaches zero. Animated so the balance
   /// and pooled totals settle together.

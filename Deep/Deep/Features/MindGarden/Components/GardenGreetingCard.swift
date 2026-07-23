@@ -105,7 +105,7 @@ struct GardenGreetingCard: View {
           .font(DeepType.counter)
           .foregroundStyle(.deepPlum)
       }
-      Text("Best yet — keep it alight")
+      Text(state.streakDays > 0 ? "Best yet — keep it alight" : "Begin whenever you’re ready")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey.opacity(0.85))
     }

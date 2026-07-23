@@ -19,6 +19,12 @@ final class MainTabController: UITabBarController {
   /// One player shared across the tabs, so a sound started in Global Pause and
   /// a sound started in Sounds drive the same bottom accessory and Now Playing.
   private let sharedPlayer: any SoundPlaying
+
+  /// The shared practice journal and heart ledger, injected into every hosted
+  /// tab: the Deep Session flow presents from inside any tab's tree and must
+  /// credit the same journal/ledger the Garden and Portfolio read.
+  private let practiceStore: any PracticeStore
+  private let heartLedger: HeartLedger
   /// Hosts the mini player inside the tab bar's bottom accessory. Created on
   /// first playback and kept as a child VC for the controller's lifetime.
   private var accessoryHost: PlayerAccessoryHostingController?
@@ -46,13 +52,17 @@ final class MainTabController: UITabBarController {
     accountStore: any AccountStore,
     subscriptionStore: any SubscriptionStore,
     soundRepository: any SoundContentRepository,
-    soundPlayer: any SoundPlaying
+    soundPlayer: any SoundPlaying,
+    practiceStore: any PracticeStore,
+    heartLedger: HeartLedger
   ) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
     self.subscriptionStore = subscriptionStore
     self.soundRepository = soundRepository
     self.sharedPlayer = soundPlayer
+    self.practiceStore = practiceStore
+    self.heartLedger = heartLedger
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -82,7 +92,9 @@ final class MainTabController: UITabBarController {
     // hosting wrapper.
     let globalPause = GlobalPauseCoordinatorController(
       soundPlayer: sharedPlayer,
-      soundRepository: soundRepository
+      soundRepository: soundRepository,
+      practiceStore: practiceStore,
+      heartLedger: heartLedger
     )
     globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
 
@@ -209,13 +221,15 @@ final class MainTabController: UITabBarController {
     title: String,
     systemImage: String
   ) -> UIViewController {
-    // Every tab gets the shared player: the Deep Session flow presents itself
-    // as a full-screen cover from inside a tab's tree and pauses playback on
-    // entry — without this it would reach the environment's throwaway default
-    // player and silence nobody.
+    // Every tab gets the shared player, journal, and ledger: the Deep Session
+    // flow presents itself as a full-screen cover from inside a tab's tree,
+    // pauses playback on entry, and records its completion — without these it
+    // would reach the environment's throwaway defaults and credit nobody.
     let rootView = view
       .environment(\.soundPlayer, sharedPlayer)
       .environment(\.soundContentRepository, soundRepository)
+      .environment(\.practiceStore, practiceStore)
+      .environment(\.heartLedger, heartLedger)
     let controller = UIHostingController(rootView: rootView)
     controller.view.backgroundColor = .clear
     controller.tabBarItem = tabItem(title: title, systemImage: systemImage)

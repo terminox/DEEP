@@ -15,6 +15,7 @@ import SwiftUI
 struct AppRootView: View {
   @State private var deps = AppDependencies()
   @State private var didRestore = false
+  @Environment(\.scenePhase) private var scenePhase
 
   private enum Phase: Equatable { case restoring, flow, main }
 
@@ -39,7 +40,9 @@ struct AppRootView: View {
           accountStore: deps.accountStore,
           subscriptionStore: deps.subscriptionStore,
           soundRepository: deps.soundRepository,
-          soundPlayer: deps.soundPlayer
+          soundPlayer: deps.soundPlayer,
+          practiceStore: deps.practiceStore,
+          heartLedger: deps.heartLedger
         )
         .ignoresSafeArea()
         .transition(.opacity)
@@ -54,18 +57,28 @@ struct AppRootView: View {
     .environment(\.onboardingRemote, deps.onboardingRemote)
     .environment(\.subscriptionStore, deps.subscriptionStore)
     .environment(\.soundContentRepository, deps.soundRepository)
+    .environment(\.practiceStore, deps.practiceStore)
+    .environment(\.heartLedger, deps.heartLedger)
     .task { await bootstrap() }
+    // Returning to the foreground retries the practice journal's offline
+    // queue and picks up sessions recorded on other installs.
+    .onChange(of: scenePhase) { _, phase in
+      guard phase == .active, didRestore, deps.accountStore.isSignedIn else { return }
+      Task { await deps.practiceStore.refresh() }
+    }
   }
 
   private func bootstrap() async {
     await deps.accountStore.restore()
-    if deps.accountStore.isSignedIn,
-       let profile = try? await deps.onboardingRemote.fetchProfile() {
-      deps.onboardingStore.hydrate(
-        quizAnswers: profile.quizAnswers,
-        mindTree: profile.mindTree,
-        completed: profile.completed
-      )
+    if deps.accountStore.isSignedIn {
+      if let profile = try? await deps.onboardingRemote.fetchProfile() {
+        deps.onboardingStore.hydrate(
+          quizAnswers: profile.quizAnswers,
+          mindTree: profile.mindTree,
+          completed: profile.completed
+        )
+      }
+      await deps.practiceStore.refresh()
     }
     withAnimation(.bloom) { didRestore = true }
   }

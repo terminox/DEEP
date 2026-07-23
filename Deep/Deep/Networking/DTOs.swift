@@ -167,3 +167,24 @@ struct LyricsDTO: Decodable {
 struct LyricsResponseDTO: Decodable {
   let lyrics: [LyricsDTO]
 }
+
+// MARK: - Practice
+
+struct PracticeSessionDTO: Codable {
+  let id: String
+  let title: String
+  let durationSeconds: Int
+  let completedAt: String
+}
+
+struct PracticeSyncRequestDTO: Encodable {
+  let sessions: [PracticeSessionDTO]
+}
+
+struct PracticeSyncResponseDTO: Decodable {
+  let synced: [String]
+}
+
+struct PracticeSessionsResponseDTO: Decodable {
+  let sessions: [PracticeSessionDTO]
+}

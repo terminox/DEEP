@@ -1,20 +1,19 @@
 import SwiftUI
 
 /// Coordinator view for the Compassion portfolio — the business-specific
-/// composition root. It owns navigation (portfolio → cause detail) and the
-/// shared `HeartLedger`, and nothing else.
+/// composition root. It owns navigation (portfolio → cause detail), and
+/// nothing else.
+///
+/// The `HeartLedger` now lives app-wide (injected by the shell alongside
+/// `\.practiceStore`), so hearts earned in a Deep Session anywhere land in the
+/// same balance this tab shows.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
 /// screen-level styling such as `AtmosphereBackground` lives in the leaf screens
 /// (`CompassionPortfolioHomeView`, `CompassionCategoryView`) so it actually
 /// renders behind their content rather than behind the `NavigationStack`.
 struct CompassionPortfolioCoordinatorView: View {
-  @State private var ledger: HeartLedger
   @State private var path = NavigationPath()
-
-  init(ledger: HeartLedger = .sample) {
-    _ledger = State(initialValue: ledger)
-  }
 
   var body: some View {
     NavigationStack(path: $path) {
@@ -24,7 +23,6 @@ struct CompassionPortfolioCoordinatorView: View {
         }
     }
     .environment(\.openCategory, { category in path.append(category) })
-    .environment(\.heartLedger, ledger)
     .preferredColorScheme(.light)
   }
 }
@@ -39,9 +37,11 @@ extension EnvironmentValues {
 }
 
 #Preview("Compassion — Portfolio") {
-  CompassionPortfolioCoordinatorView(ledger: .sample)
+  CompassionPortfolioCoordinatorView()
+    .environment(\.heartLedger, .sample)
 }
 
 #Preview("Compassion — No hearts left") {
-  CompassionPortfolioCoordinatorView(ledger: .spent)
+  CompassionPortfolioCoordinatorView()
+    .environment(\.heartLedger, .spent)
 }

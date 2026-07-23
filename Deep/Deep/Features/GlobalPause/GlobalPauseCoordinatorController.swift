@@ -13,6 +13,10 @@ import UIKit
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
+  /// Threaded through for the home feed's Deep Session doorway — a session
+  /// launched from this tab must credit the shared journal and ledger.
+  private let practiceStore: any PracticeStore
+  private let heartLedger: HeartLedger
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
 
@@ -28,9 +32,16 @@ final class GlobalPauseCoordinatorController: UIViewController {
     card: { [weak self] in self?.card }
   )
 
-  init(soundPlayer: any SoundPlaying, soundRepository: any SoundContentRepository) {
+  init(
+    soundPlayer: any SoundPlaying,
+    soundRepository: any SoundContentRepository,
+    practiceStore: any PracticeStore,
+    heartLedger: HeartLedger
+  ) {
     self.player = soundPlayer
     self.soundRepository = soundRepository
+    self.practiceStore = practiceStore
+    self.heartLedger = heartLedger
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -77,6 +88,8 @@ final class GlobalPauseCoordinatorController: UIViewController {
       }
       .environment(\.openGlobalPause) { [weak self] in self?.presentLobby() }
       .environment(\.soundPlayer, player)
+      .environment(\.practiceStore, practiceStore)
+      .environment(\.heartLedger, heartLedger)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
     host.view.backgroundColor = .clear

@@ -1,7 +1,8 @@
 // Deep backend schema.
-// Covers three features: auth (users + rotating refresh sessions),
-// onboarding (server-driven config + per-user profile), and Deep Sound
-// (categories -> collections -> tracks -> multi-language lyrics).
+// Covers four features: auth (users + rotating refresh sessions),
+// onboarding (server-driven config + per-user profile), Deep Sound
+// (categories -> collections -> tracks -> multi-language lyrics), and
+// practice-session logging (completed guided-breathing sessions).
 
 generator client {
   provider = "prisma-client-js"
@@ -31,8 +32,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions   AuthSession[]
-  onboarding OnboardingProfile?
+  sessions         AuthSession[]
+  onboarding       OnboardingProfile?
+  practiceSessions PracticeSession[]
 
   @@map("users")
 }
@@ -177,4 +179,22 @@ model TrackLyrics {
   @@unique([trackId, languageCode])
   @@index([trackId])
   @@map("track_lyrics")
+}
+
+// ---- Practice-session logging ----
+
+// One completed guided-breathing session, logged as-is; the client owns
+// aggregate math (today/streaks) in the user's local calendar.
+model PracticeSession {
+  id              String   @id            // client-generated UUID → idempotent sync
+  userId          String
+  title           String
+  durationSeconds Int
+  completedAt     DateTime
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+  @@map("practice_sessions")
 }
