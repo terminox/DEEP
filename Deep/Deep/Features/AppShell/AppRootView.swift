@@ -37,6 +37,7 @@ struct AppRootView: View {
         RootTabView(
           onboardingStore: deps.onboardingStore,
           accountStore: deps.accountStore,
+          subscriptionStore: deps.subscriptionStore,
           soundRepository: deps.soundRepository,
           soundPlayer: deps.soundPlayer
         )

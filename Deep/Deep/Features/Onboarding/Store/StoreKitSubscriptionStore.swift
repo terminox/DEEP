@@ -54,6 +54,11 @@ final class StoreKitSubscriptionStore: SubscriptionStore {
       // Offline or misconfigured store — leave plans empty; the paywall shows a
       // gentle fallback and "Maybe later" still works.
       plans = []
+      // With the store unreachable `.unknown` would never resolve, leaving
+      // status UI on "Checking…" forever. No cached entitlement + no store =
+      // treat as not subscribed; a real entitlement corrects it on the next
+      // successful load or transaction update.
+      if status == .unknown { status = .none }
     }
   }
 
@@ -74,7 +79,14 @@ final class StoreKitSubscriptionStore: SubscriptionStore {
   }
 
   func restore() async throws {
-    try await AppStore.sync()
+    do {
+      try await AppStore.sync()
+    } catch StoreKitError.userCancelled {
+      // Dismissing the App Store sign-in prompt is neither success nor
+      // failure — surface it as the SDK-agnostic cancellation so callers can
+      // stand down quietly without importing StoreKit.
+      throw CancellationError()
+    }
     await refreshStatus()
   }
 

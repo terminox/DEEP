@@ -9,6 +9,7 @@ final class MainTabController: UITabBarController {
   /// that drive the app's onboarding gate.
   private let onboardingStore: any OnboardingProgressStore
   private let accountStore: any AccountStore
+  private let subscriptionStore: any SubscriptionStore
 
   /// Backend-backed Deep Sound content, injected into every hosted tab (and the
   /// Now Playing lyrics sheet) since the SwiftUI environment can't cross the
@@ -43,11 +44,13 @@ final class MainTabController: UITabBarController {
   init(
     onboardingStore: any OnboardingProgressStore,
     accountStore: any AccountStore,
+    subscriptionStore: any SubscriptionStore,
     soundRepository: any SoundContentRepository,
     soundPlayer: any SoundPlaying
   ) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
+    self.subscriptionStore = subscriptionStore
     self.soundRepository = soundRepository
     self.sharedPlayer = soundPlayer
     super.init(nibName: nil, bundle: nil)
@@ -106,7 +109,8 @@ final class MainTabController: UITabBarController {
     let profile = host(
       ProfileView()
         .environment(\.onboardingStore, onboardingStore)
-        .environment(\.accountStore, accountStore),
+        .environment(\.accountStore, accountStore)
+        .environment(\.subscriptionStore, subscriptionStore),
       title: "You",
       systemImage: "person.fill"
     )

@@ -58,6 +58,12 @@ final class APIAccountStore: AccountStore {
     account = nil
   }
 
+  func deleteAccount() async throws {
+    _ = try await client.request("/me", method: "DELETE", as: OKResponseDTO.self)
+    client.tokens.clear()
+    account = nil
+  }
+
   private static func account(from dto: UserDTO) -> Account {
     Account(displayName: dto.displayName, email: dto.email, method: .email, appleUserID: nil)
   }

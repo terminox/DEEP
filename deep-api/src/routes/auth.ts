@@ -71,4 +71,13 @@ export async function authRoutes(app: FastifyInstance) {
     if (!user) throw ApiError.notFound("User not found");
     return { user: serializeUser(user) };
   });
+
+  app.delete("/me", { preHandler: requireAuth }, async (req) => {
+    // AuthSession + OnboardingProfile cascade (see schema.prisma). Idempotent
+    // like logout: a repeat delete of an already-gone user still returns ok.
+    await prisma.user.delete({ where: { id: req.auth!.sub } }).catch((e) => {
+      if (e?.code !== "P2025") throw e;
+    });
+    return { ok: true };
+  });
 }
