@@ -153,7 +153,7 @@ struct ProfileView: View {
 
   private var membershipSection: some View {
     VStack(alignment: .leading, spacing: 8) {
-      SettingsSection {
+      SettingsSection(title: "Membership") {
         SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {
           showManageSubscriptions = true
         }
@@ -203,7 +203,7 @@ struct ProfileView: View {
   // MARK: - Account
 
   private var accountSection: some View {
-    SettingsSection {
+    SettingsSection(title: "Account") {
       SettingsRow(
         icon: "rectangle.portrait.and.arrow.right",
         title: "Log out",
@@ -215,7 +215,8 @@ struct ProfileView: View {
         icon: "trash",
         title: "Delete account",
         accessory: isDeletingAccount ? .progress : .none,
-        role: .destructive
+        role: .destructive,
+        tint: .duskRose
       ) {
         guard !isDeletingAccount else { return }
         showDeleteConfirm = true
