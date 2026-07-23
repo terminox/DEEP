@@ -177,6 +177,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B1 /* Dev.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = DEEP;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -189,6 +190,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B2 /* Staging.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = DEEP;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -201,6 +203,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B3 /* Pilot.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = DEEP;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -213,6 +216,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B4 /* Prod.xcconfig */;
 			buildSettings = {
+				INFOPLIST_KEY_CFBundleDisplayName = DEEP;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
