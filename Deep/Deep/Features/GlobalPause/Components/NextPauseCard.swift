@@ -3,7 +3,10 @@ import SwiftUI
 struct NextPauseCard: View {
   let scheduleLine: String
   let target: Date
-  let rsvpCount: Int
+  /// Nil hides the line — the live backend has no RSVP notion (yet).
+  var rsvpCount: Int?
+  /// See `CountdownView.clockOffset`.
+  var clockOffset: TimeInterval = 0
   @Binding var isNotifyEnabled: Bool
 
   var body: some View {
@@ -20,14 +23,16 @@ struct NextPauseCard: View {
           .multilineTextAlignment(.center)
       }
 
-      CountdownView(target: target)
+      CountdownView(target: target, clockOffset: clockOffset)
 
       VStack(spacing: 10) {
         notifyButton
-        Text("\(rsvpCount.formatted()) people will join")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-          .contentTransition(.numericText())
+        if let rsvpCount {
+          Text("\(rsvpCount.formatted()) people will join")
+            .font(DeepType.caption)
+            .foregroundStyle(.driftGrey)
+            .contentTransition(.numericText())
+        }
       }
     }
     .frame(maxWidth: .infinity)

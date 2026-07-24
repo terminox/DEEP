@@ -2,10 +2,13 @@ import SwiftUI
 
 struct CountdownView: View {
   let target: Date
+  /// Server-minus-device correction (`SyncedClock.serverOffset`), so the
+  /// countdown agrees with the shared event clock, not the device's.
+  var clockOffset: TimeInterval = 0
 
   var body: some View {
     TimelineView(.periodic(from: .now, by: 1)) { context in
-      let parts = remaining(until: target, now: context.date)
+      let parts = remaining(until: target, now: context.date.addingTimeInterval(clockOffset))
       HStack(alignment: .firstTextBaseline, spacing: 4) {
         unit(value: parts.hours, label: "HR")
         separator

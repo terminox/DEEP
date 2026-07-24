@@ -12,6 +12,7 @@ import { onboardingRoutes } from "./routes/onboarding.js";
 import { soundRoutes } from "./routes/sound.js";
 import { pauseRoutes } from "./routes/pause.js";
 import { practiceRoutes } from "./routes/practice.js";
+import { pauseLiveRoutes } from "./routes/pauseLive.js";
 import { adminRoutes } from "./routes/admin.js";
 
 export function buildApp() {
@@ -51,6 +52,7 @@ export function buildApp() {
   app.register(soundRoutes);
   app.register(pauseRoutes);
   app.register(practiceRoutes);
+  app.register(pauseLiveRoutes);
   app.register(adminRoutes);
 
   return app;

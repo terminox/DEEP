@@ -188,3 +188,78 @@ struct PracticeSyncResponseDTO: Decodable {
 struct PracticeSessionsResponseDTO: Decodable {
   let sessions: [PracticeSessionDTO]
 }
+
+// MARK: - Global Pause event
+// Dates travel as ISO-8601 strings and are parsed in the repository mapping,
+// matching the rest of this file (no decoder date strategy is configured).
+
+struct PauseScheduleDTO: Decodable {
+  struct Phase: Decodable {
+    let key: String // lobby | welcome | meditation | feedback
+    let startsAt: String
+    let endsAt: String
+  }
+  struct Intention: Decodable {
+    let key: String
+    let label: String
+  }
+  let serverNow: String
+  let pauseDate: String
+  let timezone: String
+  let phases: [Phase]
+  let lobbyAudioUrl: String?
+  let meditationAudioUrl: String?
+  let meditationDurationSeconds: Int
+  let welcomeMessages: [String]
+  let intentions: [Intention]
+}
+
+struct PeaceMessageDTO: Decodable {
+  let id: String
+  let displayName: String
+  let countryISO: String?
+  let text: String
+  let createdAt: String
+}
+
+struct PauseLiveDTO: Decodable {
+  struct CountryCount: Decodable {
+    let iso: String
+    let count: Int
+  }
+  struct Join: Decodable {
+    let iso: String
+    let at: String
+  }
+  let serverNow: String
+  let phase: String
+  let participantCount: Int
+  let byCountry: [CountryCount]
+  let recentJoins: [Join]
+  let messages: [PeaceMessageDTO]
+}
+
+struct PauseMessagesResponseDTO: Decodable {
+  let serverNow: String
+  let messages: [PeaceMessageDTO]
+}
+
+struct PauseMessagePostResponseDTO: Decodable {
+  let message: PeaceMessageDTO
+  let serverNow: String
+}
+
+struct PauseHeartbeatRequestDTO: Encodable {
+  let presenceId: String
+  let countryISO: String?
+}
+
+struct PeaceMessagePostRequestDTO: Encodable {
+  let text: String
+  let countryISO: String?
+}
+
+struct PauseReflectionRequestDTO: Encodable {
+  let intention: String?
+  let mood: String?
+}

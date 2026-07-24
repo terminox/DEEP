@@ -20,6 +20,46 @@ final class EarthInteraction {
   /// Idle drift base angular speed (radians/sec). Slow — design system mandate.
   var idleDriftSpeed: Float = 0.05
 
+  // MARK: - Spin state (decelerate / hold / resume)
+
+  /// Whether the globe is allowed to drive itself. `.held` from the moment a
+  /// deceleration is *requested* — the gate may still be easing shut, but the
+  /// intent is held, and callers branch on intent (a session phase asking to
+  /// still the globe should read `.held` immediately, not after 5 seconds).
+  enum SpinState { case free, held }
+  private(set) var spinState: SpinState = .free
+
+  /// 0…1 multiplier on self-driven motion (idle drift + post-flick momentum).
+  /// 1 = free spin, 0 = held. Finger drags always pass through — holding
+  /// stills the globe, it doesn't lock it under the user's touch.
+  private var driveGate: Float = 1
+  /// In-flight gate ease. `startTime` stays nil until the first `advance`
+  /// after the request anchors it: the renderer's frame clock is the only
+  /// clock this class may consult (no Date()/CACurrentMediaTime() here), and
+  /// that clock is only observable inside `advance`.
+  private var gateAnimation: (from: Float, to: Float, startTime: TimeInterval?, duration: TimeInterval)?
+
+  /// Eases self-driven motion to a stop and holds it there. While held, idle
+  /// drift never restarts no matter how long the globe sits untouched, and a
+  /// flick's momentum dies with the gate. Idempotent: re-requesting while
+  /// already decelerating or held is a no-op (no retarget glitch).
+  func decelerateToRest(over duration: TimeInterval = 5) {
+    spinState = .held
+    if let anim = gateAnimation, anim.to == 0 { return }
+    if gateAnimation == nil, driveGate == 0 { return }
+    gateAnimation = (from: driveGate, to: 0, startTime: nil, duration: duration)
+  }
+
+  /// Eases the gate back open and returns to free spin (drift + momentum).
+  /// Idempotent, mirroring `decelerateToRest`; retargets from the current
+  /// gate value if called mid-deceleration, so the reversal is seamless.
+  func resumeSpin(over duration: TimeInterval = 3) {
+    spinState = .free
+    if let anim = gateAnimation, anim.to == 1 { return }
+    if gateAnimation == nil, driveGate == 1 { return }
+    gateAnimation = (from: driveGate, to: 1, startTime: nil, duration: duration)
+  }
+
   // MARK: - State
 
   /// Current orientation (sphere-local rotation), composed with axial tilt at render time.
@@ -57,6 +97,15 @@ final class EarthInteraction {
     return tilt * simd_float4x4(orientation)
   }
 
+  /// The composed rotation as last advanced — WITHOUT stepping the simulation.
+  /// Overlays (ripple projection) that sample orientation outside the
+  /// renderer's frame callback must use this: calling `orientationMatrix` from
+  /// a second call site would feed `advance` a second clock and corrupt dt.
+  var currentOrientationMatrix: simd_float4x4 {
+    let tilt = simd_float4x4(rotationAroundZ: EarthRendererConstants.axialTiltRadians)
+    return tilt * simd_float4x4(orientation)
+  }
+
   // MARK: - Per-frame integration
 
   private func advance(time: TimeInterval) {
@@ -68,26 +117,56 @@ final class EarthInteraction {
     }
     lastFrameTime = time
 
-    // Apply momentum.
+    // Ease the drive gate on the frame clock. The first frame after a
+    // decelerate/resume request anchors the animation's start time — the
+    // request itself never reads a clock.
+    if var anim = gateAnimation {
+      let start = anim.startTime ?? time
+      if anim.startTime == nil {
+        anim.startTime = start
+        gateAnimation = anim
+      }
+      if anim.duration <= 0 {
+        driveGate = anim.to
+        gateAnimation = nil
+      } else {
+        let t = Float(min(1, max(0, (time - start) / anim.duration)))
+        // Smoothstep: gentle at both ends, so the hold arrives like a breath
+        // settling rather than a brake.
+        let eased = t * t * (3 - 2 * t)
+        driveGate = anim.from + (anim.to - anim.from) * eased
+        if t >= 1 { gateAnimation = nil }
+      }
+    }
+
+    // Apply momentum, gated.
     if simd_length(momentum) > 0.0001 {
-      let yaw = momentum.x * dt
-      let pitch = momentum.y * dt
+      let yaw = momentum.x * dt * driveGate
+      let pitch = momentum.y * dt * driveGate
       applyAngularDelta(yaw: yaw, pitch: pitch)
       // Frame-rate-independent damping: convert per-frame 0.92 → per-second.
       let perSecondDamping = powf(damping, 60.0)
       momentum *= powf(perSecondDamping, dt)
+      // A closing gate also bleeds the momentum *store* (frame-rate
+      // independent "× gate per 60Hz frame"), so a flick thrown during
+      // deceleration is dead by the time the globe holds — it must not sit
+      // behind the gate waiting to replay on resume.
+      if driveGate < 1, dt > 0 {
+        momentum *= powf(max(driveGate, 0), dt * 60)
+      }
     } else {
       momentum = .zero
     }
 
     // Idle Lissajous drift, integrated incrementally. Prime-ratio periods so
     // the loop never visibly repeats; the pitch term is the derivative of the
-    // original `sin(t · 0.097) · 0.04` sweep.
+    // original `sin(t · 0.097) · 0.04` sweep. Gated: while held the gate is 0,
+    // so drift cannot restart regardless of how long the globe idles.
     let idleFor = time - lastInteractionTime
-    if idleFor > idleAfterSeconds, dt > 0 {
+    if idleFor > idleAfterSeconds, dt > 0, driveGate > 0 {
       let strength = min(1.0, Float(idleFor - idleAfterSeconds) / 1.5)
-      let yaw = idleDriftSpeed * dt * strength
-      let pitch = cos(Float(time) * 0.097) * 0.04 * 0.097 * dt * strength
+      let yaw = idleDriftSpeed * dt * strength * driveGate
+      let pitch = cos(Float(time) * 0.097) * 0.04 * 0.097 * dt * strength * driveGate
       applyAngularDelta(yaw: yaw, pitch: pitch)
     }
   }

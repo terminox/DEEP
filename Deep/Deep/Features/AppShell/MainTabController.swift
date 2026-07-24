@@ -25,6 +25,11 @@ final class MainTabController: UITabBarController {
   /// credit the same journal/ledger the Garden and Portfolio read.
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
+
+  /// The app-long Global Pause engine + backend, handed to the Global Pause
+  /// coordinator (schedule countdown on the feed, phases in the lobby).
+  private let pauseSession: GlobalPauseSession
+  private let pauseRepository: any PauseEventRepository
   /// Hosts the mini player inside the tab bar's bottom accessory. Created on
   /// first playback and kept as a child VC for the controller's lifetime.
   private var accessoryHost: PlayerAccessoryHostingController?
@@ -54,7 +59,9 @@ final class MainTabController: UITabBarController {
     soundRepository: any SoundContentRepository,
     soundPlayer: any SoundPlaying,
     practiceStore: any PracticeStore,
-    heartLedger: HeartLedger
+    heartLedger: HeartLedger,
+    pauseSession: GlobalPauseSession,
+    pauseRepository: any PauseEventRepository
   ) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
@@ -63,6 +70,8 @@ final class MainTabController: UITabBarController {
     self.sharedPlayer = soundPlayer
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
+    self.pauseSession = pauseSession
+    self.pauseRepository = pauseRepository
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -94,7 +103,9 @@ final class MainTabController: UITabBarController {
       soundPlayer: sharedPlayer,
       soundRepository: soundRepository,
       practiceStore: practiceStore,
-      heartLedger: heartLedger
+      heartLedger: heartLedger,
+      pauseSession: pauseSession,
+      pauseRepository: pauseRepository
     )
     globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
 

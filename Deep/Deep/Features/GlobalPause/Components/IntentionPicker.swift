@@ -90,7 +90,11 @@ struct FlowLayout: Layout {
       rowHeight = max(rowHeight, size.height)
     }
     width = max(width, x - spacing)
-    return CGSize(width: max(0, width), height: y + rowHeight)
+    // Report the PROPOSED width (when there is one), not the longest row's:
+    // otherwise placement runs in a narrower box than sizing measured and
+    // wraps one row more than was counted — the extra row then overflows
+    // onto whatever sits below.
+    return CGSize(width: proposal.width ?? max(0, width), height: y + rowHeight)
   }
 
   func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

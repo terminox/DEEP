@@ -19,6 +19,9 @@ final class AppDependencies {
   /// App-lifetime ledger so hearts earned in a session show up in Portfolio.
   /// Still the in-memory sample — nothing persists it yet.
   let heartLedger: HeartLedger
+  let pauseClock: SyncedClock
+  let pauseRepository: any PauseEventRepository
+  let pauseSession: GlobalPauseSession
 
   init() {
     let config = AppConfig.current
@@ -33,5 +36,15 @@ final class AppDependencies {
     self.soundPlayer = StreamingSoundPlayer()
     self.practiceStore = PracticeDefaultsStore(remote: APIPracticeRemote(client: client))
     self.heartLedger = .sample
+
+    // Global Pause: one synced clock + one app-long phase engine, so the home
+    // feed's countdown and the lobby run off the same time authority. The
+    // clock's debug pin is forwarded to the backend on every request (dev only).
+    let clock = SyncedClock()
+    let pauseRepository = APIPauseEventRepository(client: client, clock: clock)
+    self.pauseClock = clock
+    self.pauseRepository = pauseRepository
+    self.pauseSession = GlobalPauseSession(clock: clock, repository: pauseRepository)
+    client.debugNowProvider = { [weak clock] in clock?.debugHeaderValue }
   }
 }

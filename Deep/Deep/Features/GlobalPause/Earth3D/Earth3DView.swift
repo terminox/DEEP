@@ -43,8 +43,10 @@ struct Earth3DView: View {
 
         EarthHaloRipplesOverlay(
           ripples: ripples,
+          // Read-only sample — `orientationMatrix(time:)` would advance the
+          // simulation from a second call site on a second clock.
           orientationProvider: { [interaction] in
-            interaction.orientationMatrix(time: Float(CACurrentMediaTime()))
+            interaction.currentOrientationMatrix
           },
           viewRadius: viewRadius
         )
@@ -117,7 +119,9 @@ struct Earth3DView: View {
     r?.onFrame = { time in
       Task { @MainActor in
         glow.tick(time: time)
-        ripples.tick(time: time)
+        // Ripples live on the CACurrentMediaTime clock (see EarthHaloRipples),
+        // not the renderer's relative one that `time` carries.
+        ripples.tick()
       }
     }
     renderer = r

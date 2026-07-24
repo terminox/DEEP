@@ -8,6 +8,8 @@ import CategoryDetailPage from './pages/CategoryDetail'
 import CollectionsPage from './pages/Collections'
 import CollectionDetailPage from './pages/CollectionDetail'
 import UsersPage from './pages/Users'
+import PauseSettingsPage from './pages/PauseSettings'
+import PeaceMessagesPage from './pages/PeaceMessages'
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/collections/:id" element={<CollectionDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/pause-settings" element={<PauseSettingsPage />} />
+          <Route path="/peace-messages" element={<PeaceMessagesPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

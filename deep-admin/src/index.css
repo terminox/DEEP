@@ -9,6 +9,8 @@
   --border-strong: #ddd2f0;
   --danger: #d9647e;
   --danger-soft: #fbeef1;
+  --success: #4f9d75;
+  --success-soft: #edf7f1;
   --shadow: 0 1px 3px rgba(61, 54, 84, 0.06), 0 8px 24px rgba(61, 54, 84, 0.05);
   --radius: 16px;
   --radius-sm: 10px;
@@ -450,6 +452,16 @@ textarea {
   background: var(--danger-soft);
   color: var(--danger);
   border: 1px solid #f3d3db;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.success-banner {
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid #d3ecdd;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   font-size: 14px;

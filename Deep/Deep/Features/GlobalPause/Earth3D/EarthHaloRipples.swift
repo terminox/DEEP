@@ -13,6 +13,9 @@ final class EarthHaloRipples {
     let id = UUID()
     let countryISO: String
     let position: SIMD3<Float>   // unit vector on sphere (sphere-local)
+    /// On the `CACurrentMediaTime()` clock — the one clock every ripple
+    /// timestamp shares (emit, tick, and the overlay's draw all use it; the
+    /// renderer's relative frame clock must never leak in here).
     let startedAt: TimeInterval
   }
 
@@ -37,8 +40,10 @@ final class EarthHaloRipples {
     lastEmittedAt[iso] = time
   }
 
-  /// Remove expired ripples. Called from the host on each frame.
-  func tick(time: TimeInterval) {
+  /// Remove expired ripples. Called from the host on each frame — pass
+  /// `CACurrentMediaTime()`, not the renderer's relative frame time, so the
+  /// cutoff compares against the same clock `startedAt` was stamped with.
+  func tick(time: TimeInterval = CACurrentMediaTime()) {
     let cutoff = time - lifetime
     active.removeAll { $0.startedAt < cutoff }
   }
@@ -55,7 +60,11 @@ struct EarthHaloRipplesOverlay: View {
 
   var body: some View {
     TimelineView(.animation) { context in
-      let now = context.date.timeIntervalSinceReferenceDate
+      // The timeline only drives invalidation; ages are measured on the
+      // CACurrentMediaTime clock so they line up with `Ripple.startedAt`
+      // (context.date is wall time — a different epoch entirely).
+      let _ = context.date
+      let now = CACurrentMediaTime()
       Canvas { ctx, size in
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let orient = orientationProvider()

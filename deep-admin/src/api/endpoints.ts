@@ -1,5 +1,6 @@
 import { http } from './http'
 import type {
+  AdminPeaceMessage,
   AdminUser,
   Category,
   Collection,
@@ -7,6 +8,11 @@ import type {
   LoginResponse,
   Lyrics,
   Palette,
+  PauseConfig,
+  PauseIntentionOption,
+  PauseStats,
+  PauseWelcomeMessage,
+  PeaceMessageStatus,
   Track,
   TrackKind,
 } from './types'
@@ -214,4 +220,161 @@ export async function deleteLyrics(
   lang: string
 ): Promise<void> {
   await http.delete(`/admin/tracks/${trackId}/lyrics/${lang}`)
+}
+
+// ---- Global Pause ----
+export async function getPauseConfig(): Promise<PauseConfig> {
+  const { data } = await http.get<{ config: PauseConfig }>(
+    '/admin/pause/config'
+  )
+  return data.config
+}
+
+export type PauseConfigInput = {
+  timezone: string
+  lobbyStart: string
+  welcomeStart: string
+  meditationStart: string
+  feedbackStart: string
+  windowEnd: string
+  lobbyAudioPath: string
+  meditationAudioPath: string
+  meditationDurationSeconds: number
+}
+
+export async function updatePauseConfig(
+  body: PauseConfigInput
+): Promise<PauseConfig> {
+  const { data } = await http.put<{ config: PauseConfig }>(
+    '/admin/pause/config',
+    body
+  )
+  return data.config
+}
+
+// ---- Pause welcome messages ----
+export async function listPauseWelcomeMessages(): Promise<
+  PauseWelcomeMessage[]
+> {
+  const { data } = await http.get<{ messages: PauseWelcomeMessage[] }>(
+    '/admin/pause/welcome-messages'
+  )
+  return data.messages
+}
+
+export async function createPauseWelcomeMessage(body: {
+  text: string
+  displayOrder?: number
+  isActive?: boolean
+}): Promise<PauseWelcomeMessage> {
+  const { data } = await http.post<{ message: PauseWelcomeMessage }>(
+    '/admin/pause/welcome-messages',
+    body
+  )
+  return data.message
+}
+
+export type PauseWelcomeMessageInput = {
+  text?: string
+  displayOrder?: number
+  isActive?: boolean
+}
+
+export async function updatePauseWelcomeMessage(
+  id: string,
+  body: PauseWelcomeMessageInput
+): Promise<PauseWelcomeMessage> {
+  const { data } = await http.patch<{ message: PauseWelcomeMessage }>(
+    `/admin/pause/welcome-messages/${id}`,
+    body
+  )
+  return data.message
+}
+
+export async function deletePauseWelcomeMessage(id: string): Promise<void> {
+  await http.delete(`/admin/pause/welcome-messages/${id}`)
+}
+
+export async function reorderPauseWelcomeMessages(
+  ids: string[]
+): Promise<void> {
+  await http.post('/admin/pause/welcome-messages/reorder', { ids })
+}
+
+// ---- Pause intentions ----
+export async function listPauseIntentions(): Promise<PauseIntentionOption[]> {
+  const { data } = await http.get<{ intentions: PauseIntentionOption[] }>(
+    '/admin/pause/intentions'
+  )
+  return data.intentions
+}
+
+export async function createPauseIntention(body: {
+  key: string
+  label: string
+  displayOrder?: number
+  isActive?: boolean
+}): Promise<PauseIntentionOption> {
+  const { data } = await http.post<{ intention: PauseIntentionOption }>(
+    '/admin/pause/intentions',
+    body
+  )
+  return data.intention
+}
+
+export type PauseIntentionInput = {
+  key?: string
+  label?: string
+  displayOrder?: number
+  isActive?: boolean
+}
+
+export async function updatePauseIntention(
+  id: string,
+  body: PauseIntentionInput
+): Promise<PauseIntentionOption> {
+  const { data } = await http.patch<{ intention: PauseIntentionOption }>(
+    `/admin/pause/intentions/${id}`,
+    body
+  )
+  return data.intention
+}
+
+export async function deletePauseIntention(id: string): Promise<void> {
+  await http.delete(`/admin/pause/intentions/${id}`)
+}
+
+export async function reorderPauseIntentions(ids: string[]): Promise<void> {
+  await http.post('/admin/pause/intentions/reorder', { ids })
+}
+
+// ---- Peace messages ----
+export async function listPeaceMessages(params?: {
+  status?: PeaceMessageStatus
+  pauseDate?: string
+}): Promise<AdminPeaceMessage[]> {
+  const { data } = await http.get<{ messages: AdminPeaceMessage[] }>(
+    '/admin/pause/messages',
+    { params }
+  )
+  return data.messages
+}
+
+export async function updatePeaceMessageStatus(
+  id: string,
+  status: PeaceMessageStatus
+): Promise<AdminPeaceMessage> {
+  const { data } = await http.patch<{ message: AdminPeaceMessage }>(
+    `/admin/pause/messages/${id}`,
+    { status }
+  )
+  return data.message
+}
+
+// ---- Pause stats ----
+export async function getPauseStats(days = 7): Promise<PauseStats> {
+  const { data } = await http.get<PauseStats>('/admin/pause/stats', {
+    params: { days },
+  })
+  return data
 }

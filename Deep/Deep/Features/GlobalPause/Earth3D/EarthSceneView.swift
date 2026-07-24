@@ -8,21 +8,31 @@ import SwiftUI
 /// Composition (back to front):
 ///   1. Halo backdrop (lavender bloom + blush cradle)
 ///   2. `EarthMTKView` (the orb itself + bloom post)
-///   3. Tap-reveal country name capsule
+///   3. `EarthHaloRipplesOverlay` (join rings, SwiftUI canvas — see
+///      `ripplesHost` for the hosting rationale)
+///   4. Tap-reveal country name capsule
 ///
 /// **Backdrop sizing is proportional to the orb radius** (`0.2214 × height`),
 /// unlike `Earth3DView`'s `min(width, height)`. The orb is height-proportional
 /// and centre-anchored, so tying the backdrop to it makes the whole scene
 /// scale-continuous through the card-lift transition's transform trick — a
 /// `min(w,h)`-sized backdrop would pop when the flight pins the bounds.
-///
-/// The join-ripple rings (`EarthHaloRipplesOverlay`) are not ported yet —
-/// ambient garnish, deferred until the lobby grows real live-participant flow.
 final class EarthSceneView: UIView {
   private let glow: EarthGlowStore
   private let interaction: EarthInteraction
+  private let ripples: EarthHaloRipples
   private var renderer: EarthRenderer?
   private var mtkView: EarthMTKView?
+
+  /// Hosts the SwiftUI ripple canvas as a sibling directly above the MTKView.
+  /// It fills this view's bounds — the same rect the MTKView fills — so the
+  /// card-flight and phase-placement transforms (which act on this view as a
+  /// whole) carry the rings along with the orb for free. The controller is
+  /// intentionally unparented: the canvas is display-only (no interaction, no
+  /// environment dependencies), so it never needs the VC hierarchy. If rings
+  /// ever misbehave under transforms, the fallback is a CAShapeLayer pass
+  /// driven from `renderer.onFrame`.
+  private let ripplesHost: UIHostingController<EarthHaloRipplesOverlay>
 
   private let halo = RadialGradientView(
     colors: [.lavenderMist.withAlphaComponent(0.32), .lavenderMist.withAlphaComponent(0)]
@@ -47,9 +57,13 @@ final class EarthSceneView: UIView {
     }
   }
 
-  init(glow: EarthGlowStore, interaction: EarthInteraction) {
+  init(glow: EarthGlowStore, interaction: EarthInteraction, ripples: EarthHaloRipples) {
     self.glow = glow
     self.interaction = interaction
+    self.ripples = ripples
+    ripplesHost = UIHostingController(
+      rootView: Self.makeOverlay(ripples: ripples, interaction: interaction, viewRadius: 0)
+    )
     super.init(frame: .zero)
 
     // Starts non-interactive (feed-card mode); `isInteractive` flips this.
@@ -65,12 +79,22 @@ final class EarthSceneView: UIView {
       addSubview(mtkView)
       self.mtkView = mtkView
 
-      renderer.onFrame = { [glow] time in
+      renderer.onFrame = { [glow, ripples] time in
         Task { @MainActor in
           glow.tick(time: time)
+          // Ripples expire on the CACurrentMediaTime clock (the one `emit`
+          // stamps), not the renderer's relative clock that `time` carries.
+          ripples.tick()
         }
       }
     }
+
+    ripplesHost.view.backgroundColor = .clear
+    ripplesHost.view.isUserInteractionEnabled = false
+    // The canvas must span the full bounds even when this view crosses the
+    // notch/home areas at lobby scale — no safe-area contraction.
+    ripplesHost.safeAreaRegions = []
+    addSubview(ripplesHost.view)
 
     configureReveal()
     interaction.onCountryTap = { [weak self] country in
@@ -95,6 +119,16 @@ final class EarthSceneView: UIView {
     let orbRadius = CGFloat(EarthRendererConstants.orbScreenRadiusFractionOfHeight) * bounds.height
     let center = CGPoint(x: bounds.midX, y: bounds.midY)
 
+    // The ripple canvas occupies exactly the MTKView's rect so its projection
+    // math (centre + orb radius) matches what the shader draws, and so any
+    // transform applied to this view moves rings and orb as one.
+    ripplesHost.view.frame = bounds
+    if ripplesHost.rootView.viewRadius != orbRadius {
+      ripplesHost.rootView = Self.makeOverlay(
+        ripples: ripples, interaction: interaction, viewRadius: orbRadius
+      )
+    }
+
     let haloSide = orbRadius * 7.45
     halo.frame = CGRect(
       x: center.x - haloSide / 2,
@@ -112,6 +146,25 @@ final class EarthSceneView: UIView {
     )
 
     layoutReveal()
+  }
+
+  // MARK: - Ripple overlay
+
+  /// One construction path for the overlay (init and radius changes) so the
+  /// wiring can't drift. Orientation is sampled read-only — advancing the
+  /// simulation belongs to the renderer's frame callback alone.
+  private static func makeOverlay(
+    ripples: EarthHaloRipples,
+    interaction: EarthInteraction,
+    viewRadius: CGFloat
+  ) -> EarthHaloRipplesOverlay {
+    EarthHaloRipplesOverlay(
+      ripples: ripples,
+      orientationProvider: { [interaction] in
+        interaction.currentOrientationMatrix
+      },
+      viewRadius: viewRadius
+    )
   }
 
   // MARK: - Country reveal
@@ -162,7 +215,7 @@ final class EarthSceneView: UIView {
 
 #Preview("Earth scene — active world") {
   let scene = GlobalPauseEarthScene.preview
-  let view = EarthSceneView(glow: scene.glow, interaction: scene.interaction)
+  let view = EarthSceneView(glow: scene.glow, interaction: scene.interaction, ripples: scene.ripples)
   view.isInteractive = true
   view.backgroundColor = .moonCream
   return view
