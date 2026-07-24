@@ -32,7 +32,6 @@ struct DeepSoundCoordinatorView: View {
     // Leaf play buttons drive the same shared player that feeds the shell's
     // bottom-accessory mini player.
     .environment(\.soundPlayer, player)
-    .preferredColorScheme(.light)
   }
 }
 

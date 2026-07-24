@@ -7,9 +7,13 @@ import SwiftUI
 /// Leaf screen, so it owns its screen-level styling (per the coordinator
 /// rules). Third and final stage of the presented flow; Return dismisses it.
 struct DeepSessionCompletionView: View {
+  /// Today's total practice minutes, including the session that just finished.
+  /// A snapshot passed by the coordinator — the presented flow must not observe
+  /// the live journal, or background sync mutations re-render the cover while
+  /// it's up (the churn behind the flow dismissing itself at session end).
+  var minutesToday: Int
   var onReturn: () -> Void = {}
 
-  @Environment(\.practiceStore) private var practiceStore
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   /// The content blooms in from rest once, on arrival.
@@ -63,15 +67,12 @@ struct DeepSessionCompletionView: View {
           .foregroundStyle(.driftGrey)
       }
 
-      Rectangle()
-        .fill(.lavenderMist.opacity(0.22))
-        .frame(height: 1)
-
       grownRow(
         systemImage: "leaf.fill",
         iconStyle: GardenColor.sage,
-        text: "\(practiceStore.minutesToday) min in your garden today"
+        text: "\(minutesToday) min in your garden today"
       )
+      .padding(.top, 4)
 
       grownRow(
         systemImage: "heart.fill",
@@ -124,11 +125,9 @@ struct DeepSessionCompletionView: View {
 }
 
 #Preview("Deep session — softly grown") {
-  DeepSessionCompletionView()
-    .environment(\.practiceStore, MockPracticeStore())
+  DeepSessionCompletionView(minutesToday: 7)
 }
 
 #Preview("Deep session — first practice") {
-  DeepSessionCompletionView()
-    .environment(\.practiceStore, MockPracticeStore.fresh)
+  DeepSessionCompletionView(minutesToday: 1)
 }

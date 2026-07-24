@@ -52,8 +52,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    overrideUserInterfaceStyle = .light
-
     navigation.setViewControllers([makeHomeController()], animated: false)
     navigation.setNavigationBarHidden(true, animated: false)
     navigation.navigationBar.tintColor = .deepPlum
@@ -90,7 +88,6 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.soundPlayer, player)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
-      .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
     host.view.backgroundColor = .clear
     return host
@@ -120,7 +117,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
   }
 
   private func push(_ leaf: some View) {
-    let host = UIHostingController(rootView: leaf.preferredColorScheme(.light))
+    let host = UIHostingController(rootView: leaf)
     host.view.backgroundColor = .clear
     navigation.pushViewController(host, animated: true)
   }

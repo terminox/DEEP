@@ -23,7 +23,6 @@ struct CompassionPortfolioCoordinatorView: View {
         }
     }
     .environment(\.openCategory, { category in path.append(category) })
-    .preferredColorScheme(.light)
   }
 }
 

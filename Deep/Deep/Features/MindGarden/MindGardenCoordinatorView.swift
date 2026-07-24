@@ -17,7 +17,6 @@ struct MindGardenCoordinatorView: View {
       MindGardenHomeView(state: GardenState(practice: practice))
         .toolbar(.hidden, for: .navigationBar)
     }
-    .preferredColorScheme(.light)
   }
 }
 

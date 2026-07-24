@@ -35,6 +35,10 @@ struct GardenGreetingCard: View {
     }
     .padding(20)
     .frostedCard()
+    // Store writes are un-animated (an animated store mutation broadcasts into
+    // presenting trees and can tear down a live modal); the settle after a
+    // finished session is this view's own motion.
+    .animation(.exhale, value: state.minutesToday)
   }
 
   private var cherishButton: some View {

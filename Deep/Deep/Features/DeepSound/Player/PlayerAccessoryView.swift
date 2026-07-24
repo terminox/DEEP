@@ -31,7 +31,6 @@ struct PlayerAccessoryView: View {
       }
     }
     .environment(\.soundPlayer, player)
-    .preferredColorScheme(.light)
   }
 }
 

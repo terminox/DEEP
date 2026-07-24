@@ -19,6 +19,11 @@ struct DeepSessionCoordinatorView: View {
   /// The completion is credited exactly once, the moment the engine finishes —
   /// so closing from the finished screen still counts.
   @State private var didRecord = false
+  /// Today's minutes snapshotted right after crediting. The completion screen
+  /// takes this value instead of observing the journal: nothing inside the
+  /// presented flow may depend on the live stores, or their later mutations
+  /// (background sync) re-render the cover mid-presentation.
+  @State private var minutesGrown = 0
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.soundPlayer) private var soundPlayer
@@ -55,7 +60,7 @@ struct DeepSessionCoordinatorView: View {
         // The first inhale starts under the crossfade from the intro.
         .onAppear { engine.begin() }
       case .completion:
-        DeepSessionCompletionView(onReturn: { dismiss() })
+        DeepSessionCompletionView(minutesToday: minutesGrown, onReturn: { dismiss() })
           .transition(.opacity)
       }
     }
@@ -76,6 +81,9 @@ struct DeepSessionCoordinatorView: View {
       didRecord = true
       practiceStore.recordCompletion(of: session)
       heartLedger.earn()
+      // An event-handler read registers no observation — the flow stays
+      // decoupled from the journal while presented.
+      minutesGrown = practiceStore.minutesToday
     }
     // Leaving the app settles the practice into a pause; resuming stays the
     // user's own gesture. `.inactive` is deliberately ignored — banners and

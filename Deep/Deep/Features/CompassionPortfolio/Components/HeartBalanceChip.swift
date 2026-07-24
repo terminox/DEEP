@@ -28,6 +28,9 @@ struct HeartBalanceChip: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("My hearts")
     .accessibilityValue("\(balance)")
+    // Earning is an un-animated store write (see `HeartLedger.earn`); the
+    // count ticking up softly is this chip's own motion.
+    .animation(.exhale, value: balance)
   }
 }
 

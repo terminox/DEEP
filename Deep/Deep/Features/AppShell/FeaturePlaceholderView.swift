@@ -44,7 +44,6 @@ struct FeaturePlaceholderView: View {
       }
       .padding(.horizontal, 40)
     }
-    .preferredColorScheme(.light)
   }
 }
 

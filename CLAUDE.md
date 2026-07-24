@@ -59,6 +59,15 @@ Don't commit unless I explicitly tell you to do so.
   and never render — as happened in an earlier `DeepSoundView`, where `AtmosphereBackground` sat
   behind the `NavigationStack` and was invisible.
 
+## Design rules
+
+- **Never use line separators.** No `Divider()`, no 1pt `Rectangle`/`Capsule` hairline rules
+  (horizontal or vertical), no border strokes used as row or section separators — anywhere in
+  the app. Separate content with spacing, grouping, and cards instead: adjust `VStack`/`HStack`
+  spacing, split content into distinct frosted cards, or use background tint changes. If you
+  encounter an existing separator while editing a view, remove it and rework the grouping as
+  part of your change.
+
 ## Theming & design tokens
 
 Design tokens (colours, motion, radii, spacing) follow one pattern. Reuse this principle on any

@@ -103,7 +103,6 @@ struct OnboardingCoordinatorView: View {
     .environment(\.onboardingConfig, config)
     .environment(\.onboardingAdvance, { route in advance(to: route) })
     .environment(\.onboardingFinish, { store.completeOnboarding() })
-    .preferredColorScheme(.light)
     // Only listens while the welcome screen is up, purely to learn where the
     // CTA tap landed so the ripple can emanate from it.
     .simultaneousGesture(

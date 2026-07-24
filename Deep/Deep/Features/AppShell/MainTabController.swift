@@ -206,7 +206,6 @@ final class MainTabController: UITabBarController {
     }
     .environment(\.soundPlayer, sharedPlayer)
     .environment(\.soundContentRepository, soundRepository)
-    .preferredColorScheme(.light)
 
     let host = UIHostingController(rootView: root)
     host.modalPresentationStyle = .fullScreen

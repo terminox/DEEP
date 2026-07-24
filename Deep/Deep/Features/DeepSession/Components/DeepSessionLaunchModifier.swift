@@ -29,7 +29,6 @@ private struct DeepSessionLaunchModifier: ViewModifier {
       .fullScreenCover(isPresented: $isPresented) {
         DeepSessionCoordinatorView(session: session)
           .navigationTransition(.zoom(sourceID: Self.sourceID, in: zoom))
-          .preferredColorScheme(.light)
       }
   }
 }

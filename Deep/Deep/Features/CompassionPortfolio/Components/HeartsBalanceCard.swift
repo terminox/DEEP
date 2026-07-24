@@ -46,6 +46,10 @@ struct HeartsBalanceCard: View {
     }
     .padding(20)
     .frostedCard()
+    // Earning is an un-animated store write (see `HeartLedger.earn`); the
+    // balance settling softly is this view's own motion. Sending hearts still
+    // animates through `sendHeart`'s transaction.
+    .animation(.exhale, value: balance)
   }
 
   private var heartBadge: some View {

@@ -50,11 +50,12 @@ final class HeartLedger {
   }
 
   /// Credits hearts earned through practice — a completed Deep Session calls
-  /// this. Animated so the balance settles softly wherever it's shown.
+  /// this. A plain mutation: it fires while the session flow is presented, and
+  /// an animated store write broadcasts a transaction into the presenting
+  /// hierarchies, tearing the cover down. Balance surfaces animate locally
+  /// with `.animation(.exhale, value: balance)` instead.
   func earn(_ hearts: Int = 1) {
-    withAnimation(.exhale) {
-      balance += hearts
-    }
+    balance += hearts
   }
 
   /// Send a single heart to a cause — and, when given, the specific project the

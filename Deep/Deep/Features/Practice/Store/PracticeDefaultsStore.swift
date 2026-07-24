@@ -1,4 +1,4 @@
-import SwiftUI
+import Foundation
 import Observation
 
 /// `PracticeStore` backed by a single JSON blob in `UserDefaults`, mirroring
@@ -75,11 +75,12 @@ final class PracticeDefaultsStore: PracticeStore {
       completedAt: now(),
       isSynced: false
     )
-    // Animated so the garden's numbers settle softly wherever they're shown
-    // (the HeartLedger mutation pattern).
-    withAnimation(.exhale) {
-      state.completions.append(completion)
-    }
+    // A plain mutation — deliberately NOT wrapped in `withAnimation`. A store
+    // write broadcasts into every observing hierarchy, including presenting
+    // trees with a live modal; animating it from here tears the Deep Session
+    // cover down mid-presentation. Views that want the numbers to settle
+    // softly animate locally with `.animation(.exhale, value:)`.
+    state.completions.append(completion)
     Task { await pushUnsynced() }
   }
 
