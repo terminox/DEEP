@@ -13,8 +13,14 @@ import UIKit
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
+  private let pauseSession: GlobalPauseSession
+  private let pauseRepository: any PauseEventRepository
+  private let pauseReminder: any PauseReminding = LocalPauseReminder()
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
+
+  /// The event audio, alive only while its lobby is presented.
+  private var lobbyAudio: GlobalPauseAudioPlayer?
 
   /// The single shared card — feed hero and lobby content in one instance.
   private lazy var card: GlobalPauseCardView = {
@@ -28,9 +34,16 @@ final class GlobalPauseCoordinatorController: UIViewController {
     card: { [weak self] in self?.card }
   )
 
-  init(soundPlayer: any SoundPlaying, soundRepository: any SoundContentRepository) {
+  init(
+    soundPlayer: any SoundPlaying,
+    soundRepository: any SoundContentRepository,
+    pauseSession: GlobalPauseSession,
+    pauseRepository: any PauseEventRepository
+  ) {
     self.player = soundPlayer
     self.soundRepository = soundRepository
+    self.pauseSession = pauseSession
+    self.pauseRepository = pauseRepository
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -56,6 +69,29 @@ final class GlobalPauseCoordinatorController: UIViewController {
     // screens can always swipe back.
     navigation.interactivePopGestureRecognizer?.delegate = self
     navigation.interactivePopGestureRecognizer?.isEnabled = true
+
+    // Resolve tonight's schedule immediately: the feed countdown needs it
+    // long before the lobby is ever opened.
+    Task { await pauseSession.start() }
+    observePhaseForChrome()
+  }
+
+  /// Keeps the feed card's caption honest about the nightly window
+  /// ("Live now…" while it's open) — the `observeHasTrack` re-arming pattern.
+  private func observePhaseForChrome() {
+    let phase = withObservationTracking {
+      pauseSession.phase
+    } onChange: { [weak self] in
+      Task { @MainActor [weak self] in self?.observePhaseForChrome() }
+    }
+    let caption: String
+    switch phase {
+    case .lobby, .welcome, .meditation, .feedback:
+      caption = "Live now — the world is pausing"
+    case .loading, .offHours:
+      caption = "Breathe with the world, together"
+    }
+    card.setChromeCaption(caption, animated: viewIfLoaded?.window != nil)
   }
 
   // MARK: - Children
@@ -77,6 +113,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
       }
       .environment(\.openGlobalPause) { [weak self] in self?.presentLobby() }
       .environment(\.soundPlayer, player)
+      .environment(\.globalPauseSession, pauseSession)
+      .environment(\.pauseEventRepository, pauseRepository)
+      .environment(\.pauseReminder, pauseReminder)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
     host.view.backgroundColor = .clear
@@ -115,8 +154,25 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private func presentLobby() {
     guard presentedViewController == nil else { return }
 
-    let lobby = GlobalPauseLobbyController { [weak self] in
+    // The event owns its own audio, so the shared player pauses (its track
+    // stays loaded — the mini player resumes where it left off, the Deep
+    // Session precedent). A fresh engine per presentation keeps teardown
+    // trivially complete.
+    player.pause()
+    let audio = GlobalPauseAudioPlayer()
+    audio.meditationOffsetProvider = { [weak pauseSession] in
+      pauseSession?.meditationElapsed ?? 0
+    }
+    lobbyAudio = audio
+
+    let lobby = GlobalPauseLobbyController(
+      session: pauseSession,
+      scene: scene,
+      audio: audio,
+      reminder: pauseReminder
+    ) { [weak self] in
       self?.dismiss(animated: true)
+      self?.lobbyAudio = nil
     }
     lobby.modalPresentationStyle = .custom
     lobby.transitioningDelegate = cardLiftTransition

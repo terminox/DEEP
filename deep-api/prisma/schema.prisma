@@ -31,8 +31,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions   AuthSession[]
-  onboarding OnboardingProfile?
+  sessions         AuthSession[]
+  onboarding       OnboardingProfile?
+  practiceSessions PracticeSession[]
+  peaceMessages    PeaceMessage[]
+  reflections      PauseReflection[]
 
   @@map("users")
 }
@@ -177,4 +180,104 @@ model TrackLyrics {
   @@unique([trackId, languageCode])
   @@index([trackId])
   @@map("track_lyrics")
+}
+
+// ---- Practice-session logging ----
+
+// One completed guided-breathing session, logged as-is; the client owns
+// aggregate math (today/streaks) in the user's local calendar.
+model PracticeSession {
+  id              String   @id            // client-generated UUID → idempotent sync
+  userId          String
+  title           String
+  durationSeconds Int
+  completedAt     DateTime
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+  @@map("practice_sessions")
+}
+
+// ---- Global Pause (the nightly synchronized event) ----
+
+enum PeaceMessageStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+// Singleton (id = 1). Phase boundaries are wall-clock "HH:mm:ss" strings in
+// `timezone`; the server resolves them into absolute instants per occurrence,
+// so clients never do timezone math.
+model PauseConfig {
+  id                        Int      @id @default(1)
+  timezone                  String   @default("Asia/Bangkok")
+  lobbyStart                String   @default("20:30:00")
+  welcomeStart              String   @default("20:39:50")
+  meditationStart           String   @default("20:40:00")
+  feedbackStart             String   @default("20:50:00")
+  windowEnd                 String   @default("21:00:00")
+  lobbyAudioPath            String   @default("/media/audio/global-pause.mp3")
+  meditationAudioPath       String   @default("/media/audio/inner-light.mp3")
+  meditationDurationSeconds Int      @default(600)
+  updatedAt                 DateTime @updatedAt
+
+  @@map("pause_config")
+}
+
+model PauseWelcomeMessage {
+  id           String  @id @default(uuid())
+  text         String
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  @@map("pause_welcome_messages")
+}
+
+model PauseIntentionOption {
+  id           String  @id @default(uuid())
+  key          String  @unique
+  label        String
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  @@map("pause_intention_options")
+}
+
+// Published on post; moderation flips to HIDDEN after the fact. Pre-moderation
+// would leave the ten-minute feedback phase empty unless an admin were live
+// every night at 20:50.
+model PeaceMessage {
+  id          String             @id @default(uuid())
+  userId      String?
+  displayName String
+  countryISO  String?
+  text        String
+  status      PeaceMessageStatus @default(PUBLISHED)
+  // Occurrence key: the Bangkok calendar date of the pause ("2026-07-23").
+  pauseDate   String
+  createdAt   DateTime           @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([pauseDate, status, createdAt])
+  @@map("peace_messages")
+}
+
+// One row per user per night: the intention and mood chosen in the feedback
+// phase. Upserted, so a change of heart overwrites rather than duplicates.
+model PauseReflection {
+  id        String   @id @default(uuid())
+  userId    String
+  pauseDate String
+  intention String?
+  mood      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pauseDate])
+  @@map("pause_reflections")
 }

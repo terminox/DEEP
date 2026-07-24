@@ -19,6 +19,11 @@ final class MainTabController: UITabBarController {
   /// One player shared across the tabs, so a sound started in Global Pause and
   /// a sound started in Sounds drive the same bottom accessory and Now Playing.
   private let sharedPlayer: any SoundPlaying
+
+  /// The app-long Global Pause engine + backend, handed to the Global Pause
+  /// coordinator (schedule countdown on the feed, phases in the lobby).
+  private let pauseSession: GlobalPauseSession
+  private let pauseRepository: any PauseEventRepository
   /// Hosts the mini player inside the tab bar's bottom accessory. Created on
   /// first playback and kept as a child VC for the controller's lifetime.
   private var accessoryHost: PlayerAccessoryHostingController?
@@ -46,13 +51,17 @@ final class MainTabController: UITabBarController {
     accountStore: any AccountStore,
     subscriptionStore: any SubscriptionStore,
     soundRepository: any SoundContentRepository,
-    soundPlayer: any SoundPlaying
+    soundPlayer: any SoundPlaying,
+    pauseSession: GlobalPauseSession,
+    pauseRepository: any PauseEventRepository
   ) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
     self.subscriptionStore = subscriptionStore
     self.soundRepository = soundRepository
     self.sharedPlayer = soundPlayer
+    self.pauseSession = pauseSession
+    self.pauseRepository = pauseRepository
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -82,7 +91,9 @@ final class MainTabController: UITabBarController {
     // hosting wrapper.
     let globalPause = GlobalPauseCoordinatorController(
       soundPlayer: sharedPlayer,
-      soundRepository: soundRepository
+      soundRepository: soundRepository,
+      pauseSession: pauseSession,
+      pauseRepository: pauseRepository
     )
     globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
 

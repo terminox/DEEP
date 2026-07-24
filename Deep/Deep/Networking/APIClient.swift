@@ -14,6 +14,12 @@ final class APIClient {
   private let encoder = JSONEncoder()
   private var refreshTask: Task<Void, Error>?
 
+  /// Dev-only: when set and returning a value, every request carries it as
+  /// `X-Debug-Now` so the backend's Global Pause clock follows the app's
+  /// pinned debug time. Wired in `AppDependencies`; nil in release behaviour
+  /// because `SyncedClock.debugHeaderValue` is nil outside dev builds.
+  var debugNowProvider: (() -> String?)?
+
   init(baseURL: URL, tokens: KeychainTokenStore, session: URLSession = .shared) {
     self.baseURL = baseURL
     self.tokens = tokens
@@ -93,6 +99,9 @@ final class APIClient {
     }
     if authorized, let access = tokens.accessToken {
       req.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization")
+    }
+    if let debugNow = debugNowProvider?() {
+      req.setValue(debugNow, forHTTPHeaderField: "X-Debug-Now")
     }
 
     let data: Data

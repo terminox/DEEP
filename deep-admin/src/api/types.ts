@@ -81,6 +81,64 @@ export type Lyrics = {
   content: string
 }
 
+export type PauseConfig = {
+  id: number
+  timezone: string
+  lobbyStart: string
+  welcomeStart: string
+  meditationStart: string
+  feedbackStart: string
+  windowEnd: string
+  lobbyAudioPath: string
+  meditationAudioPath: string
+  meditationDurationSeconds: number
+  updatedAt: string
+}
+
+export type PauseWelcomeMessage = {
+  id: string
+  text: string
+  displayOrder: number
+  isActive: boolean
+}
+
+export type PauseIntentionOption = {
+  id: string
+  key: string
+  label: string
+  displayOrder: number
+  isActive: boolean
+}
+
+export type PeaceMessageStatus = 'PUBLISHED' | 'HIDDEN'
+
+export const PEACE_MESSAGE_STATUSES: PeaceMessageStatus[] = [
+  'PUBLISHED',
+  'HIDDEN',
+]
+
+export type AdminPeaceMessage = {
+  id: string
+  userId: string | null
+  displayName: string
+  countryISO: string | null
+  text: string
+  status: PeaceMessageStatus
+  pauseDate: string
+  createdAt: string
+}
+
+export type PauseDayStats = {
+  intentions: Record<string, number>
+  moods: Record<string, number>
+  total: number
+}
+
+export type PauseStats = {
+  days: number
+  byDate: Record<string, PauseDayStats>
+}
+
 export type LoginResponse = {
   user: AdminUser
   accessToken: string

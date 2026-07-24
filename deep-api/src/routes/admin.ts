@@ -306,4 +306,215 @@ export async function adminRoutes(app: FastifyInstance) {
       });
     return { ok: true };
   });
+
+  // ---- Global Pause ----
+
+  const hms = z.string().regex(/^\d{2}:\d{2}:\d{2}$/, "expected HH:mm:ss");
+
+  const pauseConfigBody = z
+    .object({
+      timezone: z.string().trim().min(1),
+      lobbyStart: hms,
+      welcomeStart: hms,
+      meditationStart: hms,
+      feedbackStart: hms,
+      windowEnd: hms,
+      lobbyAudioPath: z.string().trim().min(1),
+      meditationAudioPath: z.string().trim().min(1),
+      meditationDurationSeconds: z.number().int().positive(),
+    })
+    .refine(
+      (b) => {
+        const order = [b.lobbyStart, b.welcomeStart, b.meditationStart, b.feedbackStart, b.windowEnd];
+        return order.every((t, i) => i === 0 || order[i - 1]! < t);
+      },
+      { message: "phase times must be strictly increasing" },
+    );
+
+  app.get("/admin/pause/config", adminOnly, async () => {
+    const config = await prisma.pauseConfig.upsert({
+      where: { id: 1 },
+      update: {},
+      create: { id: 1 },
+    });
+    return { config };
+  });
+
+  app.put("/admin/pause/config", adminOnly, async (req) => {
+    const body = pauseConfigBody.parse(req.body);
+    const config = await prisma.pauseConfig.upsert({
+      where: { id: 1 },
+      update: body,
+      create: { id: 1, ...body },
+    });
+    return { config };
+  });
+
+  // Welcome messages
+  app.get("/admin/pause/welcome-messages", adminOnly, async () => {
+    const messages = await prisma.pauseWelcomeMessage.findMany({
+      orderBy: { displayOrder: "asc" },
+    });
+    return { messages };
+  });
+
+  app.post("/admin/pause/welcome-messages", adminOnly, async (req) => {
+    const body = z
+      .object({
+        text: z.string().trim().min(1),
+        displayOrder: z.number().int().optional(),
+        isActive: z.boolean().optional(),
+      })
+      .parse(req.body);
+    const message = await prisma.pauseWelcomeMessage.create({
+      data: {
+        text: body.text,
+        displayOrder: body.displayOrder ?? 0,
+        isActive: body.isActive ?? true,
+      },
+    });
+    return { message };
+  });
+
+  app.patch("/admin/pause/welcome-messages/:id", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const body = z
+      .object({
+        text: z.string().trim().min(1).optional(),
+        displayOrder: z.number().int().optional(),
+        isActive: z.boolean().optional(),
+      })
+      .parse(req.body);
+    const message = await prisma.pauseWelcomeMessage.update({ where: { id }, data: body });
+    return { message };
+  });
+
+  app.delete("/admin/pause/welcome-messages/:id", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    await prisma.pauseWelcomeMessage.delete({ where: { id } });
+    return { ok: true };
+  });
+
+  app.post("/admin/pause/welcome-messages/reorder", adminOnly, async (req) => {
+    const { ids } = z.object({ ids: z.array(z.string()) }).parse(req.body);
+    await prisma.$transaction(
+      ids.map((id, i) =>
+        prisma.pauseWelcomeMessage.update({ where: { id }, data: { displayOrder: i } }),
+      ),
+    );
+    return { ok: true };
+  });
+
+  // Intentions
+  app.get("/admin/pause/intentions", adminOnly, async () => {
+    const intentions = await prisma.pauseIntentionOption.findMany({
+      orderBy: { displayOrder: "asc" },
+    });
+    return { intentions };
+  });
+
+  app.post("/admin/pause/intentions", adminOnly, async (req) => {
+    const body = z
+      .object({
+        key: z.string().trim().min(1),
+        label: z.string().trim().min(1),
+        displayOrder: z.number().int().optional(),
+        isActive: z.boolean().optional(),
+      })
+      .parse(req.body);
+    const intention = await prisma.pauseIntentionOption.create({
+      data: {
+        key: body.key,
+        label: body.label,
+        displayOrder: body.displayOrder ?? 0,
+        isActive: body.isActive ?? true,
+      },
+    });
+    return { intention };
+  });
+
+  app.patch("/admin/pause/intentions/:id", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const body = z
+      .object({
+        key: z.string().trim().min(1).optional(),
+        label: z.string().trim().min(1).optional(),
+        displayOrder: z.number().int().optional(),
+        isActive: z.boolean().optional(),
+      })
+      .parse(req.body);
+    const intention = await prisma.pauseIntentionOption.update({ where: { id }, data: body });
+    return { intention };
+  });
+
+  app.delete("/admin/pause/intentions/:id", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    await prisma.pauseIntentionOption.delete({ where: { id } });
+    return { ok: true };
+  });
+
+  app.post("/admin/pause/intentions/reorder", adminOnly, async (req) => {
+    const { ids } = z.object({ ids: z.array(z.string()) }).parse(req.body);
+    await prisma.$transaction(
+      ids.map((id, i) =>
+        prisma.pauseIntentionOption.update({ where: { id }, data: { displayOrder: i } }),
+      ),
+    );
+    return { ok: true };
+  });
+
+  // Peace message moderation (publish-first; moderation hides after the fact)
+  app.get("/admin/pause/messages", adminOnly, async (req) => {
+    const query = z
+      .object({
+        status: z.enum(["PUBLISHED", "HIDDEN"]).optional(),
+        pauseDate: z.string().optional(),
+      })
+      .parse(req.query);
+    const messages = await prisma.peaceMessage.findMany({
+      where: {
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.pauseDate ? { pauseDate: query.pauseDate } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+    return { messages };
+  });
+
+  app.patch("/admin/pause/messages/:id", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const body = z
+      .object({ status: z.enum(["PUBLISHED", "HIDDEN"]) })
+      .parse(req.body);
+    const message = await prisma.peaceMessage.update({
+      where: { id },
+      data: { status: body.status },
+    });
+    return { message };
+  });
+
+  // Reflection stats: intention + mood counts per pause night.
+  app.get("/admin/pause/stats", adminOnly, async (req) => {
+    const { days } = z
+      .object({ days: z.coerce.number().int().positive().max(90).default(7) })
+      .parse(req.query);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const reflections = await prisma.pauseReflection.findMany({
+      where: { createdAt: { gte: since } },
+      select: { pauseDate: true, intention: true, mood: true },
+    });
+
+    const byDate: Record<
+      string,
+      { intentions: Record<string, number>; moods: Record<string, number>; total: number }
+    > = {};
+    for (const r of reflections) {
+      const bucket = (byDate[r.pauseDate] ??= { intentions: {}, moods: {}, total: 0 });
+      bucket.total += 1;
+      if (r.intention) bucket.intentions[r.intention] = (bucket.intentions[r.intention] ?? 0) + 1;
+      if (r.mood) bucket.moods[r.mood] = (bucket.moods[r.mood] ?? 0) + 1;
+    }
+    return { days, byDate };
+  });
 }

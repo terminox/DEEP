@@ -1,0 +1,259 @@
+import SwiftUI
+import Observation
+
+/// The lifecycle state of the nightly pause, as the UI consumes it.
+enum PausePhase: Equatable {
+  case loading
+  case offHours(nextLobbyStart: Date)
+  case lobby
+  case welcome
+  case meditation
+  case feedback
+
+  init(key: PausePhaseWindow.Key?, nextLobbyStart: Date) {
+    switch key {
+    case .lobby: self = .lobby
+    case .welcome: self = .welcome
+    case .meditation: self = .meditation
+    case .feedback: self = .feedback
+    case nil: self = .offHours(nextLobbyStart: nextLobbyStart)
+    }
+  }
+}
+
+/// The Global Pause phase engine: derives the current phase from the server
+/// schedule and the synced clock, fires transitions at exact boundaries, and
+/// scopes the live presence/polling loops to the time the lobby is open.
+///
+/// Lives app-long (built in `AppDependencies`) because the home feed needs
+/// the schedule for its countdown even when the lobby has never been opened.
+@MainActor
+@Observable
+final class GlobalPauseSession {
+  let clock: SyncedClock
+
+  private(set) var phase: PausePhase = .loading
+  private(set) var schedule: PauseSchedule?
+  private(set) var participantCount = 0
+  private(set) var participantsByCountry: [String: Int] = [:]
+  private(set) var messages: [PeaceMessage] = []
+
+  /// Seconds into the meditation stream at the synced clock's now.
+  var meditationElapsed: TimeInterval {
+    guard let start = schedule?.window(for: .meditation)?.startsAt else { return 0 }
+    return max(0, clock.now.timeIntervalSince(start))
+  }
+
+  var meditationDuration: TimeInterval { schedule?.meditationDuration ?? 0 }
+
+  private let repository: any PauseEventRepository
+  @ObservationIgnored private var boundaryTask: Task<Void, Never>?
+  @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
+  @ObservationIgnored private var pollTask: Task<Void, Never>?
+  @ObservationIgnored private var foregroundObserver: NSObjectProtocol?
+  /// Joins already turned into ripples, so a poll never replays old ones.
+  @ObservationIgnored private var seenJoins: Set<String> = []
+  @ObservationIgnored private var pendingJoins: [String] = []
+
+  /// One stable anonymous identity per install, so reopening the lobby never
+  /// double-counts (the server keys signed-in users by user id instead).
+  @ObservationIgnored private lazy var presenceID: String = {
+    let key = "pause.presenceId"
+    if let existing = UserDefaults.standard.string(forKey: key) { return existing }
+    let fresh = UUID().uuidString
+    UserDefaults.standard.set(fresh, forKey: key)
+    return fresh
+  }()
+
+  init(clock: SyncedClock, repository: any PauseEventRepository) {
+    self.clock = clock
+    self.repository = repository
+    foregroundObserver = NotificationCenter.default.addObserver(
+      forName: UIApplication.willEnterForegroundNotification,
+      object: nil,
+      queue: .main
+    ) { _ in
+      // Background suspension freezes Task.sleep timers mid-count; recompute
+      // from the wall clock the moment we're back.
+      Task { @MainActor [weak self] in await self?.refreshSchedule() }
+    }
+  }
+
+  // MARK: - Lifecycle
+
+  /// Fetches the schedule and starts tracking phase boundaries. Safe to call
+  /// again (e.g. on foreground) — it simply re-resolves.
+  func start() async {
+    await refreshSchedule()
+  }
+
+  private func refreshSchedule() async {
+    do {
+      schedule = try await repository.schedule()
+    } catch {
+      // Keep whatever schedule we had; the boundary loop keeps working off it
+      // and the next start()/foreground retries.
+      if schedule == nil { return }
+    }
+    recomputePhase()
+    armBoundaryTimer()
+  }
+
+  private func recomputePhase() {
+    guard let schedule else { return }
+    let now = clock.now
+    phase = PausePhase(
+      key: schedule.phase(at: now),
+      nextLobbyStart: schedule.nextLobbyStart(after: now)
+    )
+  }
+
+  /// One sleeping task per upcoming boundary; re-armed after every firing,
+  /// clock sync, or debug jump. Crossing the final boundary re-fetches the
+  /// next occurrence.
+  private func armBoundaryTimer() {
+    boundaryTask?.cancel()
+    guard let schedule else { return }
+    let now = clock.now
+    guard let boundary = schedule.nextBoundary(after: now) else {
+      // Window over; tomorrow's schedule replaces it.
+      boundaryTask = Task { [weak self] in
+        await self?.refreshSchedule()
+      }
+      return
+    }
+    let delay = boundary.timeIntervalSince(now)
+    boundaryTask = Task { [weak self] in
+      try? await Task.sleep(for: .seconds(max(0.05, delay)))
+      guard !Task.isCancelled else { return }
+      guard let self else { return }
+      self.recomputePhase()
+      self.armBoundaryTimer()
+    }
+  }
+
+  // MARK: - Lobby scope (presence + live polling)
+
+  /// Starts heartbeats and live polling. Called when the lobby is presented.
+  func enterLobby() {
+    guard heartbeatTask == nil else { return }
+    let country = Locale.current.region?.identifier.uppercased()
+
+    heartbeatTask = Task { [weak self] in
+      while !Task.isCancelled {
+        guard let self else { return }
+        try? await self.repository.heartbeat(presenceID: self.presenceID, countryISO: country)
+        try? await Task.sleep(for: .seconds(20))
+      }
+    }
+    pollTask = Task { [weak self] in
+      while !Task.isCancelled {
+        guard let self else { return }
+        await self.pollLive()
+        try? await Task.sleep(for: .seconds(5))
+      }
+    }
+  }
+
+  func leaveLobby() {
+    heartbeatTask?.cancel()
+    heartbeatTask = nil
+    pollTask?.cancel()
+    pollTask = nil
+    seenJoins = []
+    pendingJoins = []
+    Task { [repository, presenceID] in
+      await repository.leave(presenceID: presenceID)
+    }
+  }
+
+  private func pollLive() async {
+    guard let snapshot = try? await repository.live() else { return }
+    participantCount = snapshot.participantCount
+    participantsByCountry = snapshot.byCountry
+    if !snapshot.messages.isEmpty { messages = snapshot.messages }
+
+    for join in snapshot.recentJoins {
+      let key = "\(join.iso)-\(join.at.timeIntervalSince1970)"
+      if !seenJoins.contains(key) {
+        seenJoins.insert(key)
+        pendingJoins.append(join.iso)
+      }
+    }
+    // Clock sync can move a boundary; keep the timer honest.
+    recomputePhase()
+    armBoundaryTimer()
+  }
+
+  /// Joins that arrived since the last consume — the lobby turns these into
+  /// globe ripples. Draining keeps one ripple per join.
+  func consumeNewJoins() -> [String] {
+    let joins = pendingJoins
+    pendingJoins = []
+    return joins
+  }
+
+  // MARK: - Feedback phase
+
+  func post(message text: String) async throws -> PeaceMessage {
+    let country = Locale.current.region?.identifier.uppercased()
+    let message = try await repository.postMessage(text, countryISO: country)
+    messages.insert(message, at: 0)
+    return message
+  }
+
+  func submit(intention: String?, mood: String?) async throws {
+    try await repository.submitReflection(intention: intention, mood: mood)
+  }
+
+  func recentMessages(limit: Int = 6) async -> [PeaceMessage] {
+    (try? await repository.recentMessages(limit: limit)) ?? []
+  }
+
+  // MARK: - Dev controls
+
+  /// Pins the clock just inside `key`'s window (nil returns to real time),
+  /// so any phase can be exercised end-to-end. Dev builds only.
+  func debugJump(to key: PausePhaseWindow.Key?) {
+    guard AppConfig.current.isDev else { return }
+    if let key, let window = schedule?.window(for: key) {
+      clock.debugOverride = window.startsAt.addingTimeInterval(2)
+    } else {
+      clock.debugOverride = nil
+    }
+    recomputePhase()
+    armBoundaryTimer()
+  }
+}
+
+// MARK: - Previews
+
+#if DEBUG
+extension GlobalPauseSession {
+  /// A session pinned to `phase`, backed by fixtures — for previews.
+  static func preview(phase: PausePhase) -> GlobalPauseSession {
+    let session = GlobalPauseSession(
+      clock: SyncedClock(),
+      repository: FixturePauseEventRepository()
+    )
+    session.schedule = FixturePauseEventRepository.tonightSchedule()
+    session.phase = phase
+    session.participantCount = 4218
+    session.participantsByCountry = ["TH": 1200, "JP": 640, "US": 580, "FR": 320]
+    session.messages = FixturePauseEventRepository.sampleMessages
+    return session
+  }
+}
+#endif
+
+extension EnvironmentValues {
+  /// The live pause engine. The coordinator injects the app-lifetime
+  /// instance; the preview default keeps leaf screens hermetic.
+  @Entry var globalPauseSession: GlobalPauseSession = {
+    let session = GlobalPauseSession(
+      clock: SyncedClock(),
+      repository: FixturePauseEventRepository()
+    )
+    return session
+  }()
+}

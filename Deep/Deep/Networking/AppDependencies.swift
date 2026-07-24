@@ -15,6 +15,9 @@ final class AppDependencies {
   let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  let pauseClock: SyncedClock
+  let pauseRepository: any PauseEventRepository
+  let pauseSession: GlobalPauseSession
 
   init() {
     let config = AppConfig.current
@@ -27,5 +30,15 @@ final class AppDependencies {
     self.subscriptionStore = StoreKitSubscriptionStore()
     self.soundRepository = APISoundContentRepository(client: client)
     self.soundPlayer = StreamingSoundPlayer()
+
+    // Global Pause: one synced clock + one app-long phase engine, so the home
+    // feed's countdown and the lobby run off the same time authority. The
+    // clock's debug pin is forwarded to the backend on every request (dev only).
+    let clock = SyncedClock()
+    let pauseRepository = APIPauseEventRepository(client: client, clock: clock)
+    self.pauseClock = clock
+    self.pauseRepository = pauseRepository
+    self.pauseSession = GlobalPauseSession(clock: clock, repository: pauseRepository)
+    client.debugNowProvider = { [weak clock] in clock?.debugHeaderValue }
   }
 }

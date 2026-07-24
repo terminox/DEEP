@@ -39,7 +39,9 @@ struct AppRootView: View {
           accountStore: deps.accountStore,
           subscriptionStore: deps.subscriptionStore,
           soundRepository: deps.soundRepository,
-          soundPlayer: deps.soundPlayer
+          soundPlayer: deps.soundPlayer,
+          pauseSession: deps.pauseSession,
+          pauseRepository: deps.pauseRepository
         )
         .ignoresSafeArea()
         .transition(.opacity)

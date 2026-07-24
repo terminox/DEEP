@@ -26,6 +26,19 @@ final class GlobalPauseCardChromeView: UIView {
   /// Carries the pill's shadow so the pill itself can clip to its capsule.
   private let pillShadow = PillShadowView()
 
+  /// Swaps the caption (e.g. "Live now — the world is pausing" while the
+  /// nightly window is open) with a quiet crossfade.
+  func setCaption(_ text: String, animated: Bool) {
+    guard captionLabel.text != text else { return }
+    guard animated else {
+      captionLabel.text = text
+      return
+    }
+    UIView.transition(with: captionLabel, duration: 0.35, options: .transitionCrossDissolve) {
+      self.captionLabel.text = text
+    }
+  }
+
   init(caption: String) {
     super.init(frame: .zero)
     isUserInteractionEnabled = false

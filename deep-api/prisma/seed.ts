@@ -369,6 +369,9 @@ async function main() {
   await prisma.quizOption.deleteMany();
   await prisma.quizQuestion.deleteMany();
   await prisma.mindTree.deleteMany();
+  await prisma.pauseWelcomeMessage.deleteMany();
+  await prisma.pauseIntentionOption.deleteMany();
+  await prisma.peaceMessage.deleteMany();
 
   // Onboarding config
   for (const [qi, q] of QUESTIONS.entries()) {
@@ -449,12 +452,60 @@ async function main() {
     });
   }
 
+  // Global Pause: singleton config, welcome copy, intentions (mirroring the
+  // iOS Intention.samples), and a night's worth of sample peace messages so
+  // the off-hours lobby feed isn't empty on first run.
+  await prisma.pauseConfig.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+
+  const WELCOME_MESSAGES = [
+    "Welcome. Tonight the world pauses together.",
+    "Wherever you are, you are not alone.",
+    "Settle in. We begin in a moment.",
+  ];
+  for (const [i, text] of WELCOME_MESSAGES.entries()) {
+    await prisma.pauseWelcomeMessage.create({ data: { text, displayOrder: i } });
+  }
+
+  const INTENTIONS = [
+    { key: "peace", label: "Peace" },
+    { key: "healing", label: "Healing" },
+    { key: "gratitude", label: "Gratitude" },
+    { key: "someone-i-love", label: "Someone I love" },
+    { key: "other", label: "Other" },
+  ];
+  for (const [i, intent] of INTENTIONS.entries()) {
+    await prisma.pauseIntentionOption.create({ data: { ...intent, displayOrder: i } });
+  }
+
+  const lastNight = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  const PEACE_MESSAGES: { displayName: string; countryISO: string; text: string }[] = [
+    { displayName: "Nan", countryISO: "TH", text: "Peace for every quiet heart tonight." },
+    { displayName: "Haruki", countryISO: "JP", text: "Breathing with you all from Kyoto." },
+    { displayName: "Camille", countryISO: "FR", text: "Ce soir, le monde respire ensemble." },
+    { displayName: "Luana", countryISO: "BR", text: "Sending warmth from São Paulo." },
+    { displayName: "Amara", countryISO: "KE", text: "May stillness find whoever needs it." },
+    { displayName: "Noah", countryISO: "US", text: "Grateful for this minute of quiet." },
+    { displayName: "Mira", countryISO: "IN", text: "Shanti. Shanti. Shanti." },
+    { displayName: "Elin", countryISO: "SE", text: "The lake is still here too. Goodnight." },
+  ];
+  for (const message of PEACE_MESSAGES) {
+    await prisma.peaceMessage.create({ data: { ...message, pauseDate: lastNight } });
+  }
+
   const counts = {
     categories: await prisma.soundCategory.count(),
     collections: await prisma.soundCollection.count(),
     tracks: await prisma.soundTrack.count(),
     questions: await prisma.quizQuestion.count(),
     mindTrees: await prisma.mindTree.count(),
+    welcomeMessages: await prisma.pauseWelcomeMessage.count(),
+    intentions: await prisma.pauseIntentionOption.count(),
+    peaceMessages: await prisma.peaceMessage.count(),
   };
   console.log("Seed complete:", counts);
 }

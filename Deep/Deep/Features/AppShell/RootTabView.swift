@@ -12,6 +12,8 @@ struct RootTabView: UIViewControllerRepresentable {
   let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  let pauseSession: GlobalPauseSession
+  let pauseRepository: any PauseEventRepository
 
   func makeUIViewController(context: Context) -> MainTabController {
     MainTabController(
@@ -19,7 +21,9 @@ struct RootTabView: UIViewControllerRepresentable {
       accountStore: accountStore,
       subscriptionStore: subscriptionStore,
       soundRepository: soundRepository,
-      soundPlayer: soundPlayer
+      soundPlayer: soundPlayer,
+      pauseSession: pauseSession,
+      pauseRepository: pauseRepository
     )
   }
 
@@ -32,7 +36,12 @@ struct RootTabView: UIViewControllerRepresentable {
     accountStore: PreviewAccountStore(),
     subscriptionStore: PreviewSubscriptionStore(),
     soundRepository: FixtureSoundContentRepository(),
-    soundPlayer: SoundPlayer()
+    soundPlayer: SoundPlayer(),
+    pauseSession: GlobalPauseSession(
+      clock: SyncedClock(),
+      repository: FixturePauseEventRepository()
+    ),
+    pauseRepository: FixturePauseEventRepository()
   )
   .ignoresSafeArea()
 }

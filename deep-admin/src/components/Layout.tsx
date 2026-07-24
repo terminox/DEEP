@@ -6,6 +6,8 @@ const navItems = [
   { to: '/categories', label: 'Categories', end: false },
   { to: '/collections', label: 'Collections', end: false },
   { to: '/users', label: 'Users', end: false },
+  { to: '/pause-settings', label: 'Pause Settings', end: false },
+  { to: '/peace-messages', label: 'Peace Messages', end: false },
 ]
 
 function Layout() {
