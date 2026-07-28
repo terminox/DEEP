@@ -38,6 +38,9 @@ Deep/**/.AppleDouble
 Deep/**/.LSOverride
 Deep/**/._*
 
+# Per-machine dev API host, written by scripts/dev-setup.sh
+Deep/Config/Local.xcconfig
+
 # IDE
 Deep/**/.idea/
 Deep/**/.vscode/

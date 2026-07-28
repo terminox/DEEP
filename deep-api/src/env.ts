@@ -15,7 +15,10 @@ const schema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   HOST: z.string().default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(8080),
-  PUBLIC_BASE_URL: z.string().url().default("http://localhost:8080"),
+  // Pins the origin used for absolute media URLs. Leave unset in local dev so
+  // those URLs follow whatever host the client reached us on (see lib/media.ts).
+  // Production must set it — that is what stops the Host header being trusted.
+  PUBLIC_BASE_URL: z.string().url().optional(),
   MEDIA_DIR: z.string().default("./media"),
   ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8).optional(),

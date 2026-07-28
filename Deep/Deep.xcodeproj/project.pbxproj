@@ -97,6 +97,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 19AD22E82FC58AE800C243D0 /* Build configuration list for PBXNativeTarget "Deep" */;
 			buildPhases = (
+				DEE9CF0000000000000001B0 /* Check dev API host */,
 				19AD22D92FC58AE700C243D0 /* Sources */,
 				19AD22DA2FC58AE700C243D0 /* Frameworks */,
 				19AD22DB2FC58AE700C243D0 /* Resources */,
@@ -193,6 +194,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		DEE9CF0000000000000001B0 /* Check dev API host */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check dev API host";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Guardrail: a Dev build going to a physical device must not point at\n# localhost, which only the simulator can reach. Reads exported build settings\n# only, so it stays safe under ENABLE_USER_SCRIPT_SANDBOXING.\nif [ \"$CONFIGURATION\" = \"Dev\" ] && [ \"$PLATFORM_NAME\" = \"iphoneos\" ]; then\n  case \"$API_BASE_URL\" in\n    *localhost*|*127.0.0.1*)\n      echo \"error: Dev build for a physical device still points at $API_BASE_URL, which a device cannot reach.\"\n      echo \"error: Run ./scripts/dev-setup.sh from the repo root, then build again. See DEVELOPMENT.md.\"\n      exit 1\n      ;;\n  esac\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		19AD22D92FC58AE700C243D0 /* Sources */ = {

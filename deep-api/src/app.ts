@@ -7,6 +7,7 @@ import fastifyStatic from "@fastify/static";
 import { ZodError } from "zod";
 import { env } from "./env.js";
 import { ApiError } from "./lib/errors.js";
+import { requestBaseUrl } from "./lib/media.js";
 import { authRoutes } from "./routes/auth.js";
 import { onboardingRoutes } from "./routes/onboarding.js";
 import { soundRoutes } from "./routes/sound.js";
@@ -20,6 +21,15 @@ export function buildApp() {
 
   app.register(cors, { origin: true });
   app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
+
+  // Remember the origin this request arrived on so mediaUrl() can hand back
+  // absolute URLs the caller can actually reach. `req.headers.host` rather than
+  // `req.hostname` because the port matters and Fastify strips it. trustProxy is
+  // on above, so req.protocol already honours X-Forwarded-Proto behind a tunnel.
+  app.addHook("onRequest", (req, _reply, done) => {
+    const host = req.headers.host ?? req.hostname;
+    requestBaseUrl.run(`${req.protocol}://${host}`, done);
+  });
 
   // Serve uploaded/seeded media at /media (progressive HTTP; AVPlayer-friendly).
   const mediaRoot = path.resolve(env.MEDIA_DIR);

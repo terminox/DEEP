@@ -2,10 +2,20 @@
 
 // ---- Environment ----
 APP_ENV = dev
-// `$()` keeps xcconfig from reading `//` as a comment.
-API_BASE_URL = http:/$()/localhost:8080
 BUNDLE_ID_SUFFIX = .dev
 APP_DISPLAY_NAME = DEEP Dev
+
+// ---- Dev API host ----
+// localhost is right for the simulator and wrong for a physical device, which
+// has to reach the Mac over the network. `scripts/dev-setup.sh` writes the
+// gitignored Local.xcconfig below with this Mac's mDNS name (e.g.
+// `my-mbp.local:8080`) — a name that survives DHCP handing out a new IP, and
+// that resolves over Wi-Fi and a USB-tethered link alike. The optional include
+// is skipped silently when the file is absent, so a fresh clone still builds.
+DEV_API_HOST = localhost:8080
+#include? "Local.xcconfig"
+// `$()` keeps xcconfig from reading `//` as a comment.
+API_BASE_URL = http:/$()/$(DEV_API_HOST)
 
 // ---- Debug build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf

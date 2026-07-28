@@ -13,7 +13,13 @@ High-stakes decisions: task Opus + Codex on the same problem in parallel, synthe
 
 Don't commit unless I explicitly tell you to do so.
 
-## Testing on the simulator
+## Running and testing
+
+- **Setup, running on a real iPhone, and troubleshooting live in `DEVELOPMENT.md`.** Short
+  version: `./scripts/dev-setup.sh` points the Dev build at this Mac's mDNS name (written to
+  the gitignored `Deep/Config/Local.xcconfig`), so there is never an IP to type. Never
+  hardcode a host in `Deep/Config/Dev.xcconfig`, and never set `PUBLIC_BASE_URL` in
+  `deep-api/.env` — media URLs follow the request host precisely so that isn't needed.
 
 - **Always use `baguette` for headless simulator control when testing.** Do not drive the
   Simulator app via AppleScript / System Events clicks. `baguette` (`/opt/homebrew/bin/baguette`)
