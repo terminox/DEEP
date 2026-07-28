@@ -152,6 +152,7 @@ final class GlobalPauseCardView: UIControl {
   /// nightly window is open.
   func setChromeCaption(_ text: String, animated: Bool) {
     chrome.setCaption(text, animated: animated)
+    accessibilityLabel = "Global Pause. \(text)."
   }
 
   // MARK: - Globe flight
