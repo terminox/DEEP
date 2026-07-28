@@ -77,7 +77,8 @@ in the error message, instead of installing an app whose every request times out
 | Build fails: "still points at localhost" | Run `./scripts/dev-setup.sh`, then build again. |
 | Every request times out on device | Local Network permission was denied. Settings ▸ DEEP Dev ▸ Local Network. |
 | `.local` will not resolve | Guest/corporate Wi-Fi often blocks mDNS. Re-run with `--host <the Mac's IP>`. |
-| App loads, but audio and artwork 404 | `PUBLIC_BASE_URL` is set in `deep-api/.env`. Comment it out. |
+| App loads, but audio and artwork 404 | `PUBLIC_BASE_URL` is set in `deep-api/.env` — likely a `.env` predating this setup. `./scripts/dev-setup.sh --fix-env`, then restart the API. |
+| Device build fails to sign | The Dev bundle id is `io.appbeyond.freelance.Deep.dev` and needs its own profile with Sign In with Apple. Build once from the Xcode UI, which auto-creates it; CLI `xcodebuild` cannot. |
 | `npm run dev` exits immediately | No `deep-api/.env`. Run `./scripts/dev-setup.sh`. |
 | Server starts but every DB call fails | Postgres is not up — `npm run db:up`. |
 | Port 8080 already in use | A server from another worktree. `lsof -nP -iTCP:8080 -sTCP:LISTEN` |

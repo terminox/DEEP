@@ -12,6 +12,7 @@
 #   ./scripts/dev-setup.sh                      # auto-detect (what you normally want)
 #   ./scripts/dev-setup.sh --host 192.168.1.7   # force a host: raw IP, Tailscale name, ngrok
 #   ./scripts/dev-setup.sh --port 9000          # non-default API port
+#   ./scripts/dev-setup.sh --fix-env            # also comment out PUBLIC_BASE_URL in deep-api/.env
 #   DEEP_DEV_HOST=my-mbp.local ./scripts/dev-setup.sh
 #
 set -euo pipefail
@@ -32,11 +33,14 @@ die()  { printf '\n%serror:%s %s\n' "$yellow" "$reset" "$1" >&2; exit 1; }
 
 host="${DEEP_DEV_HOST:-}"
 port=8080
+fix_env=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --host) host="${2:-}"; shift 2 || die "--host needs a value" ;;
     --port) port="${2:-}"; shift 2 || die "--port needs a value" ;;
-    -h|--help) sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^#\{1,2\} \{0,1\}//'; exit 0 ;;
+    --fix-env) fix_env=1; shift ;;
+    # Prints the header comment, however long it happens to be.
+    -h|--help) awk 'NR>1 && !/^#/{exit} NR>1{sub(/^# ?/,""); print}' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
@@ -81,8 +85,20 @@ ok "Wrote Deep/Config/Local.xcconfig"
 # ---- 2. Backend: make sure it can start at all ----
 if [ -f "$API_ENV" ]; then
   if grep -Eq '^[[:space:]]*PUBLIC_BASE_URL[[:space:]]*=' "$API_ENV"; then
-    warn "deep-api/.env sets PUBLIC_BASE_URL — that pins media URLs to one origin"
-    warn "and audio/artwork will 404 on the device. Comment it out for local dev."
+    # A .env predating this setup almost certainly carries the old
+    # PUBLIC_BASE_URL="http://localhost:8080" default, which pins every audio and
+    # artwork URL to localhost and 404s on a device. Never rewritten silently —
+    # this file holds secrets, so the edit is opt-in and keeps a backup.
+    if [ "$fix_env" = "1" ]; then
+      cp "$API_ENV" "$API_ENV.bak"
+      sed -i '' -E 's/^([[:space:]]*PUBLIC_BASE_URL[[:space:]]*=)/# \1/' "$API_ENV"
+      ok "Commented out PUBLIC_BASE_URL in deep-api/.env (backup at .env.bak)"
+      warn "Restart the API for that to take effect."
+    else
+      warn "deep-api/.env sets PUBLIC_BASE_URL - that pins media URLs to one origin,"
+      warn "so audio and artwork will 404 on the device. Re-run with --fix-env to"
+      warn "comment it out (a .env.bak backup is kept), or edit it yourself."
+    fi
   else
     ok "deep-api/.env looks right (PUBLIC_BASE_URL unset, so media URLs follow the request)"
   fi
