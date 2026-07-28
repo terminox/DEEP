@@ -16,14 +16,10 @@ struct GlobalPauseHomeView: View {
 
   @Environment(\.soundContentRepository) private var repository
   @Environment(\.openCollectionList) private var openCollectionList
-  @Environment(\.globalPauseSession) private var session
-  @Environment(\.openGlobalPause) private var openGlobalPause
-  @Environment(\.pauseReminder) private var reminder
 
   private enum LoadState: Equatable { case loading, loaded, failed }
   @State private var home: PauseHome?
   @State private var loadState: LoadState = .loading
-  @State private var notifyEnabled = false
 
   private let heroHeight: CGFloat = 320
   private let heroOverlap: CGFloat = 80
@@ -36,9 +32,6 @@ struct GlobalPauseHomeView: View {
         VStack(alignment: .leading, spacing: .rhythm) {
           GlobalPauseCardSlot(card: card)
             .frame(height: 200)
-            .padding(.horizontal, .edge)
-
-          pauseScheduleContent
             .padding(.horizontal, .edge)
 
           DeepSessionEntryCard(session: DeepSessionLibrary.balancingBreath)
@@ -62,85 +55,6 @@ struct GlobalPauseHomeView: View {
       subtitle: "Take a breath with the world today"
     )
     .task { await load() }
-  }
-
-  /// The schedule strip under the hero card: a countdown card while the
-  /// world waits, a join CTA while the pause is live.
-  @ViewBuilder
-  private var pauseScheduleContent: some View {
-    switch session.phase {
-    case .loading:
-      EmptyView()
-    case .offHours(let nextLobbyStart):
-      NextPauseCard(
-        scheduleLine: nextPauseScheduleLine(for: nextLobbyStart),
-        target: nextLobbyStart,
-        rsvpCount: nil,
-        clockOffset: session.clock.effectiveOffset,
-        isNotifyEnabled: $notifyEnabled
-      )
-      .task { notifyEnabled = reminder.isEnabled }
-      .onChange(of: notifyEnabled) { _, wanted in
-        guard wanted != reminder.isEnabled else { return }
-        Task {
-          let granted = await reminder.setEnabled(wanted)
-          if granted != wanted {
-            withAnimation(.settle) { notifyEnabled = granted }
-          }
-        }
-      }
-    case .lobby, .welcome, .meditation, .feedback:
-      liveNowCTA
-    }
-  }
-
-  private var liveNowCTA: some View {
-    Button(action: openGlobalPause) {
-      HStack(spacing: 12) {
-        Circle()
-          .fill(.blushPowder)
-          .frame(width: 8, height: 8)
-        Text("Live now — the world is pausing")
-          .font(DeepType.body.weight(.medium))
-          .foregroundStyle(.deepPlum)
-        Spacer()
-        Text("Join")
-          .font(DeepType.body.weight(.semibold))
-          .foregroundStyle(.white)
-          .padding(.horizontal, 18)
-          .padding(.vertical, 8)
-          .background(
-            Capsule().fill(
-              LinearGradient(
-                colors: [.lavenderMist, .blushPowder],
-                startPoint: .leading,
-                endPoint: .trailing
-              )
-            )
-          )
-      }
-      .padding(.horizontal, 20)
-      .padding(.vertical, 16)
-      .frostedCard()
-    }
-    .buttonStyle(.softPress)
-    .accessibilityLabel("The Global Pause is live now. Join the pause.")
-  }
-
-  /// "Tonight · 20:30 Thailand Time" / "Tomorrow · 20:30 Thailand Time",
-  /// phrased against the pause's home timezone rather than the device's.
-  private func nextPauseScheduleLine(for target: Date) -> String {
-    var calendar = Calendar(identifier: .gregorian)
-    let timeZone = TimeZone(identifier: session.schedule?.timezone ?? "Asia/Bangkok") ?? .current
-    calendar.timeZone = timeZone
-
-    let formatter = DateFormatter()
-    formatter.timeZone = timeZone
-    formatter.dateFormat = "HH:mm"
-    let time = formatter.string(from: target)
-
-    let day = calendar.isDate(session.clock.now, inSameDayAs: target) ? "Tonight" : "Tomorrow"
-    return "\(day) · \(time) Thailand Time"
   }
 
   @ViewBuilder
@@ -201,19 +115,7 @@ struct GlobalPauseHomeView: View {
   }
 }
 
-#Preview("Global Pause Home — off hours") {
+#Preview("Global Pause Home") {
   GlobalPauseHomeView(card: GlobalPauseCardView(scene: .preview))
     .environment(\.soundPlayer, MockSoundPlayer.idle)
-    .environment(
-      \.globalPauseSession,
-      .preview(phase: .offHours(nextLobbyStart: Date().addingTimeInterval(4 * 3600)))
-    )
-    .environment(\.pauseReminder, MockPauseReminder())
-}
-
-#Preview("Global Pause Home — live") {
-  GlobalPauseHomeView(card: GlobalPauseCardView(scene: .preview))
-    .environment(\.soundPlayer, MockSoundPlayer.idle)
-    .environment(\.globalPauseSession, .preview(phase: .lobby))
-    .environment(\.pauseReminder, MockPauseReminder())
 }

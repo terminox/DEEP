@@ -84,8 +84,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
     observePhaseForChrome()
   }
 
-  /// Keeps the feed card's caption honest about the nightly window
-  /// ("Live now…" while it's open) — the `observeHasTrack` re-arming pattern.
+  /// Keeps the feed card's caption honest about the nightly window — the next
+  /// pause's schedule line while the world waits, "Live now…" while it's open
+  /// — via the `observeHasTrack` re-arming pattern.
   private func observePhaseForChrome() {
     let phase = withObservationTracking {
       pauseSession.phase
@@ -96,7 +97,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
     switch phase {
     case .lobby, .welcome, .meditation, .feedback:
       caption = "Live now — the world is pausing"
-    case .loading, .offHours:
+    case .offHours(let nextLobbyStart):
+      caption = pauseSession.scheduleLine(for: nextLobbyStart)
+    case .loading:
       caption = "Breathe with the world, together"
     }
     card.setChromeCaption(caption, animated: viewIfLoaded?.window != nil)

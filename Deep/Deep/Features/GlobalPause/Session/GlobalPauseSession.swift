@@ -210,6 +210,24 @@ final class GlobalPauseSession {
     (try? await repository.recentMessages(limit: limit)) ?? []
   }
 
+  // MARK: - Schedule phrasing
+
+  /// "Tonight · 20:30 Thailand Time" / "Tomorrow · 20:30 Thailand Time",
+  /// phrased against the pause's home timezone rather than the device's.
+  func scheduleLine(for target: Date) -> String {
+    var calendar = Calendar(identifier: .gregorian)
+    let timeZone = TimeZone(identifier: schedule?.timezone ?? "Asia/Bangkok") ?? .current
+    calendar.timeZone = timeZone
+
+    let formatter = DateFormatter()
+    formatter.timeZone = timeZone
+    formatter.dateFormat = "HH:mm"
+    let time = formatter.string(from: target)
+
+    let day = calendar.isDate(clock.now, inSameDayAs: target) ? "Tonight" : "Tomorrow"
+    return "\(day) · \(time) Thailand Time"
+  }
+
   // MARK: - Dev controls
 
   /// Pins the clock just inside `key`'s window (nil returns to real time),

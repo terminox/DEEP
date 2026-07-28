@@ -15,7 +15,7 @@ struct GlobalPauseOffHoursView: View {
 
       if case .offHours(let nextLobbyStart) = session.phase {
         NextPauseCard(
-          scheduleLine: scheduleLine(for: nextLobbyStart),
+          scheduleLine: session.scheduleLine(for: nextLobbyStart),
           target: nextLobbyStart,
           rsvpCount: nil,
           clockOffset: session.clock.effectiveOffset,
@@ -44,16 +44,6 @@ struct GlobalPauseOffHoursView: View {
     }
   }
 
-  private func scheduleLine(for target: Date) -> String {
-    var calendar = Calendar(identifier: .gregorian)
-    let timeZone = TimeZone(identifier: session.schedule?.timezone ?? "Asia/Bangkok") ?? .current
-    calendar.timeZone = timeZone
-    let formatter = DateFormatter()
-    formatter.timeZone = timeZone
-    formatter.dateFormat = "HH:mm"
-    let day = calendar.isDate(session.clock.now, inSameDayAs: target) ? "Tonight" : "Tomorrow"
-    return "\(day) · \(formatter.string(from: target)) Thailand Time"
-  }
 }
 
 #Preview("Off hours") {
