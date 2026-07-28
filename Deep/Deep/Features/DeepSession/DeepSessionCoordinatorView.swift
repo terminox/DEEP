@@ -1,11 +1,11 @@
 import SwiftUI
 
 /// Composition root for the full Deep Session flow — intro threshold, guided
-/// session, then the completion beat — presented full-screen (via
-/// `deepSessionLaunch`) over whichever tab launched it. Owns the stage switch,
-/// the engine, the dismissal handshake, recording the finished practice, and
-/// silencing the ambient player; all styling lives in the leaf screens (per
-/// the coordinator rules).
+/// session, then the completion beat, reached on its own once the engine
+/// finishes — presented full-screen (via `deepSessionLaunch`) over whichever
+/// tab launched it. Owns the stage switch, the engine, the dismissal
+/// handshake, recording the finished practice, and silencing the ambient
+/// player; all styling lives in the leaf screens (per the coordinator rules).
 struct DeepSessionCoordinatorView: View {
   private enum Stage {
     case intro
@@ -46,16 +46,14 @@ struct DeepSessionCoordinatorView: View {
         )
         .transition(.opacity)
       case .session:
+        // The view starts the engine itself, after its settling countdown.
         DeepSessionView(
           engine: engine,
-          onFinish: { withAnimation(.bloom) { stage = .completion } },
           onClose: { dismiss() }
         )
         .transition(.opacity)
-        // The first inhale starts under the crossfade from the intro.
-        .onAppear { engine.begin() }
       case .completion:
-        DeepSessionCompletionView(onReturn: { dismiss() })
+        DeepSessionCompletionView(session: session, onReturn: { dismiss() })
           .transition(.opacity)
       }
     }
@@ -76,6 +74,12 @@ struct DeepSessionCoordinatorView: View {
       didRecord = true
       practiceStore.recordCompletion(of: session)
       heartLedger.earn()
+      // Let the final exhale settle (the orb blooms to its rest) before the
+      // crossfade into the completion beat — no tap required to move on.
+      Task {
+        try? await Task.sleep(for: .seconds(1.4))
+        withAnimation(.bloom) { stage = .completion }
+      }
     }
     // Leaving the app settles the practice into a pause; resuming stays the
     // user's own gesture. `.inactive` is deliberately ignored — banners and

@@ -5,17 +5,23 @@ import SwiftUI
 /// never a score; no streaks, no goals, no numbers to chase.
 ///
 /// Leaf screen, so it owns its screen-level styling (per the coordinator
-/// rules). Third and final stage of the presented flow; Return dismisses it.
+/// rules). Third and final stage of the presented flow, arrived at on its own
+/// once the engine finishes; Return dismisses it.
 struct DeepSessionCompletionView: View {
+  let session: DeepSession
   var onReturn: () -> Void = {}
 
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  /// The content blooms in from rest once, on arrival.
+  /// The content blooms in from rest once, on arrival — hero first, then the
+  /// grown tiles, then the way back.
   @State private var hasArrived = false
   /// One-shot trigger for the earned heart's little flourish.
   @State private var heartFlourish = 0
+  /// The settled orb keeps a slow idle drift, like the intro's — the session
+  /// hands it over at its resting fullness.
+  @State private var idleSwell: CGFloat = 0.6
 
   var body: some View {
     ZStack {
@@ -27,76 +33,115 @@ struct DeepSessionCompletionView: View {
       VStack(spacing: 0) {
         Spacer()
 
-        // The settled orb carries through from the session's final exhale.
-        BreathingOrb(swell: 0.6)
-          .frame(width: 160)
+        bloomsIn(hero, after: 0)
 
-        grownCard
-          .padding(.top, .rhythm * 1.5)
+        bloomsIn(grownTiles, after: 0.15)
+          .padding(.top, .rhythm)
 
         Spacer()
 
-        returnButton
+        bloomsIn(returnButton, after: 0.3)
           .padding(.bottom, .rhythm)
       }
       .padding(.horizontal, .edge)
-      .opacity(hasArrived ? 1 : 0)
-      .scaleEffect(reduceMotion ? 1 : (hasArrived ? 1 : 0.92))
     }
     .onAppear {
-      withAnimation(.bloom) { hasArrived = true }
-      heartFlourish += 1
+      hasArrived = true
+      if reduceMotion {
+        idleSwell = 0.6
+      } else {
+        withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
+          idleSwell = 0.7
+        }
+      }
+      // The heart floats off its tile once the tile has landed.
+      Task {
+        try? await Task.sleep(for: .seconds(0.7))
+        heartFlourish += 1
+      }
       AccessibilityNotification.Announcement("Session complete. A heart earned.").post()
     }
   }
 
-  // MARK: - What grew
+  /// One step of the staggered arrival — rises softly into place, each group
+  /// a beat after the one before. Opacity only under Reduce Motion.
+  private func bloomsIn(_ view: some View, after delay: Double) -> some View {
+    view
+      .opacity(hasArrived ? 1 : 0)
+      .offset(y: reduceMotion || hasArrived ? 0 : 14)
+      .animation(.bloom.delay(delay), value: hasArrived)
+  }
 
-  private var grownCard: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      VStack(alignment: .leading, spacing: 5) {
+  // MARK: - Hero
+
+  private var hero: some View {
+    VStack(spacing: 0) {
+      BreathingOrb(swell: idleSwell)
+        .frame(width: 180)
+
+      VStack(spacing: 8) {
         Text("Softly grown")
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
-        Text("A minute of breathing, settled into your garden.")
+        Text("\(session.title) · \(session.durationMinutes) min settled into your garden")
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
+          .multilineTextAlignment(.center)
       }
-
-      Rectangle()
-        .fill(.lavenderMist.opacity(0.22))
-        .frame(height: 1)
-
-      grownRow(
-        systemImage: "leaf.fill",
-        iconStyle: GardenColor.sage,
-        text: "\(practiceStore.minutesToday) min in your garden today"
-      )
-
-      grownRow(
-        systemImage: "heart.fill",
-        iconStyle: Color.blushPowder,
-        text: "A heart earned, ready to give"
-      )
-      .heartBurst(trigger: heartFlourish)
+      .padding(.top, .rhythm * 1.5)
     }
-    .padding(20)
-    .frostedCard()
     .accessibilityElement(children: .combine)
   }
 
-  private func grownRow(systemImage: String, iconStyle: Color, text: String) -> some View {
+  // MARK: - What grew
+
+  private var grownTiles: some View {
     HStack(spacing: 12) {
+      grownTile(
+        systemImage: "leaf.fill",
+        iconStyle: GardenColor.sage,
+        value: "\(practiceStore.minutesToday)",
+        label: "min in your garden today"
+      )
+
+      grownTile(
+        systemImage: "heart.fill",
+        iconStyle: Color.blushPowder,
+        value: "+1",
+        label: "heart ready to give"
+      )
+      .heartBurst(trigger: heartFlourish)
+    }
+    // Both tiles stretch to the taller one, so the pair reads as one shelf.
+    .fixedSize(horizontal: false, vertical: true)
+  }
+
+  private func grownTile(
+    systemImage: String,
+    iconStyle: Color,
+    value: String,
+    label: String
+  ) -> some View {
+    VStack(spacing: 8) {
       Image(systemName: systemImage)
         .font(.system(size: 15, weight: .semibold))
         .foregroundStyle(iconStyle)
-        .frame(width: 36, height: 36)
+        .frame(width: 40, height: 40)
         .background(.white.opacity(0.6), in: Circle())
-      Text(text)
-        .font(DeepType.body)
+      Text(value)
+        .font(DeepType.bigNumber)
+        .monospacedDigit()
         .foregroundStyle(.deepPlum)
-      Spacer(minLength: 0)
+      Text(label)
+        .font(DeepType.caption)
+        .foregroundStyle(.driftGrey)
+        .multilineTextAlignment(.center)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(.vertical, 18)
+    .padding(.horizontal, 12)
+    .frostedCard(cornerRadius: .tile)
+    .accessibilityElement(children: .combine)
   }
 
   // MARK: - Return
@@ -124,11 +169,11 @@ struct DeepSessionCompletionView: View {
 }
 
 #Preview("Deep session — softly grown") {
-  DeepSessionCompletionView()
+  DeepSessionCompletionView(session: DeepSessionLibrary.balancingBreath)
     .environment(\.practiceStore, MockPracticeStore())
 }
 
 #Preview("Deep session — first practice") {
-  DeepSessionCompletionView()
+  DeepSessionCompletionView(session: DeepSessionLibrary.balancingBreath)
     .environment(\.practiceStore, MockPracticeStore.fresh)
 }
