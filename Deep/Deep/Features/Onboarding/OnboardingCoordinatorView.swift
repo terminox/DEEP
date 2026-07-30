@@ -128,6 +128,18 @@ struct OnboardingCoordinatorView: View {
         config = fetched
       }
     }
+    .task {
+      // Compile the ripple shader while the welcome screen idles. The first
+      // `layerEffect` use otherwise pays the Metal compile synchronously at
+      // tap time — seconds-long with a debugger attached.
+      let shader = ShaderLibrary.rippleReveal(
+        .float2(CGPoint.zero),
+        .float2(CGSize(width: 1, height: 1)),
+        .float(0),
+        .color(.moonCream)
+      )
+      try? await shader.compile(as: .layerEffect)
+    }
   }
 
   /// Routes every leaf-screen advance. Off the welcome screen it's a calm
@@ -135,7 +147,10 @@ struct OnboardingCoordinatorView: View {
   /// rippling freeze-frame of the welcome screen.
   private func advance(to route: OnboardingRoute) {
     guard routes.isEmpty, !reduceMotion, ripple == nil, !isRipplePending else {
-      guard route != currentRoute else { return }
+      // While a ripple commit is pending the route stack is still empty, so
+      // without this guard a second tap would append the route here *and* in
+      // the pending task — a double push over a rippling wrong screen.
+      guard !isRipplePending, route != currentRoute else { return }
       withAnimation(.drift) {
         if case .logIn = currentRoute, case .quiz = route {
           // Post-login resume: replace the stack so back from the first
@@ -150,7 +165,25 @@ struct OnboardingCoordinatorView: View {
     isRipplePending = true
     let origin = touchTracker.rippleOrigin
     Task { @MainActor in
-      let frame = await videoFrameGrabber.currentFrame()
+      // Bounded grab: a stalled decoder must never wedge navigation. On
+      // timeout the ripple runs over a nil frame — atmosphere + veils — which
+      // still reads correctly (the tap origin sits over the near-solid veil).
+      let frame = await withTaskGroup(of: UIImage?.self) { group in
+        group.addTask { @MainActor [videoFrameGrabber] in
+          await videoFrameGrabber.currentFrame()
+        }
+        group.addTask {
+          try? await Task.sleep(for: .milliseconds(400))
+          return nil
+        }
+        let first = await group.next() ?? nil
+        group.cancelAll()
+        return first
+      }
+      guard routes.isEmpty, ripple == nil else {
+        isRipplePending = false
+        return
+      }
       var transaction = Transaction()
       transaction.disablesAnimations = true
       withTransaction(transaction) {

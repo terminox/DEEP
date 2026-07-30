@@ -44,22 +44,34 @@ struct LoopingVideoView: UIViewRepresentable {
   @MainActor
   final class Coordinator {
     let player: AVQueuePlayer?
-    private let url: URL?
+    private let frameGenerator: AVAssetImageGenerator?
     private var looper: AVPlayerLooper?
 
     init(resource: String, fileExtension: String) {
       guard let url = Bundle.main.url(forResource: resource, withExtension: fileExtension) else {
         player = nil
-        self.url = nil
+        frameGenerator = nil
         return
       }
-      self.url = url
       let item = AVPlayerItem(url: url)
       let queue = AVQueuePlayer(playerItem: item)
       queue.isMuted = true
       queue.preventsDisplaySleepDuringVideoPlayback = false
       looper = AVPlayerLooper(player: queue, templateItem: item)
       player = queue
+
+      // Built once: re-parsing the asset per grab is what made tap-time frame
+      // freezes slow. `maximumSize` caps the decode at display resolution no
+      // matter how large the source footage is.
+      let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+      generator.appliesPreferredTrackTransform = true
+      let tolerance = CMTime(seconds: 0.1, preferredTimescale: 600)
+      generator.requestedTimeToleranceBefore = tolerance
+      generator.requestedTimeToleranceAfter = tolerance
+      let screen = UIScreen.main.bounds.size
+      let scale = UIScreen.main.scale
+      generator.maximumSize = CGSize(width: screen.width * scale, height: screen.height * scale)
+      frameGenerator = generator
     }
 
     func setAnimating(_ animating: Bool, rate: Float) {
@@ -76,13 +88,8 @@ struct LoopingVideoView: UIViewRepresentable {
     /// playhead. A slight tolerance keeps the seek near a keyframe so the
     /// grab stays fast; on ambient footage the difference is invisible.
     func currentFrame() async -> UIImage? {
-      guard let player, let url else { return nil }
-      let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
-      generator.appliesPreferredTrackTransform = true
-      let tolerance = CMTime(seconds: 0.1, preferredTimescale: 600)
-      generator.requestedTimeToleranceBefore = tolerance
-      generator.requestedTimeToleranceAfter = tolerance
-      guard let (image, _) = try? await generator.image(at: player.currentTime()) else {
+      guard let player, let frameGenerator else { return nil }
+      guard let (image, _) = try? await frameGenerator.image(at: player.currentTime()) else {
         return nil
       }
       return UIImage(cgImage: image)

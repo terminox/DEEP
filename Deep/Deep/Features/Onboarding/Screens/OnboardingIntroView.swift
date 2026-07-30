@@ -20,9 +20,16 @@ struct OnboardingIntroView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.colorSchemeContrast) private var contrast
 
+  private var isStill: Bool {
+    if case .still = videoMode { return true }
+    return false
+  }
+
   var body: some View {
     ZStack {
-      AtmosphereBackground()
+      // The still mode renders inside the ripple's `layerEffect`; a driftless
+      // atmosphere lets that layer rasterize once instead of every frame.
+      AtmosphereBackground(animated: !isStill)
 
       video
         .ignoresSafeArea()

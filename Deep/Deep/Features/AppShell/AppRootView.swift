@@ -73,6 +73,9 @@ struct AppRootView: View {
   private func bootstrap() async {
     await deps.accountStore.restore()
     if deps.accountStore.isSignedIn {
+      // Concurrent: neither depends on the other, and against an unreachable
+      // dev host their timeouts overlap instead of stacking.
+      async let refreshed: Void = deps.practiceStore.refresh()
       if let profile = try? await deps.onboardingRemote.fetchProfile() {
         deps.onboardingStore.hydrate(
           quizAnswers: profile.quizAnswers,
@@ -80,7 +83,7 @@ struct AppRootView: View {
           completed: profile.completed
         )
       }
-      await deps.practiceStore.refresh()
+      await refreshed
     }
     withAnimation(.bloom) { didRestore = true }
   }
