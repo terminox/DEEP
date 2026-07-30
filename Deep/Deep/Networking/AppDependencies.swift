@@ -22,6 +22,7 @@ final class AppDependencies {
   let pauseClock: SyncedClock
   let pauseRepository: any PauseEventRepository
   let pauseSession: GlobalPauseSession
+  let imageLoader: any ImageLoading
 
   init() {
     let config = AppConfig.current
@@ -36,6 +37,9 @@ final class AppDependencies {
     self.soundPlayer = StreamingSoundPlayer()
     self.practiceStore = PracticeDefaultsStore(remote: APIPracticeRemote(client: client))
     self.heartLedger = .sample
+    // Keyed by environment so Dev and Staging artwork can never collide on a
+    // shared /media path — see `ImageLoader.cacheKey(for:environmentKey:)`.
+    self.imageLoader = ImageLoader(environmentKey: config.environment.rawValue)
 
     // Global Pause: one synced clock + one app-long phase engine, so the home
     // feed's countdown and the lobby run off the same time authority. The

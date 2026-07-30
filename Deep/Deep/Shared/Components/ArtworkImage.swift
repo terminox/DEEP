@@ -15,6 +15,12 @@ struct ArtworkImage: View {
   /// gradient-only artwork used.
   let colors: [Color]
   var cornerRadius: CGFloat = .tile
+  /// Optional SF Symbol drawn over the gradient while there is no photo —
+  /// the `CountryImage` placeholder look, now available to any artwork.
+  var placeholderSystemImage: String? = nil
+
+  @Environment(\.imageLoader) private var imageLoader
+  @State private var loaded: UIImage?
 
   var body: some View {
     let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -32,18 +38,30 @@ struct ArtworkImage: View {
 
   @ViewBuilder
   private var content: some View {
-    AsyncImage(url: url, transaction: Transaction(animation: .bloom)) { phase in
-      switch phase {
-      case .success(let image):
-        image
+    // Probing the memory cache during body means a remounted view (tab switch,
+    // lazy-grid recycling) draws its image on the very first pass — no gradient
+    // flash and no animation. The bloom cross-fade is reserved for images that
+    // genuinely arrive asynchronously, in `load()`.
+    let displayed = loaded ?? url.flatMap { imageLoader.cachedImage(for: $0) }
+    ZStack {
+      if let displayed {
+        Image(uiImage: displayed)
           .resizable()
           .scaledToFill()
 //          .overlay(wash)
 //          .overlay(sheen(opacity: 0.25))
-      default:
+      } else {
         gradient
       }
     }
+    .task(id: url) { await load() }
+    .onChange(of: url) { loaded = nil }
+  }
+
+  private func load() async {
+    guard let url, loaded == nil, imageLoader.cachedImage(for: url) == nil else { return }
+    guard let image = try? await imageLoader.image(for: url) else { return }
+    withAnimation(.bloom) { loaded = image }
   }
 
   /// The branded gradient kept as a translucent wash over the photo. Heavy
@@ -75,6 +93,13 @@ struct ArtworkImage: View {
         endRadius: 240
       )
     )
+    .overlay {
+      if let placeholderSystemImage {
+        Image(systemName: placeholderSystemImage)
+          .font(.system(.title2, design: .default, weight: .light))
+          .foregroundStyle(.white.opacity(0.55))
+      }
+    }
   }
 
   /// Soft top-left highlight that gives the artwork its orb-like dimension.
@@ -90,7 +115,8 @@ struct ArtworkImage: View {
 
 #Preview("Artwork Image") {
   HStack(spacing: 16) {
-    // Photo-backed (loads over the network, blooms in over the gradient).
+    // Photo-backed — the fixture loader renders a deterministic gradient
+    // image instantly, so previews stay hermetic.
     ArtworkImage(
       url: URL(string: "https://images.unsplash.com/photo-1505144808419-1957a94ca61e?w=600&q=80"),
       colors: [.skyWash, .softLilac]
@@ -100,6 +126,15 @@ struct ArtworkImage: View {
     // No URL — the gradient-only fallback, identical to the original look.
     ArtworkImage(url: nil, colors: [.blushPowder, .softLilac])
       .frame(width: 120, height: 120)
+
+    // Delayed fixture — exercises the bloom-in over the gradient placeholder.
+    ArtworkImage(
+      url: URL(string: "https://images.unsplash.com/photo-1505144808419-1957a94ca61e?w=600&q=80"),
+      colors: [.blushPowder, .softLilac],
+      placeholderSystemImage: "mountain.2.fill"
+    )
+    .frame(width: 120, height: 120)
+    .environment(\.imageLoader, FixtureImageLoader(delay: .seconds(1)))
   }
   .padding()
   .background(.moonCream)
