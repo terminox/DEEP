@@ -25,7 +25,7 @@ struct MindGardenHomeView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        StretchyVideoHero(resource: "garden", height: heroHeight)
+        StretchyHero(media: .video(resource: "garden"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
           GardenGreetingCard(state: state)

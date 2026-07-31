@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A home-screen header that floats over a `StretchyVideoHero` and collapses
+/// A home-screen header that floats over a `StretchyHero` and collapses
 /// like the iOS large-title nav bar. At rest the title sits large in the
 /// top-left over the video (white, legible against the footage); as the scroll
 /// rises the large title rolls up and clips out while a compact title rises into
@@ -8,7 +8,7 @@ import SwiftUI
 /// cross-dissolve.
 ///
 /// Apply with `.collapsibleHomeHeader(title:subtitle:trailing:)` to a home
-/// screen whose body is a `ScrollView` leading with `StretchyVideoHero` (see
+/// screen whose body is a `ScrollView` leading with `StretchyHero` (see
 /// `DeepSoundHomeView`, `MindGardenHomeView`). The modifier owns the collapse
 /// state and renders the header as an overlay, so it floats over the hero rather
 /// than insetting the scroll — keeping the full-bleed hero intact.
@@ -182,7 +182,7 @@ private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        StretchyVideoHero(resource: "sky", height: 320)
+        StretchyHero(media: .video(resource: "sky"), height: 320)
         VStack(spacing: .rhythm) {
           ForEach(0..<8, id: \.self) { _ in
             RoundedRectangle(cornerRadius: .card, style: .continuous)

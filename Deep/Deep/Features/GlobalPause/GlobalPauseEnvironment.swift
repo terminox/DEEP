@@ -10,4 +10,8 @@ extension EnvironmentValues {
   /// Opens the Global Pause lobby. Injected by
   /// `GlobalPauseCoordinatorController`; no-op default keeps previews hermetic.
   @Entry var openGlobalPause: () -> Void = {}
+
+  /// Pushes Fuku's Lounge onto the Global Pause nav stack. Injected by
+  /// `GlobalPauseCoordinatorController`; no-op default keeps previews hermetic.
+  @Entry var openFukuLounge: () -> Void = {}
 }
