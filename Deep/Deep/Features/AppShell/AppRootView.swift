@@ -42,7 +42,8 @@ struct AppRootView: View {
           practiceStore: deps.practiceStore,
           heartLedger: deps.heartLedger,
           pauseSession: deps.pauseSession,
-          pauseRepository: deps.pauseRepository
+          pauseRepository: deps.pauseRepository,
+          imageLoader: deps.imageLoader
         )
         .ignoresSafeArea()
         .transition(.opacity)
@@ -59,6 +60,7 @@ struct AppRootView: View {
     .environment(\.soundContentRepository, deps.soundRepository)
     .environment(\.practiceStore, deps.practiceStore)
     .environment(\.heartLedger, deps.heartLedger)
+    .environment(\.imageLoader, deps.imageLoader)
     .task { await bootstrap() }
     // Returning to the foreground retries the practice journal's offline
     // queue and picks up sessions recorded on other installs.

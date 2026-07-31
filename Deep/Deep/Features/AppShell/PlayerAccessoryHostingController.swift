@@ -7,8 +7,10 @@ import SwiftUI
 /// by a SwiftUI `TabView`, so with the UIKit shell the regular/inline switch
 /// must be forwarded by hand.
 final class PlayerAccessoryHostingController: UIHostingController<PlayerAccessoryView> {
-  init(player: any SoundPlaying, onExpand: @escaping () -> Void) {
-    super.init(rootView: PlayerAccessoryView(player: player, onExpand: onExpand))
+  init(player: any SoundPlaying, imageLoader: any ImageLoading, onExpand: @escaping () -> Void) {
+    super.init(
+      rootView: PlayerAccessoryView(player: player, imageLoader: imageLoader, onExpand: onExpand)
+    )
     view.backgroundColor = .clear
     sizingOptions = .intrinsicContentSize
 

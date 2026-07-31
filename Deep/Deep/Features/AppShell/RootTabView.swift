@@ -16,6 +16,7 @@ struct RootTabView: UIViewControllerRepresentable {
   let heartLedger: HeartLedger
   let pauseSession: GlobalPauseSession
   let pauseRepository: any PauseEventRepository
+  let imageLoader: any ImageLoading
 
   func makeUIViewController(context: Context) -> MainTabController {
     MainTabController(
@@ -27,7 +28,8 @@ struct RootTabView: UIViewControllerRepresentable {
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       pauseSession: pauseSession,
-      pauseRepository: pauseRepository
+      pauseRepository: pauseRepository,
+      imageLoader: imageLoader
     )
   }
 
@@ -47,7 +49,8 @@ struct RootTabView: UIViewControllerRepresentable {
       clock: SyncedClock(),
       repository: FixturePauseEventRepository()
     ),
-    pauseRepository: FixturePauseEventRepository()
+    pauseRepository: FixturePauseEventRepository(),
+    imageLoader: FixtureImageLoader()
   )
   .ignoresSafeArea()
 }

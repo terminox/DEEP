@@ -19,6 +19,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private let heartLedger: HeartLedger
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
+  private let imageLoader: any ImageLoading
   private let pauseReminder: any PauseReminding = LocalPauseReminder()
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
@@ -44,7 +45,8 @@ final class GlobalPauseCoordinatorController: UIViewController {
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     pauseSession: GlobalPauseSession,
-    pauseRepository: any PauseEventRepository
+    pauseRepository: any PauseEventRepository,
+    imageLoader: any ImageLoading
   ) {
     self.player = soundPlayer
     self.soundRepository = soundRepository
@@ -52,6 +54,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     self.heartLedger = heartLedger
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
+    self.imageLoader = imageLoader
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -129,6 +132,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.globalPauseSession, pauseSession)
       .environment(\.pauseEventRepository, pauseRepository)
       .environment(\.pauseReminder, pauseReminder)
+      .environment(\.imageLoader, imageLoader)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
     host.view.backgroundColor = .clear
@@ -145,6 +149,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       CollectionDetailView(collection: collection, bottomInset: .rhythm)
         .environment(\.soundPlayer, player)
         .environment(\.soundContentRepository, soundRepository)
+        .environment(\.imageLoader, imageLoader)
     )
   }
 
@@ -155,6 +160,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         .environment(\.openCollection) { [weak self] collection in
           self?.showCollection(collection)
         }
+        .environment(\.imageLoader, imageLoader)
     )
   }
 

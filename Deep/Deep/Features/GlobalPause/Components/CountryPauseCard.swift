@@ -10,13 +10,16 @@ struct CountryPauseCard: View {
         .padding(.top, 12)
         .padding(.bottom, 10)
 
-      CountryImage(url: pause.imageURL, accent: accentColor)
-        .frame(height: 96)
-        .clipShape(
-          RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
+      ArtworkImage(
+        url: pause.imageURL,
+        colors: [accentColor.opacity(0.7), Color.softLilac.opacity(0.7)],
+        cornerRadius: 16,
+        placeholderSystemImage: "mountain.2.fill",
+        accentWash: accentColor.opacity(0.35)
+      )
+      .frame(height: 96)
+      .padding(.horizontal, 8)
+      .padding(.bottom, 8)
     }
     .frame(width: 168)
     .background(
@@ -64,44 +67,6 @@ struct CountryPauseCard: View {
     case "Brazil":   .peachCloud
     default:         .lavenderMist
     }
-  }
-}
-
-private struct CountryImage: View {
-  let url: URL?
-  let accent: Color
-
-  var body: some View {
-    AsyncImage(url: url, transaction: Transaction(animation: .bloom)) { phase in
-      switch phase {
-      case .success(let image):
-        image
-          .resizable()
-          .scaledToFill()
-          .overlay(
-            LinearGradient(
-              colors: [.clear, accent.opacity(0.35)],
-              startPoint: .top,
-              endPoint: .bottom
-            )
-          )
-      default:
-        placeholder
-      }
-    }
-  }
-
-  private var placeholder: some View {
-    LinearGradient(
-      colors: [accent.opacity(0.7), Color.softLilac.opacity(0.7)],
-      startPoint: .topLeading,
-      endPoint: .bottomTrailing
-    )
-    .overlay(
-      Image(systemName: "mountain.2.fill")
-        .font(.system(.title2, design: .default, weight: .light))
-        .foregroundStyle(.white.opacity(0.55))
-    )
   }
 }
 
