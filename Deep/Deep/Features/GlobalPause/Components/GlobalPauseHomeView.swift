@@ -38,6 +38,7 @@ struct GlobalPauseHomeView: View {
             .padding(.horizontal, .edge)
 
           feedContent
+            .animation(.bloom, value: loadState)
 
           // The tab bar and mini player are real safe-area insets now; this is
           // just breathing room after the last section.
@@ -61,9 +62,8 @@ struct GlobalPauseHomeView: View {
   private var feedContent: some View {
     switch loadState {
     case .loading:
-      LoadingOrb(message: "Gathering today's pauses…")
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 64)
+      PauseFeedSkeleton()
+        .transition(.opacity)
     case .failed:
       VStack(spacing: 14) {
         Text("We couldn't gather today's content just now.")
