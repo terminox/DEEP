@@ -66,9 +66,11 @@ struct LogInView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       if isSubmitting {
-        LoadingOrb()
+        BreatheLoadingView(line: "Take a breath. We're signing you in.")
+          .transition(.opacity)
       }
     }
+    .animation(.exhale, value: isSubmitting)
   }
 
   private func submit() {

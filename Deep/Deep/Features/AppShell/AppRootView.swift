@@ -3,8 +3,9 @@ import SwiftUI
 /// The app's SwiftUI root and composition point. It owns `AppDependencies`
 /// (the API client + all app-lifetime stores) and decides among three phases:
 ///
-///  - **restoring** — a calm launch beat while any saved session is confirmed
-///    with the backend, so a returning user never flashes the welcome screen.
+///  - **restoring** — a calm, breathing launch beat while any saved session is
+///    confirmed with the backend, so a returning user never flashes the welcome
+///    screen.
 ///  - **flow** — the onboarding + auth flow (welcome → quiz → mind tree →
 ///    sign-up → shaping, or welcome → log in).
 ///  - **main** — the UIKit tab shell, once the user is authenticated *and* their
@@ -29,11 +30,8 @@ struct AppRootView: View {
     ZStack {
       switch phase {
       case .restoring:
-        ZStack {
-          AtmosphereBackground()
-          LoadingOrb()
-        }
-        .transition(.opacity)
+        BreatheLoadingView()
+          .transition(.opacity)
       case .main:
         RootTabView(
           onboardingStore: deps.onboardingStore,

@@ -32,6 +32,7 @@ struct DeepSoundHomeView: View {
             .padding(.horizontal, .edge)
 
           shelvesContent
+            .animation(.bloom, value: loadState)
 
           Color.clear.frame(height: bottomInset)
         }
@@ -53,9 +54,8 @@ struct DeepSoundHomeView: View {
   private var shelvesContent: some View {
     switch loadState {
     case .loading:
-      LoadingOrb(message: "Gathering sounds…")
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 64)
+      SoundShelvesSkeleton()
+        .transition(.opacity)
     case .failed:
       VStack(spacing: 14) {
         Text("We couldn't gather the sounds just now.")
