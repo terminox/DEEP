@@ -76,6 +76,12 @@ final class GlobalPauseCardSlotView: UIView {
     if servedCard.superview === self {
       returnSlot.adopt(servedCard)
       servedCard.applyRestState(isLobby: false)
+      // The handoff lands as the pop settles — ease the home seat back in
+      // (card and shadow together) instead of popping it into a still screen.
+      returnSlot.alpha = 0
+      UIView.animate(withDuration: 0.35, delay: 0, options: [.curveEaseOut]) {
+        returnSlot.alpha = 1
+      }
     } else if servedCard.homeSlot === self {
       servedCard.homeSlot = returnSlot
     }

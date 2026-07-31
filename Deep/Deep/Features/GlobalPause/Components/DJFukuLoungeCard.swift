@@ -2,23 +2,20 @@ import SwiftUI
 
 /// The lobby-state doorway on the Global Pause home — DJ Fuku on air while the
 /// world gathers to pause. Full-bleed artwork with a progressive-blur + scrim
-/// footer in the `BreatheHeroCard` family; tapping zooms the card into
-/// `DJFukuLoungeView`.
+/// footer in the `BreatheHeroCard` family; tapping pushes `DJFukuLoungeView`
+/// through the coordinator's `openFukuLounge` action.
 ///
 /// Under Reduce Transparency the blur strip is dropped and the scrim deepens
 /// so the white text keeps its contrast without any live blur.
 struct DJFukuLoungeCard: View {
-  /// The shared Global Pause card, lent to the lounge while it is open.
-  var card: GlobalPauseCardView? = nil
-
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-  @State private var isPresented = false
+  @Environment(\.openFukuLounge) private var openFukuLounge
 
   private let cardHeight: CGFloat = 220
 
   var body: some View {
     Button {
-      isPresented = true
+      openFukuLounge()
     } label: {
       ZStack(alignment: .bottomLeading) {
         artwork
@@ -48,7 +45,6 @@ struct DJFukuLoungeCard: View {
       }
     }
     .buttonStyle(.softPress)
-    .djFukuLoungeLaunch(isPresented: $isPresented, card: card)
     .shadow(color: Color.lavenderMist.opacity(0.28), radius: 22, x: 0, y: 12)
     .accessibilityLabel("Fuku's Lounge, on air — lo-fi while the world gathers to pause")
   }

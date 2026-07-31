@@ -123,6 +123,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         self?.showCollectionList(title: title, collections: collections)
       }
       .environment(\.openGlobalPause) { [weak self] in self?.presentLobby() }
+      .environment(\.openFukuLounge) { [weak self] in self?.showFukuLounge() }
       .environment(\.soundPlayer, player)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
@@ -132,6 +133,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
     host.view.backgroundColor = .clear
+    // Screens pushed from the (title-less) home get a chevron-only system
+    // back button instead of a "Back" label.
+    host.navigationItem.backButtonDisplayMode = .minimal
     return host
   }
 
@@ -162,6 +166,12 @@ final class GlobalPauseCoordinatorController: UIViewController {
     let host = UIHostingController(rootView: leaf.preferredColorScheme(.light))
     host.view.backgroundColor = .clear
     navigation.pushViewController(host, animated: true)
+  }
+
+  /// Fuku's Lounge rides the system push (the card-lift into the live lobby is
+  /// the tab's one hero transition), borrowing the shared card while it's open.
+  private func showFukuLounge() {
+    push(DJFukuLoungeView(card: card))
   }
 
   private func presentLobby() {
