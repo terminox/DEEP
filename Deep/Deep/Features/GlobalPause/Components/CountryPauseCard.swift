@@ -14,15 +14,8 @@ struct CountryPauseCard: View {
         url: pause.imageURL,
         colors: [accentColor.opacity(0.7), Color.softLilac.opacity(0.7)],
         cornerRadius: 16,
-        placeholderSystemImage: "mountain.2.fill"
-      )
-      .overlay(
-        LinearGradient(
-          colors: [.clear, accentColor.opacity(0.35)],
-          startPoint: .top,
-          endPoint: .bottom
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        placeholderSystemImage: "mountain.2.fill",
+        accentWash: accentColor.opacity(0.35)
       )
       .frame(height: 96)
       .padding(.horizontal, 8)

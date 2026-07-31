@@ -41,19 +41,26 @@ enum ImageLoaderError: Error {
 /// for one key share a single download, and that download runs to completion
 /// even if every awaiting view scrolls away, so scrolling back hits the cache.
 ///
-/// API media is keyed by environment + URL *path*, not the full URL: in Dev
-/// the same image arrives under different hosts (localhost from the simulator,
-/// the Mac's mDNS name from a device — see `deep-api/src/lib/media.ts`), and a
-/// full-URL key would silently miss and re-download across that split.
+/// Local-host API media is keyed by environment + URL *path*, not the full
+/// URL: in Dev the same image arrives under different hosts (localhost from
+/// the simulator, the Mac's mDNS name from a device — see
+/// `deep-api/src/lib/media.ts`), and a full-URL key would silently miss and
+/// re-download across that split. Stable-host URLs keep full-URL keys, so an
+/// unrelated host's `/media/...` path can never collide with the API's.
 actor ImageLoader: ImageLoading {
   private nonisolated static let diskLimit = 128 * 1024 * 1024
+  /// Disk entries older than this revalidate in the background on their next
+  /// cold hit — mirrors the server's `maxAge: "7d"` on `/media/`.
+  private nonisolated static let maxAge: TimeInterval = 7 * 24 * 60 * 60
 
   private let environmentKey: String
   private let fetcher: any ImageDataFetching
   private let directory: URL
   private let maxPixelSize: CGFloat
   private nonisolated let memory: ImageMemoryCache
+  private nonisolated(unsafe) let memoryWarningObserver: any NSObjectProtocol
   private var inFlight: [String: Task<UIImage, any Error>] = [:]
+  private var refreshing: Set<String> = []
 
   init(
     environmentKey: String,
@@ -73,7 +80,7 @@ actor ImageLoader: ImageLoading {
     // disk in a single pass.
     let memory = ImageMemoryCache(totalCostLimit: 64 * 1024 * 1024, countLimit: 200)
     self.memory = memory
-    NotificationCenter.default.addObserver(
+    self.memoryWarningObserver = NotificationCenter.default.addObserver(
       forName: UIApplication.didReceiveMemoryWarningNotification,
       object: nil,
       queue: nil
@@ -85,14 +92,24 @@ actor ImageLoader: ImageLoading {
     }
   }
 
+  deinit {
+    // Block observers are retained by NotificationCenter until removed — a
+    // discarded token would keep this loader's cache alive for the process.
+    NotificationCenter.default.removeObserver(memoryWarningObserver)
+  }
+
   nonisolated func cachedImage(for url: URL) -> UIImage? {
     memory[Self.cacheKey(for: url, environmentKey: environmentKey)]
   }
 
   func image(for url: URL) async throws -> UIImage {
     let key = Self.cacheKey(for: url, environmentKey: environmentKey)
-    if let hit = memory[key] { return hit }
+    if let hit = memory[key] {
+      refreshIfStale(key: key, url: url)
+      return hit
+    }
     if let running = inFlight[key] { return try await running.value }
+    refreshIfStale(key: key, url: url)
 
     // Detached so decode + file IO run on the global pool, not this actor —
     // two shelves decoding artwork shouldn't serialize behind each other.
@@ -101,6 +118,12 @@ actor ImageLoader: ImageLoading {
       let fileURL = directory.appendingPathComponent(Self.fileName(for: key))
       if let data = try? Data(contentsOf: fileURL),
         let image = Self.decode(data, maxPixelSize: maxPixelSize) {
+        // Touch the file so pruneDisk's modification-date ordering is LRU by
+        // last *view*, not FIFO by first download. Freshness for the
+        // background revalidation is tracked by creationDate instead.
+        try? FileManager.default.setAttributes(
+          [.modificationDate: Date()], ofItemAtPath: fileURL.path
+        )
         memory.insert(image, forKey: key)
         return image
       }
@@ -124,11 +147,55 @@ actor ImageLoader: ImageLoading {
     return try await load.value
   }
 
+  // MARK: - Revalidation
+
+  /// Serving from disk never revalidates inline (that would forfeit the
+  /// instant path), so a stale entry — older than the server's 7-day maxAge,
+  /// by creationDate, which every write resets — refetches in the background
+  /// and replaces the disk + memory entries for the *next* display.
+  private func refreshIfStale(key: String, url: URL) {
+    guard !refreshing.contains(key) else { return }
+    let fileURL = directory.appendingPathComponent(Self.fileName(for: key))
+    guard
+      let created = (try? fileURL.resourceValues(forKeys: [.creationDateKey]))?.creationDate,
+      Date().timeIntervalSince(created) > Self.maxAge
+    else { return }
+
+    refreshing.insert(key)
+    Task.detached(priority: .utility) { [fetcher, maxPixelSize, memory] in
+      if let (data, response) = try? await fetcher.data(from: url),
+        (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
+        let image = Self.decode(data, maxPixelSize: maxPixelSize) {
+        try? data.write(to: fileURL, options: .atomic)
+        memory.insert(image, forKey: key)
+      }
+      await self.finishRefresh(key)
+    }
+  }
+
+  private func finishRefresh(_ key: String) {
+    refreshing.remove(key)
+  }
+
   // MARK: - Keys
 
-  /// Internal (not private) so tests pin the dev-host merging behaviour.
+  /// Local-host `/media/` URLs merge on environment + path (the Dev
+  /// localhost/mDNS split); anything else keys on the full URL, so a foreign
+  /// host's `/media/` path can never collide with the API's.
+  /// Internal (not private) so tests pin this behaviour.
   nonisolated static func cacheKey(for url: URL, environmentKey: String) -> String {
-    url.path.hasPrefix("/media/") ? "\(environmentKey)|\(url.path)" : url.absoluteString
+    guard url.path.hasPrefix("/media/"), Self.isLocalHost(url.host) else {
+      return url.absoluteString
+    }
+    return "\(environmentKey)|\(url.path)"
+  }
+
+  /// The only hosts whose absolute URLs vary per reachability path in Dev.
+  /// Staging/Pilot/Prod media arrives under one stable host, where full-URL
+  /// keys are already correct.
+  private nonisolated static func isLocalHost(_ host: String?) -> Bool {
+    guard let host else { return false }
+    return host == "localhost" || host == "127.0.0.1" || host.hasSuffix(".local")
   }
 
   private nonisolated static func fileName(for key: String) -> String {

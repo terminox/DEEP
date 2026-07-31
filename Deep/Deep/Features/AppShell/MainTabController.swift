@@ -191,7 +191,8 @@ final class MainTabController: UITabBarController {
   /// child of this controller so it participates in the view-controller
   /// hierarchy (traits, appearance callbacks) like any other tab chrome.
   private func makeAccessoryHost() -> PlayerAccessoryHostingController {
-    let host = PlayerAccessoryHostingController(player: sharedPlayer) { [weak self] in
+    let host = PlayerAccessoryHostingController(player: sharedPlayer, imageLoader: imageLoader) {
+      [weak self] in
       self?.presentNowPlaying()
     }
     addChild(host)

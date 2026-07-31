@@ -18,6 +18,9 @@ struct ArtworkImage: View {
   /// Optional SF Symbol drawn over the gradient while there is no photo —
   /// the `CountryImage` placeholder look, now available to any artwork.
   var placeholderSystemImage: String? = nil
+  /// Optional accent tint drawn bottom-up over the *photo only* (never the
+  /// placeholder), inside the component's clip — the `CountryImage` wash.
+  var accentWash: Color? = nil
 
   @Environment(\.imageLoader) private var imageLoader
   @State private var loaded: UIImage?
@@ -48,6 +51,11 @@ struct ArtworkImage: View {
         Image(uiImage: displayed)
           .resizable()
           .scaledToFill()
+          .overlay {
+            if let accentWash {
+              LinearGradient(colors: [.clear, accentWash], startPoint: .top, endPoint: .bottom)
+            }
+          }
 //          .overlay(wash)
 //          .overlay(sheen(opacity: 0.25))
       } else {
@@ -59,8 +67,19 @@ struct ArtworkImage: View {
   }
 
   private func load() async {
-    guard let url, loaded == nil, imageLoader.cachedImage(for: url) == nil else { return }
+    guard let url, loaded == nil else { return }
+    // Latch a memory hit into state: the body probe alone would go blank if
+    // NSCache ever evicted the entry, with no path back (`.task(id:)` only
+    // re-runs on a url change).
+    if let cached = imageLoader.cachedImage(for: url) {
+      loaded = cached
+      return
+    }
     guard let image = try? await imageLoader.image(for: url) else { return }
+    // The shared download deliberately outlives `.task(id:)` cancellation (it
+    // warms the cache) — but a cancelled view must not adopt its result, or a
+    // recycled tile would show the previous url's artwork.
+    guard !Task.isCancelled else { return }
     withAnimation(.bloom) { loaded = image }
   }
 

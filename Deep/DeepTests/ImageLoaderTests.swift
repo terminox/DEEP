@@ -79,7 +79,7 @@ struct ImageLoaderCacheKeyTests {
   }
 
   @Test func environmentsDoNotCollideOnTheSamePath() {
-    let url = URL(string: "https://api.deep.app/media/img/calm.jpg")!
+    let url = URL(string: "http://localhost:8080/media/img/calm.jpg")!
     #expect(
       ImageLoader.cacheKey(for: url, environmentKey: "dev")
         != ImageLoader.cacheKey(for: url, environmentKey: "staging")
@@ -89,6 +89,18 @@ struct ImageLoaderCacheKeyTests {
   @Test func externalURLsKeepTheirFullURL() {
     let url = URL(string: "https://images.unsplash.com/photo-123?w=600&q=80")!
     #expect(ImageLoader.cacheKey(for: url, environmentKey: "dev") == url.absoluteString)
+  }
+
+  @Test func stableHostMediaPathsDoNotCollideAcrossHosts() {
+    // Only local hosts (the Dev localhost/mDNS split) merge on path; a foreign
+    // host serving the same /media/... path must keep its own entry.
+    let api = URL(string: "https://api.deep.app/media/img/calm.jpg")!
+    let partner = URL(string: "https://cdn.partner.com/media/img/calm.jpg")!
+    #expect(ImageLoader.cacheKey(for: api, environmentKey: "prod") == api.absoluteString)
+    #expect(
+      ImageLoader.cacheKey(for: api, environmentKey: "prod")
+        != ImageLoader.cacheKey(for: partner, environmentKey: "prod")
+    )
   }
 }
 
@@ -103,8 +115,14 @@ struct ImageLoaderTests {
     async let first = loader.image(for: url)
     async let second = loader.image(for: url)
     // Both callers are now either parked on the shared task or about to be;
-    // give the first fetch a beat to register before opening the gate.
-    while fetcher.calls == 0 { await Task.yield() }
+    // give the first fetch a beat to register before opening the gate. Bounded
+    // so a regression fails fast instead of hanging the suite.
+    var deadline = 10_000
+    while fetcher.calls == 0, deadline > 0 {
+      deadline -= 1
+      await Task.yield()
+    }
+    #expect(fetcher.calls > 0, "loader never reached the fetcher")
     fetcher.release()
 
     let images = try await [first, second]
@@ -137,6 +155,50 @@ struct ImageLoaderTests {
     let second = ImageLoader(environmentKey: "test", fetcher: secondFetcher, directory: directory)
     #expect(second.cachedImage(for: url) == nil)
     _ = try await second.image(for: url)
+    #expect(secondFetcher.calls == 0)
+  }
+
+  @Test func staleDiskEntriesRefreshInBackground() async throws {
+    let directory = try makeTempDirectory()
+    let firstFetcher = CountingFetcher()
+    let first = ImageLoader(environmentKey: "test", fetcher: firstFetcher, directory: directory)
+    let url = URL(string: "http://localhost:8080/media/img/stale.png")!
+    _ = try await first.image(for: url)
+
+    // Backdate the entry past the 7-day maxAge, then hit it cold: the disk
+    // image is served immediately, and a background refetch replaces it.
+    let file = try #require(
+      try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        .first
+    )
+    try FileManager.default.setAttributes(
+      [.creationDate: Date(timeIntervalSinceNow: -8 * 24 * 60 * 60)],
+      ofItemAtPath: file.path
+    )
+
+    let secondFetcher = CountingFetcher()
+    let second = ImageLoader(environmentKey: "test", fetcher: secondFetcher, directory: directory)
+    _ = try await second.image(for: url)
+
+    var deadline = 10_000
+    while secondFetcher.calls == 0, deadline > 0 {
+      deadline -= 1
+      await Task.yield()
+    }
+    #expect(secondFetcher.calls == 1)
+  }
+
+  @Test func freshDiskEntriesDoNotRefetch() async throws {
+    let directory = try makeTempDirectory()
+    let first = ImageLoader(environmentKey: "test", fetcher: CountingFetcher(), directory: directory)
+    let url = URL(string: "http://localhost:8080/media/img/fresh.png")!
+    _ = try await first.image(for: url)
+
+    let secondFetcher = CountingFetcher()
+    let second = ImageLoader(environmentKey: "test", fetcher: secondFetcher, directory: directory)
+    _ = try await second.image(for: url)
+    // A just-written entry is within maxAge: no inline fetch, no background one.
+    for _ in 0..<1_000 { await Task.yield() }
     #expect(secondFetcher.calls == 0)
   }
 
