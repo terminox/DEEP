@@ -20,10 +20,22 @@ final class APIClient {
   /// because `SyncedClock.debugHeaderValue` is nil outside dev builds.
   var debugNowProvider: (() -> String?)?
 
-  init(baseURL: URL, tokens: KeychainTokenStore, session: URLSession = .shared) {
+  init(baseURL: URL, tokens: KeychainTokenStore, session: URLSession = APIClient.makeSession()) {
     self.baseURL = baseURL
     self.tokens = tokens
     self.session = session
+  }
+
+  /// Fail fast instead of the 60 s system default. Every flow in the app is
+  /// best-effort with a foreground retry, so a dead host should surface in
+  /// seconds — critical for device Dev builds pointing at a Mac that may be
+  /// unreachable, but sane in production too.
+  nonisolated static func makeSession() -> URLSession {
+    let configuration = URLSessionConfiguration.default
+    configuration.timeoutIntervalForRequest = 10
+    configuration.timeoutIntervalForResource = 30
+    configuration.waitsForConnectivity = false
+    return URLSession(configuration: configuration)
   }
 
   var isAuthenticated: Bool { tokens.accessToken != nil }

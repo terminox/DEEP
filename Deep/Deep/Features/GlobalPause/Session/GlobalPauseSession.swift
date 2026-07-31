@@ -79,6 +79,12 @@ final class GlobalPauseSession {
     }
   }
 
+  deinit {
+    if let foregroundObserver {
+      NotificationCenter.default.removeObserver(foregroundObserver)
+    }
+  }
+
   // MARK: - Lifecycle
 
   /// Fetches the schedule and starts tracking phase boundaries. Safe to call
@@ -116,8 +122,12 @@ final class GlobalPauseSession {
     guard let schedule else { return }
     let now = clock.now
     guard let boundary = schedule.nextBoundary(after: now) else {
-      // Window over; tomorrow's schedule replaces it.
+      // Window over; tomorrow's schedule replaces it. The delay keeps a stale
+      // schedule whose fetch keeps failing from becoming a zero-backoff
+      // request loop (refresh → no boundary → refresh …).
       boundaryTask = Task { [weak self] in
+        try? await Task.sleep(for: .seconds(60))
+        guard !Task.isCancelled else { return }
         await self?.refreshSchedule()
       }
       return
