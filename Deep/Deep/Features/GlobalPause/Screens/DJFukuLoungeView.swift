@@ -1,98 +1,81 @@
 import SwiftUI
 
-/// Fuku's Lounge — the room the lobby card opens into. A quiet shell for now:
-/// DJ Fuku's poster floating over a blurred wash of its own artwork, the on-air
-/// badge, and a line of welcome. Live lobby content (countdown, participants)
-/// joins later when the pause states are combined.
+/// Fuku's Lounge — the room the lobby card opens into. Mirrors the home-screen
+/// recipe (stretchy hero, sections riding up over it, atmosphere, collapsible
+/// header) with DJ Fuku full-bleed in the hero slot so the card's artwork
+/// carries straight into the screen through the zoom. The programme below is
+/// `FukuLoungeLibrary` mock content rendered inert — live lobby content
+/// (countdown, participants) joins later when the pause states are combined.
 ///
 /// Leaf screen, so it owns its screen-level styling (per the coordinator
-/// rules). Under Reduce Transparency the blurred-artwork backdrop is replaced
-/// wholesale by `AtmosphereBackground` — solid tokens, no live blur.
+/// rules). The close button rides in the collapsible header's trailing slot so
+/// it stays reachable while the title collapses.
 struct DJFukuLoungeView: View {
   var onClose: () -> Void = {}
 
-  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  private let heroHeight: CGFloat = 320
+  private let heroOverlap: CGFloat = 80
 
   var body: some View {
-    ZStack {
-      // Opaque base under the atmosphere's translucent stops: nothing beneath
-      // this screen may ever show through (also load-bearing mid-zoom).
-      Color.moonCream.ignoresSafeArea()
-      backdrop
+    ScrollView {
+      VStack(spacing: 0) {
+        StretchyHero(media: .image(name: "DJFukuHero"), height: heroHeight)
 
-      VStack(spacing: .rhythm) {
-        Spacer()
+        VStack(alignment: .leading, spacing: .rhythm) {
+          onAir
 
-        poster
+          programme
+            .allowsHitTesting(false)
 
-        VStack(spacing: 10) {
-          OnAirPill()
-          Text("Fuku's Lounge")
-            .font(DeepType.wordmark)
-            .foregroundStyle(.deepPlum)
-          Text("The world's next pause gathers here.\nSettle in — Fuku has the sound.")
-            .font(DeepType.body)
-            .foregroundStyle(.driftGrey)
-            .multilineTextAlignment(.center)
+          Color.clear.frame(height: .rhythm)
         }
-        .padding(.horizontal, .edge)
-        .accessibilityElement(children: .combine)
-
-        Spacer()
+        .padding(.top, -heroOverlap)
       }
     }
-    .overlay(alignment: .top) {
-      // Progressive blur keeps the status bar legible over the bright backdrop.
-      if !reduceTransparency {
-        VariableBlurView(maxBlurRadius: 4, direction: .blurredTopClearBottom)
-          .frame(height: 80)
-          .ignoresSafeArea(edges: .top)
-          .allowsHitTesting(false)
+    .scrollIndicators(.hidden)
+    .scrollBounceBehavior(.always)
+    .ignoresSafeArea(edges: .top)
+    .background {
+      ZStack {
+        // Opaque base under the atmosphere's translucent stops: nothing beneath
+        // this screen may ever show through (also load-bearing mid-zoom).
+        Color.moonCream.ignoresSafeArea()
+        AtmosphereBackground()
       }
     }
-    .overlay(alignment: .topLeading) {
+    .collapsibleHomeHeader(
+      title: "Fuku's Lounge",
+      subtitle: "Lo-fi while the world gathers to pause"
+    ) {
       GlassCloseButton(action: onClose)
-        .padding(.edge)
     }
+    // The feed is a preview of the room, not a library: park the inherited
+    // routing and playback so nothing in the mock programme can act.
+    .environment(\.openCollection, { _ in })
+    .environment(\.openCollectionList, { _, _ in })
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
   }
 
-  /// The artwork melted into a room-filling wash, with a cream gradient pulling
-  /// the lower half back to app-native ground so the text reads at home.
-  @ViewBuilder
-  private var backdrop: some View {
-    if reduceTransparency {
-      AtmosphereBackground()
-    } else {
-      Color.clear
-        .overlay {
-          Image("DJFukuHero")
-            .resizable()
-            .scaledToFill()
-            .blur(radius: 40)
-            .scaleEffect(1.15)
-        }
-        .clipped()
-        .ignoresSafeArea()
-        .overlay {
-          LinearGradient(
-            colors: [Color.deepPlum.opacity(0.15), .clear, Color.moonCream.opacity(0.85)],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-          .ignoresSafeArea()
-        }
-        .accessibilityHidden(true)
-    }
-  }
-
-  private var poster: some View {
-    Image("DJFukuHero")
-      .resizable()
-      .scaledToFit()
-      .clipShape(RoundedRectangle(cornerRadius: .card, style: .continuous))
-      .shadow(color: Color.lavenderMist.opacity(0.28), radius: 22, x: 0, y: 12)
+  private var onAir: some View {
+    OnAirPill()
       .padding(.horizontal, .edge)
-      .accessibilityHidden(true)
+  }
+
+  private var programme: some View {
+    VStack(alignment: .leading, spacing: .rhythm) {
+      RecommendationsSection(
+        title: "Made for the floor",
+        collections: FukuLoungeLibrary.madeForTheFloor
+      )
+
+      FeatureCarousel(
+        title: "Tonight's rotation",
+        collections: FukuLoungeLibrary.tonightsRotation
+      )
+
+      ExploreByContentSection(categories: FukuLoungeLibrary.moods)
+    }
+    .accessibilityHidden(true)
   }
 }
 

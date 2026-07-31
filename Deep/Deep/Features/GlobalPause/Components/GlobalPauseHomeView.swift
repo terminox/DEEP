@@ -27,7 +27,7 @@ struct GlobalPauseHomeView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        StretchyVideoHero(resource: "sky", height: heroHeight)
+        StretchyHero(media: .video(resource: "sky"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
           DJFukuLoungeCard()
