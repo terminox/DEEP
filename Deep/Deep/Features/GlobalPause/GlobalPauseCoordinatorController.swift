@@ -165,7 +165,14 @@ final class GlobalPauseCoordinatorController: UIViewController {
   }
 
   private func presentLobby() {
-    guard presentedViewController == nil else { return }
+    // The card can summon the lobby from the feed or from a screen presented
+    // over it (Fuku's Lounge borrows the card). Always lift from — and stack
+    // onto — whatever is frontmost, so the flight lands above the summoning
+    // screen; the close must then dismiss from that same presenter, because
+    // dismissing from the coordinator would tear down the whole stack.
+    var presenter: UIViewController = self
+    while let next = presenter.presentedViewController { presenter = next }
+    guard !(presenter is GlobalPauseLobbyController) else { return }
 
     // The event owns its own audio, so the shared player pauses (its track
     // stays loaded — the mini player resumes where it left off, the Deep
@@ -183,8 +190,8 @@ final class GlobalPauseCoordinatorController: UIViewController {
       scene: scene,
       audio: audio,
       reminder: pauseReminder
-    ) { [weak self] in
-      self?.dismiss(animated: true)
+    ) { [weak self, weak presenter] in
+      presenter?.dismiss(animated: true)
       self?.lobbyAudio = nil
     }
     lobby.modalPresentationStyle = .custom
@@ -193,7 +200,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     // always be handed back to the feed.
     lobby.presentationController?.delegate = self
 
-    present(lobby, animated: true)
+    presenter.present(lobby, animated: true)
   }
 }
 

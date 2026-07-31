@@ -30,7 +30,7 @@ struct GlobalPauseHomeView: View {
         StretchyHero(media: .video(resource: "sky"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          DJFukuLoungeCard()
+          DJFukuLoungeCard(card: card)
             .padding(.horizontal, .edge)
 
           GlobalPauseCardSlot(card: card)

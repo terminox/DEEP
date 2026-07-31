@@ -11,6 +11,10 @@ import SwiftUI
 /// rules). The close button rides in the collapsible header's trailing slot so
 /// it stays reachable while the title collapses.
 struct DJFukuLoungeView: View {
+  /// The shared Global Pause card, borrowed from the home feed while the
+  /// lounge is open (see `GlobalPauseCardSlotView.Role.guest`). `nil` keeps
+  /// previews hermetic and Metal-free.
+  var card: GlobalPauseCardView? = nil
   var onClose: () -> Void = {}
 
   private let heroHeight: CGFloat = 320
@@ -23,6 +27,12 @@ struct DJFukuLoungeView: View {
 
         VStack(alignment: .leading, spacing: .rhythm) {
           onAir
+
+          if let card {
+            GlobalPauseCardSlot(card: card, role: .guest)
+              .frame(height: 200)
+              .padding(.horizontal, .edge)
+          }
 
           programme
             .allowsHitTesting(false)

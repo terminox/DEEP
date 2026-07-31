@@ -8,6 +8,9 @@ import SwiftUI
 /// Under Reduce Transparency the blur strip is dropped and the scrim deepens
 /// so the white text keeps its contrast without any live blur.
 struct DJFukuLoungeCard: View {
+  /// The shared Global Pause card, lent to the lounge while it is open.
+  var card: GlobalPauseCardView? = nil
+
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @State private var isPresented = false
 
@@ -45,7 +48,7 @@ struct DJFukuLoungeCard: View {
       }
     }
     .buttonStyle(.softPress)
-    .djFukuLoungeLaunch(isPresented: $isPresented)
+    .djFukuLoungeLaunch(isPresented: $isPresented, card: card)
     .shadow(color: Color.lavenderMist.opacity(0.28), radius: 22, x: 0, y: 12)
     .accessibilityLabel("Fuku's Lounge, on air — lo-fi while the world gathers to pause")
   }
