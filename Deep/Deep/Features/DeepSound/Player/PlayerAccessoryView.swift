@@ -15,6 +15,9 @@ struct PlayerAccessoryView: View {
   /// Injected explicitly (not read from the environment): the accessory tree
   /// hangs off the UIKit shell, outside any tab's SwiftUI environment.
   let player: any SoundPlaying
+  /// Same explicit injection as `player` — without it the mini player's
+  /// artwork would resolve the environment's fixture loader.
+  let imageLoader: any ImageLoading
   /// Asks the shell (`MainTabController`) to present the full Now Playing.
   var onExpand: () -> Void
   /// Driven by `PlayerAccessoryHostingController` from the iOS 26
@@ -31,6 +34,7 @@ struct PlayerAccessoryView: View {
       }
     }
     .environment(\.soundPlayer, player)
+    .environment(\.imageLoader, imageLoader)
     .preferredColorScheme(.light)
   }
 }
@@ -39,7 +43,7 @@ struct PlayerAccessoryView: View {
 // The shipped view rides on the system accessory's glass; previews stand that
 // chrome in with a plain `glassEffect` capsule so the content reads in context.
 #Preview("Accessory — Regular") {
-  PlayerAccessoryView(player: MockSoundPlayer.playing, onExpand: {})
+  PlayerAccessoryView(player: MockSoundPlayer.playing, imageLoader: FixtureImageLoader(), onExpand: {})
     .glassEffect(.regular, in: Capsule())
     .padding(.horizontal, .edge)
     .frame(maxHeight: .infinity)
@@ -47,7 +51,7 @@ struct PlayerAccessoryView: View {
 }
 
 #Preview("Accessory — Inline") {
-  PlayerAccessoryView(player: MockSoundPlayer.playing, onExpand: {}, isInline: true)
+  PlayerAccessoryView(player: MockSoundPlayer.playing, imageLoader: FixtureImageLoader(), onExpand: {}, isInline: true)
     .glassEffect(.regular, in: Capsule())
     .frame(width: 240)
     .frame(maxHeight: .infinity)

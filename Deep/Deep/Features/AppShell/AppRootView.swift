@@ -3,8 +3,9 @@ import SwiftUI
 /// The app's SwiftUI root and composition point. It owns `AppDependencies`
 /// (the API client + all app-lifetime stores) and decides among three phases:
 ///
-///  - **restoring** — a calm launch beat while any saved session is confirmed
-///    with the backend, so a returning user never flashes the welcome screen.
+///  - **restoring** — a calm, breathing launch beat while any saved session is
+///    confirmed with the backend, so a returning user never flashes the welcome
+///    screen.
 ///  - **flow** — the onboarding + auth flow (welcome → quiz → mind tree →
 ///    sign-up → shaping, or welcome → log in).
 ///  - **main** — the UIKit tab shell, once the user is authenticated *and* their
@@ -29,11 +30,8 @@ struct AppRootView: View {
     ZStack {
       switch phase {
       case .restoring:
-        ZStack {
-          AtmosphereBackground()
-          LoadingOrb()
-        }
-        .transition(.opacity)
+        BreatheLoadingView()
+          .transition(.opacity)
       case .main:
         RootTabView(
           onboardingStore: deps.onboardingStore,
@@ -44,7 +42,8 @@ struct AppRootView: View {
           practiceStore: deps.practiceStore,
           heartLedger: deps.heartLedger,
           pauseSession: deps.pauseSession,
-          pauseRepository: deps.pauseRepository
+          pauseRepository: deps.pauseRepository,
+          imageLoader: deps.imageLoader
         )
         .ignoresSafeArea()
         .transition(.opacity)
@@ -61,6 +60,7 @@ struct AppRootView: View {
     .environment(\.soundContentRepository, deps.soundRepository)
     .environment(\.practiceStore, deps.practiceStore)
     .environment(\.heartLedger, deps.heartLedger)
+    .environment(\.imageLoader, deps.imageLoader)
     .task { await bootstrap() }
     // Returning to the foreground retries the practice journal's offline
     // queue and picks up sessions recorded on other installs.
@@ -73,6 +73,9 @@ struct AppRootView: View {
   private func bootstrap() async {
     await deps.accountStore.restore()
     if deps.accountStore.isSignedIn {
+      // Concurrent: neither depends on the other, and against an unreachable
+      // dev host their timeouts overlap instead of stacking.
+      async let refreshed: Void = deps.practiceStore.refresh()
       if let profile = try? await deps.onboardingRemote.fetchProfile() {
         deps.onboardingStore.hydrate(
           quizAnswers: profile.quizAnswers,
@@ -80,7 +83,7 @@ struct AppRootView: View {
           completed: profile.completed
         )
       }
-      await deps.practiceStore.refresh()
+      await refreshed
     }
     withAnimation(.bloom) { didRestore = true }
   }

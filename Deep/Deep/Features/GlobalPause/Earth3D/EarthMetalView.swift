@@ -33,6 +33,13 @@ final class EarthMTKView: MTKView {
   /// time layoutSubviews runs, so it cannot be its own change-baseline.
   private var lastLayoutDrawableSize: CGSize = .zero
 
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    // Ambient scene: stop the display link (and the whole raymarch + bloom
+    // chain) whenever the view is detached — e.g. another tab is selected.
+    isPaused = window == nil
+  }
+
   override func layoutSubviews() {
     super.layoutSubviews()
     let newSize = drawableSize
@@ -68,7 +75,9 @@ final class EarthMTKView: MTKView {
     view.isOpaque = false
     view.backgroundColor = .clear
     view.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
-    view.preferredFramesPerSecond = 120
+    // 60 is plenty for a slow ambient scene; 120 doubles the per-frame Swift
+    // callbacks (glow/ripple ticks) and GPU passes for no visible gain.
+    view.preferredFramesPerSecond = 60
     view.enableSetNeedsDisplay = false
     view.isPaused = false
     view.interaction = interaction

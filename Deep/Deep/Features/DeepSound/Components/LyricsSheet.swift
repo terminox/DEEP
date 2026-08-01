@@ -29,9 +29,8 @@ struct LyricsSheet: View {
         }
 
         if isLoading {
-          LoadingOrb()
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 40)
+          LyricsSkeleton()
+            .transition(.opacity)
         } else if let current {
           Text(current.content)
             .font(DeepType.body)
@@ -50,6 +49,7 @@ struct LyricsSheet: View {
       .padding(.top, .rhythm)
       .padding(.bottom, 60)
       .frame(maxWidth: .infinity, alignment: .leading)
+      .animation(.bloom, value: isLoading)
     }
     .task { await load() }
   }

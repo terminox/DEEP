@@ -30,6 +30,11 @@ final class MainTabController: UITabBarController {
   /// coordinator (schedule countdown on the feed, phases in the lobby).
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
+
+  /// The shared artwork cache, injected into every hosted tab so all tiles
+  /// draw from one memory/disk store.
+  private let imageLoader: any ImageLoading
+
   /// Hosts the mini player inside the tab bar's bottom accessory. Created on
   /// first playback and kept as a child VC for the controller's lifetime.
   private var accessoryHost: PlayerAccessoryHostingController?
@@ -61,7 +66,8 @@ final class MainTabController: UITabBarController {
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     pauseSession: GlobalPauseSession,
-    pauseRepository: any PauseEventRepository
+    pauseRepository: any PauseEventRepository,
+    imageLoader: any ImageLoading
   ) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
@@ -72,6 +78,7 @@ final class MainTabController: UITabBarController {
     self.heartLedger = heartLedger
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
+    self.imageLoader = imageLoader
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -105,7 +112,8 @@ final class MainTabController: UITabBarController {
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       pauseSession: pauseSession,
-      pauseRepository: pauseRepository
+      pauseRepository: pauseRepository,
+      imageLoader: imageLoader
     )
     globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
 
@@ -183,7 +191,8 @@ final class MainTabController: UITabBarController {
   /// child of this controller so it participates in the view-controller
   /// hierarchy (traits, appearance callbacks) like any other tab chrome.
   private func makeAccessoryHost() -> PlayerAccessoryHostingController {
-    let host = PlayerAccessoryHostingController(player: sharedPlayer) { [weak self] in
+    let host = PlayerAccessoryHostingController(player: sharedPlayer, imageLoader: imageLoader) {
+      [weak self] in
       self?.presentNowPlaying()
     }
     addChild(host)
@@ -217,6 +226,7 @@ final class MainTabController: UITabBarController {
     }
     .environment(\.soundPlayer, sharedPlayer)
     .environment(\.soundContentRepository, soundRepository)
+    .environment(\.imageLoader, imageLoader)
     .preferredColorScheme(.light)
 
     let host = UIHostingController(rootView: root)
@@ -241,6 +251,7 @@ final class MainTabController: UITabBarController {
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
+      .environment(\.imageLoader, imageLoader)
     let controller = UIHostingController(rootView: rootView)
     controller.view.backgroundColor = .clear
     controller.tabBarItem = tabItem(title: title, systemImage: systemImage)

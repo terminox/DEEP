@@ -34,7 +34,9 @@ export function buildApp() {
   // Serve uploaded/seeded media at /media (progressive HTTP; AVPlayer-friendly).
   const mediaRoot = path.resolve(env.MEDIA_DIR);
   fs.mkdirSync(path.join(mediaRoot, "audio"), { recursive: true });
-  app.register(fastifyStatic, { root: mediaRoot, prefix: "/media/" });
+  // maxAge lets clients reuse media for a week; ETags stay on, so stable-but-
+  // mutable seed filenames still revalidate cheaply after expiry (no immutable).
+  app.register(fastifyStatic, { root: mediaRoot, prefix: "/media/", maxAge: "7d" });
 
   app.setErrorHandler((error, _req, reply) => {
     if (error instanceof ApiError) {

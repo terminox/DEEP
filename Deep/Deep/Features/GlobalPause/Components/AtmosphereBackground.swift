@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct AtmosphereBackground: View {
+  /// Set false where the atmosphere must hold still — e.g. inside the ripple
+  /// overlay's freeze-frame, where an animating subtree would force the layer
+  /// effect to re-rasterize the blurred orbs every frame.
+  var animated = true
+
   @State private var drift = false
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -32,7 +37,7 @@ struct AtmosphereBackground: View {
     }
     .ignoresSafeArea()
     .onAppear {
-      guard !reduceMotion else { return }
+      guard animated, !reduceMotion else { return }
       withAnimation(.easeInOut(duration: 14).repeatForever(autoreverses: true)) {
         drift.toggle()
       }
@@ -48,4 +53,8 @@ struct AtmosphereBackground: View {
 
 #Preview {
   AtmosphereBackground()
+}
+
+#Preview("Static") {
+  AtmosphereBackground(animated: false)
 }

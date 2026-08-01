@@ -1,17 +1,25 @@
 import SwiftUI
 
-/// A sticky, stretchy video header. The footage named by `resource` plays
-/// full-bleed under the status bar; pulling down grows the scene from the top
-/// edge while it stays pinned, and its bottom feathers to transparent so it
-/// dissolves into the atmosphere behind the scroll rather than ending on a hard
-/// line. Scrolling up drifts the scene away at a slower rate than the content
-/// (parallax), so it sinks behind the page with depth. Purely atmospheric —
-/// content rides up over it (see `DeepSoundHomeView`, `MindGardenHomeView`).
-struct StretchyVideoHero: View {
+/// A sticky, stretchy hero header. The media — looping bundled footage or an
+/// asset-catalog still — draws full-bleed under the status bar; pulling down
+/// grows the scene from the top edge while it stays pinned, and its bottom
+/// feathers to transparent so it dissolves into the atmosphere behind the
+/// scroll rather than ending on a hard line. Scrolling up drifts the scene away
+/// at a slower rate than the content (parallax), so it sinks behind the page
+/// with depth. Purely atmospheric — content rides up over it (see
+/// `DeepSoundHomeView`, `MindGardenHomeView`, `DJFukuLoungeView`).
+struct StretchyHero: View {
+  /// What plays in the hero slot.
+  enum Media {
+    /// Bundled looping video (name without extension), muted, Reduce-Motion aware.
+    case video(resource: String)
+    /// Asset-catalog still, filled edge to edge.
+    case image(name: String)
+  }
+
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  /// Name of the bundled looping video to play (without extension).
-  var resource: String
+  var media: Media
   var height: CGFloat = 320
 
   /// How much slower the hero drifts than the scroll on the way up. 0 = moves
@@ -34,7 +42,7 @@ struct StretchyVideoHero: View {
       let parallax = scrolledUp * parallaxDepth
       // ...and as it lags, it melts into the atmosphere behind it.
       let fade = min(1, scrolledUp / fadeDistance)
-      LoopingVideoView(resource: resource, isAnimating: !reduceMotion)
+      mediaView
         .frame(width: geo.size.width, height: height + stretch)
         .clipped()
         .mask(heroFadeMask)
@@ -42,6 +50,18 @@ struct StretchyVideoHero: View {
         .opacity(1 - fade)
     }
     .frame(height: height)
+  }
+
+  @ViewBuilder
+  private var mediaView: some View {
+    switch media {
+    case .video(let resource):
+      LoopingVideoView(resource: resource, isAnimating: !reduceMotion)
+    case .image(let name):
+      Image(name)
+        .resizable()
+        .scaledToFill()
+    }
   }
 
   private var heroFadeMask: LinearGradient {
@@ -56,9 +76,18 @@ struct StretchyVideoHero: View {
   }
 }
 
-#Preview("Stretchy Video Hero") {
+#Preview("Stretchy video hero") {
   ScrollView {
-    StretchyVideoHero(resource: "sky")
+    StretchyHero(media: .video(resource: "sky"))
+    Color.clear.frame(height: 600)
+  }
+  .ignoresSafeArea(edges: .top)
+  .background { AtmosphereBackground() }
+}
+
+#Preview("Stretchy image hero") {
+  ScrollView {
+    StretchyHero(media: .image(name: "DJFukuHero"))
     Color.clear.frame(height: 600)
   }
   .ignoresSafeArea(edges: .top)

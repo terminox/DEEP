@@ -62,7 +62,7 @@ Motion in Deep is **always slower than expected.** The reference is breath, wate
 - **Halo pulse.** Active states emit a single slow ring outward (1.2s, fading), once — not repeating.
 - **Parallax mist.** Background gradients shift subtly with device motion or scroll. Never the foreground; only the atmosphere.
 
-**Forbidden motions:** hard slides, modal pop-ins, shake/error wiggles, confetti, fast spinners, skeleton-shimmer loaders. Loading is a slowly rotating halo or a gently pulsing orb.
+**Forbidden motions:** hard slides, modal pop-ins, shake/error wiggles, confetti, fast spinners, shimmer-sweep loaders. Loading is calm: whole-app waits show a full-screen breathe beat (centered serif line that breathes over the atmosphere); content waits show a breathing skeleton of the content to come — placeholder shapes that pulse opacity slowly, in unison, never a shimmer sweep or spinner.
 
 ---
 

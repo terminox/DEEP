@@ -27,9 +27,12 @@ struct GlobalPauseHomeView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        StretchyVideoHero(resource: "sky", height: heroHeight)
+        StretchyHero(media: .video(resource: "sky"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
+          DJFukuLoungeCard()
+            .padding(.horizontal, .edge)
+
           GlobalPauseCardSlot(card: card)
             .frame(height: 200)
             .padding(.horizontal, .edge)
@@ -38,6 +41,7 @@ struct GlobalPauseHomeView: View {
             .padding(.horizontal, .edge)
 
           feedContent
+            .animation(.bloom, value: loadState)
 
           // The tab bar and mini player are real safe-area insets now; this is
           // just breathing room after the last section.
@@ -61,9 +65,8 @@ struct GlobalPauseHomeView: View {
   private var feedContent: some View {
     switch loadState {
     case .loading:
-      LoadingOrb(message: "Gathering today's pauses…")
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 64)
+      PauseFeedSkeleton()
+        .transition(.opacity)
     case .failed:
       VStack(spacing: 14) {
         Text("We couldn't gather today's content just now.")

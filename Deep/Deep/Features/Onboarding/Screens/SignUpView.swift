@@ -94,9 +94,11 @@ struct SignUpView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       if isSubmitting {
-        LoadingOrb()
+        BreatheLoadingView(line: "Take a breath. We're creating your space.")
+          .transition(.opacity)
       }
     }
+    .animation(.exhale, value: isSubmitting)
   }
 
   private func submit() {
