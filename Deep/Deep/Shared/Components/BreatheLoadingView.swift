@@ -4,7 +4,7 @@ import SwiftUI
 /// breathing line of serif text. Shown during whole-app waits — launch,
 /// log-in, sign-up. Content-level waits use breathing skeletons instead.
 struct BreatheLoadingView: View {
-  var line: String = "Breathe calmly. We're preparing your space."
+  var line: String = "Breathe calmly.\nWe're preparing your space."
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var breathing = false
