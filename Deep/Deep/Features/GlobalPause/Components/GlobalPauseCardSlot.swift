@@ -30,6 +30,30 @@ final class GlobalPauseCardSlotView: UIView {
     addSubview(card)
   }
 
+  /// Seats the card unless someone else legitimately holds it. Free means
+  /// unparented or sitting in a *different* feed slot — a stale seat SwiftUI
+  /// has discarded (adding re-parents it out). Any other superview is the
+  /// lobby or the transition container mid-flight, and must never be robbed.
+  func adoptIfFree(_ card: GlobalPauseCardView) {
+    guard card.superview !== self else { return }
+    self.card = card
+    if card.superview == nil || card.superview is GlobalPauseCardSlotView {
+      adopt(card)
+    } else {
+      // The lobby holds the card; still mark this live seat as the landing
+      // target so the dismiss flight comes home here, not to a discarded slot.
+      card.homeSlot = self
+    }
+  }
+
+  /// Re-entry re-attaches this seat to a window without any SwiftUI update
+  /// pass; reclaim here so the card never waits for a data-driven tick.
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    guard window != nil, let card else { return }
+    adoptIfFree(card)
+  }
+
   /// The live on-screen rect the transition flies from / lands on.
   var frameInWindow: CGRect? {
     window.map { convert(bounds, to: $0) }
@@ -41,22 +65,29 @@ final class GlobalPauseCardSlotView: UIView {
   }
 }
 
-/// SwiftUI seat for the coordinator-owned card. Adoption is guarded so a
-/// SwiftUI remount can never yank the card back while the lobby holds it.
+/// SwiftUI seat for the coordinator-owned card. Adoption is guarded (see
+/// `adoptIfFree`) so a SwiftUI remount can never yank the card back while the
+/// lobby holds it — but a remount that strands the card in a discarded slot
+/// is reclaimed immediately instead of leaving the seat empty until the next
+/// data-driven update pass.
 struct GlobalPauseCardSlot: UIViewRepresentable {
   let card: GlobalPauseCardView
 
   func makeUIView(context: Context) -> GlobalPauseCardSlotView {
     let slot = GlobalPauseCardSlotView()
-    if card.superview == nil {
-      slot.adopt(card)
-    }
+    slot.adoptIfFree(card)
     return slot
   }
 
   func updateUIView(_ uiView: GlobalPauseCardSlotView, context: Context) {
-    if card.superview == nil {
-      uiView.adopt(card)
+    uiView.adoptIfFree(card)
+  }
+
+  static func dismantleUIView(_ uiView: GlobalPauseCardSlotView, coordinator: ()) {
+    // Never leave the card attached to a dead seat — a stale superview would
+    // block (pre-`adoptIfFree`) or delay adoption by the replacement slot.
+    if let card = uiView.card, card.superview === uiView {
+      card.removeFromSuperview()
     }
   }
 }

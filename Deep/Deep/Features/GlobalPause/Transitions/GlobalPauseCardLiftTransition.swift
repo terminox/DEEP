@@ -159,9 +159,25 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
       let slot = card.homeSlot,
       let slotFrameInWindow = slot.frameInWindow
     else {
-      // No card to fly — degrade to a simple fade so the lobby still appears.
+      // No slot geometry to fly from — degrade to a simple fade. The lobby
+      // must still own the globe on this path: seat the card at lobby rest
+      // (the pin + immediate landing sets the lobby insets the natural
+      // layout needs), don't just fade in an empty shell.
+      if let card = card() {
+        card.removeFromSuperview()
+        lobby.install(card)
+        card.beginGlobeFlight(
+          lobbyBounds: CGRect(origin: .zero, size: finalFrame.size),
+          safeAreaInsets: lobbySafeInsets
+        )
+        card.endGlobeFlight(isLobby: true)
+        card.applyRestState(isLobby: true)
+      }
       lobbyView.alpha = 0
-      UIView.animate(withDuration: 0.25, animations: { lobbyView.alpha = 1 }) { _ in
+      UIView.animate(withDuration: 0.25) {
+        lobbyView.alpha = 1
+        lobby.closeButton.alpha = 1
+      } completion: { _ in
         context.completeTransition(!context.transitionWasCancelled)
       }
       return
