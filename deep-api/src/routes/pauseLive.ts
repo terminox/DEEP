@@ -5,7 +5,7 @@ import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireAuth, optionalAuth } from "../auth/middleware.js";
 import { mediaUrl } from "../lib/media.js";
-import { resolveOccurrence, debugNow } from "../lib/pauseSchedule.js";
+import { resolveOccurrence, debugNow, localDate } from "../lib/pauseSchedule.js";
 import * as presence from "../lib/pausePresence.js";
 
 // The live Global Pause event: schedule, presence, and peace messages.
@@ -94,7 +94,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
   });
 
   // One poll feeds everything live: counter, country glow, join ripples, and
-  // the feedback-phase message feed.
+  // tonight's message feed.
   app.get("/pause/live", { preHandler: optionalAuth }, async (req) => {
     const now = debugNow(req) ?? new Date();
     const config = await loadConfig();
@@ -116,8 +116,9 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     };
   });
 
-  // Peace messages are written only while the feedback phase is open — the
-  // server is the authority, so a skewed client clock can't sneak one in.
+  // Peace messages are accepted any time of day — pauseDate stamps the
+  // calendar night of posting in the config timezone, not the resolved
+  // occurrence (which rolls to tomorrow once tonight's window has closed).
   app.post("/pause/messages", { preHandler: requireAuth }, async (req) => {
     const body = z
       .object({
@@ -127,15 +128,11 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       .parse(req.body);
     const now = debugNow(req) ?? new Date();
     const config = await loadConfig();
-    const occurrence = resolveOccurrence(config, now);
-
-    if (occurrence.phaseAt(now) !== "feedback") {
-      throw ApiError.forbidden("Peace messages open in the feedback phase", "phase_closed");
-    }
+    const pauseDate = localDate(now, config.timezone);
 
     const auth = req.auth!;
     const already = await prisma.peaceMessage.count({
-      where: { userId: auth.sub, pauseDate: occurrence.pauseDate },
+      where: { userId: auth.sub, pauseDate },
     });
     if (already >= MESSAGES_PER_NIGHT) {
       throw ApiError.forbidden("Message limit reached for tonight", "message_limit");
@@ -150,13 +147,13 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         displayName: user.displayName,
         countryISO: body.countryISO ?? null,
         text: body.text,
-        pauseDate: occurrence.pauseDate,
+        pauseDate,
       },
     });
     return { message: serializePeaceMessage(message), serverNow: now.toISOString() };
   });
 
-  // Public read of recent published messages (off-hours lobby feed).
+  // Public read of recent published messages — available around the clock.
   app.get("/pause/messages", async (req) => {
     const query = z
       .object({
@@ -178,7 +175,8 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     };
   });
 
-  // Intention + mood from the feedback phase; one row per user per night.
+  // Intention + mood, accepted any time of day; one row per user per night,
+  // keyed by the calendar night of posting in the config timezone.
   app.post("/pause/reflection", { preHandler: requireAuth }, async (req) => {
     const body = z
       .object({
@@ -189,18 +187,14 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       .parse(req.body);
     const now = debugNow(req) ?? new Date();
     const config = await loadConfig();
-    const occurrence = resolveOccurrence(config, now);
-
-    if (occurrence.phaseAt(now) !== "feedback") {
-      throw ApiError.forbidden("Reflections open in the feedback phase", "phase_closed");
-    }
+    const pauseDate = localDate(now, config.timezone);
 
     const auth = req.auth!;
     await prisma.pauseReflection.upsert({
-      where: { userId_pauseDate: { userId: auth.sub, pauseDate: occurrence.pauseDate } },
+      where: { userId_pauseDate: { userId: auth.sub, pauseDate } },
       create: {
         userId: auth.sub,
-        pauseDate: occurrence.pauseDate,
+        pauseDate,
         intention: body.intention ?? null,
         mood: body.mood ?? null,
       },

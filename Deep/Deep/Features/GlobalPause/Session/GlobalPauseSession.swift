@@ -23,10 +23,11 @@ enum PausePhase: Equatable {
 
 /// The Global Pause phase engine: derives the current phase from the server
 /// schedule and the synced clock, fires transitions at exact boundaries, and
-/// scopes the live presence/polling loops to the time the lobby is open.
+/// scopes the live presence/polling loops to the time the session screen is
+/// open.
 ///
-/// Lives app-long (built in `AppDependencies`) because the home feed needs
-/// the schedule for its countdown even when the lobby has never been opened.
+/// Lives app-long (built in `AppDependencies`) because the feed needs the
+/// schedule line even when the session has never been opened.
 @MainActor
 @Observable
 final class GlobalPauseSession {
@@ -55,7 +56,7 @@ final class GlobalPauseSession {
   @ObservationIgnored private var seenJoins: Set<String> = []
   @ObservationIgnored private var pendingJoins: [String] = []
 
-  /// One stable anonymous identity per install, so reopening the lobby never
+  /// One stable anonymous identity per install, so reopening the session never
   /// double-counts (the server keys signed-in users by user id instead).
   @ObservationIgnored private lazy var presenceID: String = {
     let key = "pause.presenceId"
@@ -142,10 +143,11 @@ final class GlobalPauseSession {
     }
   }
 
-  // MARK: - Lobby scope (presence + live polling)
+  // MARK: - Session scope (presence + live polling)
 
-  /// Starts heartbeats and live polling. Called when the lobby is presented.
-  func enterLobby() {
+  /// Starts heartbeats and live polling. Called when the session screen is
+  /// presented.
+  func enterSession() {
     guard heartbeatTask == nil else { return }
     let country = Locale.current.region?.identifier.uppercased()
 
@@ -165,7 +167,7 @@ final class GlobalPauseSession {
     }
   }
 
-  func leaveLobby() {
+  func leaveSession() {
     heartbeatTask?.cancel()
     heartbeatTask = nil
     pollTask?.cancel()
@@ -195,15 +197,15 @@ final class GlobalPauseSession {
     armBoundaryTimer()
   }
 
-  /// Joins that arrived since the last consume — the lobby turns these into
-  /// globe ripples. Draining keeps one ripple per join.
+  /// Joins that arrived since the last consume — the session screen turns
+  /// these into globe ripples. Draining keeps one ripple per join.
   func consumeNewJoins() -> [String] {
     let joins = pendingJoins
     pendingJoins = []
     return joins
   }
 
-  // MARK: - Feedback phase
+  // MARK: - Reflection (messages, intention & mood)
 
   func post(message text: String) async throws -> PeaceMessage {
     let country = Locale.current.region?.identifier.uppercased()

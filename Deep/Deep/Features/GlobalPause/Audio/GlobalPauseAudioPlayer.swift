@@ -2,9 +2,8 @@ import AVFoundation
 import MediaPlayer
 import Observation
 
-/// The real Global Pause audio engine: an `AVPlayerLooper` for the lobby theme
-/// and a bare `AVPlayer` for the meditation stream, both over HTTP from the
-/// backend's `/media/` route.
+/// The real Global Pause audio engine: a bare `AVPlayer` for the meditation
+/// stream, over HTTP from the backend's `/media/` route.
 ///
 /// "Cannot be paused" is enforced in three layers, because lock-screen and
 /// headphone controls can pause an `AVPlayer` without any app UI involved:
@@ -14,10 +13,11 @@ import Observation
 /// 3. `timeControlStatus` is observed — if playback stops mid-meditation for
 ///    any other reason (interruption end, stall, a command that slipped
 ///    through), the player re-seeks to the live edge via
-///    `meditationOffsetProvider` and plays again.
+///    `meditationOffsetProvider` (or resumes in place on a solo pass) and
+///    plays again.
 ///
-/// Owned per lobby presentation by the coordinator; never registered with the
-/// shared `SoundPlaying` environment, so the mini player never docks it.
+/// Owned per session presentation by the coordinator; never registered with
+/// the shared `SoundPlaying` environment, so the mini player never docks it.
 @MainActor
 @Observable
 final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
@@ -26,8 +26,6 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
 
   @ObservationIgnored var meditationOffsetProvider: (() -> TimeInterval)?
 
-  @ObservationIgnored private var loopPlayer: AVQueuePlayer?
-  @ObservationIgnored private var looper: AVPlayerLooper?
   @ObservationIgnored private var meditationPlayer: AVPlayer?
   @ObservationIgnored private var meditationDuration: TimeInterval = 0
 
@@ -36,56 +34,11 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
   @ObservationIgnored private var stallObserver: NSObjectProtocol?
   @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
   @ObservationIgnored private var commandTargets: [(MPRemoteCommand, Any)] = []
-  @ObservationIgnored private var fadeTask: Task<Void, Never>?
   @ObservationIgnored private var sessionConfigured = false
-
-  // MARK: - Lobby loop
-
-  func playLobbyLoop(url: URL, volume: Float) {
-    stopMeditation()
-    fadeTask?.cancel()
-
-    // Reuse a live looper if it's already circling the same file.
-    if let loopPlayer, looper != nil {
-      loopPlayer.volume = volume
-      configureSessionIfNeeded()
-      loopPlayer.play()
-      mode = .lobbyLoop
-      return
-    }
-
-    let player = AVQueuePlayer()
-    player.volume = volume
-    looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: url))
-    loopPlayer = player
-    configureSessionIfNeeded()
-    player.play()
-    mode = .lobbyLoop
-  }
-
-  func setLobbyVolume(_ volume: Float, fadeDuration: TimeInterval) {
-    guard let loopPlayer else { return }
-    fadeTask?.cancel()
-    guard fadeDuration > 0 else {
-      loopPlayer.volume = volume
-      return
-    }
-    let start = loopPlayer.volume
-    fadeTask = Task { [weak loopPlayer] in
-      let steps = max(1, Int(fadeDuration / 0.05))
-      for step in 1...steps {
-        guard !Task.isCancelled, let loopPlayer else { return }
-        let fraction = Float(step) / Float(steps)
-        loopPlayer.volume = start + (volume - start) * fraction
-        try? await Task.sleep(for: .milliseconds(50))
-      }
-    }
-  }
 
   // MARK: - Meditation
 
   func playMeditation(url: URL, startingAt offset: TimeInterval, duration: TimeInterval) {
-    stopLobbyLoop()
     stopMeditation()
 
     // A latecomer past the end gets silence — the phase engine is already in
@@ -129,20 +82,8 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
   // MARK: - Teardown
 
   func stop() {
-    fadeTask?.cancel()
-    fadeTask = nil
-    stopLobbyLoop()
     stopMeditation()
     mode = .idle
-  }
-
-  private func stopLobbyLoop() {
-    looper?.disableLooping()
-    looper = nil
-    loopPlayer?.pause()
-    loopPlayer?.removeAllItems()
-    loopPlayer = nil
-    if mode == .lobbyLoop { mode = .idle }
   }
 
   private func stopMeditation() {

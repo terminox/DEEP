@@ -39,7 +39,15 @@ final class GlobalPauseCardLiftTransition: NSObject, UIViewControllerTransitioni
   func animationController(
     forDismissed dismissed: UIViewController
   ) -> (any UIViewControllerAnimatedTransitioning)? {
-    GlobalPauseCardLiftAnimator(card: card, isPresenting: false)
+    // After the reflection handback the session controller no longer holds
+    // the card — it is already seated on its lounge slot. Flying the card-
+    // lift animator here would re-resolve the shared card and steal it back
+    // mid-dismiss; a plain fade is the correct exit (the presentation
+    // controller's dim already fades on any dismissal).
+    if let controller = dismissed as? GlobalPauseSessionController, controller.card == nil {
+      return FadeOutAnimator()
+    }
+    return GlobalPauseCardLiftAnimator(card: card, isPresenting: false)
   }
 
   func presentationController(
@@ -91,6 +99,33 @@ private final class GlobalPauseCardLiftPresentationController: UIPresentationCon
   }
 }
 
+// MARK: - Fade-out animator (card already handed back)
+
+/// The dismissal for a session whose card has already gone home behind the
+/// reflection screen: nothing to fly, just fade the presented view away.
+private final class FadeOutAnimator: NSObject, UIViewControllerAnimatedTransitioning {
+  func transitionDuration(
+    using transitionContext: (any UIViewControllerContextTransitioning)?
+  ) -> TimeInterval {
+    0.3
+  }
+
+  func animateTransition(using context: any UIViewControllerContextTransitioning) {
+    guard
+      let fromView = context.view(forKey: .from)
+        ?? context.viewController(forKey: .from)?.viewIfLoaded
+    else {
+      context.completeTransition(true)
+      return
+    }
+    UIView.animate(withDuration: transitionDuration(using: context)) {
+      fromView.alpha = 0
+    } completion: { _ in
+      context.completeTransition(!context.transitionWasCancelled)
+    }
+  }
+}
+
 // MARK: - Animator
 
 private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnimatedTransitioning {
@@ -137,7 +172,7 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
 
   private func present(using context: any UIViewControllerContextTransitioning) {
     guard
-      let lobby = context.viewController(forKey: .to) as? GlobalPauseLobbyController,
+      let lobby = context.viewController(forKey: .to) as? GlobalPauseSessionController,
       let lobbyView = context.view(forKey: .to)
     else {
       context.completeTransition(false)
@@ -243,7 +278,7 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
 
   private func dismiss(using context: any UIViewControllerContextTransitioning) {
     guard
-      let lobby = context.viewController(forKey: .from) as? GlobalPauseLobbyController,
+      let lobby = context.viewController(forKey: .from) as? GlobalPauseSessionController,
       let lobbyView = context.view(forKey: .from) ?? lobby.viewIfLoaded
     else {
       context.completeTransition(false)

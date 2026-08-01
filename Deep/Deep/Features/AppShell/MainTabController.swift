@@ -27,7 +27,8 @@ final class MainTabController: UITabBarController {
   private let heartLedger: HeartLedger
 
   /// The app-long Global Pause engine + backend, handed to the Global Pause
-  /// coordinator (schedule countdown on the feed, phases in the lobby).
+  /// coordinator (phases in the lobby; the caption/schedule now surfaces on
+  /// Fuku's Lounge's card).
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
 
@@ -115,7 +116,7 @@ final class MainTabController: UITabBarController {
       pauseRepository: pauseRepository,
       imageLoader: imageLoader
     )
-    globalPause.tabBarItem = tabItem(title: "Global Pause", systemImage: "globe.asia.australia.fill")
+    globalPause.tabBarItem = tabItem(title: "Home", systemImage: "house.fill")
 
     // While a track is loaded, the shared player surfaces globally as the tab
     // bar's bottom accessory — see `observeHasTrack()`.

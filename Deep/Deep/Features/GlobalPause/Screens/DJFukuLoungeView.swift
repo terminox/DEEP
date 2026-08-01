@@ -4,20 +4,22 @@ import SwiftUI
 /// Pause nav stack like any other leaf (system back button, no custom chrome).
 /// Mirrors the home-screen recipe: DJ Fuku full-bleed in the stretchy hero
 /// slot under the transparent bar, sections riding up over it, atmosphere
-/// behind. The programme below is `FukuLoungeLibrary` mock content rendered
-/// inert — live lobby content (countdown, participants) joins later when the
-/// pause states are combined.
+/// behind. The globe card lives only here now, and below it a live rail of
+/// recent peace messages replaces the old mock programme.
 ///
 /// Leaf screen, so it owns its screen-level styling (per the coordinator
 /// rules); navigation chrome is the system bar the coordinator un-hides for
 /// pushed screens.
 struct DJFukuLoungeView: View {
-  /// The shared Global Pause card, borrowed from the home feed while the
-  /// lounge is open (see `GlobalPauseCardSlotView.Role.guest`). `nil` keeps
-  /// previews hermetic and Metal-free.
+  /// The shared Global Pause card. With the home-feed seat gone, the lounge
+  /// is the card's only seat (see `GlobalPauseCardSlotView.Role.home`) —
+  /// pushing here adopts the card immediately. `nil` keeps previews hermetic
+  /// and Metal-free.
   var card: GlobalPauseCardView? = nil
 
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.globalPauseSession) private var session
+  @State private var recent: [PeaceMessage] = []
 
   private let heroHeight: CGFloat = 320
   private let heroOverlap: CGFloat = 80
@@ -31,13 +33,14 @@ struct DJFukuLoungeView: View {
           onAir
 
           if let card {
-            GlobalPauseCardSlot(card: card, role: .guest)
+            GlobalPauseCardSlot(card: card, role: .home)
               .frame(height: 200)
               .padding(.horizontal, .edge)
           }
 
-          programme
-            .allowsHitTesting(false)
+          if !recent.isEmpty {
+            PeaceMessagesSection(messages: recent)
+          }
 
           Color.clear.frame(height: .rhythm)
         }
@@ -68,41 +71,22 @@ struct DJFukuLoungeView: View {
     .navigationTitle("Fuku's Lounge")
     .navigationBarTitleDisplayMode(.inline)
     .toolbarBackground(.hidden, for: .navigationBar)
-    // The feed is a preview of the room, not a library: park the inherited
-    // routing and playback so nothing in the mock programme can act.
-    .environment(\.openCollection, { _ in })
-    .environment(\.openCollectionList, { _, _ in })
-    .environment(\.soundPlayer, MockSoundPlayer.idle)
+    .task { recent = await session.recentMessages(limit: 20) }
   }
 
   private var onAir: some View {
     OnAirPill()
       .padding(.horizontal, .edge)
   }
-
-  private var programme: some View {
-    VStack(alignment: .leading, spacing: .rhythm) {
-      RecommendationsSection(
-        title: "Made for the floor",
-        collections: FukuLoungeLibrary.madeForTheFloor
-      )
-
-      FeatureCarousel(
-        title: "Tonight's rotation",
-        collections: FukuLoungeLibrary.tonightsRotation
-      )
-
-      ExploreByContentSection(categories: FukuLoungeLibrary.moods)
-    }
-    .accessibilityHidden(true)
-  }
 }
 
 #Preview("Fuku's Lounge") {
   DJFukuLoungeView()
+    .environment(\.globalPauseSession, .preview(phase: .offHours(nextLobbyStart: Date().addingTimeInterval(3 * 3600))))
 }
 
 #Preview("Accessibility type") {
   DJFukuLoungeView()
     .environment(\.dynamicTypeSize, .accessibility2)
+    .environment(\.globalPauseSession, .preview(phase: .offHours(nextLobbyStart: Date().addingTimeInterval(3 * 3600))))
 }

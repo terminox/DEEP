@@ -18,12 +18,6 @@ final class MockGlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
     self.meditationElapsed = meditationElapsed
   }
 
-  func playLobbyLoop(url: URL, volume: Float) {
-    mode = .lobbyLoop
-  }
-
-  func setLobbyVolume(_ volume: Float, fadeDuration: TimeInterval) {}
-
   func playMeditation(url: URL, startingAt offset: TimeInterval, duration: TimeInterval) {
     mode = .meditation
     meditationElapsed = offset

@@ -3,13 +3,12 @@ import UIKit
 
 /// Composition root for the Global Pause tab, in UIKit. Owns the navigation
 /// controller, the shared Earth scene, and the ONE `GlobalPauseCardView`
-/// (which the card-lift transition re-parents between the feed and the
-/// lobby). Leaf content stays SwiftUI and routes back through the injected
-/// environment actions (`openCollection`, `openCollectionList`,
-/// `openGlobalPause`), so no leaf ever hosts a navigation container. The mini
-/// player is not this tab's concern: it lives in the tab bar's bottom
-/// accessory, owned by `MainTabController`, and extends the bottom safe area
-/// here automatically.
+/// (which the card-lift transition re-parents between Fuku's Lounge and the
+/// presented session). Leaf content stays SwiftUI and routes back through the injected
+/// environment actions (`openCollection`, `openCollectionList`), so no leaf
+/// ever hosts a navigation container. The mini player is not this tab's
+/// concern: it lives in the tab bar's bottom accessory, owned by
+/// `MainTabController`, and extends the bottom safe area here automatically.
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
@@ -20,17 +19,16 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
   private let imageLoader: any ImageLoading
-  private let pauseReminder: any PauseReminding = LocalPauseReminder()
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
 
-  /// The event audio, alive only while its lobby is presented.
-  private var lobbyAudio: GlobalPauseAudioPlayer?
+  /// The session audio, alive only while the experience is presented.
+  private var sessionAudio: GlobalPauseAudioPlayer?
 
-  /// The single shared card — feed hero and lobby content in one instance.
+  /// The single shared card — lounge hero and session content in one instance.
   private lazy var card: GlobalPauseCardView = {
     let card = GlobalPauseCardView(scene: scene)
-    card.onTap = { [weak self] in self?.presentLobby() }
+    card.onTap = { [weak self] in self?.presentSession() }
     return card
   }()
 
@@ -119,20 +117,18 @@ final class GlobalPauseCoordinatorController: UIViewController {
   }
 
   private func makeHomeController() -> UIViewController {
-    let root = GlobalPauseHomeView(card: card)
+    let root = GlobalPauseHomeView()
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.openCollection) { [weak self] collection in self?.showCollection(collection) }
       .environment(\.openCollectionList) { [weak self] title, collections in
         self?.showCollectionList(title: title, collections: collections)
       }
-      .environment(\.openGlobalPause) { [weak self] in self?.presentLobby() }
       .environment(\.openFukuLounge) { [weak self] in self?.showFukuLounge() }
       .environment(\.soundPlayer, player)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
       .environment(\.globalPauseSession, pauseSession)
       .environment(\.pauseEventRepository, pauseRepository)
-      .environment(\.pauseReminder, pauseReminder)
       .environment(\.imageLoader, imageLoader)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
@@ -174,49 +170,47 @@ final class GlobalPauseCoordinatorController: UIViewController {
     navigation.pushViewController(host, animated: true)
   }
 
-  /// Fuku's Lounge rides the system push (the card-lift into the live lobby is
-  /// the tab's one hero transition), borrowing the shared card while it's open.
+  /// Fuku's Lounge rides the system push (the card-lift into the session is
+  /// the tab's one hero transition). The lounge is the card's only seat now,
+  /// so pushing here adopts it directly.
   private func showFukuLounge() {
-    push(DJFukuLoungeView(card: card))
+    push(DJFukuLoungeView(card: card).environment(\.globalPauseSession, pauseSession))
   }
 
-  private func presentLobby() {
-    // The card can summon the lobby from the feed or from a screen presented
-    // over it (Fuku's Lounge borrows the card). Always lift from — and stack
-    // onto — whatever is frontmost, so the flight lands above the summoning
-    // screen; the close must then dismiss from that same presenter, because
+  private func presentSession() {
+    // The card can summon the session from a screen presented over the feed
+    // (Fuku's Lounge borrows the card). Always lift from — and stack onto —
+    // whatever is frontmost, so the flight lands above the summoning screen;
+    // the close must then dismiss from that same presenter, because
     // dismissing from the coordinator would tear down the whole stack.
     var presenter: UIViewController = self
     while let next = presenter.presentedViewController { presenter = next }
-    guard !(presenter is GlobalPauseLobbyController) else { return }
+    guard !(presenter is GlobalPauseSessionController) else { return }
 
-    // The event owns its own audio, so the shared player pauses (its track
+    // The session owns its own audio, so the shared player pauses (its track
     // stays loaded — the mini player resumes where it left off, the Deep
     // Session precedent). A fresh engine per presentation keeps teardown
-    // trivially complete.
+    // trivially complete; the controller wires the offset provider when it
+    // decides synced vs solo.
     player.pause()
     let audio = GlobalPauseAudioPlayer()
-    audio.meditationOffsetProvider = { [weak pauseSession] in
-      pauseSession?.meditationElapsed ?? 0
-    }
-    lobbyAudio = audio
+    sessionAudio = audio
 
-    let lobby = GlobalPauseLobbyController(
+    let controller = GlobalPauseSessionController(
       session: pauseSession,
       scene: scene,
-      audio: audio,
-      reminder: pauseReminder
+      audio: audio
     ) { [weak self, weak presenter] in
       presenter?.dismiss(animated: true)
-      self?.lobbyAudio = nil
+      self?.sessionAudio = nil
     }
-    lobby.modalPresentationStyle = .custom
-    lobby.transitioningDelegate = cardLiftTransition
+    controller.modalPresentationStyle = .custom
+    controller.transitioningDelegate = cardLiftTransition
     // Catch any dismissal that bypasses the close button, so the card can
     // always be handed back to the feed.
-    lobby.presentationController?.delegate = self
+    controller.presentationController?.delegate = self
 
-    presenter.present(lobby, animated: true)
+    presenter.present(controller, animated: true)
   }
 }
 

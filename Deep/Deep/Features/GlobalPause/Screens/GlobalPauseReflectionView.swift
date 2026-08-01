@@ -1,18 +1,17 @@
 import SwiftUI
 
-/// The landing after the meditation (20:50–21:00): the globe lifts back into
-/// motion as a header while the world talks back — a peace-message composer,
-/// the live voices feed, then intention and mood for tonight's reflection.
-struct GlobalPauseFeedbackView: View {
+/// The landing after the meditation: a thank-you, a peace-message composer,
+/// then intention and mood for tonight's reflection. Fully opaque — it fades
+/// in over the meditation and covers the globe card's silent handback to its
+/// lounge seat behind the presentation.
+struct GlobalPauseReflectionView: View {
+  var onDone: () -> Void
+
   @Environment(\.globalPauseSession) private var session
 
   @State private var intentionSelection: Intention.ID?
   @State private var showMoodChips = false
   @State private var moodSelection: String?
-
-  /// Matches the shrunken globe header placement the lobby applies in this
-  /// phase — content scrolls beneath it.
-  private let globeHeaderHeight: CGFloat = 260
 
   private let moods: [Intention] = [
     Intention(key: "calm", label: "Calm"),
@@ -23,34 +22,52 @@ struct GlobalPauseFeedbackView: View {
   ]
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: .rhythm) {
-        Color.clear.frame(height: globeHeaderHeight)
+    ZStack {
+      Color.moonCream.ignoresSafeArea()
+      AtmosphereBackground()
 
-        PeaceMessageComposer { text in
-          _ = try await session.post(message: text)
+      ScrollView {
+        VStack(alignment: .leading, spacing: .rhythm) {
+          header
+
+          PeaceMessageComposer { text in
+            _ = try await session.post(message: text)
+          }
+          .padding(.horizontal, .edge)
+
+          IntentionPicker(
+            intentions: session.schedule?.intentions ?? Intention.samples,
+            selection: $intentionSelection
+          )
+          .onChange(of: intentionSelection) { _, selected in
+            guard let selected else { return }
+            Task { try? await session.submit(intention: selected, mood: nil) }
+          }
+
+          moodCheckIn
+
+          Color.clear.frame(height: .rhythm)
         }
-        .padding(.horizontal, .edge)
-
-        if !session.messages.isEmpty {
-          VoicesOfPeaceSection(voices: session.messages.map(\.asVoiceOfPeace))
-        }
-
-        IntentionPicker(
-          intentions: session.schedule?.intentions ?? Intention.samples,
-          selection: $intentionSelection
-        )
-        .onChange(of: intentionSelection) { _, selected in
-          guard let selected else { return }
-          Task { try? await session.submit(intention: selected, mood: nil) }
-        }
-
-        moodCheckIn
-
-        Color.clear.frame(height: .rhythm)
       }
+      .scrollIndicators(.hidden)
     }
-    .scrollIndicators(.hidden)
+    .overlay(alignment: .topLeading) {
+      GlassCloseButton(action: onDone)
+        .padding(.edge)
+    }
+  }
+
+  private var header: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      Text("Thank you for pausing")
+        .font(DeepType.displayTitle)
+        .foregroundStyle(.deepPlum)
+      Text("Carry tonight's calm with you.")
+        .font(DeepType.caption)
+        .foregroundStyle(.driftGrey)
+    }
+    .padding(.horizontal, .edge)
+    .padding(.top, 76)
   }
 
   @ViewBuilder
@@ -106,10 +123,7 @@ struct GlobalPauseFeedbackView: View {
   }
 }
 
-#Preview("Feedback") {
-  ZStack {
-    Color.moonCream.ignoresSafeArea()
-    GlobalPauseFeedbackView()
-      .environment(\.globalPauseSession, .preview(phase: .feedback))
-  }
+#Preview("Reflection") {
+  GlobalPauseReflectionView(onDone: {})
+    .environment(\.globalPauseSession, .preview(phase: .feedback))
 }

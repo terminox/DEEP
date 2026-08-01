@@ -7,10 +7,6 @@ extension EnvironmentValues {
   /// Collection-detail pushes reuse the shared `openCollection` entry.
   @Entry var openCollectionList: (String, [SoundCollection]) -> Void = { _, _ in }
 
-  /// Opens the Global Pause lobby. Injected by
-  /// `GlobalPauseCoordinatorController`; no-op default keeps previews hermetic.
-  @Entry var openGlobalPause: () -> Void = {}
-
   /// Pushes Fuku's Lounge onto the Global Pause nav stack. Injected by
   /// `GlobalPauseCoordinatorController`; no-op default keeps previews hermetic.
   @Entry var openFukuLounge: () -> Void = {}

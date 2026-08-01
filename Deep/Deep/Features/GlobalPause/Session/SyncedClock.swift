@@ -25,7 +25,7 @@ final class SyncedClock {
   var now: Date { debugOverride ?? Date().addingTimeInterval(serverOffset) }
 
   /// `now − deviceNow`, covering both the server correction and a pinned
-  /// debug clock — what `CountdownView.clockOffset` wants.
+  /// debug clock — for anything counting toward a boundary off device time.
   var effectiveOffset: TimeInterval { now.timeIntervalSinceNow }
 
   func sync(serverNow: Date) {

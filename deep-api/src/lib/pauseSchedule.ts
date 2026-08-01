@@ -23,7 +23,7 @@ export interface PauseOccurrence {
 }
 
 /** "YYYY-MM-DD" for `instant` in `timeZone` (en-CA gives ISO ordering). */
-function localDate(instant: Date, timeZone: string): string {
+export function localDate(instant: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",

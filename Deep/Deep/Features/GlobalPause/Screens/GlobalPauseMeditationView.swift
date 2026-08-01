@@ -1,21 +1,30 @@
 import SwiftUI
 
-/// The live meditation (20:40–20:50). Deliberately near-empty: a LIVE mark, a
-/// gentle count of company, a thin progress line. No transport — the absence
-/// of controls is how "cannot be paused" looks; leaving the lobby is the only
-/// exit, and the close button stays.
+/// The meditation, deliberately near-empty: synced sessions show a LIVE mark
+/// and a gentle count of company; a solo pause shows a single quiet caption.
+/// A thin progress line, no transport — the absence of controls is how
+/// "cannot be paused" looks; the close button is the only exit.
 struct GlobalPauseMeditationView: View {
-  @Environment(\.globalPauseSession) private var session
+  let audio: any GlobalPauseAudioPlaying
+  let duration: TimeInterval
+  let isSynced: Bool
+  let participantCount: Int
 
   var body: some View {
     VStack(spacing: 0) {
       VStack(spacing: 12) {
-        liveCapsule
+        if isSynced {
+          liveCapsule
 
-        Text("\(session.participantCount.formatted()) meditating with you")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-          .contentTransition(.numericText())
+          Text("\(participantCount.formatted()) meditating with you")
+            .font(DeepType.caption)
+            .foregroundStyle(.driftGrey)
+            .contentTransition(.numericText())
+        } else {
+          Text("A quiet pause, just for you")
+            .font(DeepType.caption)
+            .foregroundStyle(.driftGrey)
+        }
       }
       .padding(.top, 68)
 
@@ -44,39 +53,50 @@ struct GlobalPauseMeditationView: View {
     .accessibilityLabel("Live meditation in progress")
   }
 
-  /// Clock-driven, not player-driven: the stream follows the shared timeline,
-  /// so the timeline is the honest source for progress.
+  /// Player-driven: the audio clock publishes ~every 0.5 s, and it is the
+  /// honest source for both synced and solo passes.
   private var progressLine: some View {
-    TimelineView(.periodic(from: .now, by: 1)) { _ in
-      let progress = session.meditationDuration > 0
-        ? min(1, session.meditationElapsed / session.meditationDuration)
-        : 0
-      Capsule()
-        .fill(Color.deepPlum.opacity(0.12))
-        .frame(height: 3)
-        .overlay(alignment: .leading) {
-          GeometryReader { proxy in
-            Capsule()
-              .fill(
-                LinearGradient(
-                  colors: [.lavenderMist, .blushPowder],
-                  startPoint: .leading,
-                  endPoint: .trailing
-                )
+    let progress = duration > 0 ? min(1, audio.meditationElapsed / duration) : 0
+    return Capsule()
+      .fill(Color.deepPlum.opacity(0.12))
+      .frame(height: 3)
+      .overlay(alignment: .leading) {
+        GeometryReader { proxy in
+          Capsule()
+            .fill(
+              LinearGradient(
+                colors: [.lavenderMist, .blushPowder],
+                startPoint: .leading,
+                endPoint: .trailing
               )
-              .frame(width: proxy.size.width * progress)
-          }
+            )
+            .frame(width: proxy.size.width * progress)
         }
-        .accessibilityLabel("Meditation \(Int(progress * 100)) percent through")
-    }
-    .frame(height: 3)
+      }
+      .accessibilityLabel("Meditation \(Int(progress * 100)) percent through")
   }
 }
 
-#Preview("Meditation") {
+#Preview("Meditation — synced") {
   ZStack {
     Color.moonCream.ignoresSafeArea()
-    GlobalPauseMeditationView()
-      .environment(\.globalPauseSession, .preview(phase: .meditation))
+    GlobalPauseMeditationView(
+      audio: MockGlobalPauseAudioPlayer.meditating,
+      duration: 600,
+      isSynced: true,
+      participantCount: 4218
+    )
+  }
+}
+
+#Preview("Meditation — solo") {
+  ZStack {
+    Color.moonCream.ignoresSafeArea()
+    GlobalPauseMeditationView(
+      audio: MockGlobalPauseAudioPlayer(mode: .meditation, meditationElapsed: 42),
+      duration: 600,
+      isSynced: false,
+      participantCount: 0
+    )
   }
 }

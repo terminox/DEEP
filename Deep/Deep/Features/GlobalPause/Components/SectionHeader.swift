@@ -1,33 +1,8 @@
 import SwiftUI
 
-struct LiveAroundWorldSection: View {
-  let pauses: [CountryPause]
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      SectionHeader(title: "Live now around the world")
-
-      ScrollView(.horizontal, showsIndicators: false) {
-        LazyHStack(spacing: 12) {
-          ForEach(pauses) { pause in
-            CountryPauseCard(pause: pause)
-              .scrollTransition(.animated(.exhale)) { content, phase in
-                content
-                  .opacity(phase.isIdentity ? 1 : 0.75)
-                  .scaleEffect(phase.isIdentity ? 1 : 0.97)
-              }
-          }
-        }
-        .scrollTargetLayout()
-        .padding(.horizontal, .edge)
-      }
-      .scrollTargetBehavior(.viewAligned)
-      .contentMargins(.horizontal, 0)
-      .scrollClipDisabled()
-    }
-  }
-}
-
+/// A section title with optional subtitle and trailing action — the header
+/// style shared by the reflection screen's sections (`IntentionPicker`,
+/// the mood check-in).
 struct SectionHeader: View {
   let title: String
   var subtitle: String? = nil
@@ -67,7 +42,11 @@ struct SectionHeader: View {
 }
 
 #Preview {
-  LiveAroundWorldSection(pauses: CountryPause.samples)
-    .padding(.vertical)
-    .background(.moonCream)
+  VStack(spacing: 24) {
+    SectionHeader(title: "Set your intention", subtitle: "What would you like to pause for?")
+    SectionHeader(title: "How are you feeling?")
+    SectionHeader(title: "Voices", trailing: "See all")
+  }
+  .padding(.vertical)
+  .background(.moonCream)
 }
