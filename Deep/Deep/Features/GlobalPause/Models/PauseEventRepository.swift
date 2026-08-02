@@ -70,14 +70,12 @@ final class APIPauseEventRepository: PauseEventRepository {
     clock.sync(serverNow: date(dto.serverNow))
     return PauseLiveSnapshot(
       serverNow: date(dto.serverNow),
-      phase: PausePhaseWindow.Key(rawValue: dto.phase),
       participantCount: dto.participantCount,
       byCountry: Dictionary(
         dto.byCountry.map { ($0.iso, $0.count) },
         uniquingKeysWith: { first, _ in first }
       ),
-      recentJoins: dto.recentJoins.map { .init(iso: $0.iso, at: date($0.at)) },
-      messages: dto.messages.map(mapMessage)
+      recentJoins: dto.recentJoins.map { .init(iso: $0.iso, at: date($0.at)) }
     )
   }
 
@@ -263,11 +261,9 @@ final class FixturePauseEventRepository: PauseEventRepository {
   func live() async throws -> PauseLiveSnapshot {
     PauseLiveSnapshot(
       serverNow: Date(),
-      phase: Self.tonightSchedule().phase(at: Date()),
       participantCount: 4200 + posted.count,
       byCountry: ["TH": 1200, "JP": 640, "US": 580, "FR": 320, "BR": 410, "IN": 700],
-      recentJoins: [.init(iso: "TH", at: Date())],
-      messages: posted + Self.sampleMessages
+      recentJoins: [.init(iso: "TH", at: Date())]
     )
   }
 

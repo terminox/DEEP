@@ -232,11 +232,9 @@ struct PauseLiveDTO: Decodable {
     let at: String
   }
   let serverNow: String
-  let phase: String
   let participantCount: Int
   let byCountry: [CountryCount]
   let recentJoins: [Join]
-  let messages: [PeaceMessageDTO]
 }
 
 struct PauseMessagesResponseDTO: Decodable {

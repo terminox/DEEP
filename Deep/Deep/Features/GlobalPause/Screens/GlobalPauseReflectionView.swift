@@ -125,5 +125,5 @@ struct GlobalPauseReflectionView: View {
 
 #Preview("Reflection") {
   GlobalPauseReflectionView(onDone: {})
-    .environment(\.globalPauseSession, .preview(phase: .feedback))
+    .environment(\.globalPauseSession, .preview())
 }
