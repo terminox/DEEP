@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The meditation, deliberately near-empty: synced sessions show a LIVE mark
-/// and a gentle count of company; a solo pause shows a single quiet caption.
-/// A thin progress line, no transport — the absence of controls is how
-/// "cannot be paused" looks; the close button is the only exit.
+/// The live meditation — the screen's one state — deliberately near-empty:
+/// a LIVE mark, a gentle count of company, a thin progress line. No transport
+/// — the absence of controls is how "cannot be paused" looks; the close
+/// button is the only exit.
 struct GlobalPauseMeditationView: View {
   let audio: any GlobalPauseAudioPlaying
   let duration: TimeInterval
@@ -47,7 +47,7 @@ struct GlobalPauseMeditationView: View {
   }
 
   /// Player-driven: the audio clock publishes ~every 0.5 s, and it is the
-  /// honest source for both synced and solo passes.
+  /// honest source for how far the shared stream has actually played.
   private var progressLine: some View {
     let progress = duration > 0 ? min(1, audio.meditationElapsed / duration) : 0
     return Capsule()
@@ -70,24 +70,13 @@ struct GlobalPauseMeditationView: View {
   }
 }
 
-#Preview("Meditation — synced") {
+#Preview("Meditation") {
   ZStack {
     Color.moonCream.ignoresSafeArea()
     GlobalPauseMeditationView(
       audio: MockGlobalPauseAudioPlayer.meditating,
       duration: 600,
       participantCount: 4218
-    )
-  }
-}
-
-#Preview("Meditation — solo") {
-  ZStack {
-    Color.moonCream.ignoresSafeArea()
-    GlobalPauseMeditationView(
-      audio: MockGlobalPauseAudioPlayer(mode: .meditation, meditationElapsed: 42),
-      duration: 600,
-      participantCount: 0
     )
   }
 }

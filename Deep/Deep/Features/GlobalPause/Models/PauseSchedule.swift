@@ -24,11 +24,6 @@ struct PauseSchedule: Equatable {
   let welcomeMessages: [String]
   let intentions: [Intention]
 
-  /// The live phase at `date`, or nil when the window is closed (off-hours).
-  func phase(at date: Date) -> PausePhaseWindow.Key? {
-    phases.first { date >= $0.startsAt && date < $0.endsAt }?.key
-  }
-
   func window(for key: PausePhaseWindow.Key) -> PausePhaseWindow? {
     phases.first { $0.key == key }
   }
@@ -42,18 +37,17 @@ struct PauseSchedule: Equatable {
       .min()
   }
 
-  /// When the lobby next opens: tonight's start, or — once tonight is over —
-  /// a 24h projection. The projection is only a countdown target; the real
-  /// next occurrence arrives with the post-window schedule re-fetch.
-  func nextLobbyStart(after date: Date) -> Date {
-    guard let lobby = window(for: .lobby) else { return date }
-    if date < lobby.startsAt { return lobby.startsAt }
-    return lobby.startsAt.addingTimeInterval(24 * 60 * 60)
+  /// When the meditation next begins: tonight's start, or — once tonight is
+  /// over — a 24h projection. The projection is only a countdown target; the
+  /// real next occurrence arrives with the post-window schedule re-fetch.
+  func nextMeditationStart(after date: Date) -> Date {
+    guard let meditation = window(for: .meditation) else { return date }
+    if date < meditation.startsAt { return meditation.startsAt }
+    return meditation.startsAt.addingTimeInterval(24 * 60 * 60)
   }
 }
 
-/// A moment-in-time reading of the live event: who's here, where, and what
-/// the feedback phase is saying.
+/// A moment-in-time reading of the live event: who's here and where.
 struct PauseLiveSnapshot {
   struct Join: Equatable {
     let iso: String
@@ -61,9 +55,7 @@ struct PauseLiveSnapshot {
   }
 
   let serverNow: Date
-  let phase: PausePhaseWindow.Key?
   let participantCount: Int
   let byCountry: [String: Int]
   let recentJoins: [Join]
-  let messages: [PeaceMessage]
 }

@@ -20,6 +20,7 @@ struct GlobalPauseLobbyView: View {
 
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.pauseEventRepository) private var repository
+  @Environment(\.globalPauseSession) private var session
 
   @State private var messages: [PeaceMessage] = []
   @State private var nextCursor: String?
@@ -42,6 +43,17 @@ struct GlobalPauseLobbyView: View {
               .frame(height: 200)
               .padding(.horizontal, .edge)
           }
+
+          #if DEBUG
+          // Dev time travel: opens/ends the live meditation window on demand.
+          if AppConfig.current.isDev {
+            HStack(spacing: 8) {
+              PauseDevChip(label: "Go live") { session.debugEnterLive() }
+              PauseDevChip(label: "Real time") { session.debugReturnToRealTime() }
+            }
+            .padding(.horizontal, .edge)
+          }
+          #endif
 
           if !messages.isEmpty {
             PeaceMessagesSection(

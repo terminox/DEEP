@@ -1,30 +1,10 @@
 import SwiftUI
 import Observation
 
-/// The lifecycle state of the nightly pause, as the UI consumes it.
-enum PausePhase: Equatable {
-  case loading
-  case offHours(nextLobbyStart: Date)
-  case lobby
-  case welcome
-  case meditation
-  case feedback
-
-  init(key: PausePhaseWindow.Key?, nextLobbyStart: Date) {
-    switch key {
-    case .lobby: self = .lobby
-    case .welcome: self = .welcome
-    case .meditation: self = .meditation
-    case .feedback: self = .feedback
-    case nil: self = .offHours(nextLobbyStart: nextLobbyStart)
-    }
-  }
-}
-
-/// The Global Pause phase engine: derives the current phase from the server
-/// schedule and the synced clock, fires transitions at exact boundaries, and
-/// scopes the live presence/polling loops to the time the session screen is
-/// open.
+/// The Global Pause engine: holds tonight's schedule, tracks whether the
+/// nightly meditation is live against the synced clock (flipping
+/// `isMeditationLive` at exact window boundaries), and scopes the live
+/// presence/polling loops to the time the session screen is open.
 ///
 /// Lives app-long (built in `AppDependencies`) because the feed needs the
 /// schedule line even when the session has never been opened.
@@ -33,11 +13,19 @@ enum PausePhase: Equatable {
 final class GlobalPauseSession {
   let clock: SyncedClock
 
-  private(set) var phase: PausePhase = .loading
+  /// Tonight's resolved schedule; nil until the first fetch lands.
   private(set) var schedule: PauseSchedule?
+  /// True exactly while the nightly meditation window is open — the one state
+  /// the live session has. The boundary timer flips it at the window edges.
+  private(set) var isMeditationLive = false
   private(set) var participantCount = 0
   private(set) var participantsByCountry: [String: Int] = [:]
-  private(set) var messages: [PeaceMessage] = []
+
+  /// When the next meditation begins — the countdown target for the card's
+  /// caption. Nil until the schedule lands.
+  var nextMeditationStart: Date? {
+    schedule?.nextMeditationStart(after: clock.now)
+  }
 
   /// Seconds into the meditation stream at the synced clock's now.
   var meditationElapsed: TimeInterval {
@@ -88,7 +76,7 @@ final class GlobalPauseSession {
 
   // MARK: - Lifecycle
 
-  /// Fetches the schedule and starts tracking phase boundaries. Safe to call
+  /// Fetches the schedule and starts tracking window boundaries. Safe to call
   /// again (e.g. on foreground) — it simply re-resolves.
   func start() async {
     await refreshSchedule()
@@ -102,21 +90,21 @@ final class GlobalPauseSession {
       // and the next start()/foreground retries.
       if schedule == nil { return }
     }
-    recomputePhase()
+    recomputeLive()
     armBoundaryTimer()
   }
 
-  private func recomputePhase() {
-    guard let schedule else { return }
+  private func recomputeLive() {
+    guard let window = schedule?.window(for: .meditation) else {
+      isMeditationLive = false
+      return
+    }
     let now = clock.now
-    phase = PausePhase(
-      key: schedule.phase(at: now),
-      nextLobbyStart: schedule.nextLobbyStart(after: now)
-    )
+    isMeditationLive = now >= window.startsAt && now < window.endsAt
   }
 
   /// One sleeping task per upcoming boundary; re-armed after every firing,
-  /// clock sync, or debug jump. Crossing the final boundary re-fetches the
+  /// clock sync, or dev time jump. Crossing the final boundary re-fetches the
   /// next occurrence.
   private func armBoundaryTimer() {
     boundaryTask?.cancel()
@@ -138,7 +126,7 @@ final class GlobalPauseSession {
       try? await Task.sleep(for: .seconds(max(0.05, delay)))
       guard !Task.isCancelled else { return }
       guard let self else { return }
-      self.recomputePhase()
+      self.recomputeLive()
       self.armBoundaryTimer()
     }
   }
@@ -183,7 +171,6 @@ final class GlobalPauseSession {
     guard let snapshot = try? await repository.live() else { return }
     participantCount = snapshot.participantCount
     participantsByCountry = snapshot.byCountry
-    if !snapshot.messages.isEmpty { messages = snapshot.messages }
 
     for join in snapshot.recentJoins {
       let key = "\(join.iso)-\(join.at.timeIntervalSince1970)"
@@ -193,7 +180,7 @@ final class GlobalPauseSession {
       }
     }
     // Clock sync can move a boundary; keep the timer honest.
-    recomputePhase()
+    recomputeLive()
     armBoundaryTimer()
   }
 
@@ -209,9 +196,7 @@ final class GlobalPauseSession {
 
   func post(message text: String) async throws -> PeaceMessage {
     let country = Locale.current.region?.identifier.uppercased()
-    let message = try await repository.postMessage(text, countryISO: country)
-    messages.insert(message, at: 0)
-    return message
+    return try await repository.postMessage(text, countryISO: country)
   }
 
   func submit(intention: String?, mood: String?) async throws {
@@ -220,7 +205,7 @@ final class GlobalPauseSession {
 
   // MARK: - Schedule phrasing
 
-  /// "Tonight · 20:30 Thailand Time" / "Tomorrow · 20:30 Thailand Time",
+  /// "Tonight · 20:40 Thailand Time" / "Tomorrow · 20:40 Thailand Time",
   /// phrased against the pause's home timezone rather than the device's.
   func scheduleLine(for target: Date) -> String {
     var calendar = Calendar(identifier: .gregorian)
@@ -236,18 +221,34 @@ final class GlobalPauseSession {
     return "\(day) · \(time) Thailand Time"
   }
 
-  // MARK: - Dev controls
+  // MARK: - Dev time travel
 
-  /// Pins the clock just inside `key`'s window (nil returns to real time),
-  /// so any phase can be exercised end-to-end. Dev builds only.
-  func debugJump(to key: PausePhaseWindow.Key?) {
+  /// Pins the clock 2 s into tonight's meditation window, so the live session
+  /// can be entered immediately. Dev builds only.
+  func debugEnterLive() {
+    guard AppConfig.current.isDev,
+          let window = schedule?.window(for: .meditation) else { return }
+    clock.debugOverride = window.startsAt.addingTimeInterval(2)
+    recomputeLive()
+    armBoundaryTimer()
+  }
+
+  /// Pins the clock just past the meditation window's end, ending a running
+  /// live session (the session screen crossfades into reflection). Dev builds
+  /// only.
+  func debugEndLive() {
+    guard AppConfig.current.isDev,
+          let window = schedule?.window(for: .meditation) else { return }
+    clock.debugOverride = window.endsAt.addingTimeInterval(1)
+    recomputeLive()
+    armBoundaryTimer()
+  }
+
+  /// Clears the pinned clock, returning to real time. Dev builds only.
+  func debugReturnToRealTime() {
     guard AppConfig.current.isDev else { return }
-    if let key, let window = schedule?.window(for: key) {
-      clock.debugOverride = window.startsAt.addingTimeInterval(2)
-    } else {
-      clock.debugOverride = nil
-    }
-    recomputePhase()
+    clock.debugOverride = nil
+    recomputeLive()
     armBoundaryTimer()
   }
 }
@@ -256,17 +257,16 @@ final class GlobalPauseSession {
 
 #if DEBUG
 extension GlobalPauseSession {
-  /// A session pinned to `phase`, backed by fixtures — for previews.
-  static func preview(phase: PausePhase) -> GlobalPauseSession {
+  /// A session backed by fixtures, optionally pinned live — for previews.
+  static func preview(live: Bool = false) -> GlobalPauseSession {
     let session = GlobalPauseSession(
       clock: SyncedClock(),
       repository: FixturePauseEventRepository()
     )
     session.schedule = FixturePauseEventRepository.tonightSchedule()
-    session.phase = phase
+    session.isMeditationLive = live
     session.participantCount = 4218
     session.participantsByCountry = ["TH": 1200, "JP": 640, "US": 580, "FR": 320]
-    session.messages = FixturePauseEventRepository.sampleMessages
     return session
   }
 }

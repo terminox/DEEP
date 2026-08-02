@@ -82,25 +82,24 @@ final class GlobalPauseCoordinatorController: UIViewController {
     // Resolve tonight's schedule immediately: the feed countdown needs it
     // long before the lobby is ever opened.
     Task { await pauseSession.start() }
-    observePhaseForChrome()
+    observeLiveForChrome()
   }
 
-  /// Keeps the feed card's caption honest about the nightly window — the next
-  /// pause's schedule line while the world waits, "Live now…" while it's open
+  /// Keeps the card's caption honest about the nightly meditation — the next
+  /// start's schedule line while the world waits, "Live now…" while it's live
   /// — via the `observeHasTrack` re-arming pattern.
-  private func observePhaseForChrome() {
-    let phase = withObservationTracking {
-      pauseSession.phase
+  private func observeLiveForChrome() {
+    let (isLive, nextStart) = withObservationTracking {
+      (pauseSession.isMeditationLive, pauseSession.nextMeditationStart)
     } onChange: { [weak self] in
-      Task { @MainActor [weak self] in self?.observePhaseForChrome() }
+      Task { @MainActor [weak self] in self?.observeLiveForChrome() }
     }
     let caption: String
-    switch phase {
-    case .lobby, .welcome, .meditation, .feedback:
+    if isLive {
       caption = "Live now — the world is pausing"
-    case .offHours(let nextLobbyStart):
-      caption = pauseSession.scheduleLine(for: nextLobbyStart)
-    case .loading:
+    } else if let nextStart {
+      caption = pauseSession.scheduleLine(for: nextStart)
+    } else {
       caption = "Breathe with the world, together"
     }
     card.setChromeCaption(caption, animated: viewIfLoaded?.window != nil)
@@ -182,6 +181,10 @@ final class GlobalPauseCoordinatorController: UIViewController {
   }
 
   private func presentSession() {
+    // The session is the live meditation only — outside the nightly window
+    // the card's tap rests (its caption already carries the countdown).
+    guard pauseSession.isMeditationLive else { return }
+
     // The card can summon the session from a screen presented over the feed
     // (Fuku's Lounge borrows the card). Always lift from — and stack onto —
     // whatever is frontmost, so the flight lands above the summoning screen;
@@ -194,8 +197,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     // The session owns its own audio, so the shared player pauses (its track
     // stays loaded — the mini player resumes where it left off, the Deep
     // Session precedent). A fresh engine per presentation keeps teardown
-    // trivially complete; the controller wires the offset provider when it
-    // decides synced vs solo.
+    // trivially complete.
     player.pause()
     let audio = GlobalPauseAudioPlayer()
     sessionAudio = audio

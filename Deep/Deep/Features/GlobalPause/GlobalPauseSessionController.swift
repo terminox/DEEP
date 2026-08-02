@@ -3,10 +3,10 @@ import SwiftUI
 
 /// The presented Global Pause experience — a fully-UIKit screen whose backdrop
 /// IS the shared `GlobalPauseCardView`, installed by the card-lift transition
-/// and handed back on dismiss. The experience is meditation-only: it starts
-/// the moment the card is installed (synced to the world during the nightly
-/// window, solo otherwise), and completing it crossfades into the reflection
-/// screen, which silently hands the card home behind its opaque atmosphere.
+/// and handed back on dismiss. The experience is the live meditation only —
+/// it joins the shared stream at the synced offset the moment the card is
+/// installed — and completing it crossfades into the reflection screen, which
+/// silently hands the card home behind its opaque atmosphere.
 final class GlobalPauseSessionController: UIViewController {
   private let session: GlobalPauseSession
   private let scene: GlobalPauseEarthScene
@@ -30,9 +30,6 @@ final class GlobalPauseSessionController: UIViewController {
   private var hasCompleted = false
   private var isTornDown = false
 
-  /// True when the nightly meditation is live and this visitor joined it at
-  /// the shared offset; false for a solo pass from the top.
-  private var isSynced = false
   private var duration: TimeInterval = 600
 
   init(
@@ -131,30 +128,23 @@ final class GlobalPauseSessionController: UIViewController {
 
   // MARK: - Meditation
 
-  /// One-shot: begins the meditation the moment the card is installed.
-  /// Synced during the nightly window (joining the live stream at the shared
-  /// offset), solo from zero any other time.
+  /// One-shot: joins the live meditation the moment the card is installed,
+  /// at the shared offset. A latecomer past the end goes straight to
+  /// reflection — the shared stream is over.
   private func startMeditation() {
     guard !hasStartedMeditation, !isTornDown else { return }
     hasStartedMeditation = true
 
-    isSynced = session.phase == .meditation
     duration = session.meditationDuration > 0 ? session.meditationDuration : 600
-    var offset: TimeInterval = 0
-    if isSynced {
-      offset = session.meditationElapsed
-      if offset >= duration {
-        // Latecomer past the end — the shared stream is over; a solo pass
-        // from the top instead.
-        isSynced = false
-        offset = 0
-      }
+    let offset = session.meditationElapsed
+    guard offset < duration else {
+      presentReflection()
+      return
     }
-    // Synced recovery re-seeks to the live edge; solo recovery resumes in
-    // place (the player falls back to `play()` when the provider is nil).
-    audio.meditationOffsetProvider = isSynced
-      ? { [weak session] in session?.meditationElapsed ?? 0 }
-      : nil
+    // Recovery (interruption, stall) re-seeks to the live edge.
+    audio.meditationOffsetProvider = { [weak session] in
+      session?.meditationElapsed ?? 0
+    }
 
     // The world stills: globe decelerates to rest, drags and country taps
     // sleep for the duration.
@@ -171,12 +161,24 @@ final class GlobalPauseSessionController: UIViewController {
   }
 
   private func makeOverlayRoot() -> AnyView {
-    AnyView(
+    let session = session
+    return AnyView(
       GlobalPauseMeditationView(
         audio: audio,
         duration: duration,
         participantCount: session.participantCount
       )
+      .overlay(alignment: .bottomTrailing) {
+        #if DEBUG
+        // Dev time travel: closes the live window, so completion flows
+        // through the real path into reflection.
+        if AppConfig.current.isDev {
+          PauseDevChip(label: "End") { session.debugEndLive() }
+            .padding(.trailing, .edge)
+            .padding(.bottom, 72)
+        }
+        #endif
+      }
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented
       // controller arrives with `isEnabled == false` in the environment —
       // Buttons silently dead while gestures still fire. Re-enable at the
@@ -206,12 +208,12 @@ final class GlobalPauseSessionController: UIViewController {
   // MARK: - Completion
 
   /// Three idempotent triggers funnel into `presentReflection()`: the audio
-  /// clock (primary), the phase engine (synced only — covers a realign
-  /// zeroing the audio clock near the end), and a wall-clock fallback
-  /// (covers a missing or failed audio URL).
+  /// clock (primary), the live window closing (covers a realign zeroing the
+  /// audio clock near the end), and a wall-clock fallback (covers a missing
+  /// or failed audio URL).
   private func armCompletion(offset: TimeInterval) {
     observeAudioCompletion()
-    if isSynced { observePhaseCompletion() }
+    observeLiveCompletion()
     let delay = max(0, duration - offset) + 2
     completionTask = Task { [weak self] in
       try? await Task.sleep(for: .seconds(delay))
@@ -234,16 +236,16 @@ final class GlobalPauseSessionController: UIViewController {
     }
   }
 
-  /// Synced only: the phase engine crossing into feedback ends the shared
-  /// meditation even if the audio clock never quite reaches the end.
-  private func observePhaseCompletion() {
+  /// The live window closing ends the shared meditation even if the audio
+  /// clock never quite reaches the end.
+  private func observeLiveCompletion() {
     guard !isTornDown, !hasCompleted else { return }
-    let phase = withObservationTracking {
-      session.phase
+    let isLive = withObservationTracking {
+      session.isMeditationLive
     } onChange: { [weak self] in
-      Task { @MainActor [weak self] in self?.observePhaseCompletion() }
+      Task { @MainActor [weak self] in self?.observeLiveCompletion() }
     }
-    if phase == .feedback {
+    if !isLive {
       presentReflection()
     }
   }
@@ -389,7 +391,7 @@ final class GlobalPauseSessionController: UIViewController {
   card.applyRestState(isLobby: true)
 
   let controller = GlobalPauseSessionController(
-    session: .preview(phase: .meditation),
+    session: .preview(live: true),
     scene: scene,
     audio: MockGlobalPauseAudioPlayer.meditating,
     onClose: {}
