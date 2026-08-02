@@ -175,7 +175,6 @@ final class GlobalPauseSessionController: UIViewController {
       GlobalPauseMeditationView(
         audio: audio,
         duration: duration,
-        isSynced: isSynced,
         participantCount: session.participantCount
       )
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented

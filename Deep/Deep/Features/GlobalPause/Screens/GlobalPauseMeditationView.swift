@@ -7,24 +7,17 @@ import SwiftUI
 struct GlobalPauseMeditationView: View {
   let audio: any GlobalPauseAudioPlaying
   let duration: TimeInterval
-  let isSynced: Bool
   let participantCount: Int
 
   var body: some View {
     VStack(spacing: 0) {
       VStack(spacing: 12) {
-        if isSynced {
-          liveCapsule
+        liveCapsule
 
-          Text("\(participantCount.formatted()) meditating with you")
-            .font(DeepType.caption)
-            .foregroundStyle(.driftGrey)
-            .contentTransition(.numericText())
-        } else {
-          Text("A quiet pause, just for you")
-            .font(DeepType.caption)
-            .foregroundStyle(.driftGrey)
-        }
+        Text("\(participantCount.formatted()) people are pausing with you")
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
+          .contentTransition(.numericText())
       }
       .padding(.top, 68)
 
@@ -42,7 +35,7 @@ struct GlobalPauseMeditationView: View {
       Circle()
         .fill(.blushPowder)
         .frame(width: 7, height: 7)
-      Text("LIVE · meditating together")
+      Text("LIVE · Worldwide")
         .font(DeepType.micro)
         .tracking(1.2)
         .foregroundStyle(.deepPlum)
@@ -59,7 +52,7 @@ struct GlobalPauseMeditationView: View {
     let progress = duration > 0 ? min(1, audio.meditationElapsed / duration) : 0
     return Capsule()
       .fill(Color.deepPlum.opacity(0.12))
-      .frame(height: 3)
+      .frame(height: 8)
       .overlay(alignment: .leading) {
         GeometryReader { proxy in
           Capsule()
@@ -83,7 +76,6 @@ struct GlobalPauseMeditationView: View {
     GlobalPauseMeditationView(
       audio: MockGlobalPauseAudioPlayer.meditating,
       duration: 600,
-      isSynced: true,
       participantCount: 4218
     )
   }
@@ -95,7 +87,6 @@ struct GlobalPauseMeditationView: View {
     GlobalPauseMeditationView(
       audio: MockGlobalPauseAudioPlayer(mode: .meditation, meditationElapsed: 42),
       duration: 600,
-      isSynced: false,
       participantCount: 0
     )
   }
