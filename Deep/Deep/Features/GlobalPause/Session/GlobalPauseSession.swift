@@ -218,10 +218,6 @@ final class GlobalPauseSession {
     try await repository.submitReflection(intention: intention, mood: mood)
   }
 
-  func recentMessages(limit: Int = 6) async -> [PeaceMessage] {
-    (try? await repository.recentMessages(limit: limit)) ?? []
-  }
-
   // MARK: - Schedule phrasing
 
   /// "Tonight · 20:30 Thailand Time" / "Tomorrow · 20:30 Thailand Time",

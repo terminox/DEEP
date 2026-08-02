@@ -30,6 +30,25 @@ function serializePeaceMessage(message: PeaceMessage) {
   };
 }
 
+// The feed pages by keyset, not offset. createdAt alone is not unique (batch
+// inserts share timestamps), so the cursor carries (createdAt, id) — the same
+// pair the feed sorts by — encoded opaquely.
+function encodeMessageCursor(message: PeaceMessage): string {
+  return Buffer.from(`${message.createdAt.toISOString()}|${message.id}`).toString("base64url");
+}
+
+function decodeMessageCursor(cursor: string): { createdAt: Date; id: string } {
+  const decoded = Buffer.from(cursor, "base64url").toString("utf8");
+  const separator = decoded.lastIndexOf("|");
+  if (separator === -1) throw ApiError.badRequest("Invalid cursor", "invalid_cursor");
+  const createdAt = new Date(decoded.slice(0, separator));
+  const id = decoded.slice(separator + 1);
+  if (Number.isNaN(createdAt.getTime()) || !id) {
+    throw ApiError.badRequest("Invalid cursor", "invalid_cursor");
+  }
+  return { createdAt, id };
+}
+
 /** The singleton config row, created from schema defaults on first touch. */
 async function loadConfig() {
   return prisma.pauseConfig.upsert({
@@ -153,25 +172,38 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     return { message: serializePeaceMessage(message), serverNow: now.toISOString() };
   });
 
-  // Public read of recent published messages — available around the clock.
+  // Public read of published messages, newest first — available around the
+  // clock. Keyset-paginated: pass back `nextCursor` to fetch the next page;
+  // null means the feed is exhausted.
   app.get("/pause/messages", async (req) => {
     const query = z
       .object({
         limit: z.coerce.number().int().positive().max(50).default(20),
-        before: z.coerce.date().optional(),
+        cursor: z.string().optional(),
       })
       .parse(req.query);
-    const messages = await prisma.peaceMessage.findMany({
+    const cursor = query.cursor ? decodeMessageCursor(query.cursor) : null;
+    const page = await prisma.peaceMessage.findMany({
       where: {
         status: "PUBLISHED",
-        ...(query.before ? { createdAt: { lt: query.before } } : {}),
+        ...(cursor
+          ? {
+              OR: [
+                { createdAt: { lt: cursor.createdAt } },
+                { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+              ],
+            }
+          : {}),
       },
-      orderBy: { createdAt: "desc" },
-      take: query.limit,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: query.limit + 1,
     });
+    const hasMore = page.length > query.limit;
+    const messages = hasMore ? page.slice(0, query.limit) : page;
     return {
       serverNow: new Date().toISOString(),
       messages: messages.map(serializePeaceMessage),
+      nextCursor: hasMore ? encodeMessageCursor(messages[messages.length - 1]!) : null,
     };
   });
 

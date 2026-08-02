@@ -1,6 +1,13 @@
 import Foundation
 import SwiftUI
 
+/// One page of the peace-message feed. `nextCursor` is an opaque server token;
+/// pass it back to fetch the next page, `nil` means the feed is exhausted.
+struct PeaceMessagesPage {
+  let messages: [PeaceMessage]
+  let nextCursor: String?
+}
+
 /// Backend seam for the Global Pause event: tonight's schedule, live presence,
 /// and peace messages. UI depends on this protocol so screens preview against
 /// the fixture with no network.
@@ -11,7 +18,7 @@ protocol PauseEventRepository: AnyObject {
   func heartbeat(presenceID: String, countryISO: String?) async throws
   /// Best-effort; failures are irrelevant (the server sweeps stale presence).
   func leave(presenceID: String) async
-  func recentMessages(limit: Int) async throws -> [PeaceMessage]
+  func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage
   func postMessage(_ text: String, countryISO: String?) async throws -> PeaceMessage
   func submitReflection(intention: String?, mood: String?) async throws
 }
@@ -91,10 +98,13 @@ final class APIPauseEventRepository: PauseEventRepository {
     )
   }
 
-  func recentMessages(limit: Int) async throws -> [PeaceMessage] {
-    let dto: PauseMessagesResponseDTO = try await client.request("/pause/messages?limit=\(limit)")
+  func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage {
+    // The cursor is server-issued base64url — already query-safe verbatim.
+    var path = "/pause/messages?limit=\(limit)"
+    if let cursor { path += "&cursor=\(cursor)" }
+    let dto: PauseMessagesResponseDTO = try await client.request(path)
     clock.sync(serverNow: date(dto.serverNow))
-    return dto.messages.map(mapMessage)
+    return PeaceMessagesPage(messages: dto.messages.map(mapMessage), nextCursor: dto.nextCursor)
   }
 
   func postMessage(_ text: String, countryISO: String?) async throws -> PeaceMessage {
@@ -165,6 +175,48 @@ final class FixturePauseEventRepository: PauseEventRepository {
       text: "Sending warmth from São Paulo.",
       createdAt: Date().addingTimeInterval(-5600)
     ),
+    PeaceMessage(
+      id: "fixture-5",
+      displayName: "Amara",
+      countryISO: "KE",
+      text: "May stillness find whoever needs it.",
+      createdAt: Date().addingTimeInterval(-6300)
+    ),
+    PeaceMessage(
+      id: "fixture-6",
+      displayName: "Noah",
+      countryISO: "US",
+      text: "Grateful for this minute of quiet.",
+      createdAt: Date().addingTimeInterval(-7100)
+    ),
+    PeaceMessage(
+      id: "fixture-7",
+      displayName: "Mira",
+      countryISO: "IN",
+      text: "Shanti. Shanti. Shanti.",
+      createdAt: Date().addingTimeInterval(-8000)
+    ),
+    PeaceMessage(
+      id: "fixture-8",
+      displayName: "Elin",
+      countryISO: "SE",
+      text: "The lake is still here too. Goodnight.",
+      createdAt: Date().addingTimeInterval(-9200)
+    ),
+    PeaceMessage(
+      id: "fixture-9",
+      displayName: "Tomás",
+      countryISO: "AR",
+      text: "Un abrazo enorme desde Buenos Aires.",
+      createdAt: Date().addingTimeInterval(-10500)
+    ),
+    PeaceMessage(
+      id: "fixture-10",
+      displayName: "Yuki",
+      countryISO: "JP",
+      text: "May tomorrow be gentler than today.",
+      createdAt: Date().addingTimeInterval(-11800)
+    ),
   ]
 
   static func tonightSchedule(now: Date = Date()) -> PauseSchedule {
@@ -222,8 +274,16 @@ final class FixturePauseEventRepository: PauseEventRepository {
   func heartbeat(presenceID: String, countryISO: String?) async throws {}
   func leave(presenceID: String) async {}
 
-  func recentMessages(limit: Int) async throws -> [PeaceMessage] {
-    Array((posted + Self.sampleMessages).prefix(limit))
+  func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage {
+    // Fixture cursor: the plain offset into the sample feed.
+    let all = posted + Self.sampleMessages
+    let offset = cursor.flatMap(Int.init) ?? 0
+    let page = Array(all.dropFirst(offset).prefix(limit))
+    let nextOffset = offset + page.count
+    return PeaceMessagesPage(
+      messages: page,
+      nextCursor: nextOffset < all.count ? String(nextOffset) : nil
+    )
   }
 
   func postMessage(_ text: String, countryISO: String?) async throws -> PeaceMessage {

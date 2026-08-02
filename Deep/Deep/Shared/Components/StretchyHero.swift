@@ -7,7 +7,7 @@ import SwiftUI
 /// scroll rather than ending on a hard line. Scrolling up drifts the scene away
 /// at a slower rate than the content (parallax), so it sinks behind the page
 /// with depth. Purely atmospheric — content rides up over it (see
-/// `DeepSoundHomeView`, `MindGardenHomeView`, `DJFukuLoungeView`).
+/// `DeepSoundHomeView`, `MindGardenHomeView`, `GlobalPauseLobbyView`).
 struct StretchyHero: View {
   /// What plays in the hero slot.
   enum Media {

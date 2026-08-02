@@ -242,6 +242,7 @@ struct PauseLiveDTO: Decodable {
 struct PauseMessagesResponseDTO: Decodable {
   let serverNow: String
   let messages: [PeaceMessageDTO]
+  let nextCursor: String?
 }
 
 struct PauseMessagePostResponseDTO: Decodable {

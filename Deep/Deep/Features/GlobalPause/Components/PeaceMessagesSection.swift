@@ -1,24 +1,34 @@
 import SwiftUI
 
-/// A titled, horizontally scrolling shelf of `PeaceMessage`s — the messages
-/// left during the feedback phase, shown back to everyone in Fuku's Lounge.
+/// A titled vertical list of `PeaceMessage`s — the messages left around the
+/// nightly pause, shown back to everyone in Fuku's Lounge. Full-width cards,
+/// lazily built; the owner keeps appending pages via `onReachEnd` as the last
+/// card scrolls into view.
 struct PeaceMessagesSection: View {
   let messages: [PeaceMessage]
+  var isLoadingMore = false
+  var onReachEnd: () -> Void = {}
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HomeSectionHeader(title: "Peace messages")
 
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(alignment: .top, spacing: 16) {
-          ForEach(messages) { message in
-            PeaceMessageCard(message: message)
-          }
+      LazyVStack(alignment: .leading, spacing: 12) {
+        ForEach(messages) { message in
+          PeaceMessageCard(message: message)
+            .onAppear {
+              if message.id == messages.last?.id { onReachEnd() }
+            }
         }
-        .padding(.horizontal, .edge)
+
+        if isLoadingMore {
+          ProgressView()
+            .tint(.driftGrey)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+        }
       }
-      .scrollClipDisabled()
-      .scrollBounceBehavior(.basedOnSize)
+      .padding(.horizontal, .edge)
     }
   }
 }
@@ -47,7 +57,6 @@ private struct PeaceMessageCard: View {
         .foregroundStyle(Color.deepPlum.opacity(0.78))
         .lineSpacing(2)
         .multilineTextAlignment(.leading)
-        .lineLimit(3)
         .frame(maxWidth: .infinity, alignment: .leading)
 
       Text(message.createdAt, format: .relative(presentation: .named))
@@ -55,7 +64,7 @@ private struct PeaceMessageCard: View {
         .foregroundStyle(.driftGrey)
     }
     .padding(14)
-    .frame(width: 240, alignment: .leading)
+    .frame(maxWidth: .infinity, alignment: .leading)
     .frostedCard(cornerRadius: 20)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(
@@ -105,6 +114,17 @@ private struct PeaceMessageAvatar: View {
   ScrollView {
     PeaceMessagesSection(messages: FixturePauseEventRepository.sampleMessages)
       .padding(.vertical, 24)
+  }
+  .background { AtmosphereBackground() }
+}
+
+#Preview("Loading more") {
+  ScrollView {
+    PeaceMessagesSection(
+      messages: FixturePauseEventRepository.sampleMessages,
+      isLoadingMore: true
+    )
+    .padding(.vertical, 24)
   }
   .background { AtmosphereBackground() }
 }

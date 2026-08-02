@@ -489,12 +489,8 @@ async function main() {
     await prisma.pauseIntentionOption.create({ data: { ...intent, displayOrder: i } });
   }
 
-  const lastNight = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  // Seven nights of peace messages, newest night first — enough volume to
+  // exercise the feed's keyset pagination end to end.
   const PEACE_MESSAGES: { displayName: string; countryISO: string; text: string }[] = [
     { displayName: "Nan", countryISO: "TH", text: "Peace for every quiet heart tonight." },
     { displayName: "Haruki", countryISO: "JP", text: "Breathing with you all from Kyoto." },
@@ -504,9 +500,89 @@ async function main() {
     { displayName: "Noah", countryISO: "US", text: "Grateful for this minute of quiet." },
     { displayName: "Mira", countryISO: "IN", text: "Shanti. Shanti. Shanti." },
     { displayName: "Elin", countryISO: "SE", text: "The lake is still here too. Goodnight." },
+    { displayName: "Tomás", countryISO: "AR", text: "Un abrazo enorme desde Buenos Aires." },
+    { displayName: "Yuki", countryISO: "JP", text: "May tomorrow be gentler than today." },
+    { displayName: "Priya", countryISO: "IN", text: "For my mother, and for yours too." },
+    { displayName: "Sam", countryISO: "AU", text: "The ocean says hello. Rest easy, world." },
+    { displayName: "Ingrid", countryISO: "NO", text: "Northern lights above, calm hearts below." },
+    { displayName: "Kofi", countryISO: "GH", text: "One breath, one world, one family." },
+    { displayName: "Léa", countryISO: "CA", text: "Snow is falling softly here. Peace to all." },
+    { displayName: "Marco", countryISO: "IT", text: "Buonanotte dal cuore di Roma." },
+    { displayName: "Aisha", countryISO: "EG", text: "Salam from the banks of the Nile." },
+    { displayName: "Chen", countryISO: "SG", text: "Wishing every stranger a soft landing tonight." },
+    { displayName: "Rosa", countryISO: "MX", text: "Paz para los que siguen despiertos." },
+    { displayName: "Finn", countryISO: "IE", text: "The rain here is kind tonight. So am I." },
+    { displayName: "Anya", countryISO: "PL", text: "Sending quiet strength to whoever needs it." },
+    { displayName: "Jae", countryISO: "KR", text: "From Seoul with a full, calm heart." },
+    { displayName: "Zara", countryISO: "PK", text: "May your worries grow lighter with each breath." },
+    { displayName: "Lucas", countryISO: "PT", text: "The Atlantic is calm tonight. Be like the Atlantic." },
+    { displayName: "Maya", countryISO: "ID", text: "Selamat malam. You did enough today." },
+    { displayName: "Oliver", countryISO: "GB", text: "A quiet cup of tea for every tired soul." },
+    { displayName: "Sofia", countryISO: "ES", text: "Que descanses, mundo. Te lo mereces." },
+    { displayName: "Nadia", countryISO: "MA", text: "Peace from the medina, under the same moon." },
+    { displayName: "Theo", countryISO: "DE", text: "Alles wird gut. Breathe with me." },
+    { displayName: "Lin", countryISO: "TW", text: "For everyone far from home tonight." },
+    { displayName: "Ava", countryISO: "NZ", text: "First light touches us first. Passing it on." },
+    { displayName: "Omar", countryISO: "JO", text: "May kindness find you before sleep does." },
+    { displayName: "Nok", countryISO: "TH", text: "จากกรุงเทพฯ ด้วยรัก และความสงบ" },
+    { displayName: "Elias", countryISO: "FI", text: "The forest is silent. The heart can be too." },
+    { displayName: "Grace", countryISO: "PH", text: "Ingat kayo lagi. Peace to every home." },
+    { displayName: "Mateus", countryISO: "BR", text: "Que a paz encontre você esta noite." },
+    { displayName: "Hana", countryISO: "CZ", text: "Prague's bells just rang. Peace rang with them." },
+    { displayName: "Ali", countryISO: "TR", text: "Two shores, one city, one wish: peace." },
+    { displayName: "June", countryISO: "US", text: "Proud of everyone who made it through today." },
+    { displayName: "Sanne", countryISO: "NL", text: "The canals are still. Let your mind be too." },
+    { displayName: "Kwame", countryISO: "NG", text: "Blessings and calm from Lagos tonight." },
+    { displayName: "Isla", countryISO: "GB", text: "For the ones working the night shift. Thank you." },
+    { displayName: "Ren", countryISO: "JP", text: "静かな夜を、世界中のあなたへ。" },
+    { displayName: "Vera", countryISO: "UA", text: "Peace is not small. It starts small. Goodnight." },
+    { displayName: "Diego", countryISO: "CL", text: "The Andes hold the sky. Something holds you too." },
+    { displayName: "Amelie", countryISO: "CH", text: "Mountain air and easy hearts to everyone." },
+    { displayName: "Tariq", countryISO: "AE", text: "The desert cools at night. So can we." },
+    { displayName: "Freya", countryISO: "DK", text: "Hygge and healing, wherever you are." },
+    { displayName: "Ben", countryISO: "IL", text: "Shalom. Truly, simply, shalom." },
+    { displayName: "Mai", countryISO: "VN", text: "Chúc cả thế giới ngủ ngon." },
+    { displayName: "Stefan", countryISO: "RO", text: "May the quiet hours repair what the loud ones broke." },
+    { displayName: "Lotte", countryISO: "BE", text: "A little light left on for whoever needs it." },
+    { displayName: "Aroha", countryISO: "NZ", text: "Kia kaha. Stay strong, stay soft." },
+    { displayName: "Igor", countryISO: "RS", text: "One minute of peace is still peace." },
+    { displayName: "Celine", countryISO: "FR", text: "Paris respire doucement ce soir." },
+    { displayName: "Dara", countryISO: "KH", text: "From Phnom Penh: may your dreams be gentle." },
+    { displayName: "Nina", countryISO: "AT", text: "The mountains don't hurry. Neither should you." },
+    { displayName: "Yusuf", countryISO: "ID", text: "Damai untuk semua, dari Jakarta." },
+    { displayName: "Clara", countryISO: "CO", text: "Paz y café para mañana. Buenas noches." },
+    { displayName: "Emeka", countryISO: "NG", text: "We breathe together, we rise together." },
   ];
-  for (const message of PEACE_MESSAGES) {
-    await prisma.peaceMessage.create({ data: { ...message, pauseDate: lastNight } });
+
+  // Spread across the last seven nights, newest first. createdAt is staggered
+  // explicitly inside each night's 21:00–21:30 Bangkok window (batch inserts
+  // would otherwise share one timestamp); the newest night's first two rows
+  // deliberately share an instant so the feed's (createdAt, id) cursor is
+  // exercised on the ambiguous case.
+  const NIGHTLY_COUNTS = [10, 9, 9, 8, 8, 8, 8];
+  const bangkokDay = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  let nextMessage = 0;
+  for (const [night, count] of NIGHTLY_COUNTS.entries()) {
+    const pauseDate = bangkokDay.format(new Date(Date.now() - (night + 1) * 24 * 60 * 60 * 1000));
+    // Bangkok is fixed UTC+7, so 21:00 local is 14:00 UTC on the same date.
+    const nightStart = new Date(`${pauseDate}T14:00:00.000Z`);
+    for (let i = 0; i < count; i += 1) {
+      const message = PEACE_MESSAGES[nextMessage]!;
+      const offsetSeconds = night === 0 && i === 1 ? 0 : i * 100;
+      await prisma.peaceMessage.create({
+        data: {
+          ...message,
+          pauseDate,
+          createdAt: new Date(nightStart.getTime() + offsetSeconds * 1000),
+        },
+      });
+      nextMessage += 1;
+    }
   }
 
   const counts = {

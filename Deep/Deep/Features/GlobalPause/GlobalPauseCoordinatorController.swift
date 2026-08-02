@@ -123,7 +123,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.openCollectionList) { [weak self] title, collections in
         self?.showCollectionList(title: title, collections: collections)
       }
-      .environment(\.openFukuLounge) { [weak self] in self?.showFukuLounge() }
+      .environment(\.openFukuLounge) { [weak self] in self?.showLobby() }
       .environment(\.soundPlayer, player)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
@@ -173,8 +173,12 @@ final class GlobalPauseCoordinatorController: UIViewController {
   /// Fuku's Lounge rides the system push (the card-lift into the session is
   /// the tab's one hero transition). The lounge is the card's only seat now,
   /// so pushing here adopts it directly.
-  private func showFukuLounge() {
-    push(DJFukuLoungeView(card: card).environment(\.globalPauseSession, pauseSession))
+  private func showLobby() {
+    push(
+      GlobalPauseLobbyView(card: card)
+        .environment(\.globalPauseSession, pauseSession)
+        .environment(\.pauseEventRepository, pauseRepository)
+    )
   }
 
   private func presentSession() {

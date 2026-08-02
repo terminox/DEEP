@@ -263,6 +263,8 @@ model PeaceMessage {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([pauseDate, status, createdAt])
+  // The all-nights public feed: newest first, keyset-paged on (createdAt, id).
+  @@index([status, createdAt, id])
   @@map("peace_messages")
 }
 

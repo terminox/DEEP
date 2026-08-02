@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The lobby-state doorway on the Global Pause home — DJ Fuku on air while the
 /// world gathers to pause. Full-bleed artwork with a progressive-blur + scrim
-/// footer in the `BreatheHeroCard` family; tapping pushes `DJFukuLoungeView`
+/// footer in the `BreatheHeroCard` family; tapping pushes `GlobalPauseLobbyView`
 /// through the coordinator's `openFukuLounge` action.
 ///
 /// Under Reduce Transparency the blur strip is dropped and the scrim deepens
