@@ -116,7 +116,7 @@ final class MainTabController: UITabBarController {
       pauseRepository: pauseRepository,
       imageLoader: imageLoader
     )
-    globalPause.tabBarItem = tabItem(title: "Home", systemImage: "house.fill")
+    globalPause.tabBarItem = tabItem(title: "Home", systemImage: "globe.americas.fill")
 
     // While a track is loaded, the shared player surfaces globally as the tab
     // bar's bottom accessory — see `observeHasTrack()`.
@@ -134,7 +134,7 @@ final class MainTabController: UITabBarController {
 
     let portfolio = host(
       CompassionPortfolioCoordinatorView(),
-      title: "Portfolio",
+      title: "Compassion",
       systemImage: "heart.fill"
     )
 
