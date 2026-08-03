@@ -161,24 +161,12 @@ final class GlobalPauseSessionController: UIViewController {
   }
 
   private func makeOverlayRoot() -> AnyView {
-    let session = session
-    return AnyView(
+    AnyView(
       GlobalPauseMeditationView(
         audio: audio,
         duration: duration,
         participantCount: session.participantCount
       )
-      .overlay(alignment: .bottomTrailing) {
-        #if DEBUG
-        // Dev time travel: closes the live window, so completion flows
-        // through the real path into reflection.
-        if AppConfig.current.isDev {
-          PauseDevChip(label: "End") { session.debugEndLive() }
-            .padding(.trailing, .edge)
-            .padding(.bottom, 72)
-        }
-        #endif
-      }
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented
       // controller arrives with `isEnabled == false` in the environment —
       // Buttons silently dead while gestures still fire. Re-enable at the

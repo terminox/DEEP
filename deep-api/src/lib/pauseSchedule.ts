@@ -108,16 +108,34 @@ export function resolveOccurrence(config: PauseConfig, now: Date): PauseOccurren
   };
 }
 
+// Dev-only server-held time shift, set via POST /dev/pause/time-travel.
+// Stored as an offset, not a frozen instant, so time keeps flowing from the
+// pinned moment — the meditation window elapses like a real night. Held in
+// memory on purpose: a server restart always returns to real time.
+let pinnedOffsetMs: number | null = null;
+
+/** Shifts the server's clock so "now" is `target` (null returns to real time). */
+export function setPinnedNow(target: Date | null): void {
+  pinnedOffsetMs = target ? target.getTime() - Date.now() : null;
+}
+
 /**
- * Dev-only clock override: honours an ISO `X-Debug-Now` header when the
- * environment explicitly allows it. Returns null (meaning "use real time")
- * everywhere else.
+ * The instant "now" for everything Global Pause, in precedence order: an ISO
+ * `X-Debug-Now` header (per-request, handy for curl), the server-held pin
+ * (set by the time-travel dev route), then real time. Overrides are honoured
+ * only when the environment explicitly allows it.
+ *
+ * Every `serverNow` a route returns must come from here — clients sync their
+ * clock to every response, so one route on real time would tear the pin down.
  */
-export function debugNow(req: FastifyRequest): Date | null {
-  if (!env.ALLOW_TIME_OVERRIDE) return null;
+export function resolveNow(req: FastifyRequest): Date {
+  if (!env.ALLOW_TIME_OVERRIDE) return new Date();
   const header = req.headers["x-debug-now"];
   const raw = Array.isArray(header) ? header[0] : header;
-  if (!raw) return null;
-  const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  if (raw) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  if (pinnedOffsetMs !== null) return new Date(Date.now() + pinnedOffsetMs);
+  return new Date();
 }

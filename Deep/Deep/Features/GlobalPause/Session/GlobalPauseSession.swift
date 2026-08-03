@@ -103,9 +103,8 @@ final class GlobalPauseSession {
     isMeditationLive = now >= window.startsAt && now < window.endsAt
   }
 
-  /// One sleeping task per upcoming boundary; re-armed after every firing,
-  /// clock sync, or dev time jump. Crossing the final boundary re-fetches the
-  /// next occurrence.
+  /// One sleeping task per upcoming boundary; re-armed after every firing and
+  /// clock sync. Crossing the final boundary re-fetches the next occurrence.
   private func armBoundaryTimer() {
     boundaryTask?.cancel()
     guard let schedule else { return }
@@ -219,37 +218,6 @@ final class GlobalPauseSession {
 
     let day = calendar.isDate(clock.now, inSameDayAs: target) ? "Tonight" : "Tomorrow"
     return "\(day) · \(time) Thailand Time"
-  }
-
-  // MARK: - Dev time travel
-
-  /// Pins the clock 2 s into tonight's meditation window, so the live session
-  /// can be entered immediately. Dev builds only.
-  func debugEnterLive() {
-    guard AppConfig.current.isDev,
-          let window = schedule?.window(for: .meditation) else { return }
-    clock.debugOverride = window.startsAt.addingTimeInterval(2)
-    recomputeLive()
-    armBoundaryTimer()
-  }
-
-  /// Pins the clock just past the meditation window's end, ending a running
-  /// live session (the session screen crossfades into reflection). Dev builds
-  /// only.
-  func debugEndLive() {
-    guard AppConfig.current.isDev,
-          let window = schedule?.window(for: .meditation) else { return }
-    clock.debugOverride = window.endsAt.addingTimeInterval(1)
-    recomputeLive()
-    armBoundaryTimer()
-  }
-
-  /// Clears the pinned clock, returning to real time. Dev builds only.
-  func debugReturnToRealTime() {
-    guard AppConfig.current.isDev else { return }
-    clock.debugOverride = nil
-    recomputeLive()
-    armBoundaryTimer()
   }
 }
 
