@@ -5,7 +5,7 @@ import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireAuth, optionalAuth } from "../auth/middleware.js";
 import { mediaUrl } from "../lib/media.js";
-import { resolveOccurrence, resolveNow, setPinnedNow, localDate } from "../lib/pauseSchedule.js";
+import { resolveOccurrence, resolveNow, setLiveWindow, localDate } from "../lib/pauseSchedule.js";
 import * as presence from "../lib/pausePresence.js";
 import { env } from "../env.js";
 
@@ -64,7 +64,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
   // instants for tonight's occurrence, audio, welcome copy, intentions —
   // plus serverNow so the client can correct its clock.
   app.get("/pause/schedule", { preHandler: optionalAuth }, async (req) => {
-    const now = resolveNow(req);
+    const now = resolveNow();
     const config = await loadConfig();
     const occurrence = resolveOccurrence(config, now);
     const [welcomeMessages, intentions] = await Promise.all([
@@ -103,20 +103,20 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       .parse(req.body);
     const key = req.auth ? `user:${req.auth.sub}` : `anon:${body.presenceId}`;
     presence.heartbeat(key, body.countryISO ?? null);
-    return { ok: true, serverNow: resolveNow(req).toISOString() };
+    return { ok: true, serverNow: resolveNow().toISOString() };
   });
 
   app.delete("/pause/presence/:presenceId", { preHandler: optionalAuth }, async (req) => {
     const { presenceId } = z.object({ presenceId: z.string() }).parse(req.params);
     presence.leave(`anon:${presenceId}`);
     if (req.auth) presence.leave(`user:${req.auth.sub}`);
-    return { ok: true, serverNow: resolveNow(req).toISOString() };
+    return { ok: true, serverNow: resolveNow().toISOString() };
   });
 
   // One poll feeds everything live: counter, country glow, join ripples, and
   // tonight's message feed.
   app.get("/pause/live", { preHandler: optionalAuth }, async (req) => {
-    const now = resolveNow(req);
+    const now = resolveNow();
     const config = await loadConfig();
     const occurrence = resolveOccurrence(config, now);
     const snap = presence.snapshot();
@@ -146,7 +146,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         countryISO: countryISOSchema,
       })
       .parse(req.body);
-    const now = resolveNow(req);
+    const now = resolveNow();
     const config = await loadConfig();
     const pauseDate = localDate(now, config.timezone);
 
@@ -202,7 +202,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const hasMore = page.length > query.limit;
     const messages = hasMore ? page.slice(0, query.limit) : page;
     return {
-      serverNow: resolveNow(req).toISOString(),
+      serverNow: resolveNow().toISOString(),
       messages: messages.map(serializePeaceMessage),
       nextCursor: hasMore ? encodeMessageCursor(messages[messages.length - 1]!) : null,
     };
@@ -218,7 +218,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       })
       .refine((b) => b.intention || b.mood, { message: "intention or mood required" })
       .parse(req.body);
-    const now = resolveNow(req);
+    const now = resolveNow();
     const config = await loadConfig();
     const pauseDate = localDate(now, config.timezone);
 
@@ -239,25 +239,22 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     return { ok: true, serverNow: now.toISOString() };
   });
 
-  // Dev-only time travel: pins the server clock just inside a phase window
-  // ("off" unpins). Clients follow on their next response — they sync to
-  // serverNow on everything above. Registered only when the environment
-  // allows overrides, so the route does not exist anywhere real.
+  // Dev-only time travel: "live" holds the meditation window perpetually open
+  // (server time loops inside it until "off"). Clients follow on their next
+  // response — they sync to serverNow on everything above. Registered only
+  // when the environment allows overrides, so the route does not exist
+  // anywhere real.
   if (env.ALLOW_TIME_OVERRIDE) {
     app.post("/dev/pause/time-travel", async (req) => {
-      const { phase } = z
-        .object({ phase: z.enum(["lobby", "welcome", "meditation", "feedback", "off"]) })
-        .parse(req.body);
-      if (phase === "off") {
-        setPinnedNow(null);
-        return { phase, pinnedNow: null, serverNow: new Date().toISOString() };
+      const { mode } = z.object({ mode: z.enum(["live", "off"]) }).parse(req.body);
+      if (mode === "off") {
+        setLiveWindow(null);
+        return { mode, serverNow: new Date().toISOString() };
       }
       const config = await loadConfig();
       const occurrence = resolveOccurrence(config, new Date());
-      const window = occurrence.phases.find((p) => p.key === phase)!;
-      const pinned = new Date(window.startsAt.getTime() + 2000);
-      setPinnedNow(pinned);
-      return { phase, pinnedNow: pinned.toISOString(), serverNow: pinned.toISOString() };
+      setLiveWindow(occurrence.phases.find((p) => p.key === "meditation")!);
+      return { mode, serverNow: resolveNow().toISOString() };
     });
   }
 }

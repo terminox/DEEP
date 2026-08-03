@@ -40,7 +40,7 @@ The experience is three surfaces:
 - The globe starts rotating again.
 - Users can leave feedback, known as Peace Message (plus an intention and a mood). Messages are displayed in the lounge's feed.
 
-*Today:* the lounge, the live session, reflection, and the peace-message feed all run against the backend — schedule, synced clock, presence heartbeats, live participant counts lighting the globe, joins rippling outward, message paging and posting. The lounge's theme music and welcome lines are the open work. For testing, the dev server can time-travel (`scripts/pause-time-travel.sh live|end|off`): it pins the server clock inside any phase window and every client follows through the production code path — no debug code in the app.
+*Today:* the lounge, the live session, reflection, and the peace-message feed all run against the backend — schedule, synced clock, presence heartbeats, live participant counts lighting the globe, joins rippling outward, message paging and posting. The lounge's theme music and welcome lines are the open work. For testing, the dev server can time-travel (`scripts/pause-time-travel.sh live|off`): `live` keeps the nightly meditation live until switched off, and every client follows through the production code path — no debug code in the app.
 
 
 ### Deep Session
