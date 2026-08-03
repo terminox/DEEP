@@ -2,9 +2,11 @@ import SwiftUI
 
 /// Composition root for the first-run onboarding flow. It owns the route stack
 /// (`routes`, empty = welcome screen) and renders the current screen directly,
-/// handing off between screens with a calm crossfade instead of a navigation
-/// push — screens fade in place, so fixed elements (footer CTAs) never move,
-/// while each screen's content block adds its own gentle `RiseInTransition`.
+/// handing off between screens with a calm `.hush` crossfade instead of a
+/// navigation push — screens fade in place, so fixed elements (footer CTAs)
+/// never move, while each screen's content block adds its own gentle
+/// `.onboardingContentDrift()`, following the routing direction injected via
+/// `onboardingNavDirection`.
 /// Persistent chrome — a frosted back button and, on the quiz / Mind Tree
 /// steps, the progress bar — floats above the transitioning content, so only
 /// the screen beneath it changes. Leaf screens navigate
@@ -39,6 +41,9 @@ struct OnboardingCoordinatorView: View {
   /// Guards the async gap between a CTA tap and the ripple committing, so a
   /// double-tap can't advance twice.
   @State private var isRipplePending = false
+  /// Which way the last route change went; leaf content blocks read it (via
+  /// `onboardingNavDirection`) so their drift follows the navigation.
+  @State private var navDirection = SoftDriftTransition.Direction.forward
   /// Freezes the welcome video's current frame at tap time.
   @State private var videoFrameGrabber = LoopingVideoFrameGrabber()
   /// Last touch-down point + screen bounds, recorded outside SwiftUI state so
@@ -103,6 +108,7 @@ struct OnboardingCoordinatorView: View {
     .environment(\.onboardingConfig, config)
     .environment(\.onboardingAdvance, { route in advance(to: route) })
     .environment(\.onboardingFinish, { store.completeOnboarding() })
+    .environment(\.onboardingNavDirection, navDirection)
     .preferredColorScheme(.light)
     // Only listens while the welcome screen is up, purely to learn where the
     // CTA tap landed so the ripple can emanate from it.
@@ -143,15 +149,13 @@ struct OnboardingCoordinatorView: View {
   }
 
   /// Routes every leaf-screen advance. Off the welcome screen it's a calm
-  /// drift; off it, the destination is swapped in without animation beneath a
+  /// hush; off it, the destination is swapped in without animation beneath a
   /// rippling freeze-frame of the welcome screen.
   private func advance(to route: OnboardingRoute) {
     guard routes.isEmpty, !reduceMotion, ripple == nil, !isRipplePending else {
-      // While a ripple commit is pending the route stack is still empty, so
-      // without this guard a second tap would append the route here *and* in
-      // the pending task — a double push over a rippling wrong screen.
-      guard !isRipplePending, route != currentRoute else { return }
-      withAnimation(.drift) {
+      guard route != currentRoute else { return }
+      navDirection = .forward
+      withAnimation(.hush) {
         if case .logIn = currentRoute, case .quiz = route {
           // Post-login resume: replace the stack so back from the first
           // question returns to welcome, not a stale login form.
@@ -197,7 +201,8 @@ struct OnboardingCoordinatorView: View {
   /// Pops one step. A no-op on the welcome screen and the crafting loader.
   private func goBack() {
     guard !routes.isEmpty, currentRoute != .craftingSpace else { return }
-    withAnimation(.drift) { _ = routes.removeLast() }
+    navDirection = .backward
+    withAnimation(.hush) { _ = routes.removeLast() }
   }
 
   @ViewBuilder

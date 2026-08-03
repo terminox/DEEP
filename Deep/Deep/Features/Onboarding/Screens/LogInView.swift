@@ -55,7 +55,7 @@ struct LogInView: View {
               .transition(.opacity)
           }
         }
-        .onboardingContentRise()
+        .onboardingContentDrift()
 
         Spacer()
 

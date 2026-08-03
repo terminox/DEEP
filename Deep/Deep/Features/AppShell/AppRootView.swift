@@ -11,8 +11,11 @@ import SwiftUI
 ///  - **main** — the UIKit tab shell, once the user is authenticated *and* their
 ///    onboarding is complete.
 ///
-/// Transitions are a `.bloom` crossfade, never a hard cut, per Deep's motion
-/// language. Dependencies are injected into the environment for both branches.
+/// Transitions are a `.hush` soft drift, never a hard cut, per Deep's motion
+/// language — except entering the main shell, which stays a plain crossfade
+/// (blurring the whole hosted UIKit tab shell would force an offscreen pass
+/// every frame; the overlays drifting away over a stable shell reads the
+/// same). Dependencies are injected into the environment for both branches.
 struct AppRootView: View {
   @State private var deps = AppDependencies()
   @State private var didRestore = false
@@ -31,7 +34,7 @@ struct AppRootView: View {
       switch phase {
       case .restoring:
         BreatheLoadingView()
-          .transition(.opacity)
+          .transition(.softDrift)
       case .main:
         RootTabView(
           onboardingStore: deps.onboardingStore,
@@ -49,10 +52,10 @@ struct AppRootView: View {
         .transition(.opacity)
       case .flow:
         OnboardingCoordinatorView()
-          .transition(.opacity)
+          .transition(.softDrift)
       }
     }
-    .animation(.bloom, value: phase)
+    .animation(.hush, value: phase)
     .environment(\.accountStore, deps.accountStore)
     .environment(\.onboardingStore, deps.onboardingStore)
     .environment(\.onboardingRemote, deps.onboardingRemote)
@@ -85,7 +88,7 @@ struct AppRootView: View {
       }
       await refreshed
     }
-    withAnimation(.bloom) { didRestore = true }
+    withAnimation(.hush) { didRestore = true }
   }
 }
 

@@ -32,7 +32,7 @@ struct GlobalPauseLobbyView: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 0) {
-        StretchyHero(media: .image(name: "DJFukuHero"), height: heroHeight)
+        StretchyHero(media: .video(resource: "dj_fuku"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
           onAir

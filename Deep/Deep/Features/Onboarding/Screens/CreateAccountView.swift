@@ -26,7 +26,7 @@ struct CreateAccountView: View {
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
           .multilineTextAlignment(.center)
-          .onboardingContentRise()
+          .onboardingContentDrift()
 
         VStack(spacing: 16) {
           OnboardingPrimaryButton(title: "Continue with Email", systemImage: "envelope") {
