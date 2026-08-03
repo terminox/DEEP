@@ -467,7 +467,19 @@ async function main() {
   // Global Pause: singleton config, welcome copy, intentions (mirroring the
   // iOS Intention.samples), and a night's worth of sample peace messages so
   // the off-hours lobby feed isn't empty on first run.
-  await prisma.pauseConfig.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+  // Explicit so a re-seed converges: the meditation phase window and duration
+  // must match the real length of the meditation asset (global-pause.mp3,
+  // 132 s), or a mid-window join seeks the client's player past EOF → silence.
+  const pauseConfig = {
+    feedbackStart: "20:42:12",
+    meditationAudioPath: "/media/audio/global-pause.mp3",
+    meditationDurationSeconds: 132,
+  };
+  await prisma.pauseConfig.upsert({
+    where: { id: 1 },
+    update: pauseConfig,
+    create: { id: 1, ...pauseConfig },
+  });
 
   const WELCOME_MESSAGES = [
     "Welcome. Tonight the world pauses together.",

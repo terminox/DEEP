@@ -1,6 +1,7 @@
 import AVFoundation
 import MediaPlayer
 import Observation
+import os
 
 /// The real Global Pause audio engine: a bare `AVPlayer` for the meditation
 /// stream, over HTTP from the backend's `/media/` route.
@@ -29,7 +30,12 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
   @ObservationIgnored private var meditationPlayer: AVPlayer?
   @ObservationIgnored private var meditationDuration: TimeInterval = 0
 
+  @ObservationIgnored private let log = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "Deep", category: "GlobalPauseAudio"
+  )
+
   @ObservationIgnored private var timeObserver: Any?
+  @ObservationIgnored private var itemStatusObservation: NSKeyValueObservation?
   @ObservationIgnored private var rateObservation: NSKeyValueObservation?
   @ObservationIgnored private var stallObserver: NSObjectProtocol?
   @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
@@ -44,6 +50,7 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
     // A latecomer past the end gets silence — the phase engine is already in
     // (or moments from) the feedback phase.
     guard offset < duration else {
+      log.info("meditation not started: join offset \(offset, format: .fixed(precision: 1))s ≥ duration \(duration, format: .fixed(precision: 1))s")
       mode = .idle
       return
     }
@@ -93,6 +100,8 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
       meditationPlayer.removeTimeObserver(timeObserver)
     }
     timeObserver = nil
+    itemStatusObservation?.invalidate()
+    itemStatusObservation = nil
     rateObservation?.invalidate()
     rateObservation = nil
     if let stallObserver { NotificationCenter.default.removeObserver(stallObserver) }
@@ -110,6 +119,14 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
   // MARK: - Meditation observation & recovery
 
   private func observeMeditation(_ player: AVPlayer) {
+    itemStatusObservation = player.currentItem?.observe(\.status, options: [.new]) { [weak self] item, _ in
+      guard item.status == .failed else { return }
+      let reason = item.error.map(String.init(describing:)) ?? "unknown error"
+      Task { @MainActor [weak self] in
+        self?.log.error("meditation item failed to load: \(reason, privacy: .public)")
+      }
+    }
+
     let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
     timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
       MainActor.assumeIsolated {

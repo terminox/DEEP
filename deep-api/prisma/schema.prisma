@@ -217,11 +217,11 @@ model PauseConfig {
   lobbyStart                String   @default("20:30:00")
   welcomeStart              String   @default("20:39:50")
   meditationStart           String   @default("20:40:00")
-  feedbackStart             String   @default("20:50:00")
+  feedbackStart             String   @default("20:42:12")
   windowEnd                 String   @default("21:00:00")
   lobbyAudioPath            String   @default("/media/audio/global-pause.mp3")
-  meditationAudioPath       String   @default("/media/audio/inner-light.mp3")
-  meditationDurationSeconds Int      @default(600)
+  meditationAudioPath       String   @default("/media/audio/global-pause.mp3")
+  meditationDurationSeconds Int      @default(132)
   updatedAt                 DateTime @updatedAt
 
   @@map("pause_config")
