@@ -90,24 +90,27 @@ See `CLAUDE.md` — headless control is via `baguette`, not the Simulator UI.
 ## Global Pause time travel
 
 The nightly pause only goes live 20:40–20:50 Bangkok time. To test it any
-time, pin the *server's* clock — every client syncs to `serverNow` on every
+time, shift the *server's* clock — every client syncs to `serverNow` on every
 response, so the whole app follows through the production code path (there is
 no debug code in the app):
 
 ```bash
-./scripts/pause-time-travel.sh live   # jump into the live meditation
-./scripts/pause-time-travel.sh end    # end it → the reflection screen
+./scripts/pause-time-travel.sh live   # meditation live until switched off
 ./scripts/pause-time-travel.sh off    # back to real time
 ```
 
-Raw phase names (`lobby`, `welcome`, `meditation`, `feedback`) also work —
-useful once the lounge's theme-music and welcome windows are wired.
+`live` is sticky: the server's clock loops inside the meditation window, so
+the session stays enterable no matter how long ago you ran it. Each pass
+still elapses like a real night — a session that runs its course ends into
+the reflection screen naturally. To end one early, run `off`: real time is
+outside the window, so a running session crossfades into reflection within
+~5 s via its live poll.
 
 Notes:
 - Requires `ALLOW_TIME_OVERRIDE=true` in `deep-api/.env` (the route does not
   exist otherwise, and must never be set anywhere real).
-- A running session picks a jump up within ~5 s via its live poll. An idle
+- A running session picks a change up within ~5 s via its live poll. An idle
   app notices on foreground or relaunch — background-and-reopen after `live`.
-- The pin is in-memory: restarting `deep-api` returns to real time.
-- The pin affects every client of that dev server — handy for watching two
+- The switch is in-memory: restarting `deep-api` returns to real time.
+- It affects every client of that dev server — handy for watching two
   simulators go live together.

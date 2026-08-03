@@ -1,4 +1,3 @@
-import type { FastifyRequest } from "fastify";
 import type { PauseConfig } from "@prisma/client";
 import { env } from "../env.js";
 
@@ -108,34 +107,37 @@ export function resolveOccurrence(config: PauseConfig, now: Date): PauseOccurren
   };
 }
 
-// Dev-only server-held time shift, set via POST /dev/pause/time-travel.
-// Stored as an offset, not a frozen instant, so time keeps flowing from the
-// pinned moment — the meditation window elapses like a real night. Held in
-// memory on purpose: a server restart always returns to real time.
-let pinnedOffsetMs: number | null = null;
+// Dev-only "always live" switch, set via POST /dev/pause/time-travel. While
+// on, resolved time flows from just inside the meditation window and wraps
+// back to the start on reaching the end — the meditation stays live until
+// switched off, each pass elapsing like a real night. Held in memory on
+// purpose: a server restart always returns to real time.
+let liveWindow: { startMs: number; durationMs: number; sinceMs: number } | null = null;
 
-/** Shifts the server's clock so "now" is `target` (null returns to real time). */
-export function setPinnedNow(target: Date | null): void {
-  pinnedOffsetMs = target ? target.getTime() - Date.now() : null;
+/** Keeps the meditation window perpetually open (null returns to real time). */
+export function setLiveWindow(window: PhaseWindow | null): void {
+  if (!window) {
+    liveWindow = null;
+    return;
+  }
+  const startMs = window.startsAt.getTime() + 2_000;
+  liveWindow = {
+    startMs,
+    // 2s of headroom at both edges so a wrapped instant never touches endsAt.
+    durationMs: Math.max(1_000, window.endsAt.getTime() - startMs - 2_000),
+    sinceMs: Date.now(),
+  };
 }
 
 /**
- * The instant "now" for everything Global Pause, in precedence order: an ISO
- * `X-Debug-Now` header (per-request, handy for curl), the server-held pin
- * (set by the time-travel dev route), then real time. Overrides are honoured
- * only when the environment explicitly allows it.
+ * The instant "now" for everything Global Pause: the dev live loop when it is
+ * on (and the environment allows overrides), otherwise real time.
  *
  * Every `serverNow` a route returns must come from here — clients sync their
- * clock to every response, so one route on real time would tear the pin down.
+ * clock to every response, so one route on real time would tear the loop down.
  */
-export function resolveNow(req: FastifyRequest): Date {
-  if (!env.ALLOW_TIME_OVERRIDE) return new Date();
-  const header = req.headers["x-debug-now"];
-  const raw = Array.isArray(header) ? header[0] : header;
-  if (raw) {
-    const parsed = new Date(raw);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-  if (pinnedOffsetMs !== null) return new Date(Date.now() + pinnedOffsetMs);
-  return new Date();
+export function resolveNow(): Date {
+  if (!env.ALLOW_TIME_OVERRIDE || !liveWindow) return new Date();
+  const elapsed = (Date.now() - liveWindow.sinceMs) % liveWindow.durationMs;
+  return new Date(liveWindow.startMs + elapsed);
 }

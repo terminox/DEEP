@@ -22,7 +22,7 @@ const schema = z.object({
   MEDIA_DIR: z.string().default("./media"),
   ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8).optional(),
-  // Dev-only: lets clients send an X-Debug-Now header to force the Global
+  // Dev-only: enables the /dev/pause/time-travel route that shifts the Global
   // Pause phase clock. Must stay false anywhere real.
   ALLOW_TIME_OVERRIDE: z
     .string()
