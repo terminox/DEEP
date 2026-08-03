@@ -76,9 +76,10 @@ extension Animation {
   /// A wave set loose and left to calm — quick launch, long deceleration.
   /// Drives the welcome screen's ripple-reveal transition.
   static let ripple = Animation.timingCurve(0.25, 0.45, 0.35, 1.0, duration: 1.35)
-  /// A leaf carried between screens — prompt to move, soft to land. Calm but
-  /// never sluggish; drives the onboarding screen hand-off.
-  static let drift  = Animation.timingCurve(0.3, 0.0, 0.2, 1.0, duration: 0.4)
+  /// The hush between two moments — the long screen dissolve. Reserved for
+  /// screen-level hand-offs (app root, onboarding routing, Deep Session
+  /// stages, Global Pause phases); micro-feedback keeps `.exhale` / `.bloom`.
+  static let hush   = Animation.timingCurve(0.3, 0.0, 0.2, 1.0, duration: 1.05)
 
   /// The breath itself — the exhale curve stretched over a whole breath phase,
   /// the one motion in the app allowed to take entire seconds. Drives the Deep

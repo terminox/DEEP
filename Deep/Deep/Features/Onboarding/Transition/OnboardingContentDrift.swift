@@ -2,42 +2,35 @@ import SwiftUI
 
 /// The onboarding hand-off happens in two layers: the coordinator crossfades
 /// whole screens (pure opacity, so fixed elements — chrome, footer CTAs — hold
-/// perfectly still), while each screen's *content* additionally rises a
-/// breath into place with this transition. On removal it does nothing, so
-/// outgoing content simply fades where it stands and nothing ever jumps.
-struct RiseInTransition: Transition {
-  func body(content: Content, phase: TransitionPhase) -> some View {
-    content.offset(y: phase == .willAppear ? 12 : 0)
-  }
-}
-
-/// Marks the drifting portion of an onboarding screen — everything above the
-/// fixed footer CTA. Respects Reduce Motion by dropping the rise and leaving
-/// just the coordinator's crossfade.
-private struct OnboardingContentRise: ViewModifier {
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+/// perfectly still), while each screen's *content* additionally drifts and
+/// softens through a `SoftDriftTransition` with its own fade disabled, so the
+/// two layers never compound opacities. The drift direction follows the
+/// coordinator's routing (forward rises in from below, back sinks out the way
+/// it came), read from the `onboardingNavDirection` environment value.
+/// Reduce Motion drops the drift and blur (the transition degrades to
+/// identity), leaving just the coordinator's crossfade.
+private struct OnboardingContentDrift: ViewModifier {
+  @Environment(\.onboardingNavDirection) private var direction
 
   func body(content: Content) -> some View {
-    content.transition(
-      reduceMotion ? AnyTransition.identity : AnyTransition(RiseInTransition())
-    )
+    content.transition(SoftDriftTransition(direction: direction, fades: false))
   }
 }
 
 extension View {
-  /// Apply to a screen's content block (never its footer CTA) so it rises
+  /// Apply to a screen's content block (never its footer CTA) so it drifts
   /// gently into place while the coordinator crossfades screens.
-  func onboardingContentRise() -> some View {
-    modifier(OnboardingContentRise())
+  func onboardingContentDrift() -> some View {
+    modifier(OnboardingContentDrift())
   }
 }
 
-#Preview("Rise in") {
+#Preview("Content drift") {
   @Previewable @State var showsFirst = true
 
   ZStack {
     // Stand-ins for two onboarding screens — no real dependencies. The footer
-    // button stays put; only the content block rises.
+    // button stays put; only the content block drifts.
     VStack(spacing: .rhythm) {
       Group {
         if showsFirst {
@@ -60,10 +53,10 @@ extension View {
             .id("second")
         }
       }
-      .onboardingContentRise()
+      .onboardingContentDrift()
 
       Button("Toggle") {
-        withAnimation(.drift) { showsFirst.toggle() }
+        withAnimation(.hush) { showsFirst.toggle() }
       }
     }
     .padding(.edge)

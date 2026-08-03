@@ -49,7 +49,7 @@ struct MindTreePickerView: View {
           // Let the frosted cards' soft shadows breathe past the viewport edges.
           .scrollClipDisabled()
         }
-        .onboardingContentRise()
+        .onboardingContentDrift()
 
         OnboardingPrimaryButton(title: "Continue", isEnabled: selectedTreeID != nil) {
           advance(.createAccount)

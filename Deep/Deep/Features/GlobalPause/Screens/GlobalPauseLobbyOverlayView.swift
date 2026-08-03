@@ -18,22 +18,22 @@ struct GlobalPauseLobbyOverlayView: View {
         Color.clear
       case .offHours:
         GlobalPauseOffHoursView()
-          .transition(.opacity)
+          .transition(.softDrift)
       case .lobby:
         GlobalPauseLiveLobbyView()
-          .transition(.opacity)
+          .transition(.softDrift)
       case .welcome:
         GlobalPauseWelcomeView()
-          .transition(.opacity)
+          .transition(.softDrift)
       case .meditation:
         GlobalPauseMeditationView()
-          .transition(.opacity)
+          .transition(.softDrift)
       case .feedback:
         GlobalPauseFeedbackView()
-          .transition(.opacity)
+          .transition(.softDrift)
       }
     }
-    .animation(.exhale, value: phaseKind)
+    .animation(.hush, value: phaseKind)
     .safeAreaInset(edge: .bottom) {
       #if DEBUG
       if AppConfig.current.isDev {

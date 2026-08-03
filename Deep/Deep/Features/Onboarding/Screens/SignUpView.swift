@@ -83,7 +83,7 @@ struct SignUpView: View {
               .transition(.opacity)
           }
         }
-        .onboardingContentRise()
+        .onboardingContentDrift()
 
         Spacer()
 

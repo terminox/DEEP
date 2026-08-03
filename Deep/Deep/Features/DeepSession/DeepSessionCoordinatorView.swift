@@ -33,7 +33,7 @@ struct DeepSessionCoordinatorView: View {
 
   var body: some View {
     ZStack {
-      // A plain crossfade, not a navigation container: the stages only ever
+      // A soft drift, not a navigation container: the stages only ever
       // move forward (the only way back out is dismissing the flow), and every
       // screen sits on an opaque base, so the fade can't reveal the tab
       // beneath.
@@ -41,20 +41,20 @@ struct DeepSessionCoordinatorView: View {
       case .intro:
         DeepSessionIntroView(
           session: session,
-          onBegin: { withAnimation(.bloom) { stage = .session } },
+          onBegin: { withAnimation(.hush) { stage = .session } },
           onClose: { dismiss() }
         )
-        .transition(.opacity)
+        .transition(.softDrift)
       case .session:
         // The view starts the engine itself, after its settling countdown.
         DeepSessionView(
           engine: engine,
           onClose: { dismiss() }
         )
-        .transition(.opacity)
+        .transition(.softDrift)
       case .completion:
         DeepSessionCompletionView(session: session, onReturn: { dismiss() })
-          .transition(.opacity)
+          .transition(.softDrift)
       }
     }
     .onAppear {
@@ -75,10 +75,12 @@ struct DeepSessionCoordinatorView: View {
       practiceStore.recordCompletion(of: session)
       heartLedger.earn()
       // Let the final exhale settle (the orb blooms to its rest) before the
-      // crossfade into the completion beat — no tap required to move on.
+      // hush into the completion beat — no tap required to move on. The
+      // longer crossfade absorbs part of what used to be dead time, so the
+      // finish beat stays ~2s in total.
       Task {
-        try? await Task.sleep(for: .seconds(1.4))
-        withAnimation(.bloom) { stage = .completion }
+        try? await Task.sleep(for: .seconds(1.0))
+        withAnimation(.hush) { stage = .completion }
       }
     }
     // Leaving the app settles the practice into a pause; resuming stays the

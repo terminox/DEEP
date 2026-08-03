@@ -36,7 +36,7 @@ struct CraftingSpaceView: View {
             }
           }
         }
-        .onboardingContentRise()
+        .onboardingContentDrift()
 
         Spacer()
       }
