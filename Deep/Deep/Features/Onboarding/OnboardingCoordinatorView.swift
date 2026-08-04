@@ -79,11 +79,10 @@ struct OnboardingCoordinatorView: View {
 
   var body: some View {
     ZStack {
-      // One persistent atmosphere beneath the hand-off, so the crossfade never
-      // dips to a half-transparent background mid-transition. Leaf screens
-      // keep their own (identical) atmospheres for hermetic previews.
-      AtmosphereBackground()
-
+      // AppRootView keeps one persistent atmosphere beneath this coordinator,
+      // so the crossfade never dips to a half-transparent background
+      // mid-transition. Leaf screens keep their own (identical) atmospheres
+      // for hermetic previews.
       screen(for: currentRoute)
         .id(currentRoute)
         .transition(.opacity)
@@ -249,6 +248,12 @@ final class RippleTouchTracker {
 }
 
 #Preview("Onboarding — Full flow") {
-  OnboardingCoordinatorView()
-    .environment(\.onboardingStore, MockOnboardingStore.fresh)
+  // The host backdrop AppRootView provides in the app, so the preview stays
+  // hermetic and true to what ships.
+  ZStack {
+    Color.moonCream.ignoresSafeArea()
+    AtmosphereBackground()
+    OnboardingCoordinatorView()
+      .environment(\.onboardingStore, MockOnboardingStore.fresh)
+  }
 }

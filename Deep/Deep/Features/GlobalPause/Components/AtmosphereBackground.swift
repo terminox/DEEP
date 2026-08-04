@@ -3,7 +3,8 @@ import SwiftUI
 struct AtmosphereBackground: View {
   /// Set false where the atmosphere must hold still — e.g. inside the ripple
   /// overlay's freeze-frame, where an animating subtree would force the layer
-  /// effect to re-rasterize the blurred orbs every frame.
+  /// effect to re-rasterize the blurred orbs every frame. May change while on
+  /// screen; the drift settles or resumes to match.
   var animated = true
 
   @State private var drift = false
@@ -36,11 +37,20 @@ struct AtmosphereBackground: View {
         .blur(radius: 60)
     }
     .ignoresSafeArea()
-    .onAppear {
-      guard animated, !reduceMotion else { return }
+    .onAppear { updateDrift() }
+    .onChange(of: animated) { updateDrift() }
+  }
+
+  /// Starts or stops the ambient drift to match `animated`. Stopping replaces
+  /// the in-flight `repeatForever` with a short settle back to rest, so Core
+  /// Animation stops invalidating the blurred orbs once they land.
+  private func updateDrift() {
+    if animated, !reduceMotion {
       withAnimation(.easeInOut(duration: 14).repeatForever(autoreverses: true)) {
         drift.toggle()
       }
+    } else {
+      withAnimation(.easeInOut(duration: 2)) { drift = false }
     }
   }
 

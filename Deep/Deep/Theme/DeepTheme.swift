@@ -99,6 +99,15 @@ extension UnitCurve {
   )
 }
 
+/// Dot-accessible `Duration`s for time the app deliberately holds, e.g.
+/// `Task.sleep(for: .breatheFloor)`.
+extension Duration {
+  /// The shortest a full-screen breathing beat may stay on screen. Whole-app
+  /// waits (launch, log-in, sign-up) await this floor before dismissing
+  /// `BreatheLoadingView`, so a fast load never flashes it.
+  static let breatheFloor = Duration.seconds(0.9)
+}
+
 // MARK: - Corner radii
 
 /// Dot-accessible `CGFloat` radii — identical in SwiftUI and UIKit, e.g.
