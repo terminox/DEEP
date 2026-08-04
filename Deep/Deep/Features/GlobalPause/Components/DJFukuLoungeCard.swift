@@ -22,15 +22,11 @@ struct DJFukuLoungeCard: View {
 
         HStack(alignment: .bottom) {
           VStack(alignment: .leading, spacing: 4) {
-            Text("DJ FUKU")
-              .font(DeepType.micro)
-              .tracking(1.4)
-              .foregroundStyle(.white.opacity(0.9))
-            Text("Fuku's Lounge")
+            Text("DJ Fuku's Lounge")
               .font(DeepType.displayTitle)
               .foregroundStyle(.white)
               .lineLimit(2)
-            Text("Lo-fi while the world gathers to pause")
+            Text("Listen to live music and pause with the world")
               .font(DeepType.caption)
               .foregroundStyle(.white.opacity(0.85))
           }
