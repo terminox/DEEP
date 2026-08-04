@@ -23,12 +23,18 @@ final class GlobalPauseSessionController: UIViewController {
   /// The 1.5 s meditation → reflection crossfade; stored so `tearDown()` can
   /// cancel it if a dismissal races the fade.
   private var reflectionFadeAnimator: UIViewPropertyAnimator?
+  /// The mid-meditation leave confirmation, retired automatically if the
+  /// meditation ends while it is still up.
+  private weak var leaveAlert: UIAlertController?
   /// Wall-clock completion fallback — covers a missing or failed audio URL.
   private var completionTask: Task<Void, Never>?
 
   private var hasStartedMeditation = false
   private var hasCompleted = false
   private var isTornDown = false
+  /// The overlay arrives empty and cascades in once the card-lift has landed,
+  /// so nothing rides the flight but the globe.
+  private var isOverlayRevealed = false
 
   private var duration: TimeInterval = 600
 
@@ -84,12 +90,7 @@ final class GlobalPauseSessionController: UIViewController {
     closeButton.alpha = 0
     closeButton.accessibilityLabel = "Close"
     closeButton.addAction(
-      UIAction { [weak self] _ in
-        // Tear down before the dismiss animation so the globe hands back to
-        // the feed at its natural placement, already spinning.
-        self?.tearDown()
-        self?.onClose()
-      },
+      UIAction { [weak self] _ in self?.requestClose() },
       for: .touchUpInside
     )
     closeButton.translatesAutoresizingMaskIntoConstraints = false
@@ -104,6 +105,19 @@ final class GlobalPauseSessionController: UIViewController {
     // The session begins: presence + live polling for as long as we're here.
     session.enterSession()
     observeLiveGlobe()
+  }
+
+  /// The card-lift has landed (UIKit runs this after `completeTransition`):
+  /// let the overlay cascade in — pill, count, progress line — so nothing but
+  /// the globe ever rides the flight. Once only; an alert dismissing over the
+  /// session must not replay the arrival.
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    guard !isOverlayRevealed, !isTornDown else { return }
+    isOverlayRevealed = true
+    if let overlayHost, !hasCompleted {
+      overlayHost.rootView = makeOverlayRoot()
+    }
   }
 
   /// Feeds each live poll into the globe: country counts light the surface
@@ -165,7 +179,8 @@ final class GlobalPauseSessionController: UIViewController {
       GlobalPauseMeditationView(
         audio: audio,
         duration: duration,
-        participantCount: session.participantCount
+        participantCount: session.participantCount,
+        revealed: isOverlayRevealed
       )
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented
       // controller arrives with `isEnabled == false` in the environment —
@@ -238,6 +253,62 @@ final class GlobalPauseSessionController: UIViewController {
     }
   }
 
+  // MARK: - Leaving
+
+  /// Mid-meditation close asks first — the session is a live shared moment.
+  /// Once reflection has started the button is already disabled, so the
+  /// confirm path is effectively live-only; the guard keeps it honest anyway.
+  private func requestClose() {
+    guard !isTornDown else { return }
+    guard !hasCompleted else {
+      tearDown()
+      onClose()
+      return
+    }
+
+    let alert = UIAlertController(
+      title: "Leave your session?",
+      message: "The world keeps breathing — you can rejoin while it's live.",
+      preferredStyle: .alert
+    )
+    alert.addAction(
+      UIAlertAction(title: "Leave", style: .destructive) { [weak self] _ in
+        self?.confirmLeave()
+      }
+    )
+    alert.addAction(UIAlertAction(title: "Keep breathing", style: .cancel))
+    alert.overrideUserInterfaceStyle = .light
+    leaveAlert = alert
+    present(alert, animated: true)
+  }
+
+  /// The screen empties before the flight home: overlay and close button fade
+  /// completely, hold a breath, then the reverse card-lift begins with only
+  /// the globe on its atmosphere.
+  private func confirmLeave() {
+    guard !isTornDown else { return }
+    guard !hasCompleted else {
+      // Reflection raced the alert — the card is already (or about to be)
+      // home, so leave via the plain fade.
+      tearDown()
+      onClose()
+      return
+    }
+
+    closeButton.isUserInteractionEnabled = false
+    UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) { [weak self] in
+      self?.overlayHost?.view.alpha = 0
+      self?.closeButton.alpha = 0
+    } completion: { [weak self] _ in
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+        // Tear down before the dismiss animation so the globe hands back to
+        // the feed at its natural placement, already spinning.
+        self?.tearDown()
+        self?.onClose()
+      }
+    }
+  }
+
   // MARK: - Reflection
 
   /// The meditation is over: crossfade (1.5 s) into the reflection screen,
@@ -247,6 +318,11 @@ final class GlobalPauseSessionController: UIViewController {
     hasCompleted = true
     completionTask?.cancel()
     completionTask = nil
+
+    // A leave confirmation still up when the meditation ends would strand the
+    // user over the reflection — retire it.
+    leaveAlert?.dismiss(animated: true)
+    leaveAlert = nil
 
     let root = AnyView(
       GlobalPauseReflectionView(onDone: { [weak self] in self?.finishSession() })
