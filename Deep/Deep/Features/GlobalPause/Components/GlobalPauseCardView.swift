@@ -8,8 +8,10 @@ import SwiftUI
 ///
 /// Layout is one mode-independent rule set (manual frame math — it animates
 /// smoothly under `layoutIfNeeded` inside a property animator). Card rest and
-/// lobby rest differ only in chrome/border alpha, corner radius, and globe
-/// interactivity — plus the globe's inset rect at lobby scale.
+/// lobby rest differ only in chrome/border alpha, corner radius, globe
+/// interactivity — and the globe's rest rect: the corner seat in the card
+/// (`CardGlobeSeat`), the safe-area inset bounds in the lobby. Both come from
+/// `naturalGlobeRect`, the single definition the flight's endpoints also use.
 ///
 /// ## Globe flight
 /// A property animator cannot re-layout an `MTKView` every frame: CA would
@@ -68,6 +70,29 @@ final class GlobalPauseCardView: UIControl {
   /// hands off the globe's transform or the spring would snap to its target.
   private var phasePlacementAnimator: UIViewPropertyAnimator?
 
+  // MARK: Card-rest globe seat
+
+  /// At card rest the globe is parked in the bottom-right corner, larger than
+  /// the card can show: the orb crests the corner instead of sitting centred.
+  ///
+  /// The seat grows the globe unit's **frame** rather than transform-scaling
+  /// it, so the Metal drawable grows with the orb and the render stays native
+  /// (magnifying a card-sized render would soften the country borders).
+  private enum CardGlobeSeat {
+    /// The dial: the orb's radius as a fraction of the card's height.
+    ///
+    /// The shader draws the orb at a fixed fraction of the *globe unit's*
+    /// height (`orbScreenRadiusFractionOfHeight`, ≈0.22), so asking for a
+    /// radius this large makes the unit several times taller than the card —
+    /// the orb is deliberately far bigger than its window onto it.
+    static let orbRadiusFractionOfCardHeight: CGFloat = 0.70
+    /// Orb centre, inset from the card's bottom-right corner **in orb radii**.
+    /// Kept in orb radii rather than points so the crop's composition is
+    /// preserved when the radius above changes, and reads identically on every
+    /// device (the orb follows the card's fixed height, not its width).
+    static let cornerInset: CGFloat = 0.25
+  }
+
   init(scene: GlobalPauseEarthScene, caption: String = "Breathe with the world, together") {
     earthScene = EarthSceneView(glow: scene.glow, interaction: scene.interaction, ripples: scene.ripples)
     chrome = GlobalPauseCardChromeView(caption: caption)
@@ -113,11 +138,37 @@ final class GlobalPauseCardView: UIControl {
     // skipping the frame pass there is safe.
     if globeLayout == .natural, phasePlacementAnimator?.isRunning != true {
       earthScene.transform = .identity
-      earthScene.frame = isLobby ? bounds.inset(by: lobbyGlobeInsets) : bounds
+      earthScene.frame = naturalGlobeRect(isLobby: isLobby, in: bounds)
       // Placement rides on top of natural layout, transform-only — the frame
       // (and with it the Metal drawable) never changes, so no smear.
       earthScene.transform = phasePlacementTransform()
     }
+  }
+
+  /// The globe's natural (at-rest) rect for a mode, in card coordinates.
+  /// `layoutSubviews` and the flight's endpoints both derive from this, so a
+  /// landing is pixel-identical to where the animator left the globe.
+  ///
+  /// Lobby rest fills the card inside the safe areas; card rest is the corner
+  /// seat — bigger than the card, so the orb is cropped by the right and
+  /// bottom edges.
+  private func naturalGlobeRect(isLobby: Bool, in bounds: CGRect) -> CGRect {
+    guard !isLobby else { return bounds.inset(by: lobbyGlobeInsets) }
+    let orbRadius = CardGlobeSeat.orbRadiusFractionOfCardHeight * bounds.height
+    // Only the unit's *height* sets the orb's size; its width just has to hold
+    // the Metal orb and its bloom (the halo and cradle behind it are ordinary
+    // unclipped subviews, so they light the card whatever this width is). A
+    // square gives ~2.3 orb radii either side of the centre — far past the
+    // bloom, and far fewer drawable pixels than matching the card's aspect.
+    let side = orbRadius / CGFloat(EarthRendererConstants.orbScreenRadiusFractionOfHeight)
+    let inset = CardGlobeSeat.cornerInset * orbRadius
+    let centre = CGPoint(x: bounds.maxX - inset, y: bounds.maxY - inset)
+    return CGRect(
+      x: centre.x - side / 2,
+      y: centre.y - side / 2,
+      width: side,
+      height: side
+    )
   }
 
   /// Card and border share one radius; the animator morphs it 24 ↔ 0.
@@ -193,21 +244,18 @@ final class GlobalPauseCardView: UIControl {
   }
 
   /// Sets the globe's animated endpoint. Call INSIDE the animation block,
-  /// after the card's bounds have been set to their final value. Endpoints
-  /// compose the flight-frozen phase placement (see `beginGlobeFlight`), so
-  /// they match exactly what `layoutSubviews` will produce at the destination
-  /// rest state.
+  /// after the card's bounds have been set to their final value. Endpoints are
+  /// the rest rect the destination's `layoutSubviews` will produce, expressed
+  /// as the transform that maps the pinned bounds onto it — composed with the
+  /// flight-frozen phase placement (see `beginGlobeFlight`), so they match the
+  /// destination rest state exactly. At the lobby endpoint the rest rect *is*
+  /// the pinned size, so the scale is 1.
   func setGlobeFlightTarget(isLobby: Bool) {
     guard globeLayout == .inFlight, pinnedGlobeHeight > 0 else { return }
-    if isLobby {
-      let globeRect = bounds.inset(by: lobbyGlobeInsets)
-      earthScene.transform = flightPhasePlacementTransform()
-      earthScene.center = CGPoint(x: globeRect.midX, y: globeRect.midY)
-    } else {
-      let scale = bounds.height / pinnedGlobeHeight
-      earthScene.transform = flightPhasePlacementTransform().scaledBy(x: scale, y: scale)
-      earthScene.center = CGPoint(x: bounds.midX, y: bounds.midY)
-    }
+    let rect = naturalGlobeRect(isLobby: isLobby, in: bounds)
+    let scale = rect.height / pinnedGlobeHeight
+    earthScene.transform = flightPhasePlacementTransform().scaledBy(x: scale, y: scale)
+    earthScene.center = CGPoint(x: rect.midX, y: rect.midY)
   }
 
   /// Returns the globe to natural layout. The bounds snap is ≤1 frame of
@@ -343,6 +391,18 @@ final class GlobalPauseCardView: UIControl {
   container.backgroundColor = .moonCream
   card.frame = CGRect(x: 20, y: 100, width: 350, height: 200)
   card.autoresizingMask = [.flexibleWidth]
+  container.addSubview(card)
+  return container
+}
+
+#Preview("Card — narrow device") {
+  // The corner inset is measured in orb radii, and the orb follows the card's
+  // fixed height — so an SE-width card must crop the globe identically.
+  let scene = GlobalPauseEarthScene.preview
+  let card = GlobalPauseCardView(scene: scene)
+  let container = UIView()
+  container.backgroundColor = .moonCream
+  card.frame = CGRect(x: 20, y: 100, width: 280, height: 200)
   container.addSubview(card)
   return container
 }
