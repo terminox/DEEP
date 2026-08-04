@@ -94,7 +94,7 @@ struct SignUpView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       if isSubmitting {
-        BreatheLoadingView(line: "Take a breath. We're creating your space.")
+        BreatheLoadingView(line: "Take a deep breath.\nWe're creating your space.")
           .transition(.opacity)
       }
     }
@@ -112,13 +112,19 @@ struct SignUpView: View {
     isSubmitting = true
     errorMessage = nil
     Task {
-      defer { isSubmitting = false }
+      // The breathing beat stays up at least this long, however fast the
+      // network answers — a flash of it reads as a glitch, not a breath.
+      async let floor: Void? = try? Task.sleep(for: .breatheFloor)
       do {
         try await accountStore.signUp(name: trimmedName, email: email, password: password)
+        // Awaited before advancing: routing on would cut the beat short.
+        _ = await floor
         advance(.craftingSpace)
       } catch {
+        _ = await floor
         withAnimation(.exhale) { errorMessage = message(for: error) }
       }
+      isSubmitting = false
     }
   }
 

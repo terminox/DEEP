@@ -66,7 +66,7 @@ struct LogInView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       if isSubmitting {
-        BreatheLoadingView(line: "Take a breath. We're signing you in.")
+        BreatheLoadingView(line: "Take a deep breath.\nWe're signing you in.")
           .transition(.opacity)
       }
     }
@@ -78,11 +78,16 @@ struct LogInView: View {
     isSubmitting = true
     errorMessage = nil
     Task {
-      defer { isSubmitting = false }
+      // The breathing beat stays up at least this long, however fast the
+      // network answers — a flash of it reads as a glitch, not a breath.
+      async let floor: Void? = try? Task.sleep(for: .breatheFloor)
       do {
         try await accountStore.logIn(email: email, password: password)
         // Reflect the server's onboarding state locally so the gate is accurate.
-        if let profile = try? await onboardingRemote.fetchProfile() {
+        let profile = try? await onboardingRemote.fetchProfile()
+        // Awaited before hydrating: opening the gate would cut the beat short.
+        _ = await floor
+        if let profile {
           onboardingStore.hydrate(
             quizAnswers: profile.quizAnswers,
             mindTree: profile.mindTree,
@@ -97,8 +102,10 @@ struct LogInView: View {
           advance(.quiz(index: 0))
         }
       } catch {
+        _ = await floor
         withAnimation(.exhale) { errorMessage = message(for: error) }
       }
+      isSubmitting = false
     }
   }
 
