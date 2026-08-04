@@ -132,10 +132,9 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
   private let card: @MainActor () -> GlobalPauseCardView?
   private let isPresenting: Bool
 
-  /// Chrome timings, mirroring the retired SwiftUI hero: fast out on open so
-  /// the title/pill vanish in place, late back in on close so they reappear
-  /// only as the card settles.
-  private let chromeOutDuration: TimeInterval = 0.18
+  /// Chrome timings: late back in on close so the title/pill reappear only as
+  /// the card settles. The fade-out no longer lives here — the coordinator
+  /// plays it as a pre-fade beat before ever presenting.
   private let chromeInDuration: TimeInterval = 0.20
   private let chromeInDelay: TimeInterval = 0.26
 
@@ -232,6 +231,11 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
     lobbyView.clipsToBounds = true
     lobbyView.layoutIfNeeded()
 
+    // The coordinator's pre-fade has already emptied the chrome; snap it here
+    // too so a present that skipped the beat can never fly the text along.
+    card.chrome.alpha = 0
+    card.borderView.alpha = 0
+
     // P0.4 — pin the globe for flight (drawable stops resizing from here on).
     card.beginGlobeFlight(
       lobbyBounds: CGRect(origin: .zero, size: finalFrame.size),
@@ -248,10 +252,6 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
       lobbyView.layoutIfNeeded()
     }
 
-    UIView.animate(withDuration: chromeOutDuration, delay: 0, options: [.curveEaseOut]) {
-      card.chrome.alpha = 0
-      card.borderView.alpha = 0
-    }
     UIView.animate(withDuration: chromeInDuration, delay: chromeInDelay, options: [.curveEaseOut]) {
       lobby.closeButton.alpha = 1
     }

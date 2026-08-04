@@ -37,6 +37,10 @@ final class GlobalPauseCoordinatorController: UIViewController {
     card: { [weak self] in self?.card }
   )
 
+  /// True for the beat between the card tap and the actual presentation,
+  /// while the chrome pre-fade plays — guards against a stacked second tap.
+  private var isPreparingSession = false
+
   init(
     soundPlayer: any SoundPlaying,
     soundRepository: any SoundContentRepository,
@@ -183,7 +187,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private func presentSession() {
     // The session is the live meditation only — outside the nightly window
     // the card's tap rests (its caption already carries the countdown).
-    guard pauseSession.isMeditationLive else { return }
+    guard pauseSession.isMeditationLive, !isPreparingSession else { return }
 
     // The card can summon the session from a screen presented over the feed
     // (Fuku's Lounge borrows the card). Always lift from — and stack onto —
@@ -193,6 +197,35 @@ final class GlobalPauseCoordinatorController: UIViewController {
     var presenter: UIViewController = self
     while let next = presenter.presentedViewController { presenter = next }
     guard !(presenter is GlobalPauseSessionController) else { return }
+
+    // The beat before the lift: title, caption, pill and hairline vanish
+    // completely while the card still rests in its slot, hold a breath, then
+    // fly. Disabling the card keeps a second tap from stacking a present.
+    isPreparingSession = true
+    card.isEnabled = false
+    UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) { [card] in
+      card.chrome.alpha = 0
+      card.borderView.alpha = 0
+    } completion: { [weak self, weak presenter] _ in
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+        self?.performSessionPresentation(from: presenter)
+      }
+    }
+  }
+
+  private func performSessionPresentation(from presenter: UIViewController?) {
+    isPreparingSession = false
+
+    // The live window can close during the beat — restore the card to rest
+    // instead of presenting a session that is already over.
+    guard pauseSession.isMeditationLive, let presenter else {
+      UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseOut]) { [card] in
+        card.chrome.alpha = 1
+        card.borderView.alpha = 1
+      }
+      card.isEnabled = true
+      return
+    }
 
     // The session owns its own audio, so the shared player pauses (its track
     // stays loaded — the mini player resumes where it left off, the Deep
