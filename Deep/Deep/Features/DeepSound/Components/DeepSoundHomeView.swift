@@ -48,6 +48,7 @@ struct DeepSoundHomeView: View {
       subtitle: "Breathe and listen"
     )
     .task { await load() }
+    .heroRefreshable { await load() }
   }
 
   @ViewBuilder

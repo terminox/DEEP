@@ -31,11 +31,26 @@ struct StretchyHero: View {
   /// otherwise leave the screen.
   private let fadeDistance: CGFloat = 220
 
+  /// Overscroll the hero absorbs 1:1 before the stretch starts damping, so a
+  /// casual bounce looks exactly like an uncapped hero.
+  private let freeStretch: CGFloat = 48
+
+  /// Asymptotic ceiling on the stretch. Past `freeStretch` the growth eases
+  /// toward this, so a deep pull can't balloon the media — the scene stays
+  /// pinned to the top edge and the content simply travels a little ahead of
+  /// its feathered bottom.
+  private let maxStretch: CGFloat = 96
+
   var body: some View {
     GeometryReader { geo in
       let minY = geo.frame(in: .scrollView(axis: .vertical)).minY
-      // Pulling down (minY > 0) stretches the scene from the top edge.
-      let stretch = max(0, minY)
+      // Pulling down (minY > 0) stretches the scene from the top edge —
+      // freely at first, then damped so a deep pull can't balloon the hero.
+      let pull = max(0, minY)
+      let stretch = pull <= freeStretch
+        ? pull
+        : freeStretch + (maxStretch - freeStretch)
+            * (1 - exp(-(pull - freeStretch) / (maxStretch - freeStretch)))
       // Scrolling up (minY < 0) holds the hero back by a fraction of the
       // distance travelled, so it lags behind the content rising over it.
       let scrolledUp = -min(0, minY)
@@ -46,7 +61,10 @@ struct StretchyHero: View {
         .frame(width: geo.size.width, height: height + stretch)
         .clipped()
         .mask(heroFadeMask)
-        .offset(y: -stretch + parallax)
+        // `-pull` cancels the frame's own ride down 1:1, so the media's top
+        // edge never leaves the screen's top edge no matter how deep the
+        // pull; the damped stretch only governs how far the scene grows.
+        .offset(y: -pull + parallax)
         .opacity(1 - fade)
     }
     .frame(height: height)

@@ -87,8 +87,7 @@ final class GlobalPauseSession {
       schedule = try await repository.schedule()
     } catch {
       // Keep whatever schedule we had; the boundary loop keeps working off it
-      // and the next start()/foreground retries.
-      if schedule == nil { return }
+      // (and retries on its own when there's no schedule at all).
     }
     recomputeLive()
     armBoundaryTimer()
@@ -107,12 +106,11 @@ final class GlobalPauseSession {
   /// clock sync. Crossing the final boundary re-fetches the next occurrence.
   private func armBoundaryTimer() {
     boundaryTask?.cancel()
-    guard let schedule else { return }
     let now = clock.now
-    guard let boundary = schedule.nextBoundary(after: now) else {
-      // Window over; tomorrow's schedule replaces it. The delay keeps a stale
-      // schedule whose fetch keeps failing from becoming a zero-backoff
-      // request loop (refresh → no boundary → refresh …).
+    guard let boundary = schedule?.nextBoundary(after: now) else {
+      // No schedule yet (first fetch failed) or window over; the next fetch
+      // supplies it. The delay keeps a failing fetch from becoming a
+      // zero-backoff request loop (refresh → no boundary → refresh …).
       boundaryTask = Task { [weak self] in
         try? await Task.sleep(for: .seconds(60))
         guard !Task.isCancelled else { return }
