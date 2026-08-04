@@ -23,6 +23,9 @@ final class GlobalPauseSessionController: UIViewController {
   /// The 1.5 s meditation → reflection crossfade; stored so `tearDown()` can
   /// cancel it if a dismissal races the fade.
   private var reflectionFadeAnimator: UIViewPropertyAnimator?
+  /// The mid-meditation leave confirmation, retired automatically if the
+  /// meditation ends while it is still up.
+  private weak var leaveAlert: UIAlertController?
   /// Wall-clock completion fallback — covers a missing or failed audio URL.
   private var completionTask: Task<Void, Never>?
 
@@ -84,12 +87,7 @@ final class GlobalPauseSessionController: UIViewController {
     closeButton.alpha = 0
     closeButton.accessibilityLabel = "Close"
     closeButton.addAction(
-      UIAction { [weak self] _ in
-        // Tear down before the dismiss animation so the globe hands back to
-        // the feed at its natural placement, already spinning.
-        self?.tearDown()
-        self?.onClose()
-      },
+      UIAction { [weak self] _ in self?.requestClose() },
       for: .touchUpInside
     )
     closeButton.translatesAutoresizingMaskIntoConstraints = false
@@ -238,6 +236,62 @@ final class GlobalPauseSessionController: UIViewController {
     }
   }
 
+  // MARK: - Leaving
+
+  /// Mid-meditation close asks first — the session is a live shared moment.
+  /// Once reflection has started the button is already disabled, so the
+  /// confirm path is effectively live-only; the guard keeps it honest anyway.
+  private func requestClose() {
+    guard !isTornDown else { return }
+    guard !hasCompleted else {
+      tearDown()
+      onClose()
+      return
+    }
+
+    let alert = UIAlertController(
+      title: "Leave your session?",
+      message: "The world keeps breathing — you can rejoin while it's live.",
+      preferredStyle: .alert
+    )
+    alert.addAction(
+      UIAlertAction(title: "Leave", style: .destructive) { [weak self] _ in
+        self?.confirmLeave()
+      }
+    )
+    alert.addAction(UIAlertAction(title: "Keep breathing", style: .cancel))
+    alert.overrideUserInterfaceStyle = .light
+    leaveAlert = alert
+    present(alert, animated: true)
+  }
+
+  /// The screen empties before the flight home: overlay and close button fade
+  /// completely, hold a breath, then the reverse card-lift begins with only
+  /// the globe on its atmosphere.
+  private func confirmLeave() {
+    guard !isTornDown else { return }
+    guard !hasCompleted else {
+      // Reflection raced the alert — the card is already (or about to be)
+      // home, so leave via the plain fade.
+      tearDown()
+      onClose()
+      return
+    }
+
+    closeButton.isUserInteractionEnabled = false
+    UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) { [weak self] in
+      self?.overlayHost?.view.alpha = 0
+      self?.closeButton.alpha = 0
+    } completion: { [weak self] _ in
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+        // Tear down before the dismiss animation so the globe hands back to
+        // the feed at its natural placement, already spinning.
+        self?.tearDown()
+        self?.onClose()
+      }
+    }
+  }
+
   // MARK: - Reflection
 
   /// The meditation is over: crossfade (1.5 s) into the reflection screen,
@@ -247,6 +301,11 @@ final class GlobalPauseSessionController: UIViewController {
     hasCompleted = true
     completionTask?.cancel()
     completionTask = nil
+
+    // A leave confirmation still up when the meditation ends would strand the
+    // user over the reflection — retire it.
+    leaveAlert?.dismiss(animated: true)
+    leaveAlert = nil
 
     let root = AnyView(
       GlobalPauseReflectionView(onDone: { [weak self] in self?.finishSession() })
