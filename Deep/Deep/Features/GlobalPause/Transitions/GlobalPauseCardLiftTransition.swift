@@ -137,21 +137,25 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
   /// plays it as a pre-fade beat before ever presenting.
   private let chromeInDuration: TimeInterval = 0.20
   private let chromeInDelay: TimeInterval = 0.26
+  /// The close button surfaces at the same point of the (longer) present
+  /// flight that the dismiss chrome does of its own — near the settle.
+  private let closeButtonInDelay: TimeInterval = 0.34
 
   init(card: @escaping @MainActor () -> GlobalPauseCardView?, isPresenting: Bool) {
     self.card = card
     self.isPresenting = isPresenting
   }
 
-  /// Lively on the way up (overshoot happens past the screen edge), critically
-  /// damped on the way back down so the card eases exactly onto the feed.
+  /// Calm on the way up — after the pre-fade beat the flight should glide,
+  /// not spring; critically damped on the way back down so the card eases
+  /// exactly onto the feed.
   private var spring: UISpringTimingParameters {
     isPresenting
-      ? UISpringTimingParameters(response: 0.46, dampingFraction: 0.82)
+      ? UISpringTimingParameters(response: 0.60, dampingFraction: 0.90)
       : UISpringTimingParameters(response: 0.45, dampingFraction: 1.0)
   }
 
-  private var duration: TimeInterval { isPresenting ? 0.46 : 0.45 }
+  private var duration: TimeInterval { isPresenting ? 0.60 : 0.45 }
 
   func transitionDuration(
     using transitionContext: (any UIViewControllerContextTransitioning)?
@@ -252,7 +256,7 @@ private final class GlobalPauseCardLiftAnimator: NSObject, UIViewControllerAnima
       lobbyView.layoutIfNeeded()
     }
 
-    UIView.animate(withDuration: chromeInDuration, delay: chromeInDelay, options: [.curveEaseOut]) {
+    UIView.animate(withDuration: chromeInDuration, delay: closeButtonInDelay, options: [.curveEaseOut]) {
       lobby.closeButton.alpha = 1
     }
 

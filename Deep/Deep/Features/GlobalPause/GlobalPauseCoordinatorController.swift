@@ -207,7 +207,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       card.chrome.alpha = 0
       card.borderView.alpha = 0
     } completion: { [weak self, weak presenter] _ in
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
         self?.performSessionPresentation(from: presenter)
       }
     }

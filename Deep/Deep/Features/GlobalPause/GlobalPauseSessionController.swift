@@ -32,6 +32,9 @@ final class GlobalPauseSessionController: UIViewController {
   private var hasStartedMeditation = false
   private var hasCompleted = false
   private var isTornDown = false
+  /// The overlay arrives empty and cascades in once the card-lift has landed,
+  /// so nothing rides the flight but the globe.
+  private var isOverlayRevealed = false
 
   private var duration: TimeInterval = 600
 
@@ -104,6 +107,19 @@ final class GlobalPauseSessionController: UIViewController {
     observeLiveGlobe()
   }
 
+  /// The card-lift has landed (UIKit runs this after `completeTransition`):
+  /// let the overlay cascade in — pill, count, progress line — so nothing but
+  /// the globe ever rides the flight. Once only; an alert dismissing over the
+  /// session must not replay the arrival.
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    guard !isOverlayRevealed, !isTornDown else { return }
+    isOverlayRevealed = true
+    if let overlayHost, !hasCompleted {
+      overlayHost.rootView = makeOverlayRoot()
+    }
+  }
+
   /// Feeds each live poll into the globe: country counts light the surface
   /// (`EarthGlowStore` lerps them in), fresh joins ring outward as ripples.
   private func observeLiveGlobe() {
@@ -163,7 +179,8 @@ final class GlobalPauseSessionController: UIViewController {
       GlobalPauseMeditationView(
         audio: audio,
         duration: duration,
-        participantCount: session.participantCount
+        participantCount: session.participantCount,
+        revealed: isOverlayRevealed
       )
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented
       // controller arrives with `isEnabled == false` in the environment —
