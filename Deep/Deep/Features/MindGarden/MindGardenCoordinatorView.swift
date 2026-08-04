@@ -16,6 +16,7 @@ struct MindGardenCoordinatorView: View {
       // the garden live: a session finished anywhere regrows this screen.
       MindGardenHomeView(state: GardenState(practice: practice))
         .toolbar(.hidden, for: .navigationBar)
+        .heroRefreshable { await practice.refresh() }
     }
     .preferredColorScheme(.light)
   }

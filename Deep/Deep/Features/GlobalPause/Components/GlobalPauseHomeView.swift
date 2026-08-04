@@ -9,6 +9,7 @@ import SwiftUI
 struct GlobalPauseHomeView: View {
   @Environment(\.soundContentRepository) private var repository
   @Environment(\.openCollectionList) private var openCollectionList
+  @Environment(\.globalPauseSession) private var pauseSession
 
   private enum LoadState: Equatable { case loading, loaded, failed }
   @State private var home: PauseHome?
@@ -48,6 +49,13 @@ struct GlobalPauseHomeView: View {
       subtitle: "Take a breath with the world today"
     )
     .task { await load() }
+    .heroRefreshable {
+      // Feed content and tonight's schedule refresh together; the schedule
+      // fetch also re-syncs the clock, so time travel lands here too.
+      async let liveness: Void = pauseSession.start()
+      await load()
+      await liveness
+    }
   }
 
   @ViewBuilder

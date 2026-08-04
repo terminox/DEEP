@@ -20,10 +20,14 @@ struct GlobalPauseLobbyView: View {
 
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.pauseEventRepository) private var repository
+  @Environment(\.globalPauseSession) private var globalPauseSession
 
   @State private var messages: [PeaceMessage] = []
   @State private var nextCursor: String?
   @State private var isLoadingMore = false
+  /// Bumped whenever a refresh replaces the feed wholesale, so an in-flight
+  /// loadMore from the previous feed can tell its page is stale.
+  @State private var feedEpoch = 0
 
   private let heroHeight: CGFloat = 320
   private let heroOverlap: CGFloat = 80
@@ -81,6 +85,10 @@ struct GlobalPauseLobbyView: View {
     .navigationBarTitleDisplayMode(.inline)
     .toolbarBackground(.hidden, for: .navigationBar)
     .task { await loadInitial() }
+    // Re-entering the lounge re-resolves tonight's schedule against the synced
+    // clock, so a server-side time jump goes live without a relaunch.
+    .task { await globalPauseSession.start() }
+    .heroRefreshable { await refresh() }
   }
 
   private var onAir: some View {
@@ -105,14 +113,29 @@ struct GlobalPauseLobbyView: View {
     guard let cursor = nextCursor, !isLoadingMore else { return }
     isLoadingMore = true
     defer { isLoadingMore = false }
+    let epoch = feedEpoch
     do {
       let page = try await repository.messages(limit: pageSize, cursor: cursor)
+      guard epoch == feedEpoch else { return } // a refresh replaced the feed mid-flight
       let known = Set(messages.map(\.id))
       messages += page.messages.filter { !known.contains($0.id) }
       nextCursor = page.nextCursor
     } catch {
       // Keep the cursor: the next time the tail scrolls into view we retry.
     }
+  }
+
+  private func refresh() async {
+    async let liveness: Void = globalPauseSession.start()
+    do {
+      let page = try await repository.messages(limit: pageSize, cursor: nil)
+      messages = page.messages
+      nextCursor = page.nextCursor
+      feedEpoch += 1
+    } catch {
+      // Keep the feed we have; the schedule refresh still lands.
+    }
+    await liveness
   }
 }
 
