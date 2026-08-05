@@ -29,6 +29,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private lazy var card: GlobalPauseCardView = {
     let card = GlobalPauseCardView(scene: scene)
     card.onTap = { [weak self] in self?.presentSession() }
+    // The countdown must tick on server time — dev time travel moves serverNow
+    // far from the wall clock, and the boundary flips follow the same clock.
+    card.chrome.now = { [clock = pauseSession.clock] in clock.now }
     return card
   }()
 
@@ -89,24 +92,16 @@ final class GlobalPauseCoordinatorController: UIViewController {
     observeLiveForChrome()
   }
 
-  /// Keeps the card's caption honest about the nightly meditation — the next
-  /// start's schedule line while the world waits, "Live now…" while it's live
-  /// — via the `observeHasTrack` re-arming pattern.
+  /// Keeps the card honest about the nightly meditation — the session computes
+  /// the state (schedule line, countdown, live), the card renders it — via the
+  /// `observeHasTrack` re-arming pattern.
   private func observeLiveForChrome() {
-    let (isLive, nextStart) = withObservationTracking {
-      (pauseSession.isMeditationLive, pauseSession.nextMeditationStart)
+    let state = withObservationTracking {
+      pauseSession.cardState
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in self?.observeLiveForChrome() }
     }
-    let caption: String
-    if isLive {
-      caption = "Live now — the world is pausing"
-    } else if let nextStart {
-      caption = pauseSession.scheduleLine(for: nextStart)
-    } else {
-      caption = "Breathe with the world, together"
-    }
-    card.setChromeCaption(caption, animated: viewIfLoaded?.window != nil)
+    card.setChromeState(state, animated: viewIfLoaded?.window != nil)
   }
 
   // MARK: - Children

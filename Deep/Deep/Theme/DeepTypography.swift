@@ -15,9 +15,13 @@ private struct DeepTypeToken {
   let weight: Font.Weight
   let uiWeight: UIFont.Weight
   var italic: Bool = false
+  /// Fixed-width digits, for text that ticks (countdowns) — a proportional
+  /// "1" is narrower than a "4", so a live timer would jitter sideways.
+  var monospacedDigits: Bool = false
 
   var font: Font {
-    let base = Font.system(style, design: design, weight: weight)
+    var base = Font.system(style, design: design, weight: weight)
+    if monospacedDigits { base = base.monospacedDigit() }
     return italic ? base.italic() : base
   }
 
@@ -33,6 +37,14 @@ private struct DeepTypeToken {
     descriptor = descriptor.addingAttributes(
       [.traits: [UIFontDescriptor.TraitKey.weight: uiWeight]]
     )
+    if monospacedDigits {
+      descriptor = descriptor.addingAttributes([
+        .featureSettings: [[
+          UIFontDescriptor.FeatureKey.type: kNumberSpacingType,
+          UIFontDescriptor.FeatureKey.selector: kMonospacedNumbersSelector
+        ]]
+      ])
+    }
     // Size 0 keeps the text style's Dynamic Type size.
     return UIFont(descriptor: descriptor, size: 0)
   }
@@ -91,11 +103,13 @@ private enum DeepTypePalette {
     design: .rounded, uiDesign: .rounded,
     weight: .medium, uiWeight: .medium
   )
-  /// Rounded mono digits at countdown scale.
+  /// Pill-label copy with ticking digits ("Live in 13:44") — bodyMedium's
+  /// scale and weight, mono digits so the tick never jitters sideways.
   static let countdown = DeepTypeToken(
-    style: .title3, uiStyle: .title3,
-    design: .rounded, uiDesign: .rounded,
-    weight: .medium, uiWeight: .medium
+    style: .subheadline, uiStyle: .subheadline,
+    design: .default, uiDesign: .default,
+    weight: .medium, uiWeight: .medium,
+    monospacedDigits: true
   )
   /// Big participant count.
   static let bigNumber = DeepTypeToken(
@@ -137,5 +151,7 @@ extension UIFont {
   static var displayTitle: UIFont { DeepTypePalette.displayTitle.uiFont }
   static var caption: UIFont { DeepTypePalette.caption.uiFont }
   static var bodyMedium: UIFont { DeepTypePalette.bodyMedium.uiFont }
+  static var micro: UIFont { DeepTypePalette.micro.uiFont }
+  static var countdown: UIFont { DeepTypePalette.countdown.uiFont }
   static var revealTitle: UIFont { DeepTypePalette.revealTitle.uiFont }
 }

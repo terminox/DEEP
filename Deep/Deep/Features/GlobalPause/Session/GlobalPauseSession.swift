@@ -1,6 +1,16 @@
 import SwiftUI
 import Observation
 
+/// The three faces of the Global Pause card: resting on the schedule line,
+/// counting down the final lead before the meditation, or live. Computed by
+/// `GlobalPauseSession` (which owns the clock and the boundaries); rendered by
+/// the card chrome.
+enum GlobalPauseCardState: Equatable {
+  case off(scheduleLine: String)
+  case countdown(target: Date, scheduleLine: String)
+  case live
+}
+
 /// The Global Pause engine: holds tonight's schedule, tracks whether the
 /// nightly meditation is live against the synced clock (flipping
 /// `isMeditationLive` at exact window boundaries), and scopes the live
@@ -18,6 +28,13 @@ final class GlobalPauseSession {
   /// True exactly while the nightly meditation window is open — the one state
   /// the live session has. The boundary timer flips it at the window edges.
   private(set) var isMeditationLive = false
+  /// What the card shows right now. Stored rather than computed on purpose:
+  /// nothing observable changes at the countdown threshold, so a computed
+  /// property would never wake the chrome's observation loop — the boundary
+  /// timer recomputes this at every edge instead.
+  private(set) var cardState: GlobalPauseCardState = .off(
+    scheduleLine: "Breathe with the world, together"
+  )
   private(set) var participantCount = 0
   private(set) var participantsByCountry: [String: Int] = [:]
 
@@ -34,6 +51,12 @@ final class GlobalPauseSession {
   }
 
   var meditationDuration: TimeInterval { schedule?.meditationDuration ?? 0 }
+
+  /// How long before the meditation the card flips to its countdown — a
+  /// client presentation choice, deliberately not server config. The dev
+  /// time-travel route mirrors this value (`COUNTDOWN_LEAD_MS` in
+  /// deep-api/src/routes/pauseLive.ts) so its loop shows the whole arc.
+  static let countdownLead: TimeInterval = 15 * 60
 
   private let repository: any PauseEventRepository
   @ObservationIgnored private var boundaryTask: Task<Void, Never>?
@@ -89,17 +112,45 @@ final class GlobalPauseSession {
       // Keep whatever schedule we had; the boundary loop keeps working off it
       // (and retries on its own when there's no schedule at all).
     }
-    recomputeLive()
+    recomputeState()
     armBoundaryTimer()
   }
 
-  private func recomputeLive() {
-    guard let window = schedule?.window(for: .meditation) else {
+  private func recomputeState() {
+    guard let schedule, let window = schedule.window(for: .meditation) else {
       isMeditationLive = false
+      setCardState(.off(scheduleLine: "Breathe with the world, together"))
       return
     }
     let now = clock.now
     isMeditationLive = now >= window.startsAt && now < window.endsAt
+    let target = schedule.nextMeditationStart(after: now)
+    if isMeditationLive {
+      setCardState(.live)
+    } else if target.timeIntervalSince(now) <= Self.countdownLead {
+      setCardState(.countdown(target: target, scheduleLine: scheduleLine(for: target)))
+    } else {
+      setCardState(.off(scheduleLine: scheduleLine(for: target)))
+    }
+  }
+
+  /// The live poll recomputes every few seconds, and `@Observable` fires on
+  /// every assignment — the equality guard keeps the chrome's observation loop
+  /// from re-arming when nothing actually changed.
+  private func setCardState(_ new: GlobalPauseCardState) {
+    if cardState != new { cardState = new }
+  }
+
+  /// The next instant the card's state can change: the next phase boundary, or
+  /// the countdown start (meditation − lead), whichever comes first. Nil keeps
+  /// the 60 s retry-refetch path below (no schedule, or window over — after
+  /// which the fresh schedule supplies tomorrow's countdown start again).
+  private func nextStateBoundary(after now: Date) -> Date? {
+    guard let schedule, let phaseBoundary = schedule.nextBoundary(after: now) else { return nil }
+    let countdownStart = schedule.nextMeditationStart(after: now)
+      .addingTimeInterval(-Self.countdownLead)
+    guard countdownStart > now else { return phaseBoundary }
+    return min(phaseBoundary, countdownStart)
   }
 
   /// One sleeping task per upcoming boundary; re-armed after every firing and
@@ -107,7 +158,7 @@ final class GlobalPauseSession {
   private func armBoundaryTimer() {
     boundaryTask?.cancel()
     let now = clock.now
-    guard let boundary = schedule?.nextBoundary(after: now) else {
+    guard let boundary = nextStateBoundary(after: now) else {
       // No schedule yet (first fetch failed) or window over; the next fetch
       // supplies it. The delay keeps a failing fetch from becoming a
       // zero-backoff request loop (refresh → no boundary → refresh …).
@@ -123,7 +174,7 @@ final class GlobalPauseSession {
       try? await Task.sleep(for: .seconds(max(0.05, delay)))
       guard !Task.isCancelled else { return }
       guard let self else { return }
-      self.recomputeLive()
+      self.recomputeState()
       self.armBoundaryTimer()
     }
   }
@@ -177,7 +228,7 @@ final class GlobalPauseSession {
       }
     }
     // Clock sync can move a boundary; keep the timer honest.
-    recomputeLive()
+    recomputeState()
     armBoundaryTimer()
   }
 
@@ -231,8 +282,16 @@ extension GlobalPauseSession {
     )
     session.schedule = FixturePauseEventRepository.tonightSchedule()
     session.isMeditationLive = live
+    if live { session.cardState = .live }
     session.participantCount = 4218
     session.participantsByCountry = ["TH": 1200, "JP": 640, "US": 580, "FR": 320]
+    return session
+  }
+
+  /// A fixture session pinned to one card state — for chrome/card previews.
+  static func preview(cardState: GlobalPauseCardState) -> GlobalPauseSession {
+    let session = preview(live: cardState == .live)
+    session.cardState = cardState
     return session
   }
 }

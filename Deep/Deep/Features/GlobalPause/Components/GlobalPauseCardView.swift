@@ -199,11 +199,20 @@ final class GlobalPauseCardView: UIControl {
     earthScene.isInteractive = interactive && isLobby
   }
 
-  /// Feed-card caption, e.g. "Live now — the world is pausing" while the
-  /// nightly window is open.
-  func setChromeCaption(_ text: String, animated: Bool) {
-    chrome.setCaption(text, animated: animated)
-    accessibilityLabel = "Global Pause. \(text)."
+  /// Applies the card's state — schedule line at rest, ticking countdown in
+  /// the final lead, "Join now" plus the LIVE badge while the world pauses.
+  /// The countdown's accessibility copy stays static on purpose: rewriting
+  /// the label every second would spam VoiceOver.
+  func setChromeState(_ state: GlobalPauseCardState, animated: Bool) {
+    chrome.setState(state, animated: animated)
+    switch state {
+    case .off(let scheduleLine):
+      accessibilityLabel = "Global Pause. \(scheduleLine)."
+    case .countdown(_, let scheduleLine):
+      accessibilityLabel = "Global Pause. \(scheduleLine). Going live soon."
+    case .live:
+      accessibilityLabel = "Global Pause. Live. The world is pausing. Join now."
+    }
   }
 
   // MARK: - Globe flight
@@ -412,4 +421,31 @@ final class GlobalPauseCardView: UIControl {
   let card = GlobalPauseCardView(scene: scene)
   card.applyRestState(isLobby: true)
   return card
+}
+
+#Preview("Card — live") {
+  let scene = GlobalPauseEarthScene.preview
+  let card = GlobalPauseCardView(scene: scene)
+  let container = UIView()
+  container.backgroundColor = .moonCream
+  card.frame = CGRect(x: 20, y: 100, width: 350, height: 200)
+  card.autoresizingMask = [.flexibleWidth]
+  card.setChromeState(.live, animated: false)
+  container.addSubview(card)
+  return container
+}
+
+#Preview("Card — countdown") {
+  let scene = GlobalPauseEarthScene.preview
+  let card = GlobalPauseCardView(scene: scene)
+  let container = UIView()
+  container.backgroundColor = .moonCream
+  card.frame = CGRect(x: 20, y: 100, width: 350, height: 200)
+  card.autoresizingMask = [.flexibleWidth]
+  card.setChromeState(
+    .countdown(target: Date().addingTimeInterval(899), scheduleLine: "Tonight · 20:40 Thailand Time"),
+    animated: false
+  )
+  container.addSubview(card)
+  return container
 }

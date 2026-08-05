@@ -88,6 +88,12 @@ private struct DeepCurveToken {
       controlPoint2: CGPoint(x: x2, y: y2)
     )
   }
+
+  var mediaTimingFunction: CAMediaTimingFunction {
+    CAMediaTimingFunction(
+      controlPoints: Float(x1), Float(y1), Float(x2), Float(y2)
+    )
+  }
 }
 
 /// The hush between two moments — the long screen dissolve. Declared here so
@@ -95,10 +101,15 @@ private struct DeepCurveToken {
 /// drift apart.
 private let hushCurve = DeepCurveToken(x1: 0.3, y1: 0.0, x2: 0.2, y2: 1.0, duration: 1.05)
 
+/// The soft settling breath behind `.exhale` — declared as a token so Core
+/// Animation twins (the LIVE badge's pulsing dot) can carry exactly the tempo
+/// the SwiftUI pulses do.
+private let exhaleCurve = DeepCurveToken(x1: 0.32, y1: 0.0, x2: 0.36, y2: 1.0, duration: 0.8)
+
 /// Named SwiftUI animations, dot-accessible wherever an `Animation` is expected:
 /// `.animation(.exhale, value:)`, `withAnimation(.settle) { … }`.
 extension Animation {
-  static let exhale = Animation.timingCurve(0.32, 0.0, 0.36, 1.0, duration: 0.8)
+  static let exhale = exhaleCurve.animation
   static let bloom  = Animation.timingCurve(0.22, 0.61, 0.36, 1.0, duration: 0.7)
   static let settle = Animation.spring(response: 0.55, dampingFraction: 0.78)
   /// A wave set loose and left to calm — quick launch, long deceleration.
@@ -134,10 +145,18 @@ extension UICubicTimingParameters {
   static var hush: UICubicTimingParameters { hushCurve.timingParameters }
 }
 
+/// The exhale for Core Animation, where a repeating pulse must be described as
+/// a `CAAnimation` rather than a SwiftUI animation (the LIVE badge's dot).
+extension CAMediaTimingFunction {
+  static var exhale: CAMediaTimingFunction { exhaleCurve.mediaTimingFunction }
+}
+
 extension TimeInterval {
   /// The hush's length, for the UIKit animators that must state it separately
   /// from the curve.
   static var hush: TimeInterval { hushCurve.duration }
+  /// The exhale's length, for the Core Animation twins of `.exhale`.
+  static var exhale: TimeInterval { exhaleCurve.duration }
 }
 
 /// Dot-accessible `Duration`s for time the app deliberately holds, e.g.

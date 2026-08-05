@@ -95,8 +95,9 @@ response, so the whole app follows through the production code path (there is
 no debug code in the app):
 
 ```bash
-./scripts/pause-time-travel.sh live   # meditation live until switched off
-./scripts/pause-time-travel.sh off    # back to real time
+./scripts/pause-time-travel.sh live       # meditation live until switched off
+./scripts/pause-time-travel.sh countdown  # counts down into the meditation, then wraps
+./scripts/pause-time-travel.sh off        # back to real time
 ```
 
 `live` is sticky: the server's clock loops inside the meditation window, so
@@ -105,6 +106,13 @@ still elapses like a real night — a session that runs its course ends into
 the reflection screen naturally. To end one early, run `off`: real time is
 outside the window, so a running session crossfades into reflection within
 ~5 s via its live poll.
+
+`countdown` loops server time from 15 minutes before the meditation through
+its end, so you can watch the card's countdown reach 00:00 and flip live,
+play through the meditation, then wrap back to counting down again. The
+15-minute lead is an iOS-side constant (`GlobalPauseSession.countdownLead`)
+mirrored by the route — it's dev tooling only, so a mismatch there would only
+skew the dev preview.
 
 Notes:
 - Requires `ALLOW_TIME_OVERRIDE=true` in `deep-api/.env` (the route does not

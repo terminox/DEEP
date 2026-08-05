@@ -240,20 +240,35 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
   });
 
   // Dev-only time travel: "live" holds the meditation window perpetually open
-  // (server time loops inside it until "off"). Clients follow on their next
-  // response — they sync to serverNow on everything above. Registered only
-  // when the environment allows overrides, so the route does not exist
-  // anywhere real.
+  // (server time loops inside it until "off"); "countdown" starts the loop 15
+  // minutes before the meditation so the card's countdown ticks down, flips
+  // live at 00:00, plays through the meditation, then wraps. Clients follow
+  // on their next response — they sync to serverNow on everything above.
+  // Registered only when the environment allows overrides, so the route does
+  // not exist anywhere real.
   if (env.ALLOW_TIME_OVERRIDE) {
+    // Mirrors GlobalPauseSession.countdownLead on iOS. This is dev tooling
+    // only (client presentation constant), so a mismatch only skews the dev
+    // preview — it doesn't affect anything real.
+    const COUNTDOWN_LEAD_MS = 15 * 60 * 1000;
+
     app.post("/dev/pause/time-travel", async (req) => {
-      const { mode } = z.object({ mode: z.enum(["live", "off"]) }).parse(req.body);
+      const { mode } = z.object({ mode: z.enum(["live", "countdown", "off"]) }).parse(req.body);
       if (mode === "off") {
         setLiveWindow(null);
         return { mode, serverNow: new Date().toISOString() };
       }
       const config = await loadConfig();
       const occurrence = resolveOccurrence(config, new Date());
-      setLiveWindow(occurrence.phases.find((p) => p.key === "meditation")!);
+      const meditation = occurrence.phases.find((p) => p.key === "meditation")!;
+      if (mode === "countdown") {
+        setLiveWindow({
+          startsAt: new Date(meditation.startsAt.getTime() - COUNTDOWN_LEAD_MS),
+          endsAt: meditation.endsAt,
+        });
+      } else {
+        setLiveWindow(meditation);
+      }
       return { mode, serverNow: resolveNow().toISOString() };
     });
   }

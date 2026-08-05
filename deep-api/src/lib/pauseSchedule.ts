@@ -108,14 +108,17 @@ export function resolveOccurrence(config: PauseConfig, now: Date): PauseOccurren
 }
 
 // Dev-only "always live" switch, set via POST /dev/pause/time-travel. While
-// on, resolved time flows from just inside the meditation window and wraps
-// back to the start on reaching the end — the meditation stays live until
-// switched off, each pass elapsing like a real night. Held in memory on
-// purpose: a server restart always returns to real time.
+// on, resolved time flows from just inside whatever window was opened and
+// wraps back to the start on reaching the end — that window stays live until
+// switched off, each pass elapsing like a real night. The window held here
+// isn't always the meditation itself: it can also be the countdown arc that
+// starts 15 minutes before the meditation and runs through its end, so the
+// loop carries the card through "counting down" as well as "live". Held in
+// memory on purpose: a server restart always returns to real time.
 let liveWindow: { startMs: number; durationMs: number; sinceMs: number } | null = null;
 
-/** Keeps the meditation window perpetually open (null returns to real time). */
-export function setLiveWindow(window: PhaseWindow | null): void {
+/** Keeps a window perpetually open (null returns to real time). */
+export function setLiveWindow(window: { startsAt: Date; endsAt: Date } | null): void {
   if (!window) {
     liveWindow = null;
     return;
