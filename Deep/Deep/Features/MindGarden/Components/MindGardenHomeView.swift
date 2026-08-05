@@ -14,9 +14,9 @@ struct MindGardenHomeView: View {
   var bottomInset: CGFloat = .rhythm
 
   /// Today's practice is a guided breath. The card stays a dumb button; the
-  /// screen decides what tapping it does — here, presenting the full Deep
-  /// Session flow zooming out of the card.
-  @State private var isPracticePresented = false
+  /// screen decides what tapping it does — here, pushing the Deep Session
+  /// threshold through the coordinator.
+  @Environment(\.openDeepSession) private var openDeepSession
 
   private let heroHeight: CGFloat = 320
   /// How far the greeting card rides up over the hero.
@@ -32,12 +32,8 @@ struct MindGardenHomeView: View {
             .padding(.horizontal, .edge)
 
           DailyPracticeCard(minutesRemaining: state.minutesRemaining) {
-            isPracticePresented = true
+            openDeepSession(DeepSessionLibrary.balancingBreath)
           }
-          .deepSessionLaunch(
-            session: DeepSessionLibrary.balancingBreath,
-            isPresented: $isPracticePresented
-          )
           .padding(.horizontal, .edge)
 
           GrowYourGardenSection(stages: state.stages)

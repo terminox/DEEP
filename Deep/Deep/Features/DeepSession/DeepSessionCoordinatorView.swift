@@ -1,66 +1,65 @@
 import SwiftUI
 
-/// Composition root for the full Deep Session flow — intro threshold, guided
-/// session, then the completion beat, reached on its own once the engine
-/// finishes — presented full-screen (via `deepSessionLaunch`) over whichever
-/// tab launched it. Owns the stage switch, the engine, the dismissal
-/// handshake, recording the finished practice, and silencing the ambient
-/// player; all styling lives in the leaf screens (per the coordinator rules).
+/// Composition root for the guided practice — the session itself, then the
+/// completion beat, reached on its own once the engine finishes. Presented
+/// full-screen over the whole shell (via `deepSessionRun`, from the pushed
+/// `DeepSessionIntroView` threshold), so the tab bar and mini player are gone
+/// for the duration. Owns the stage switch, the engine, the finish handshake,
+/// recording the practice, and silencing the ambient player; all styling lives
+/// in the leaf screens (per the coordinator rules).
 struct DeepSessionCoordinatorView: View {
   private enum Stage {
-    case intro
     case session
     case completion
   }
 
   private let session: DeepSession
-  @State private var stage: Stage = .intro
+  /// Ends the practice. The presenter owns the dismissal — SwiftUI's `dismiss`
+  /// has no purchase on a UIKit-presented hosting controller — so every way
+  /// out routes through here.
+  private let onFinish: () -> Void
+
+  @State private var stage: Stage = .session
   @State private var engine: BreathEngine
   /// The completion is credited exactly once, the moment the engine finishes —
   /// so closing from the finished screen still counts.
   @State private var didRecord = false
 
-  @Environment(\.dismiss) private var dismiss
   @Environment(\.soundPlayer) private var soundPlayer
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.scenePhase) private var scenePhase
 
-  init(session: DeepSession) {
+  init(session: DeepSession, onFinish: @escaping () -> Void = {}) {
     self.session = session
+    self.onFinish = onFinish
     _engine = State(initialValue: BreathEngine(session: session))
   }
 
   var body: some View {
     ZStack {
       // A soft drift, not a navigation container: the stages only ever
-      // move forward (the only way back out is dismissing the flow), and every
-      // screen sits on an opaque base, so the fade can't reveal the tab
+      // move forward (the only way back out is ending the practice), and every
+      // screen sits on an opaque base, so the fade can't reveal the threshold
       // beneath.
       switch stage {
-      case .intro:
-        DeepSessionIntroView(
-          session: session,
-          onBegin: { withAnimation(.hush) { stage = .session } },
-          onClose: { dismiss() }
-        )
-        .transition(.softDrift)
       case .session:
         // The view starts the engine itself, after its settling countdown.
         DeepSessionView(
           engine: engine,
-          onClose: { dismiss() }
+          onClose: onFinish
         )
         .transition(.softDrift)
       case .completion:
-        DeepSessionCompletionView(session: session, onReturn: { dismiss() })
+        DeepSessionCompletionView(session: session, onReturn: onFinish)
           .transition(.softDrift)
       }
     }
     .onAppear {
-      // A guided breath and ambient audio don't mix — the flow begins in
-      // silence. The track stays loaded, so the mini player is waiting on
-      // return.
+      // A guided breath and ambient audio don't mix — the practice begins in
+      // silence. The threshold before it is an ordinary screen in the tab, so
+      // the track only stops here. It stays loaded, so the mini player is
+      // waiting on return.
       soundPlayer.pause()
       // A breath practice is hands-off; don't let the screen sleep mid-round.
       UIApplication.shared.isIdleTimerDisabled = true
@@ -93,7 +92,7 @@ struct DeepSessionCoordinatorView: View {
   }
 }
 
-#Preview("Deep session flow") {
+#Preview("Deep session practice") {
   DeepSessionCoordinatorView(session: DeepSessionLibrary.balancingBreath)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
     .environment(\.practiceStore, MockPracticeStore())

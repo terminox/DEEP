@@ -127,6 +127,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         self?.showCollectionList(title: title, collections: collections)
       }
       .environment(\.openFukuLounge) { [weak self] in self?.showLobby() }
+      .environment(\.openDeepSession) { [weak self] session in self?.showDeepSession(session) }
       .environment(\.soundPlayer, player)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
@@ -181,6 +182,19 @@ final class GlobalPauseCoordinatorController: UIViewController {
       GlobalPauseLobbyView(card: card)
         .environment(\.globalPauseSession, pauseSession)
         .environment(\.pauseEventRepository, pauseRepository)
+    )
+  }
+
+  /// The Deep Session threshold rides the system push like any other leaf, so
+  /// the tab bar, mini player and back chevron stay with it; the practice
+  /// itself lifts up over the whole shell from there. The environment is
+  /// re-injected because SwiftUI's can't cross the UIKit boundary.
+  private func showDeepSession(_ session: DeepSession) {
+    push(
+      DeepSessionIntroView(session: session)
+        .environment(\.soundPlayer, player)
+        .environment(\.practiceStore, practiceStore)
+        .environment(\.heartLedger, heartLedger)
     )
   }
 

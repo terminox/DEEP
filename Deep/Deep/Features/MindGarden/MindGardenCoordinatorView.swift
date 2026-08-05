@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Coordinator view for the Mind Garden flow — the business-specific composition
-/// root. It owns navigation and hosts the home screen, and nothing else.
+/// root. It owns navigation (home → Deep Session threshold) and hosts the home
+/// screen, and nothing else.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
 /// screen-level styling such as `AtmosphereBackground` and the full-bleed hero
@@ -9,15 +10,20 @@ import SwiftUI
 /// `NavigationStack` rather than being hidden behind it.
 struct MindGardenCoordinatorView: View {
   @Environment(\.practiceStore) private var practice
+  @State private var path = NavigationPath()
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $path) {
       // Derived in body, so reading the journal's observable aggregates keeps
       // the garden live: a session finished anywhere regrows this screen.
       MindGardenHomeView(state: GardenState(practice: practice))
         .toolbar(.hidden, for: .navigationBar)
         .heroRefreshable { await practice.refresh() }
+        .navigationDestination(for: DeepSession.self) { session in
+          DeepSessionIntroView(session: session)
+        }
     }
+    .environment(\.openDeepSession, { session in path.append(session) })
     .preferredColorScheme(.light)
   }
 }

@@ -1,10 +1,11 @@
 import SwiftUI
 
 /// Coordinator view for the Deep Sound flow — the business-specific composition
-/// root. It owns navigation (home → collection detail), and nothing else. The
-/// mini player lives in the tab bar's bottom accessory, owned by the app shell
-/// (`MainTabController`), not by this tab. The Breathe hero presents the Deep
-/// Session flow full-screen itself — it never routes through this stack.
+/// root. It owns navigation (home → collection detail, home → Deep Session
+/// threshold), and nothing else. The mini player lives in the tab bar's bottom
+/// accessory, owned by the app shell (`MainTabController`), not by this tab.
+/// The Deep Session threshold is a pushed leaf like any other; the practice
+/// itself lifts up over the whole shell from there.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
 /// screen-level styling such as `AtmosphereBackground` lives in the leaf screens
@@ -27,8 +28,12 @@ struct DeepSoundCoordinatorView: View {
         .navigationDestination(for: SoundCollection.self) { collection in
           CollectionDetailView(collection: collection, bottomInset: .rhythm)
         }
+        .navigationDestination(for: DeepSession.self) { session in
+          DeepSessionIntroView(session: session)
+        }
     }
     .environment(\.openCollection, { collection in path.append(collection) })
+    .environment(\.openDeepSession, { session in path.append(session) })
     // Leaf play buttons drive the same shared player that feeds the shell's
     // bottom-accessory mini player.
     .environment(\.soundPlayer, player)

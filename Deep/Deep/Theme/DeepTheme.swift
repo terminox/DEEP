@@ -67,6 +67,34 @@ extension UIColor {
 
 // MARK: - Motion
 
+/// One timing curve, declared once as raw control points + duration and
+/// materialised into the framework-native types — a SwiftUI `Animation` and a
+/// UIKit `UICubicTimingParameters` — so a UIKit transition can hold exactly the
+/// same tempo as its SwiftUI twin.
+private struct DeepCurveToken {
+  let x1: Double
+  let y1: Double
+  let x2: Double
+  let y2: Double
+  let duration: TimeInterval
+
+  var animation: Animation {
+    .timingCurve(x1, y1, x2, y2, duration: duration)
+  }
+
+  var timingParameters: UICubicTimingParameters {
+    UICubicTimingParameters(
+      controlPoint1: CGPoint(x: x1, y: y1),
+      controlPoint2: CGPoint(x: x2, y: y2)
+    )
+  }
+}
+
+/// The hush between two moments — the long screen dissolve. Declared here so
+/// the SwiftUI `.hush` and the UIKit `DeepSessionHushTransition` can never
+/// drift apart.
+private let hushCurve = DeepCurveToken(x1: 0.3, y1: 0.0, x2: 0.2, y2: 1.0, duration: 1.05)
+
 /// Named SwiftUI animations, dot-accessible wherever an `Animation` is expected:
 /// `.animation(.exhale, value:)`, `withAnimation(.settle) { … }`.
 extension Animation {
@@ -79,7 +107,7 @@ extension Animation {
   /// The hush between two moments — the long screen dissolve. Reserved for
   /// screen-level hand-offs (app root, onboarding routing, Deep Session
   /// stages, Global Pause phases); micro-feedback keeps `.exhale` / `.bloom`.
-  static let hush   = Animation.timingCurve(0.3, 0.0, 0.2, 1.0, duration: 1.05)
+  static let hush   = hushCurve.animation
 
   /// The breath itself — the exhale curve stretched over a whole breath phase,
   /// the one motion in the app allowed to take entire seconds. Drives the Deep
@@ -97,6 +125,19 @@ extension UnitCurve {
     startControlPoint: UnitPoint(x: 0.32, y: 0.0),
     endControlPoint: UnitPoint(x: 0.36, y: 1.0)
   )
+}
+
+/// The same motion tokens for UIKit, so a custom view-controller transition
+/// carries the identical curve its SwiftUI twin does, e.g.
+/// `UIViewPropertyAnimator(duration: .hush, timingParameters: .hush)`.
+extension UICubicTimingParameters {
+  static var hush: UICubicTimingParameters { hushCurve.timingParameters }
+}
+
+extension TimeInterval {
+  /// The hush's length, for the UIKit animators that must state it separately
+  /// from the curve.
+  static var hush: TimeInterval { hushCurve.duration }
 }
 
 /// Dot-accessible `Duration`s for time the app deliberately holds, e.g.

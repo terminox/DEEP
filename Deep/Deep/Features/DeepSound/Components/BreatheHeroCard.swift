@@ -1,20 +1,20 @@
 import SwiftUI
 
 /// The large editorial doorway at the top of the home screen — Deep Sound's
-/// bridge into Deep Session. The whole card presents the full flow (intro →
-/// session) over the shell, zooming out of its own frame; unlike a collection
-/// card there is nothing to play in place, so a quiet halo ring (echoing the
-/// breathing orb) stands where a play button would.
+/// bridge into Deep Session. The whole card pushes the session's threshold onto
+/// the tab's stack; unlike a collection card there is nothing to play in place,
+/// so a quiet halo ring (echoing the breathing orb) stands where a play button
+/// would.
 struct BreatheHeroCard: View {
   let session: DeepSession
 
-  @State private var isPresented = false
+  @Environment(\.openDeepSession) private var openDeepSession
 
   private let imageURL = URL(string: "https://images.unsplash.com/photo-1499346030926-9a72daac6c63?w=600&q=80")
 
   var body: some View {
     Button {
-      isPresented = true
+      openDeepSession(session)
     } label: {
       ZStack(alignment: .bottomLeading) {
         SoundArtwork(palette: .mist, imageURL: imageURL, cornerRadius: .card)
@@ -55,7 +55,6 @@ struct BreatheHeroCard: View {
       }
     }
     .buttonStyle(.softPress)
-    .deepSessionLaunch(session: session, isPresented: $isPresented)
     .shadow(color: Color.lavenderMist.opacity(0.28), radius: 22, x: 0, y: 12)
     .accessibilityLabel("Breathe, a \(session.durationMinutes) minute guided breathing session")
   }
