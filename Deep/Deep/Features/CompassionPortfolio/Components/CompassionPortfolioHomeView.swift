@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The Compassion portfolio home — one quiet scroll: an atmospheric hero, the
-/// user's heart balance, the causes their hearts can flow to, a summary of their
-/// impact, and recent dispatches from the field.
+/// The Compassion portfolio home — one quiet scroll that reads as a story: an
+/// atmospheric hero, then the portfolio itself (what you hold, where the
+/// community's hearts have gone, what you've given), the causes they flow to,
+/// and finally the dispatches that show what came back.
 ///
 /// This is the leaf screen, so it owns its screen-level styling: the video hero
 /// bleeds under the status bar and `AtmosphereBackground` sits behind the scroll
@@ -23,12 +24,13 @@ struct CompassionPortfolioHomeView: View {
         StretchyHero(media: .video(resource: "sky"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          HeartsBalanceCard(balance: ledger.balance, heartsGiven: ledger.heartsGiven)
+          CompassionPortfolioCard(ledger: ledger)
             .padding(.horizontal, .edge)
 
-          CausesSection(categories: ledger.categories)
-
-          ImpactSummarySection(ledger: ledger)
+          CausesSection(
+            categories: ledger.categories,
+            peopleReached: ledger.peopleReached
+          )
 
           FieldReportsSection(reports: ledger.reports)
 

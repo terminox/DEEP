@@ -19,11 +19,13 @@ final class HeartLedger {
   init(
     balance: Int,
     heartsGiven: Int = 0,
+    givenByUser: [String: Int] = [:],
     categories: [CompassionCategory] = CompassionLibrary.categories,
     reports: [FieldReport] = CompassionLibrary.reports
   ) {
     self.balance = balance
     self.heartsGiven = heartsGiven
+    self.givenByUser = givenByUser
     self.categories = categories
     self.reports = reports
   }
@@ -36,13 +38,26 @@ final class HeartLedger {
     categories.filter { givenByUser[$0.id, default: 0] > 0 }.count
   }
 
-  /// People reached across every cause — the headline reach figure.
+  /// People reached across every cause. A *community* figure — the reach of
+  /// every cause the app supports, not anything attributable to one user.
   var peopleReached: Int {
     categories.reduce(0) { $0 + $1.peopleReached }
   }
 
+  /// Hearts the whole community has pooled across every cause — the total the
+  /// allocation ring divides up.
+  var heartsPooled: Int {
+    categories.reduce(0) { $0 + $1.heartsShared }
+  }
+
   /// Per-cause tally of hearts this user has personally sent, by category id.
-  private var givenByUser: [String: Int] = [:]
+  private var givenByUser: [String: Int]
+
+  /// Hearts *this user* has sent to one cause — the honest personal figure the
+  /// cause detail closes on.
+  func heartsGiven(in categoryID: String) -> Int {
+    givenByUser[categoryID, default: 0]
+  }
 
   /// The latest snapshot of a category (totals shift as hearts are sent).
   func category(_ id: String) -> CompassionCategory? {
@@ -79,9 +94,15 @@ final class HeartLedger {
 }
 
 extension HeartLedger {
-  /// A warm starting portfolio for previews and the running app.
+  /// A warm starting portfolio for previews and the running app. The per-cause
+  /// spread sums to `heartsGiven`, so "causes supported" and each cause's "your
+  /// part" line tell the same story as the headline figure.
   static var sample: HeartLedger {
-    HeartLedger(balance: 2_450, heartsGiven: 318)
+    HeartLedger(
+      balance: 2_450,
+      heartsGiven: 318,
+      givenByUser: ["peace": 104, "healthcare": 96, "nature": 71, "education": 47]
+    )
   }
 
   /// A first-run portfolio: hearts to give, nothing given yet.
@@ -91,7 +112,13 @@ extension HeartLedger {
 
   /// An emptied portfolio for testing the "no hearts left" state.
   static var spent: HeartLedger {
-    HeartLedger(balance: 0, heartsGiven: 980)
+    HeartLedger(
+      balance: 0,
+      heartsGiven: 980,
+      givenByUser: [
+        "peace": 240, "healthcare": 228, "nature": 194, "education": 176, "community": 142,
+      ]
+    )
   }
 }
 
