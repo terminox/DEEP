@@ -39,18 +39,33 @@ struct PartnerOrganizationCard: View {
         Spacer(minLength: 0)
       }
 
-      HStack(spacing: 6) {
-        Image(systemName: "link")
-          .font(.system(size: 10, weight: .semibold))
-        Text(partner.website)
-          .lineLimit(1)
-          .truncationMode(.middle)
-      }
-      .font(DeepType.caption.weight(.medium))
-      .foregroundStyle(.lavenderMist)
+      website
     }
     .padding(18)
     .frostedCard()
+  }
+
+  /// Styled as a link, so it has to behave as one.
+  @ViewBuilder
+  private var website: some View {
+    let label = HStack(spacing: 6) {
+      Image(systemName: "link")
+        .font(.system(size: 10, weight: .semibold))
+      Text(partner.website)
+        .lineLimit(1)
+        .truncationMode(.middle)
+    }
+    .font(DeepType.caption.weight(.medium))
+    .foregroundStyle(.lavenderMist)
+
+    if let url = URL(string: "https://\(partner.website)") {
+      Link(destination: url) { label }
+        .buttonStyle(.softPress)
+        .accessibilityLabel("Visit \(partner.name)")
+        .accessibilityHint(partner.website)
+    } else {
+      label
+    }
   }
 
   private func metaChip(symbol: String, text: String) -> some View {

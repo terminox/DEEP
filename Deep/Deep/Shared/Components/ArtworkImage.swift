@@ -21,6 +21,10 @@ struct ArtworkImage: View {
   /// Optional accent tint drawn bottom-up over the *photo only* (never the
   /// placeholder), inside the component's clip — the `CountryImage` wash.
   var accentWash: Color? = nil
+  /// The 0.5pt white edge that gives a tile its lifted, glassy rim. Full-bleed
+  /// artwork (a screen-wide hero) must switch this off, or the rim becomes a
+  /// hairline drawn straight across the screen.
+  var bordered: Bool = true
 
   @Environment(\.imageLoader) private var imageLoader
   @State private var loaded: UIImage?
@@ -36,7 +40,11 @@ struct ArtworkImage: View {
     Color.clear
       .overlay { content }
       .clipShape(shape)
-      .overlay(shape.strokeBorder(.white.opacity(0.35), lineWidth: 0.5))
+      .overlay {
+        if bordered {
+          shape.strokeBorder(.white.opacity(0.35), lineWidth: 0.5)
+        }
+      }
   }
 
   @ViewBuilder

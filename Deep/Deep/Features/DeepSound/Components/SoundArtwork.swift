@@ -10,9 +10,16 @@ struct SoundArtwork: View {
   /// Optional photograph shown under the gradient wash.
   var imageURL: URL? = nil
   var cornerRadius: CGFloat = .tile
+  /// See `ArtworkImage.bordered` — full-bleed artwork switches the rim off.
+  var bordered: Bool = true
 
   var body: some View {
-    ArtworkImage(url: imageURL, colors: palette.colors, cornerRadius: cornerRadius)
+    ArtworkImage(
+      url: imageURL,
+      colors: palette.colors,
+      cornerRadius: cornerRadius,
+      bordered: bordered
+    )
   }
 }
 

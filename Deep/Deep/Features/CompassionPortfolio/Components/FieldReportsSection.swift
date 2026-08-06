@@ -1,7 +1,9 @@
 import SwiftUI
 
 /// The "from the field" feed — recent real-world outcomes reported back to the
-/// app, so members see what their hearts set in motion.
+/// app, so members see what their hearts set in motion. Runs horizontally, like
+/// the app's other shelves, so the dispatches read as their own kind of content
+/// rather than a fourth stack of rows.
 struct FieldReportsSection: View {
   let reports: [FieldReport]
 
@@ -9,12 +11,14 @@ struct FieldReportsSection: View {
     VStack(alignment: .leading, spacing: 14) {
       HomeSectionHeader(title: "From the field")
 
-      VStack(spacing: 12) {
-        ForEach(reports) { report in
-          FieldReportCard(report: report)
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(alignment: .top, spacing: 16) {
+          ForEach(reports) { report in
+            FieldReportBannerCard(report: report)
+          }
         }
+        .padding(.horizontal, .edge)
       }
-      .padding(.horizontal, .edge)
     }
   }
 }
