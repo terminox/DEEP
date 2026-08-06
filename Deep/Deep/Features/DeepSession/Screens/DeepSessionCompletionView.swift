@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// The gentle beat after a finished Deep Session — what softly grew from the
-/// practice: minutes into the garden, a heart earned. Growth reflected back,
-/// never a score; no streaks, no goals, no numbers to chase.
+/// The gentle beat after a finished Deep Session — the same sky, one breath
+/// later. The orb stays where the session left it, growth is spoken as a single
+/// line rather than counted on tiles, and the garden's own plant stands at
+/// ground level to receive the practice. Never a score; no streaks, no goals,
+/// no numbers to chase.
 ///
 /// Leaf screen, so it owns its screen-level styling (per the coordinator
 /// rules). Third and final stage of the presented flow, arrived at on its own
@@ -14,14 +16,18 @@ struct DeepSessionCompletionView: View {
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  /// The content blooms in from rest once, on arrival — hero first, then the
-  /// grown tiles, then the way back.
+  /// The content blooms in from rest once, on arrival — reflection first, then
+  /// the plant, then the way back. The orb itself never blooms: it rides the
+  /// screen crossfade so it reads as the session's orb continuing.
   @State private var hasArrived = false
-  /// One-shot trigger for the earned heart's little flourish.
+  /// One-shot trigger for the heart the garden gives back.
   @State private var heartFlourish = 0
   /// The settled orb keeps a slow idle drift, like the intro's — the session
   /// hands it over at its resting fullness.
   @State private var idleSwell: CGFloat = 0.6
+  /// Flips once the minutes have settled into today's total, rolling the
+  /// digits up from the pre-session count.
+  @State private var minutesGrown = false
 
   var body: some View {
     ZStack {
@@ -33,14 +39,19 @@ struct DeepSessionCompletionView: View {
       VStack(spacing: 0) {
         Spacer()
 
-        bloomsIn(hero, after: 0)
+        BreathingOrb(swell: idleSwell)
+          .frame(width: 280)
+          .accessibilityHidden(true)
 
-        bloomsIn(grownTiles, after: 0.15)
-          .padding(.top, .rhythm)
+        bloomsIn(reflection, after: 0)
+          .padding(.top, .rhythm * 1.5)
 
         Spacer()
 
-        bloomsIn(returnButton, after: 0.3)
+        plant
+
+        bloomsIn(returnButton, after: 0.5)
+          .padding(.top, .rhythm)
           .padding(.bottom, .rhythm)
       }
       .padding(.horizontal, .edge)
@@ -49,18 +60,41 @@ struct DeepSessionCompletionView: View {
       hasArrived = true
       if reduceMotion {
         idleSwell = 0.6
+        minutesGrown = true
       } else {
         withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
           idleSwell = 0.7
         }
       }
-      // The heart floats off its tile once the tile has landed.
       Task {
-        try? await Task.sleep(for: .seconds(0.7))
+        if !reduceMotion {
+          try? await Task.sleep(for: .seconds(1.2))
+          withAnimation(.exhale) { minutesGrown = true }
+        }
+        // The heart rises from the plant once everything has settled.
+        try? await Task.sleep(for: .seconds(0.8))
         heartFlourish += 1
       }
-      AccessibilityNotification.Announcement("Session complete. A heart earned.").post()
+      AccessibilityNotification.Announcement(
+        "Session complete. \(practiceStore.minutesToday) minutes in your garden today. A heart ready to give."
+      ).post()
     }
+  }
+
+  /// Today's total including this session — the store records the completion
+  /// before the crossfade, so the digits roll from the pre-session count up to
+  /// the grown one: growth witnessed, not a score displayed.
+  private var minutesShown: Int {
+    minutesGrown
+      ? practiceStore.minutesToday
+      : max(0, practiceStore.minutesToday - session.durationMinutes)
+  }
+
+  /// The furthest plant the practice has grown so far. The seedling is always
+  /// unlocked, so the fallback never shows.
+  private var grownPlant: PlantKind {
+    GardenStage.journey(unlockedForLongestStreak: practiceStore.longestStreakDays)
+      .last(where: \.isUnlocked)?.kind ?? .seedling
   }
 
   /// One step of the staggered arrival — rises softly into place, each group
@@ -72,76 +106,41 @@ struct DeepSessionCompletionView: View {
       .animation(.bloom.delay(delay), value: hasArrived)
   }
 
-  // MARK: - Hero
+  // MARK: - Reflection
 
-  private var hero: some View {
-    VStack(spacing: 0) {
-      BreathingOrb(swell: idleSwell)
-        .frame(width: 180)
-
-      VStack(spacing: 8) {
+  private var reflection: some View {
+    VStack(spacing: 8) {
+      VStack(spacing: 6) {
+        Text("Session complete")
+          .textCase(.uppercase)
+          .font(DeepType.micro)
+          .tracking(1.4)
+          .foregroundStyle(.driftGrey)
         Text("Softly grown")
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
-        Text("\(session.title) · \(session.durationMinutes) min settled into your garden")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-          .multilineTextAlignment(.center)
       }
-      .padding(.top, .rhythm * 1.5)
-    }
-    .accessibilityElement(children: .combine)
-  }
-
-  // MARK: - What grew
-
-  private var grownTiles: some View {
-    HStack(spacing: 12) {
-      grownTile(
-        systemImage: "leaf.fill",
-        iconStyle: GardenColor.sage,
-        value: "\(practiceStore.minutesToday)",
-        label: "min in your garden today"
-      )
-
-      grownTile(
-        systemImage: "heart.fill",
-        iconStyle: Color.blushPowder,
-        value: "+1",
-        label: "heart ready to give"
-      )
-      .heartBurst(trigger: heartFlourish)
-    }
-    // Both tiles stretch to the taller one, so the pair reads as one shelf.
-    .fixedSize(horizontal: false, vertical: true)
-  }
-
-  private func grownTile(
-    systemImage: String,
-    iconStyle: Color,
-    value: String,
-    label: String
-  ) -> some View {
-    VStack(spacing: 8) {
-      Image(systemName: systemImage)
-        .font(.system(size: 15, weight: .semibold))
-        .foregroundStyle(iconStyle)
-        .frame(width: 40, height: 40)
-        .background(.white.opacity(0.6), in: Circle())
-      Text(value)
-        .font(DeepType.bigNumber)
-        .monospacedDigit()
-        .foregroundStyle(.deepPlum)
-      Text(label)
+      Text("\(minutesShown) min in your garden today · a heart ready to give")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
         .multilineTextAlignment(.center)
+        .contentTransition(.numericText(value: Double(minutesShown)))
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .padding(.vertical, 18)
-    .padding(.horizontal, 12)
-    .frostedCard(cornerRadius: .tile)
     .accessibilityElement(children: .combine)
+  }
+
+  // MARK: - Plant
+
+  /// The garden made real — the user's furthest-grown plant standing on the
+  /// atmosphere, blooming up from its roots on arrival.
+  private var plant: some View {
+    PlantArtwork(kind: grownPlant)
+      .frame(height: 84)
+      .heartBurst(trigger: heartFlourish)
+      .opacity(hasArrived ? 1 : 0)
+      .scaleEffect(reduceMotion || hasArrived ? 1 : 0.92, anchor: .bottom)
+      .animation(.bloom.delay(0.35), value: hasArrived)
+      .accessibilityHidden(true)
   }
 
   // MARK: - Return
@@ -175,5 +174,18 @@ struct DeepSessionCompletionView: View {
 
 #Preview("Deep session — first practice") {
   DeepSessionCompletionView(session: DeepSessionLibrary.balancingBreath)
-    .environment(\.practiceStore, MockPracticeStore.fresh)
+    .environment(\.practiceStore, MockPracticeStore(
+      minutesToday: DeepSessionLibrary.balancingBreath.durationMinutes,
+      currentStreakDays: 1,
+      longestStreakDays: 1
+    ))
+}
+
+#Preview("Deep session — deep roots") {
+  DeepSessionCompletionView(session: DeepSessionLibrary.balancingBreath)
+    .environment(\.practiceStore, MockPracticeStore(
+      minutesToday: 16,
+      currentStreakDays: 30,
+      longestStreakDays: 45
+    ))
 }
