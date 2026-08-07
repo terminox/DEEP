@@ -221,8 +221,6 @@ final class EarthInteraction {
   func touchBegan(at point: CGPoint, viewSize: CGSize) {
     lastTouchPoint = point
     momentum = .zero
-    // A grabbing finger cancels any in-flight turn-to-place.
-    orientAnimation = nil
     lastInteractionTime = lastFrameTime ?? 0
   }
 
@@ -231,6 +229,10 @@ final class EarthInteraction {
     let dx = Float(point.x - prev.x)
     let dy = Float(point.y - prev.y)
     lastTouchPoint = point
+    // A *dragging* finger cancels any in-flight turn-to-place — but a mere
+    // tap (touchBegan with no movement) must not, or a stray tap on the orb
+    // kills the "turn to you" mid-flight.
+    orientAnimation = nil
 
     let yaw = dx * dragSensitivity
     let pitch = dy * dragSensitivity
