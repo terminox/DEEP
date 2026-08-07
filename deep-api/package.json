@@ -14,7 +14,9 @@
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force",
     "db:seed": "tsx prisma/seed.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test 'test/**/*.test.ts'",
+    "geoip:update": "bash scripts/geoip-update.sh"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -27,6 +29,7 @@
     "argon2": "^0.41.1",
     "fastify": "^5.2.0",
     "jsonwebtoken": "^9.0.2",
+    "maxmind": "^5.0.7",
     "zod": "^3.24.1"
   },
   "devDependencies": {

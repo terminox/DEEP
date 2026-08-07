@@ -230,10 +230,23 @@ struct PauseLiveDTO: Decodable {
   struct Join: Decodable {
     let iso: String
     let at: String
+    // Privacy-rounded join coordinates; absent when IP geolocation missed
+    // (the client falls back to the country centroid).
+    let lat: Double?
+    let lon: Double?
+  }
+  struct Point: Decodable {
+    let lat: Double
+    let lon: Double
+    let count: Int
   }
   let serverNow: String
   let participantCount: Int
   let byCountry: [CountryCount]
+  // Server-clustered participant locations (≤96, privacy-rounded). Optional:
+  // older servers omit both and the client keeps the country-glow path.
+  let points: [Point]?
+  let unlocatedByCountry: [CountryCount]?
   let recentJoins: [Join]
 }
 
@@ -251,6 +264,16 @@ struct PauseMessagePostResponseDTO: Decodable {
 struct PauseHeartbeatRequestDTO: Encodable {
   let presenceId: String
   let countryISO: String?
+}
+
+struct PauseHeartbeatResponseDTO: Decodable {
+  struct Location: Decodable {
+    let lat: Double
+    let lon: Double
+  }
+  // The caller's own resolved (privacy-rounded) location; null when the
+  // server couldn't place the IP. Absent entirely on older servers.
+  let location: Location?
 }
 
 struct PeaceMessagePostRequestDTO: Encodable {

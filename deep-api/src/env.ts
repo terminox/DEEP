@@ -28,6 +28,11 @@ const schema = z.object({
     .string()
     .optional()
     .transform((v) => v === "true" || v === "1"),
+  // Optional: enables real IP geolocation for Global Pause (see lib/geoip.ts). Falls
+  // back to per-participant country-only presence when the file is missing.
+  GEOIP_DB_PATH: z.string().default("./geoip/GeoLite2-City.mmdb"),
+  // Only needed to run scripts/geoip-update.sh; never read at request time.
+  MAXMIND_LICENSE_KEY: z.string().optional(),
 });
 
 export const env = schema.parse(process.env);

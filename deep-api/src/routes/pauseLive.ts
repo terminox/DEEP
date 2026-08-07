@@ -7,6 +7,7 @@ import { requireAuth, optionalAuth } from "../auth/middleware.js";
 import { mediaUrl } from "../lib/media.js";
 import { resolveOccurrence, resolveNow, setLiveWindow, localDate } from "../lib/pauseSchedule.js";
 import * as presence from "../lib/pausePresence.js";
+import * as geoip from "../lib/geoip.js";
 import { env } from "../env.js";
 
 // The live Global Pause event: schedule, presence, and peace messages.
@@ -102,8 +103,14 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       .object({ presenceId: z.string().min(8).max(64), countryISO: countryISOSchema })
       .parse(req.body);
     const key = req.auth ? `user:${req.auth.sub}` : `anon:${body.presenceId}`;
-    presence.heartbeat(key, body.countryISO ?? null);
-    return { ok: true, serverNow: resolveNow().toISOString() };
+    const isNew = !presence.isActive(key);
+    const loc = isNew ? await geoip.lookup(req.ip) : null;
+    const result = presence.heartbeat(
+      key,
+      body.countryISO ?? null,
+      isNew ? (loc ? { lat: loc.lat, lon: loc.lon } : null) : undefined,
+    );
+    return { ok: true, serverNow: resolveNow().toISOString(), location: result.location };
   });
 
   app.delete("/pause/presence/:presenceId", { preHandler: optionalAuth }, async (req) => {
@@ -131,7 +138,16 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       phase: occurrence.phaseAt(now),
       participantCount: snap.total,
       byCountry: Object.entries(snap.byCountry).map(([iso, count]) => ({ iso, count })),
-      recentJoins: snap.recentJoins.map((j) => ({ iso: j.iso, at: j.at.toISOString() })),
+      unlocatedByCountry: Object.entries(snap.unlocatedByCountry).map(([iso, count]) => ({
+        iso,
+        count,
+      })),
+      points: snap.points,
+      recentJoins: snap.recentJoins.map((j) => ({
+        iso: j.iso,
+        at: j.at.toISOString(),
+        ...(j.lat !== undefined ? { lat: j.lat, lon: j.lon } : {}),
+      })),
       messages: messages.map(serializePeaceMessage),
     };
   });
@@ -270,6 +286,48 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         setLiveWindow(meditation);
       }
       return { mode, serverNow: resolveNow().toISOString() };
+    });
+
+    // Dev-only geolocation override for the globe: "fixed" pins every new
+    // join to one lat/lon (real device, fake location), "scatter" seeds N
+    // fake presences at random coordinates (fake devices, no real join),
+    // "drip" joins N fake participants one at a time through the real join
+    // path so the client sees spark + ripple like genuine arrivals, "off"
+    // restores real IP lookups (and cancels any drip in flight). Registered
+    // only alongside time-travel.
+    app.post("/dev/pause/fake-location", async (req) => {
+      const body = z
+        .object({
+          mode: z.enum(["off", "fixed", "scatter", "drip"]),
+          lat: z.number().min(-90).max(90).optional(),
+          lon: z.number().min(-180).max(180).optional(),
+          seed: z.number().int().positive().max(500).optional(),
+          intervalMs: z.number().int().min(250).max(30000).default(4000),
+        })
+        .refine((b) => b.mode !== "fixed" || (b.lat !== undefined && b.lon !== undefined), {
+          message: "lat and lon required for mode=fixed",
+        })
+        .refine((b) => b.mode !== "scatter" || b.seed !== undefined, {
+          message: "seed required for mode=scatter",
+        })
+        .refine(
+          (b) => b.mode !== "drip" || (b.seed !== undefined && b.seed >= 1 && b.seed <= 50),
+          { message: "seed (1-50) required for mode=drip" },
+        )
+        .parse(req.body);
+
+      if (body.mode === "off") {
+        geoip.setFixedLocation(null);
+        presence.stopDrip();
+      } else if (body.mode === "fixed") {
+        geoip.setFixedLocation({ lat: body.lat!, lon: body.lon! });
+      } else if (body.mode === "scatter") {
+        presence.injectFake(body.seed!);
+      } else {
+        presence.startDrip(body.seed!, body.intervalMs);
+        return { ok: true, mode: body.mode, seed: body.seed!, intervalMs: body.intervalMs };
+      }
+      return { ok: true, mode: body.mode };
     });
   }
 }

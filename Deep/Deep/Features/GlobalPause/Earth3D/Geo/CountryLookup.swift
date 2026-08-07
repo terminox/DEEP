@@ -24,15 +24,7 @@ final class CountryLookup {
     let isTiny: Bool
 
     var unitVector: SIMD3<Float> {
-      // Equirectangular lat/lon → sphere unit normal.
-      // Convention: latitude 0 = equator, longitude 0 = +Z (front of orb facing camera).
-      let latR = latitude * .pi / 180
-      let lonR = longitude * .pi / 180
-      return SIMD3<Float>(
-        cos(latR) * sin(lonR),
-        sin(latR),
-        cos(latR) * cos(lonR)
-      )
+      sphereUnitVector(latDeg: latitude, lonDeg: longitude)
     }
   }
 
@@ -140,13 +132,7 @@ final class CountryLookup {
     ]
     var map: [String: ContinentCenter] = [:]
     for (k, v) in centers {
-      let latR = v.0 * .pi / 180
-      let lonR = v.1 * .pi / 180
-      let unit = SIMD3<Float>(
-        cos(latR) * sin(lonR),
-        sin(latR),
-        cos(latR) * cos(lonR)
-      )
+      let unit = sphereUnitVector(latDeg: v.0, lonDeg: v.1)
       map[k] = ContinentCenter(iso: k, unitVector: unit, angularRadius: v.2)
     }
     self.continentCenters = map
@@ -164,7 +150,7 @@ final class CountryLookup {
 
   /// Nearest country (great-circle distance) to a lat/lon, within `degrees`.
   func nearestCountry(lat: Float, lon: Float, withinDegrees: Float) -> Country? {
-    let target = unitVector(lat: lat, lon: lon)
+    let target = sphereUnitVector(latDeg: lat, lonDeg: lon)
     var best: (Country, Float)?
     for c in countries {
       let cos = simd_dot(c.unitVector, target)
@@ -182,14 +168,4 @@ final class CountryLookup {
 
   /// All countries (for the debug harness's slider list).
   var allCountries: [Country] { countries }
-
-  private func unitVector(lat: Float, lon: Float) -> SIMD3<Float> {
-    let latR = lat * .pi / 180
-    let lonR = lon * .pi / 180
-    return SIMD3<Float>(
-      cos(latR) * sin(lonR),
-      sin(latR),
-      cos(latR) * cos(lonR)
-    )
-  }
 }

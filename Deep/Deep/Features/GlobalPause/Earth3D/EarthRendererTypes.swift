@@ -5,7 +5,8 @@ import simd
 struct GlowSourceGPU {
   // xyz = unit position on sphere (lat/lon converted), w = intensity 0...1
   var positionAndIntensity: SIMD4<Float>
-  // x = angular radius (radians), yzw = reserved for future tinting
+  // x = angular radius (radians), y = whiteness 0...1 (join sparks push the
+  // glow toward moon-cream; steady sources send 0), zw = reserved
   var radiusPacked: SIMD4<Float>
 }
 

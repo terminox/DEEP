@@ -15,7 +15,11 @@ struct PeaceMessagesPage {
 protocol PauseEventRepository: AnyObject {
   func schedule() async throws -> PauseSchedule
   func live() async throws -> PauseLiveSnapshot
-  func heartbeat(presenceID: String, countryISO: String?) async throws
+  /// Returns the caller's own server-resolved location (privacy-rounded),
+  /// nil when the server couldn't place the IP — used to turn the globe to
+  /// the user and seat their home glow.
+  @discardableResult
+  func heartbeat(presenceID: String, countryISO: String?) async throws -> PauseJoinPoint?
   /// Best-effort; failures are irrelevant (the server sweeps stale presence).
   func leave(presenceID: String) async
   func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage
@@ -75,17 +79,32 @@ final class APIPauseEventRepository: PauseEventRepository {
         dto.byCountry.map { ($0.iso, $0.count) },
         uniquingKeysWith: { first, _ in first }
       ),
-      recentJoins: dto.recentJoins.map { .init(iso: $0.iso, at: date($0.at)) }
+      locations: (dto.points ?? []).map {
+        .init(lat: Float($0.lat), lon: Float($0.lon), count: $0.count)
+      },
+      unlocatedByCountry: Dictionary(
+        (dto.unlocatedByCountry ?? []).map { ($0.iso, $0.count) },
+        uniquingKeysWith: { first, _ in first }
+      ),
+      recentJoins: dto.recentJoins.map {
+        .init(
+          iso: $0.iso,
+          at: date($0.at),
+          lat: $0.lat.map(Float.init),
+          lon: $0.lon.map(Float.init)
+        )
+      }
     )
   }
 
-  func heartbeat(presenceID: String, countryISO: String?) async throws {
-    try await client.request(
+  @discardableResult
+  func heartbeat(presenceID: String, countryISO: String?) async throws -> PauseJoinPoint? {
+    let dto: PauseHeartbeatResponseDTO = try await client.request(
       "/pause/presence/heartbeat",
       method: "POST",
-      body: PauseHeartbeatRequestDTO(presenceId: presenceID, countryISO: countryISO),
-      as: OKResponseDTO.self
+      body: PauseHeartbeatRequestDTO(presenceId: presenceID, countryISO: countryISO)
     )
+    return dto.location.map { PauseJoinPoint(lat: Float($0.lat), lon: Float($0.lon)) }
   }
 
   func leave(presenceID: String) async {
@@ -263,11 +282,25 @@ final class FixturePauseEventRepository: PauseEventRepository {
       serverNow: Date(),
       participantCount: 4200 + posted.count,
       byCountry: ["TH": 1200, "JP": 640, "US": 580, "FR": 320, "BR": 410, "IN": 700],
-      recentJoins: [.init(iso: "TH", at: Date())]
+      // City-level clusters so every preview exercises the point-glow path.
+      locations: [
+        .init(lat: 13.8, lon: 100.5, count: 3),   // Bangkok
+        .init(lat: 35.0, lon: 135.8, count: 1),   // Kyoto
+        .init(lat: 40.7, lon: -74.0, count: 2),   // New York
+        .init(lat: 48.9, lon: 2.4, count: 1),     // Paris
+        .init(lat: -23.6, lon: -46.6, count: 2),  // São Paulo
+        .init(lat: -1.3, lon: 36.8, count: 1),    // Nairobi
+      ],
+      unlocatedByCountry: ["FR": 2],
+      recentJoins: [.init(iso: "TH", at: Date(), lat: 13.8, lon: 100.5)]
     )
   }
 
-  func heartbeat(presenceID: String, countryISO: String?) async throws {}
+  @discardableResult
+  func heartbeat(presenceID: String, countryISO: String?) async throws -> PauseJoinPoint? {
+    // Bangkok — previews get a home to turn to.
+    PauseJoinPoint(lat: 13.8, lon: 100.5)
+  }
   func leave(presenceID: String) async {}
 
   func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage {

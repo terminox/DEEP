@@ -23,7 +23,8 @@ using namespace metal;
 
 struct GlowSourceGPU {
   float4 positionAndIntensity;  // xyz = unit pos on sphere, w = intensity 0..1
-  float4 radiusPacked;          // x = angular radius (rad), yzw = reserved
+  float4 radiusPacked;          // x = angular radius (rad), y = whiteness 0..1
+                                // (join sparks push toward moon-cream), zw = reserved
 };
 
 struct EarthUniforms {
@@ -162,23 +163,45 @@ static float3 iridescent(float t) {
 }
 
 // ── Glow accumulator ────────────────────────────────────────────────────────
+//
+// Two-term profile per source: the original gaussian core plus a quarter-weight
+// halo skirt at 3× the radius. Tight point sources (participant cities,
+// ~0.03 rad) read as candle-points with a soft seat instead of hard dots;
+// country blobs get gentler coastlines of light from the same math.
+//
+// `white` carries the join-spark whiteness channel (radiusPacked.y): each
+// source's contribution weighted by its whiteness, clamped 0..1 — used to
+// momentarily warm the glow color toward moon-cream at a fresh join.
 
-static float accumulateGlow(float3 surfaceNormalLocal,
-                            constant GlowSourceGPU* sources,
-                            int count) {
+struct GlowAccum {
+  float glow;
+  float white;
+};
+
+static GlowAccum accumulateGlow(float3 surfaceNormalLocal,
+                                constant GlowSourceGPU* sources,
+                                int count) {
   float total = 0.0;
+  float whiteTotal = 0.0;
   for (int i = 0; i < count; ++i) {
     float3 p = sources[i].positionAndIntensity.xyz;
     float intensity = sources[i].positionAndIntensity.w;
     float angularRadius = max(sources[i].radiusPacked.x, 0.01);
+    float whiteness = sources[i].radiusPacked.y;
     float cosAngle = clamp(dot(surfaceNormalLocal, p), -1.0, 1.0);
     float angle = acos(cosAngle);
     float x = angle / angularRadius;
-    if (x > 3.0) continue;
-    float falloff = exp(-x * x * 0.5);
-    total += falloff * intensity;
+    if (x > 7.5) continue;                        // halo term reaches ~3× radius
+    float core = exp(-x * x * 0.5);
+    float halo = 0.30 * exp(-x * x * 0.5 / 9.0);  // σ = 3r, quarter-weight skirt
+    float f = (core + halo) * intensity;
+    total += f;
+    whiteTotal += f * whiteness;
   }
-  return 1.0 - exp(-total * 1.2);
+  GlowAccum a;
+  a.glow = 1.0 - exp(-total * 1.2);
+  a.white = clamp(whiteTotal, 0.0, 1.0);
+  return a;
 }
 
 // ── Main fragment ───────────────────────────────────────────────────────────
@@ -302,10 +325,14 @@ fragment float4 earthSurfaceFragment(
   // against the cream background.
   float continentInner = smoothstep(0.40, 0.75, landRaw);
 
-  // ── Country glow ──────────────────────────────────────────────────────────
-  float glow = accumulateGlow(localNormal, glowSources, glowCount);
+  // ── Participant glow (city points, country blobs, join sparks) ───────────
+  GlowAccum glowA = accumulateGlow(localNormal, glowSources, glowCount);
+  float glow = glowA.glow;
   float3 glowColor = mix(SOFT_LILAC, BLUSH_POWDER, glow);
   glowColor = mix(glowColor, PEACH_CLOUD, smoothstep(0.55, 0.95, glow));
+  // Join sparks momentarily warm toward moon-cream, capped at 0.55 so the
+  // peak reads as candle-light, never raw white under bloom.
+  glowColor = mix(glowColor, MOON_CREAM, min(glowA.white, 0.55));
 
   // ── Glass body — sharp rim, specular, dispersion ──────────────────────────
   //
@@ -384,6 +411,12 @@ fragment float4 earthSurfaceFragment(
   float3 landColor = mix(iridContinent, glowColor, glow * 0.75);
   float landBrightness = 1.0 + glow * 0.35;
 
+  // Glow must also seat over water — an island or coastal city would vanish
+  // where the land mask is zero. Gated with smoothstep so faint gaussian
+  // skirts contribute nothing (grey-smudge guard against the pale backdrop);
+  // only a genuinely lit point earns its ocean seat.
+  float seaGlow = glow * (1.0 - continent) * smoothstep(0.15, 0.5, glow);
+
   // Tonemap math: at HDR intensities above ~1.5× palette, the luma-preserving
   // tonemap starts crushing chroma toward white (each channel approaches 1.0
   // and the ratios that carry hue flatten). Keep continent intensity in the
@@ -400,6 +433,9 @@ fragment float4 earthSurfaceFragment(
   // Rim/edge are boosted (1.5 / 0.90) to compensate for the sharper alpha
   // curve below — keeps the bright silhouette line visible even though the
   // orb is now near-fully transparent a couple of pixels inside that line.
+  // Ocean seat — lets city points on islands/coasts (and sparks mid-ocean
+  // from imprecise geolocation) read where there is no land mask.
+  emissive += glowColor * seaGlow * 0.40;
   emissive += backTint * backGlow * 0.40;
   emissive += rimColor * fresnelRim * 1.50;
   emissive += dispersion * fresnelEdge * 0.90;
@@ -428,6 +464,7 @@ fragment float4 earthSurfaceFragment(
     + coastHalo * 0.18
     + rimAlpha * 1.20
     + backGlow * 0.45
+    + seaGlow * 0.30
   );
 
   return float4(emissive, alpha);

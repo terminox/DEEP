@@ -20,6 +20,12 @@ npm run dev                   # start on http://localhost:8080 (watch mode)
 The first run bootstraps an admin from `ADMIN_BOOTSTRAP_EMAIL` / `ADMIN_BOOTSTRAP_PASSWORD`
 (default `admin@deep.local` / `deepadmin123`).
 
+Optional: set `MAXMIND_LICENSE_KEY` and run `npm run geoip:update` to enable real IP-based
+locations for Global Pause participants; without it, participants fall back to locale-country
+presence only. To exercise the globe without real participants, use
+`scripts/pause-fake-location.sh` (`off` / `fixed` / `scatter` / `drip`) against a server running
+with `ALLOW_TIME_OVERRIDE=true`.
+
 > Ports: Postgres is on **5434** (5432/5433 are used by the sibling caregiver/heartlog
 > projects). The API is on **8080**.
 
@@ -36,4 +42,4 @@ Admin (role=ADMIN): `POST /admin/auth/login`; CRUD + `/reorder` for `/admin/cate
 Auth is JWT access token + rotating refresh session (reuse detection revokes the session).
 
 ## Scripts
-`dev` · `start` · `build` · `typecheck` · `db:up` · `db:down` · `db:migrate` · `db:reset` · `db:seed`
+`dev` · `start` · `build` · `typecheck` · `test` · `db:up` · `db:down` · `db:migrate` · `db:reset` · `db:seed` · `geoip:update`

@@ -60,6 +60,27 @@ final class EarthInteraction {
     gateAnimation = (from: driveGate, to: 1, startTime: nil, duration: duration)
   }
 
+  // MARK: - Programmatic orientation (turn the globe to a place)
+
+  /// In-flight turn-to-place animation, eased in `advance` on the frame clock
+  /// like `gateAnimation`. A grabbing finger cancels it — the user always wins.
+  private var orientAnimation: (from: simd_quatf, to: simd_quatf, startTime: TimeInterval?, duration: TimeInterval)?
+
+  /// Gently rotates the globe so the given lat/lon faces the camera, north
+  /// kept up. Used when the session lands: the world turns to *you*.
+  ///
+  /// Target derivation: yaw −lon brings the point's meridian to the front,
+  /// then pitch +lat lifts it to dead center — `T·p = (0,0,1)`. The axial
+  /// tilt composed at render time is a Z-rotation, which leaves the front
+  /// axis fixed, so the point stays centered after tilt.
+  func orient(toLatDeg lat: Float, lonDeg lon: Float, over duration: TimeInterval = 2.5) {
+    let latR = lat * .pi / 180
+    let lonR = lon * .pi / 180
+    let target = simd_quatf(angle: latR, axis: SIMD3<Float>(1, 0, 0))
+      * simd_quatf(angle: -lonR, axis: SIMD3<Float>(0, 1, 0))
+    orientAnimation = (from: orientation, to: target, startTime: nil, duration: duration)
+  }
+
   // MARK: - State
 
   /// Current orientation (sphere-local rotation), composed with axial tilt at render time.
@@ -139,6 +160,24 @@ final class EarthInteraction {
       }
     }
 
+    // Turn-to-place animation: slerp on the same smoothstep ease as the gate.
+    if var anim = orientAnimation {
+      let start = anim.startTime ?? time
+      if anim.startTime == nil {
+        anim.startTime = start
+        orientAnimation = anim
+      }
+      if anim.duration <= 0 {
+        orientation = anim.to
+        orientAnimation = nil
+      } else {
+        let t = Float(min(1, max(0, (time - start) / anim.duration)))
+        let eased = t * t * (3 - 2 * t)
+        orientation = simd_normalize(simd_slerp(anim.from, anim.to, eased))
+        if t >= 1 { orientAnimation = nil }
+      }
+    }
+
     // Apply momentum, gated.
     if simd_length(momentum) > 0.0001 {
       let yaw = momentum.x * dt * driveGate
@@ -182,6 +221,8 @@ final class EarthInteraction {
   func touchBegan(at point: CGPoint, viewSize: CGSize) {
     lastTouchPoint = point
     momentum = .zero
+    // A grabbing finger cancels any in-flight turn-to-place.
+    orientAnimation = nil
     lastInteractionTime = lastFrameTime ?? 0
   }
 

@@ -193,12 +193,6 @@ final class GlobalPauseCardView: UIControl {
 
   // MARK: - Phase hooks
 
-  /// Meditation stills the globe entirely — no drags, no country taps —
-  /// independent of the lobby rest state that normally grants interactivity.
-  func setGlobeInteractive(_ interactive: Bool) {
-    earthScene.isInteractive = interactive && isLobby
-  }
-
   /// Applies the card's state — schedule line at rest, ticking countdown in
   /// the final lead, "Join now" plus the LIVE badge while the world pauses.
   /// The countdown's accessibility copy stays static on purpose: rewriting

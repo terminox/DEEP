@@ -35,6 +35,9 @@ final class GlobalPauseSessionController: UIViewController {
   /// The overlay arrives empty and cascades in once the card-lift has landed,
   /// so nothing rides the flight but the globe.
   private var isOverlayRevealed = false
+  /// Join sparks wait behind this gate until the turn-to-you has settled —
+  /// otherwise the user's own spark plays mid-flight or mid-turn and is missed.
+  private var joinsGateOpen = false
 
   private var duration: TimeInterval = 600
 
@@ -118,20 +121,49 @@ final class GlobalPauseSessionController: UIViewController {
     if let overlayHost, !hasCompleted {
       overlayHost.rootView = makeOverlayRoot()
     }
+    turnGlobeHome()
   }
 
-  /// Feeds each live poll into the globe: country counts light the surface
-  /// (`EarthGlowStore` lerps them in), fresh joins ring outward as ripples.
+  /// The flight has landed: turn the world to *you* and light your home glow,
+  /// then open the joins gate so sparks (including your own) play where the
+  /// user is actually looking.
+  private func turnGlobeHome() {
+    if let home = session.myLocation {
+      scene.interaction.orient(toLatDeg: home.lat, lonDeg: home.lon, over: 2.5)
+      scene.glow.homeLocation = home
+    }
+    Task { [weak self] in
+      try? await Task.sleep(for: .seconds(2.5))
+      guard let self, !self.isTornDown else { return }
+      self.joinsGateOpen = true
+      self.scene.enqueueJoins(self.session.consumeNewJoins())
+    }
+  }
+
+  /// Feeds each live poll into the globe: located participants light the
+  /// surface as lat/lon points (unlocated ones as country blobs), and fresh
+  /// joins spark + ring at their coordinates. Older servers send no locations
+  /// at all — the globe then keeps the classic country glow.
   private func observeLiveGlobe() {
     guard !isTornDown else { return }
-    let byCountry = withObservationTracking {
-      session.participantsByCountry
+    let (byCountry, locations, unlocated) = withObservationTracking {
+      (session.participantsByCountry, session.participantLocations, session.unlocatedByCountry)
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in self?.observeLiveGlobe() }
     }
-    scene.glow.participantsByCountry = byCountry
-    for iso in session.consumeNewJoins() {
-      scene.ripples.emit(forISO: iso)
+    if locations.isEmpty && unlocated.isEmpty {
+      scene.glow.participantsByCountry = byCountry
+    } else {
+      scene.glow.locations = locations
+      scene.glow.unlocatedByCountry = unlocated
+    }
+    // The server's IP-resolved home can arrive after the first render —
+    // keep the home glow seated on the freshest value.
+    if let home = session.myLocation, scene.glow.homeLocation != home {
+      scene.glow.homeLocation = home
+    }
+    if joinsGateOpen {
+      scene.enqueueJoins(session.consumeNewJoins())
     }
     // The participant count refreshes on the same poll; keep the meditation
     // overlay's "N meditating with you" honest.
@@ -160,10 +192,10 @@ final class GlobalPauseSessionController: UIViewController {
       session?.meditationElapsed ?? 0
     }
 
-    // The world stills: globe decelerates to rest, drags and country taps
-    // sleep for the duration.
+    // The world stills — idle drift and momentum die — but the globe stays
+    // touchable: you can turn it to look for your own light (drags pass
+    // through the held gate by design), and country taps still reveal names.
     scene.interaction.decelerateToRest(over: 5)
-    card?.setGlobeInteractive(false)
     card?.resetGlobePhasePlacement(animated: false)
 
     if let url = session.schedule?.meditationAudioURL {
@@ -411,7 +443,7 @@ final class GlobalPauseSessionController: UIViewController {
     audio.stop()
     session.leaveSession()
     scene.interaction.resumeSpin(over: 1)
-    card?.setGlobeInteractive(true)
+    scene.glow.homeLocation = nil
     card?.resetGlobePhasePlacement(animated: false)
   }
 

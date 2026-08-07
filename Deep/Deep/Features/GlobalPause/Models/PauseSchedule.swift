@@ -52,10 +52,34 @@ struct PauseLiveSnapshot {
   struct Join: Equatable {
     let iso: String
     let at: Date
+    /// Privacy-rounded join coordinates; nil when the server couldn't locate
+    /// the IP (the client falls back to the country centroid).
+    let lat: Float?
+    let lon: Float?
+  }
+
+  /// One clustered participant location (server bins nearby people together).
+  struct GeoPoint: Equatable {
+    let lat: Float
+    let lon: Float
+    let count: Int
   }
 
   let serverNow: Date
   let participantCount: Int
   let byCountry: [String: Int]
+  /// Located participants as lat/lon clusters. Empty on older servers —
+  /// the globe then falls back to per-country glow from `byCountry`.
+  let locations: [GeoPoint]
+  /// Participants the server couldn't geolocate, tallied by country. The
+  /// client renders these via its country-centroid table.
+  let unlocatedByCountry: [String: Int]
   let recentJoins: [Join]
+}
+
+/// A join resolved to coordinates (server lat/lon, or the country centroid
+/// fallback) — what the globe's spark + ripple pipeline consumes.
+struct PauseJoinPoint: Equatable, Sendable {
+  let lat: Float
+  let lon: Float
 }

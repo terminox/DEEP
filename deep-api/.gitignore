@@ -7,3 +7,4 @@ media/audio/*.mp3
 !media/audio/ivory.mp3
 !media/audio/.gitkeep
 *.log
+geoip/

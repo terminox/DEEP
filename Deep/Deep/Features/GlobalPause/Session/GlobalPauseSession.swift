@@ -37,6 +37,16 @@ final class GlobalPauseSession {
   )
   private(set) var participantCount = 0
   private(set) var participantsByCountry: [String: Int] = [:]
+  /// Located participants as server-clustered lat/lon points. Empty on older
+  /// servers — the globe then glows per-country from `participantsByCountry`.
+  private(set) var participantLocations: [PauseLiveSnapshot.GeoPoint] = []
+  /// Participants the server couldn't geolocate; the globe renders these via
+  /// the client-side country-centroid table.
+  private(set) var unlocatedByCountry: [String: Int] = [:]
+  /// Where *this* user is: the server's IP-resolved location when it has one
+  /// (from the heartbeat response), else the device-locale country centroid.
+  /// The session screen turns the globe here and seats the home glow.
+  private(set) var myLocation: PauseJoinPoint?
 
   /// When the next meditation begins — the countdown target for the card's
   /// caption. Nil until the schedule lands.
@@ -65,7 +75,7 @@ final class GlobalPauseSession {
   @ObservationIgnored private var foregroundObserver: NSObjectProtocol?
   /// Joins already turned into ripples, so a poll never replays old ones.
   @ObservationIgnored private var seenJoins: Set<String> = []
-  @ObservationIgnored private var pendingJoins: [String] = []
+  @ObservationIgnored private var pendingJoins: [PauseJoinPoint] = []
 
   /// One stable anonymous identity per install, so reopening the session never
   /// double-counts (the server keys signed-in users by user id instead).
@@ -187,10 +197,22 @@ final class GlobalPauseSession {
     guard heartbeatTask == nil else { return }
     let country = Locale.current.region?.identifier.uppercased()
 
+    // Locale-centroid fallback immediately, so the globe can turn to
+    // *somewhere* the moment the screen lands; the server's IP-resolved
+    // location overwrites it as soon as the first heartbeat responds.
+    if myLocation == nil, let country,
+       let home = CountryLookup.shared.country(forISO: country) {
+      myLocation = PauseJoinPoint(lat: home.latitude, lon: home.longitude)
+    }
+
     heartbeatTask = Task { [weak self] in
       while !Task.isCancelled {
         guard let self else { return }
-        try? await self.repository.heartbeat(presenceID: self.presenceID, countryISO: country)
+        if let resolved = try? await self.repository.heartbeat(
+          presenceID: self.presenceID, countryISO: country
+        ) {
+          self.myLocation = resolved
+        }
         try? await Task.sleep(for: .seconds(20))
       }
     }
@@ -210,6 +232,7 @@ final class GlobalPauseSession {
     pollTask = nil
     seenJoins = []
     pendingJoins = []
+    myLocation = nil
     Task { [repository, presenceID] in
       await repository.leave(presenceID: presenceID)
     }
@@ -219,12 +242,18 @@ final class GlobalPauseSession {
     guard let snapshot = try? await repository.live() else { return }
     participantCount = snapshot.participantCount
     participantsByCountry = snapshot.byCountry
+    participantLocations = snapshot.locations
+    unlocatedByCountry = snapshot.unlocatedByCountry
 
     for join in snapshot.recentJoins {
       let key = "\(join.iso)-\(join.at.timeIntervalSince1970)"
-      if !seenJoins.contains(key) {
-        seenJoins.insert(key)
-        pendingJoins.append(join.iso)
+      guard !seenJoins.contains(key) else { continue }
+      seenJoins.insert(key)
+      if let lat = join.lat, let lon = join.lon {
+        pendingJoins.append(PauseJoinPoint(lat: lat, lon: lon))
+      } else if let country = CountryLookup.shared.country(forISO: join.iso) {
+        // Server couldn't locate the IP — land the spark on the country centroid.
+        pendingJoins.append(PauseJoinPoint(lat: country.latitude, lon: country.longitude))
       }
     }
     // Clock sync can move a boundary; keep the timer honest.
@@ -233,8 +262,8 @@ final class GlobalPauseSession {
   }
 
   /// Joins that arrived since the last consume — the session screen turns
-  /// these into globe ripples. Draining keeps one ripple per join.
-  func consumeNewJoins() -> [String] {
+  /// these into globe sparks + ripples. Draining keeps one per join.
+  func consumeNewJoins() -> [PauseJoinPoint] {
     let joins = pendingJoins
     pendingJoins = []
     return joins
@@ -285,6 +314,7 @@ extension GlobalPauseSession {
     if live { session.cardState = .live }
     session.participantCount = 4218
     session.participantsByCountry = ["TH": 1200, "JP": 640, "US": 580, "FR": 320]
+    session.myLocation = PauseJoinPoint(lat: 13.8, lon: 100.5)  // Bangkok
     return session
   }
 

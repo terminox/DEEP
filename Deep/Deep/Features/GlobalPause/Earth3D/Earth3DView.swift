@@ -157,6 +157,13 @@ struct Earth3DView: View {
   }
 }
 
+#Preview("Earth — cities (point glow)") {
+  ZStack {
+    AtmosphereBackground()
+    Earth3DView(glow: EarthGlowStore.previewCities)
+  }
+}
+
 #Preview("Earth — debug harness") {
   Earth3DDebugHarness()
 }

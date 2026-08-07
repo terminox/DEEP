@@ -11,7 +11,6 @@ final class EarthHaloRipples {
 
   struct Ripple: Identifiable {
     let id = UUID()
-    let countryISO: String
     let position: SIMD3<Float>   // unit vector on sphere (sphere-local)
     /// On the `CACurrentMediaTime()` clock — the one clock every ripple
     /// timestamp shares (emit, tick, and the overlay's draw all use it; the
@@ -24,20 +23,24 @@ final class EarthHaloRipples {
   /// Cap on simultaneous rings. The event is *ambient*, not a leaderboard —
   /// floods should not turn the orb into a fireworks display.
   let globalCap: Int = 8
-  /// Per-country cooldown.
-  let perCountryCooldown: TimeInterval = 0.3
+  /// Spatial cooldown: a second ring within this window and angular distance
+  /// of a recent one is suppressed, so a burst of same-city joins reads as
+  /// one ring, not a strobe.
+  let spatialCooldown: TimeInterval = 0.3
   /// Ring lifetime.
   let lifetime: TimeInterval = 1.2
 
-  private var lastEmittedAt: [String: TimeInterval] = [:]
+  private let cooldownCos: Float = cosf(3 * .pi / 180)
+  private var recentEmits: [(position: SIMD3<Float>, at: TimeInterval)] = []
 
-  /// Call when a country's participant count incremented.
-  func emit(forISO iso: String, at time: TimeInterval = CACurrentMediaTime()) {
-    if let last = lastEmittedAt[iso], time - last < perCountryCooldown { return }
-    guard let country = CountryLookup.shared.country(forISO: iso) else { return }
+  /// Call when someone joined at these coordinates.
+  func emit(lat: Float, lon: Float, at time: TimeInterval = CACurrentMediaTime()) {
+    let position = sphereUnitVector(latDeg: lat, lonDeg: lon)
+    recentEmits.removeAll { time - $0.at > spatialCooldown }
+    if recentEmits.contains(where: { simd_dot($0.position, position) > cooldownCos }) { return }
     if active.count >= globalCap { active.removeFirst() }
-    active.append(Ripple(countryISO: iso, position: country.unitVector, startedAt: time))
-    lastEmittedAt[iso] = time
+    active.append(Ripple(position: position, startedAt: time))
+    recentEmits.append((position, time))
   }
 
   /// Remove expired ripples. Called from the host on each frame — pass
@@ -82,8 +85,10 @@ struct EarthHaloRipplesOverlay: View {
           let visibility = smoothstepF(-0.1, 0.25, world.z)
 
           let progress = Float(age / ripples.lifetime)   // 0 → 1
-          let radius = mixF(1.0, 2.5, easeOutCubic(progress)) * Float(viewRadius)
-          let opacity = mixF(0.6, 0.0, progress) * visibility
+          // Rings are local to the join point, not orb-scale halos — a person
+          // joins a *place*, and the ring should read at that place.
+          let radius = mixF(0.05, 0.32, easeOutCubic(progress)) * Float(viewRadius)
+          let opacity = mixF(0.7, 0.0, progress) * visibility
 
           let px = center.x + CGFloat(world.x) * viewRadius
           let py = center.y - CGFloat(world.y) * viewRadius
