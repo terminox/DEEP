@@ -49,6 +49,66 @@ final class EarthGlowStore {
   /// Optional ceiling for log scaling. If nil, derived from the largest value seen.
   var globalMaxOverride: Int?
 
+  // MARK: - Tuning
+
+  /// Every tunable constant in one struct: the DEBUG panel gets per-field
+  /// sliders, reset is `tuning = Tuning()`, and defaults live once as the
+  /// member initializers (the shipped look).
+  struct Tuning {
+    /// Per-source lerp time constant (seconds).
+    var lerpTau: Float = 0.8
+
+    /// Region granularity — map located participants (and their join sparks)
+    /// to whole-region blobs from CountryLookup's hand-tuned table instead of
+    /// point cells, so a single join can light its country or continent. The
+    /// shader's land mask clips the gaussian to coastlines, so the region
+    /// reads as lit land rather than a round blob.
+    enum Granularity: String, CaseIterable { case point, country, continent }
+    var granularity: Granularity = .point
+    /// Inflates region blob radii — country mode at ~2× reads as sub-region
+    /// (SEA-ish) coverage.
+    var regionRadiusScale: Float = 1.0
+
+    // Point cells — a lone person must clearly read, so intensity starts high
+    // and count only nudges it; the log-over-global-max scale used for country
+    // totals would bury count=1 cells entirely.
+    var pointSoftCap: Float = 6
+    var pointBaseIntensity: Float = 0.65
+    var pointIntensityGain: Float = 0.30
+    /// Point radii sit well under country blobs (0.05–0.22 rad) so cities read
+    /// as candle-points, not weather systems.
+    var pointBaseRadius: Float = 0.034
+    var pointRadiusGain: Float = 0.014
+
+    // Home ("you are here").
+    var homeIntensity: Float = 0.9
+    var homeRadius: Float = 0.045
+    /// Warm-cream cast that separates "you" from your neighbors.
+    var homeWhiteness: Float = 0.15
+    /// Gentle breath: ±13% at ~10s period, modulated per-frame in
+    /// `currentGPUSources` so the lerped base stays stable.
+    var homeBreathAmplitude: Float = 0.13
+    var homeBreathRate: Float = 0.63  // rad/s ≈ 10s period
+
+    // Join sparks. Lifetime: flare in ~120ms, settle into lavender, gone by
+    // 2s — by which time the next poll's steady cell has taken over.
+    var sparkLife: Float = 2.0
+    /// Insertion gate only (no storage preallocated to it) — keep well under
+    /// `maxGlowSources` so sparks can't starve steady cells of GPU slots.
+    var sparkCap = 12
+    var sparkRadius: Float = 0.030
+    /// Peak 1.3 is safe by construction: the shader compresses accumulated
+    /// glow with 1 − exp(−total·k), so even a full-intensity spark lands ~0.79
+    /// — bright, but structurally incapable of blowing out to white under bloom.
+    var sparkPeak: Float = 1.3
+  }
+
+  /// Point/home values are baked into lerp *targets*, so any change must
+  /// recompute them; existing currents survive and re-lerp over `lerpTau`.
+  var tuning = Tuning() {
+    didSet { recomputeTargets() }
+  }
+
   // MARK: - GPU-facing state
 
   /// Up-to-date GPU sources, lerped toward target. Renderer queries each frame.
@@ -56,45 +116,7 @@ final class EarthGlowStore {
   private var sparks: [SparkState] = []
   private var lastTickTime: TimeInterval?
 
-  /// Per-source lerp time constant (seconds).
-  private let lerpTau: Float = 0.8
-
-  // MARK: - Point tuning
-
-  /// A lone person must clearly read, so intensity starts high and count only
-  /// nudges it — the log-over-global-max scale used for country totals would
-  /// bury count=1 cells entirely.
-  private let pointSoftCap: Float = 6
-  private let pointBaseIntensity: Float = 0.65
-  private let pointIntensityGain: Float = 0.30
-  /// Point radii sit well under country blobs (0.05–0.22 rad) so cities read
-  /// as candle-points, not weather systems.
-  private let pointBaseRadius: Float = 0.034
-  private let pointRadiusGain: Float = 0.014
-
-  // MARK: - Home ("you are here") tuning
-
   private static let homeKey = "home"
-  private let homeIntensity: Float = 0.9
-  private let homeRadius: Float = 0.045
-  /// Warm-cream cast that separates "you" from your neighbors.
-  private let homeWhiteness: Float = 0.15
-  /// Gentle breath: ±13% at ~10s period, modulated per-frame in
-  /// `currentGPUSources` so the lerped base stays stable.
-  private let homeBreathAmplitude: Float = 0.13
-  private let homeBreathRate: Float = 0.63  // rad/s ≈ 10s period
-
-  // MARK: - Spark tuning
-
-  /// Spark lifetime: flare in ~120ms, settle into lavender, gone by 2s —
-  /// by which time the next poll's steady cell has taken over.
-  private let sparkLife: Float = 2.0
-  private let sparkCap = 12
-  private let sparkRadius: Float = 0.030
-  /// Peak 1.3 is safe by construction: the shader compresses accumulated glow
-  /// with 1 − exp(−total·1.2), so even a full-intensity spark lands ~0.79 —
-  /// bright, but structurally incapable of blowing out to white under bloom.
-  private let sparkPeak: Float = 1.3
 
   // MARK: - Init
 
@@ -113,7 +135,7 @@ final class EarthGlowStore {
     guard dt > 0 else { return }
 
     // Exponential approach: current += (target - current) * (1 - exp(-dt/tau))
-    let k = 1 - expf(-dt / lerpTau)
+    let k = 1 - expf(-dt / tuning.lerpTau)
     for i in sources.indices {
       sources[i].currentIntensity += (sources[i].targetIntensity - sources[i].currentIntensity) * k
     }
@@ -122,7 +144,7 @@ final class EarthGlowStore {
     for i in sparks.indices {
       sparks[i].age += dt
     }
-    sparks.removeAll { $0.age > sparkLife }
+    sparks.removeAll { $0.age > tuning.sparkLife }
   }
 
   /// Renderer-facing snapshot. Only sources above an intensity threshold are
@@ -136,12 +158,12 @@ final class EarthGlowStore {
       guard intensity > 0.003 else { return nil }
       return GlowSourceGPU(
         positionAndIntensity: SIMD4<Float>(s.position.x, s.position.y, s.position.z, intensity),
-        radiusPacked: SIMD4<Float>(sparkRadius, sparkWhiteness(age: s.age), 0, 0)
+        radiusPacked: SIMD4<Float>(s.radius, sparkWhiteness(age: s.age), 0, 0)
       )
     }
 
     let budget = max(0, EarthRendererConstants.maxGlowSources - sparkGPU.count)
-    let homeBreath = 1 + homeBreathAmplitude * sinf(Float(lastTickTime ?? 0) * homeBreathRate)
+    let homeBreath = 1 + tuning.homeBreathAmplitude * sinf(Float(lastTickTime ?? 0) * tuning.homeBreathRate)
     let steady = sources
       .filter { $0.currentIntensity > 0.003 }
       .sorted { $0.currentIntensity > $1.currentIntensity }
@@ -153,7 +175,7 @@ final class EarthGlowStore {
             s.position.x, s.position.y, s.position.z,
             isHome ? s.currentIntensity * homeBreath : s.currentIntensity
           ),
-          radiusPacked: SIMD4<Float>(s.angularRadius, isHome ? homeWhiteness : 0, 0, 0)
+          radiusPacked: SIMD4<Float>(s.angularRadius, isHome ? tuning.homeWhiteness : 0, 0, 0)
         )
       }
     return steady + sparkGPU
@@ -167,17 +189,23 @@ final class EarthGlowStore {
 
   /// A person just joined at these coordinates: flare a transient glow source
   /// there. The steady cell arrives with the next poll and takes over as the
-  /// spark decays.
+  /// spark decays. In region mode the whole region blob flashes — a Thailand
+  /// join lights Thailand, not a point in Bangkok.
   func spark(lat: Float, lon: Float) {
-    if sparks.count >= sparkCap { sparks.removeFirst() }
-    sparks.append(SparkState(position: sphereUnitVector(latDeg: lat, lonDeg: lon), age: 0))
+    if sparks.count >= tuning.sparkCap { sparks.removeFirst() }
+    let region = regionFor(lat: lat, lon: lon)
+    sparks.append(SparkState(
+      position: region?.position ?? sphereUnitVector(latDeg: lat, lonDeg: lon),
+      radius: region?.radius ?? tuning.sparkRadius,
+      age: 0
+    ))
   }
 
   /// Attack over 120ms, exponential decay — peaks bright, settles fast.
   private func sparkIntensity(age: Float) -> Float {
     let attack = smoothstep(0, 0.12, age)
     let decay = expf(-max(0, age - 0.12) / 0.6)
-    return attack * decay * sparkPeak
+    return attack * decay * tuning.sparkPeak
   }
 
   /// The moon-cream push dies faster than the intensity, so the spark visibly
@@ -197,13 +225,17 @@ final class EarthGlowStore {
       newSources.append(SourceState(
         key: Self.homeKey,
         position: sphereUnitVector(latDeg: home.lat, lonDeg: home.lon),
-        angularRadius: homeRadius,
-        targetIntensity: homeIntensity,
+        angularRadius: tuning.homeRadius,
+        targetIntensity: tuning.homeIntensity,
         currentIntensity: existingCurrent(for: Self.homeKey) ?? 0
       ))
     }
 
-    appendPointSources(into: &newSources)
+    if tuning.granularity == .point {
+      appendPointSources(locations, into: &newSources)
+    } else {
+      appendRegionSources(into: &newSources)
+    }
 
     // Country blobs: the whole world on an old server, or just the participants
     // IP geolocation couldn't place on a new one.
@@ -227,14 +259,17 @@ final class EarthGlowStore {
   /// server's 1° cluster grid — so the same city lands on the same key across
   /// polls and its glow lerps instead of popping. A cell that shifts across a
   /// key boundary crossfades (old fades out, new fades in) over the lerp tau.
-  private func appendPointSources(into newSources: inout [SourceState]) {
+  private func appendPointSources(
+    _ points: [PauseLiveSnapshot.GeoPoint],
+    into newSources: inout [SourceState]
+  ) {
     struct Cell {
       var lat: Float
       var lon: Float
       var count: Int
     }
     var cells: [String: Cell] = [:]
-    for point in locations where point.count > 0 {
+    for point in points where point.count > 0 {
       let key = Self.cellKey(lat: point.lat, lon: point.lon)
       if var cell = cells[key] {
         // Two server clusters in one client cell: merge at the count-weighted mean.
@@ -251,12 +286,12 @@ final class EarthGlowStore {
     }
 
     for (key, cell) in cells {
-      let normalized = min(1, log2(Float(cell.count) + 1) / log2(pointSoftCap + 1))
+      let normalized = min(1, log2(Float(cell.count) + 1) / log2(tuning.pointSoftCap + 1))
       newSources.append(SourceState(
         key: key,
         position: sphereUnitVector(latDeg: cell.lat, lonDeg: cell.lon),
-        angularRadius: pointBaseRadius + pointRadiusGain * normalized,
-        targetIntensity: pointBaseIntensity + pointIntensityGain * normalized,
+        angularRadius: tuning.pointBaseRadius + tuning.pointRadiusGain * normalized,
+        targetIntensity: tuning.pointBaseIntensity + tuning.pointIntensityGain * normalized,
         currentIntensity: existingCurrent(for: key) ?? 0
       ))
     }
@@ -264,6 +299,82 @@ final class EarthGlowStore {
 
   private static func cellKey(lat: Float, lon: Float) -> String {
     "pt:\(Int((lat * 4).rounded()))|\(Int((lon * 4).rounded()))"
+  }
+
+  /// Region mode: located participants aggregate into whole-region blobs — a
+  /// join lights its country or continent, not a city point. Stable keys per
+  /// region mean granularity flips crossfade over `lerpTau` via the existing
+  /// vanished-source fade path.
+  private func appendRegionSources(into newSources: inout [SourceState]) {
+    struct Region {
+      var position: SIMD3<Float>
+      var radius: Float
+      var count: Int
+    }
+    var regions: [String: Region] = [:]
+    var unmatched: [PauseLiveSnapshot.GeoPoint] = []
+
+    for point in locations where point.count > 0 {
+      guard let resolved = regionFor(lat: point.lat, lon: point.lon) else {
+        unmatched.append(point)
+        continue
+      }
+      if var region = regions[resolved.key] {
+        region.count += point.count
+        regions[resolved.key] = region
+      } else {
+        regions[resolved.key] = Region(
+          position: resolved.position,
+          radius: resolved.radius,
+          count: point.count
+        )
+      }
+    }
+
+    for (key, region) in regions {
+      let normalized = min(1, log2(Float(region.count) + 1) / log2(tuning.pointSoftCap + 1))
+      newSources.append(SourceState(
+        key: key,
+        position: region.position,
+        angularRadius: region.radius,
+        targetIntensity: tuning.pointBaseIntensity + tuning.pointIntensityGain * normalized,
+        currentIntensity: existingCurrent(for: key) ?? 0
+      ))
+    }
+
+    // Points the country table can't place fall back to point cells so no
+    // participant silently vanishes in region mode.
+    appendPointSources(unmatched, into: &newSources)
+  }
+
+  /// Resolve a lat/lon to the active granularity's region blob. Positions and
+  /// radii come from CountryLookup's hand-tuned table (nearest-centroid match,
+  /// generous tolerance — this is a visual grouping, not a border test).
+  private func regionFor(
+    lat: Float, lon: Float
+  ) -> (key: String, position: SIMD3<Float>, radius: Float)? {
+    let lookup = CountryLookup.shared
+    guard tuning.granularity != .point,
+          let country = lookup.nearestCountry(lat: lat, lon: lon, withinDegrees: 20) else {
+      return nil
+    }
+    switch tuning.granularity {
+    case .point:
+      return nil
+    case .country:
+      return (
+        "rg:\(country.iso2)",
+        country.unitVector,
+        country.glowRadiusRadians * tuning.regionRadiusScale
+      )
+    case .continent:
+      guard let center = lookup.continentCenter(country.continentISO) else { return nil }
+      return (
+        "rg:\(center.iso)",
+        center.unitVector,
+        center.angularRadius * tuning.regionRadiusScale
+      )
+    }
   }
 
   /// The classic country-centroid path: log-scaled against the global max,
@@ -326,6 +437,8 @@ final class EarthGlowStore {
 
   private struct SparkState {
     let position: SIMD3<Float>
+    /// Resolved at spark time (point radius, or region radius in region mode).
+    let radius: Float
     var age: Float
   }
 }

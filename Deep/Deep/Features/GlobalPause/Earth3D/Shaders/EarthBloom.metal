@@ -1,6 +1,8 @@
 #include <metal_stdlib>
 using namespace metal;
 
+#include "EarthTuningShared.h"
+
 // Bloom post-process chain + final composite for the Earth orb.
 //
 // Pipeline (driven by EarthRenderer):
@@ -23,6 +25,7 @@ struct FSIn {
 // them — otherwise continents render colored but with no glow halo.
 fragment float4 earthBloomThresholdFragment(
   FSIn in [[stage_in]],
+  constant EarthTuningUniforms& T [[buffer(0)]],
   texture2d<float> src [[texture(0)]]
 ) {
   constexpr sampler s(filter::linear, address::clamp_to_edge);
@@ -30,7 +33,7 @@ fragment float4 earthBloomThresholdFragment(
   uv.y = 1.0 - uv.y;
   float4 c = src.sample(s, uv);
   float luma = dot(c.rgb, float3(0.2126, 0.7152, 0.0722));
-  float weight = smoothstep(0.42, 0.88, luma);
+  float weight = smoothstep(T.bloomA.x, T.bloomA.y, luma);
   return float4(c.rgb * weight, c.a);
 }
 
@@ -53,23 +56,25 @@ static float4 blurDir(texture2d<float> src, float2 uv, float2 step) {
 
 fragment float4 earthBloomBlurHFragment(
   FSIn in [[stage_in]],
+  constant EarthTuningUniforms& T [[buffer(0)]],
   texture2d<float> src [[texture(0)]]
 ) {
   float2 uv = in.ndc * 0.5 + 0.5;
   uv.y = 1.0 - uv.y;
   // Wide blur radius for soft, atmospheric bloom — not punchy gamer bloom.
   float texelSize = 1.0 / float(src.get_width());
-  return blurDir(src, uv, float2(texelSize * 3.0, 0));
+  return blurDir(src, uv, float2(texelSize * T.bloomA.z, 0));
 }
 
 fragment float4 earthBloomBlurVFragment(
   FSIn in [[stage_in]],
+  constant EarthTuningUniforms& T [[buffer(0)]],
   texture2d<float> src [[texture(0)]]
 ) {
   float2 uv = in.ndc * 0.5 + 0.5;
   uv.y = 1.0 - uv.y;
   float texelSize = 1.0 / float(src.get_height());
-  return blurDir(src, uv, float2(0, texelSize * 3.0));
+  return blurDir(src, uv, float2(0, texelSize * T.bloomA.z));
 }
 
 // ── Final composite ─────────────────────────────────────────────────────────
@@ -84,12 +89,12 @@ fragment float4 earthBloomBlurVFragment(
 // any channel that's still over 1.0 — a small palette-color rescue so a
 // fully-saturated lavender doesn't lose its blue dominance at the 8-bit
 // drawable boundary.
-static float3 tonemapPalette(float3 x) {
+static float3 tonemapPalette(float3 x, float k) {
   float luma = dot(x, float3(0.2126, 0.7152, 0.0722));
   if (luma < 1e-5) return x;
-  // k = 1.5 — keeps mid-range values close to linear; only compresses the
-  // really hot HDR pixels (rim + specular + bloom-piled continents).
-  float compressed = 1.0 - exp(-luma * 1.5);
+  // k = 1.5 default — keeps mid-range values close to linear; only compresses
+  // the really hot HDR pixels (rim + specular + bloom-piled continents).
+  float compressed = 1.0 - exp(-luma * k);
   float3 result = x * (compressed / luma);
 
   // Per-channel safety pull toward white for any over-1 channel.
@@ -114,6 +119,7 @@ static float dither13(float2 p) {
 
 fragment float4 earthCompositeFragment(
   FSIn in [[stage_in]],
+  constant EarthTuningUniforms& T [[buffer(0)]],
   texture2d<float> scene [[texture(0)]],
   texture2d<float> bloom [[texture(1)]]
 ) {
@@ -134,15 +140,15 @@ fragment float4 earthCompositeFragment(
   // Tuned so the bloom *halo* around continents is clearly visible while the
   // bloom *core* (where it overlaps the lit continent itself) doesn't push
   // chroma toward white through the tonemap.
-  float3 bloomColor = bloom.sample(s, uv).rgb * 0.45;
+  float3 bloomColor = bloom.sample(s, uv).rgb * T.bloomA.w;
   // Alpha plumbing: bloom should still contribute outside the silhouette
   // (it's *light spilling into the atmosphere*), so we lift alpha by it.
   // Use the tonemapped bloom luminance so alpha tracks what's actually visible.
   float bloomLuma = dot(bloomColor, float3(0.2126, 0.7152, 0.0722));
-  alpha = saturate(alpha + (1.0 - exp(-bloomLuma)) * 0.6);
+  alpha = saturate(alpha + (1.0 - exp(-bloomLuma)) * T.bloomB.y);
 
   float3 hdrSum = sceneColor + bloomColor;
-  float3 finalColor = tonemapPalette(hdrSum);
+  float3 finalColor = tonemapPalette(hdrSum, T.bloomB.x);
 
   // Dither to mask 8-bit banding in the lavender → cream gradient.
   float d = (dither13(in.position.xy) - 0.5) * (1.0 / 255.0);

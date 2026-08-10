@@ -11,14 +11,19 @@ final class EarthInteraction {
 
   // MARK: - Configuration
 
-  /// Damping applied per render frame. ~0.92 ≈ "globe on bearings" friction.
-  var damping: Float = 0.92
-  /// Sensitivity (radians per point of drag).
-  var dragSensitivity: Float = 0.006
-  /// Seconds of no input before idle drift takes over.
-  var idleAfterSeconds: TimeInterval = 2.0
-  /// Idle drift base angular speed (radians/sec). Slow — design system mandate.
-  var idleDriftSpeed: Float = 0.05
+  /// Feel parameters, grouped so the DEBUG panel gets uniform reset/export.
+  struct Tuning {
+    /// Damping applied per render frame. ~0.92 ≈ "globe on bearings" friction.
+    var damping: Float = 0.92
+    /// Sensitivity (radians per point of drag).
+    var dragSensitivity: Float = 0.006
+    /// Seconds of no input before idle drift takes over.
+    var idleAfterSeconds: TimeInterval = 2.0
+    /// Idle drift base angular speed (radians/sec). Slow — design system mandate.
+    var idleDriftSpeed: Float = 0.05
+  }
+
+  var tuning = Tuning()
 
   // MARK: - Spin state (decelerate / hold / resume)
 
@@ -184,7 +189,7 @@ final class EarthInteraction {
       let pitch = momentum.y * dt * driveGate
       applyAngularDelta(yaw: yaw, pitch: pitch)
       // Frame-rate-independent damping: convert per-frame 0.92 → per-second.
-      let perSecondDamping = powf(damping, 60.0)
+      let perSecondDamping = powf(tuning.damping, 60.0)
       momentum *= powf(perSecondDamping, dt)
       // A closing gate also bleeds the momentum *store* (frame-rate
       // independent "× gate per 60Hz frame"), so a flick thrown during
@@ -202,9 +207,9 @@ final class EarthInteraction {
     // original `sin(t · 0.097) · 0.04` sweep. Gated: while held the gate is 0,
     // so drift cannot restart regardless of how long the globe idles.
     let idleFor = time - lastInteractionTime
-    if idleFor > idleAfterSeconds, dt > 0, driveGate > 0 {
-      let strength = min(1.0, Float(idleFor - idleAfterSeconds) / 1.5)
-      let yaw = idleDriftSpeed * dt * strength * driveGate
+    if idleFor > tuning.idleAfterSeconds, dt > 0, driveGate > 0 {
+      let strength = min(1.0, Float(idleFor - tuning.idleAfterSeconds) / 1.5)
+      let yaw = tuning.idleDriftSpeed * dt * strength * driveGate
       let pitch = cos(Float(time) * 0.097) * 0.04 * 0.097 * dt * strength * driveGate
       applyAngularDelta(yaw: yaw, pitch: pitch)
     }
@@ -234,8 +239,8 @@ final class EarthInteraction {
     // kills the "turn to you" mid-flight.
     orientAnimation = nil
 
-    let yaw = dx * dragSensitivity
-    let pitch = dy * dragSensitivity
+    let yaw = dx * tuning.dragSensitivity
+    let pitch = dy * tuning.dragSensitivity
     applyAngularDelta(yaw: yaw, pitch: pitch)
 
     // Track instantaneous velocity for post-release momentum.

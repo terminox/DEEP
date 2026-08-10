@@ -20,25 +20,37 @@ final class EarthHaloRipples {
 
   private(set) var active: [Ripple] = []
 
-  /// Cap on simultaneous rings. The event is *ambient*, not a leaderboard —
-  /// floods should not turn the orb into a fireworks display.
-  let globalCap: Int = 8
-  /// Spatial cooldown: a second ring within this window and angular distance
-  /// of a recent one is suppressed, so a burst of same-city joins reads as
-  /// one ring, not a strobe.
-  let spatialCooldown: TimeInterval = 0.3
-  /// Ring lifetime.
-  let lifetime: TimeInterval = 1.2
+  /// Emit + draw constants, grouped for the DEBUG panel (uniform reset/export).
+  struct Tuning {
+    /// Cap on simultaneous rings. The event is *ambient*, not a leaderboard —
+    /// floods should not turn the orb into a fireworks display.
+    var globalCap: Int = 8
+    /// Spatial cooldown: a second ring within this window and angular distance
+    /// of a recent one is suppressed, so a burst of same-city joins reads as
+    /// one ring, not a strobe.
+    var spatialCooldown: TimeInterval = 0.3
+    /// Ring lifetime.
+    var lifetime: TimeInterval = 1.2
+    /// Angular distance (degrees) under which a repeat emit is suppressed.
+    var cooldownAngleDegrees: Float = 3
+    /// Ring sweep, as fractions of the orb's on-screen radius — rings are
+    /// local to the join point, not orb-scale halos.
+    var ringStartRadius: Float = 0.05
+    var ringEndRadius: Float = 0.32
+    var ringOpacity: Float = 0.7
+  }
 
-  private let cooldownCos: Float = cosf(3 * .pi / 180)
+  var tuning = Tuning()
+
   private var recentEmits: [(position: SIMD3<Float>, at: TimeInterval)] = []
 
   /// Call when someone joined at these coordinates.
   func emit(lat: Float, lon: Float, at time: TimeInterval = CACurrentMediaTime()) {
     let position = sphereUnitVector(latDeg: lat, lonDeg: lon)
-    recentEmits.removeAll { time - $0.at > spatialCooldown }
+    let cooldownCos = cosf(tuning.cooldownAngleDegrees * .pi / 180)
+    recentEmits.removeAll { time - $0.at > tuning.spatialCooldown }
     if recentEmits.contains(where: { simd_dot($0.position, position) > cooldownCos }) { return }
-    if active.count >= globalCap { active.removeFirst() }
+    if active.count >= tuning.globalCap { active.removeFirst() }
     active.append(Ripple(position: position, startedAt: time))
     recentEmits.append((position, time))
   }
@@ -47,7 +59,7 @@ final class EarthHaloRipples {
   /// `CACurrentMediaTime()`, not the renderer's relative frame time, so the
   /// cutoff compares against the same clock `startedAt` was stamped with.
   func tick(time: TimeInterval = CACurrentMediaTime()) {
-    let cutoff = time - lifetime
+    let cutoff = time - tuning.lifetime
     active.removeAll { $0.startedAt < cutoff }
   }
 }
@@ -75,7 +87,7 @@ struct EarthHaloRipplesOverlay: View {
 
         for ripple in ripples.active {
           let age = now - ripple.startedAt
-          guard age >= 0, age <= ripples.lifetime else { continue }
+          guard age >= 0, age <= ripples.tuning.lifetime else { continue }
 
           // Sphere-local → world (apply orientation), then orthographic project to XY.
           let local = SIMD4<Float>(ripple.position.x, ripple.position.y, ripple.position.z, 0)
@@ -84,11 +96,12 @@ struct EarthHaloRipplesOverlay: View {
           if world.z < -0.1 { continue }
           let visibility = smoothstepF(-0.1, 0.25, world.z)
 
-          let progress = Float(age / ripples.lifetime)   // 0 → 1
+          let progress = Float(age / ripples.tuning.lifetime)   // 0 → 1
           // Rings are local to the join point, not orb-scale halos — a person
           // joins a *place*, and the ring should read at that place.
-          let radius = mixF(0.05, 0.32, easeOutCubic(progress)) * Float(viewRadius)
-          let opacity = mixF(0.7, 0.0, progress) * visibility
+          let radius = mixF(ripples.tuning.ringStartRadius, ripples.tuning.ringEndRadius,
+                            easeOutCubic(progress)) * Float(viewRadius)
+          let opacity = mixF(ripples.tuning.ringOpacity, 0.0, progress) * visibility
 
           let px = center.x + CGFloat(world.x) * viewRadius
           let py = center.y - CGFloat(world.y) * viewRadius

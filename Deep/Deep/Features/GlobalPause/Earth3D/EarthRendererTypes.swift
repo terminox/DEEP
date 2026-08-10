@@ -1,6 +1,8 @@
 import simd
 
-// Mirrored byte-for-byte in EarthSurface.metal. Keep struct layouts in sync.
+// Mirrored byte-for-byte in EarthSurface.metal (GlowSourceGPU, EarthUniforms)
+// and Shaders/EarthTuningShared.h (EarthTuningUniforms). Keep struct layouts
+// in sync.
 
 struct GlowSourceGPU {
   // xyz = unit position on sphere (lat/lon converted), w = intensity 0...1
@@ -21,6 +23,58 @@ struct EarthUniforms {
   var sphereData: SIMD4<Float>
   // x = atmosphere outer radius, y = atmosphere strength, z = baseline emissive, w = reserved
   var atmosphereData: SIMD4<Float>
+}
+
+/// Live-tunable look parameters, uploaded once per frame beside `EarthUniforms`
+/// (surface pass fragment buffer 2; every bloom-chain pass fragment buffer 0).
+///
+/// Ships in every configuration: Release renders with `EarthTuning.Values()`
+/// defaults, which reproduce the previously hardcoded shader literals exactly —
+/// gating the *layout* behind `#if DEBUG` would make Debug and Release compile
+/// different shaders, so only the tuning panel UI is DEBUG-only.
+///
+/// Every slot is a float4 so the Swift stride equals the Metal size with no
+/// padding ambiguity (asserted in `EarthRenderer.buildBuffers`). Component
+/// meanings are documented per slot; defaults live once, in
+/// `EarthTuning.Values`.
+struct EarthTuningUniforms {
+  /// x = glow halo skirt weight, y = glow exposure (compression gain),
+  /// z = glow→land color mix, w = glow land brightness gain
+  var glowShape: SIMD4<Float>
+  /// x = atmosphere haze alpha, y = haze falloff exponent,
+  /// z = whole-orb breath scale amplitude, w = breath shimmer amplitude
+  var haze: SIMD4<Float>
+  /// Continent mask smoothstep bands over landRaw:
+  /// x = continent lo, y = continent hi, z = inland lo, w = inland hi
+  var continentBand: SIMD4<Float>
+  /// x = coast halo lo, y = coast halo hi,
+  /// z = back-bleed continent lo, w = back-bleed continent hi
+  var coastBand: SIMD4<Float>
+  /// x = palette drift speed, y = palette drift amplitude,
+  /// z = palette walk start, w = palette walk span
+  var iridescence: SIMD4<Float>
+  /// x = fresnel body exponent, y = rim tightness (scales the coupled
+  /// 10:18:28 rim/edge/alpha exponent triple proportionally),
+  /// z = refractive index, w = rim color dispersion mix
+  var glass: SIMD4<Float>
+  /// x = back-bleed base, y = back-bleed rim fade,
+  /// z = back-bleed tint palette position, w = back-bleed alpha weight
+  var backBleed: SIMD4<Float>
+  /// Emissive weights: x = continent, y = inland boost, z = sea glow, w = back glow
+  var emissiveA: SIMD4<Float>
+  /// Emissive weights: x = rim, y = dispersion edge, z = body gleam, w = shimmer
+  var emissiveB: SIMD4<Float>
+  /// Alpha weights: x = continent, y = coast halo, z = rim, w = sea glow
+  var alphaA: SIMD4<Float>
+  /// x = bloom threshold lo, y = bloom threshold hi,
+  /// z = blur step scale (texels), w = bloom strength
+  var bloomA: SIMD4<Float>
+  /// x = tonemap compression k, y = bloom alpha lift,
+  /// z = spark whiteness → brightness flash, w = coast glow weight
+  var bloomB: SIMD4<Float>
+  /// Independent lit-land term, decoupled from the base land emissive:
+  /// x = lit emissive weight, y = lit color mix (palette → warm glow), zw = reserved
+  var lit: SIMD4<Float>
 }
 
 enum EarthRendererConstants {

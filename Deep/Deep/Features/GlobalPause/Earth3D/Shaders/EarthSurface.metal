@@ -1,6 +1,8 @@
 #include <metal_stdlib>
 using namespace metal;
 
+#include "EarthTuningShared.h"
+
 // ───────────────────────────────────────────────────────────────────────────
 // Earth surface fragment shader — crystal-glass orb.
 //
@@ -180,7 +182,9 @@ struct GlowAccum {
 
 static GlowAccum accumulateGlow(float3 surfaceNormalLocal,
                                 constant GlowSourceGPU* sources,
-                                int count) {
+                                int count,
+                                float haloWeight,
+                                float exposure) {
   float total = 0.0;
   float whiteTotal = 0.0;
   for (int i = 0; i < count; ++i) {
@@ -193,13 +197,13 @@ static GlowAccum accumulateGlow(float3 surfaceNormalLocal,
     float x = angle / angularRadius;
     if (x > 7.5) continue;                        // halo term reaches ~3× radius
     float core = exp(-x * x * 0.5);
-    float halo = 0.30 * exp(-x * x * 0.5 / 9.0);  // σ = 3r, quarter-weight skirt
+    float halo = haloWeight * exp(-x * x * 0.5 / 9.0);  // σ = 3r skirt
     float f = (core + halo) * intensity;
     total += f;
     whiteTotal += f * whiteness;
   }
   GlowAccum a;
-  a.glow = 1.0 - exp(-total * 1.2);
+  a.glow = 1.0 - exp(-total * exposure);
   a.white = clamp(whiteTotal, 0.0, 1.0);
   return a;
 }
@@ -210,6 +214,7 @@ fragment float4 earthSurfaceFragment(
   FSIn in [[stage_in]],
   constant EarthUniforms& U [[buffer(0)]],
   constant GlowSourceGPU* glowSources [[buffer(1)]],
+  constant EarthTuningUniforms& T [[buffer(2)]],
   texture2d<float> continentTex [[texture(0)]]
 ) {
   // Longitude (S) wraps — 0° and 360° are the same meridian. Latitude (T)
@@ -237,7 +242,7 @@ fragment float4 earthSurfaceFragment(
   int glowCount = int(U.params.w);
 
   // Whole-orb breath.
-  float breathScale = 1.0 + 0.015 * breath;
+  float breathScale = 1.0 + T.haze.z * breath;
   float radius = baseRadius * breathScale;
 
   Hit atmoHit = raySphere(rayOrigin, rayDir, sphereCenter, atmoRadius * breathScale);
@@ -247,11 +252,11 @@ fragment float4 earthSurfaceFragment(
     // Atmosphere haze beyond the orb silhouette.
     if (!atmoHit.hit) return float4(0, 0, 0, 0);
     float3 n = atmoHit.normal;
-    float density = pow(1.0 - abs(dot(n, -rayDir)), 2.0);
+    float density = pow(1.0 - abs(dot(n, -rayDir)), T.haze.y);
     float lat = n.y;
     float3 tint = mix(SOFT_LILAC, BLUSH_POWDER, smoothstep(-0.6, 0.6, -lat));
     tint = mix(tint, LAVENDER_MIST, 0.4);
-    float a = density * atmoStrength * 0.55;
+    float a = density * atmoStrength * T.haze.x;
     return float4(tint * a, a);
   }
 
@@ -286,10 +291,10 @@ fragment float4 earthSurfaceFragment(
   float landRaw = 1.0 - specularSample;
   // Soft threshold cleans up JPG artifacts + ignores the fine river/inland
   // detail (which would look like noise on a holographic orb at this scale).
-  float continent = smoothstep(0.32, 0.68, landRaw);
+  float continent = smoothstep(T.continentBand.x, T.continentBand.y, landRaw);
   // A second, wider band keeps the soft "halo" around coasts so they don't
   // read as paper cutouts — gives a faint glow falloff at every coastline.
-  float coastHalo = smoothstep(0.15, 0.55, landRaw) - continent;
+  float coastHalo = smoothstep(T.coastBand.x, T.coastBand.y, landRaw) - continent;
 
   // ── Iridescent palette walk ───────────────────────────────────────────────
   //
@@ -304,7 +309,7 @@ fragment float4 earthSurfaceFragment(
   float ndv = clamp(dot(worldNormal, -rayDir), 0.0, 1.0);
   // Slow rotation of the palette over time so the orb subtly breathes through
   // its color (very low-frequency — well under 10s per full cycle).
-  float iridDrift = sin(time * 0.18) * 0.06;
+  float iridDrift = sin(time * T.iridescence.x) * T.iridescence.y;
 
   // Latitude → palette position. localNormal.y ∈ [-1, +1] (south→north).
   // Start at 0.25 — the LAVENDER end of the SKY→LAVENDER band — so the
@@ -313,7 +318,7 @@ fragment float4 earthSurfaceFragment(
   // cast in the bloom halo around the silhouette.
   float latT = clamp(0.5 - localNormal.y * 0.5, 0.0, 1.0);
   latT = smoothstep(0.0, 1.0, latT);  // gentle ease at the poles
-  float continentT = clamp(0.25 + latT * 0.75 + iridDrift, 0.0, 1.0);
+  float continentT = clamp(T.iridescence.z + latT * T.iridescence.w + iridDrift, 0.0, 1.0);
   float3 iridContinent = iridescent(continentT);
 
   // "Deep inland" mask — tighter threshold than the continent mask itself.
@@ -323,10 +328,11 @@ fragment float4 earthSurfaceFragment(
   // instead of stamped flat. Crucially this avoids any glowing halo on
   // the *outside* of the coast, which is what was washing to white
   // against the cream background.
-  float continentInner = smoothstep(0.40, 0.75, landRaw);
+  float continentInner = smoothstep(T.continentBand.z, T.continentBand.w, landRaw);
 
   // ── Participant glow (city points, country blobs, join sparks) ───────────
-  GlowAccum glowA = accumulateGlow(localNormal, glowSources, glowCount);
+  GlowAccum glowA = accumulateGlow(localNormal, glowSources, glowCount,
+                                   T.glowShape.x, T.glowShape.y);
   float glow = glowA.glow;
   float3 glowColor = mix(SOFT_LILAC, BLUSH_POWDER, glow);
   glowColor = mix(glowColor, PEACH_CLOUD, smoothstep(0.55, 0.95, glow));
@@ -339,13 +345,12 @@ fragment float4 earthSurfaceFragment(
   // Fresnel split into a soft outer "body" cue and a sharp narrow edge so the
   // silhouette has a clean glassy outline without losing the held softness
   // expected from the Deep palette.
-  float fresnelBody = pow(1.0 - ndv, 2.2);   // gentle inner gleam near rim
-  // Rim thickness is controlled by these two exponents — higher = thinner.
-  // Doubled from 5/9 to 10/18 (~50% thinner) and `rimAlpha` below was
-  // doubled in the same way. Adjust together to keep alpha aligned with
-  // the visible bright line.
-  float fresnelRim  = pow(1.0 - ndv, 10.0);  // sharp bright outline
-  float fresnelEdge = pow(1.0 - ndv, 18.0);  // ultra-thin dispersion sliver
+  float fresnelBody = pow(1.0 - ndv, T.glass.x);  // gentle inner gleam near rim
+  // Rim thickness is controlled by these exponents — higher = thinner. The
+  // rim/edge/alpha exponents must stay proportional (10 : 18 : 28), so one
+  // rimTightness scalar (T.glass.y) scales all three together.
+  float fresnelRim  = pow(1.0 - ndv, 10.0 * T.glass.y);  // sharp bright outline
+  float fresnelEdge = pow(1.0 - ndv, 18.0 * T.glass.y);  // ultra-thin dispersion sliver
 
   // Sun-driven specular highlight removed — it read as a stray reflection/shadow
   // blob hovering inside the body. The orb's "glass" cue now comes from the
@@ -359,7 +364,7 @@ fragment float4 earthSurfaceFragment(
   // tint the rim halo greenish against the warm backdrop).
   float dispAxis = clamp(worldNormal.x * 0.5 + 0.5, 0.0, 1.0);
   float3 dispersion = mix(LAVENDER_MIST, PEACH_CLOUD, dispAxis);
-  float3 rimColor = mix(MOON_CREAM, dispersion, 0.45);
+  float3 rimColor = mix(MOON_CREAM, dispersion, T.glass.w);
 
   // ── Refracted back-side bleed ─────────────────────────────────────────────
   //
@@ -367,7 +372,7 @@ fragment float4 earthSurfaceFragment(
   // back surface, and sample the continent map at the exit point. The result
   // is a faint ghost of the far hemisphere visible through the front face —
   // the visual cue that says "this is a solid glass ball, not a soap bubble."
-  float ior = 1.0 / 1.45;
+  float ior = 1.0 / T.glass.z;
   float3 refr = refract(rayDir, worldNormal, ior);
   float backGlow = 0.0;
   float3 backTint = float3(0.0);
@@ -384,17 +389,17 @@ fragment float4 earthSurfaceFragment(
       float2 exitUV = sphericalUV(exitNormalLocal);
       float backSpec = continentTex.sample(texSampler, exitUV).r;
       float backLand = 1.0 - backSpec;
-      float backContinent = smoothstep(0.30, 0.70, backLand);
+      float backContinent = smoothstep(T.coastBand.z, T.coastBand.w, backLand);
       // Fade the bleed near the rim so it doesn't fight the dispersion edge,
       // and dim it overall so it stays a whisper.
-      backGlow = backContinent * (0.55 - fresnelRim * 0.45);
-      backTint = iridescent(0.42);
+      backGlow = backContinent * (T.backBleed.x - fresnelRim * T.backBleed.y);
+      backTint = iridescent(T.backBleed.z);
     }
   }
 
   // ── Breath shimmer (very low amplitude, iridescent drift) ────────────────
   float shimmerN = fbm3(localNormal * 5.0 + float3(time * 0.04, 0, time * 0.025), 2);
-  float shimmer = (shimmerN - 0.5) * 0.06;
+  float shimmer = (shimmerN - 0.5) * T.haze.w;
 
   // ── Emissive composition (HDR linear) ─────────────────────────────────────
   //
@@ -408,8 +413,11 @@ fragment float4 earthSurfaceFragment(
   //
   // Country glow blends *into* the continent color (mix, not add) so a hot
   // region warms toward blush/peach instead of overpowering the gradient.
-  float3 landColor = mix(iridContinent, glowColor, glow * 0.75);
-  float landBrightness = 1.0 + glow * 0.35;
+  float3 landColor = mix(iridContinent, glowColor, glow * T.glowShape.z);
+  // Brightness path: glow lifts the land's own emissive locally, and spark
+  // whiteness can flash it further (T.bloomB.z) — the "land lights up" model,
+  // which reads without the glowColor recolor when T.glowShape.z is zeroed.
+  float landBrightness = 1.0 + glow * T.glowShape.w + glowA.white * T.bloomB.z;
 
   // Glow must also seat over water — an island or coastal city would vanish
   // where the land mask is zero. Gated with smoothstep so faint gaussian
@@ -424,23 +432,32 @@ fragment float4 earthSurfaceFragment(
   // bloom provide the *halo* glow rather than pushing the body brighter.
   float3 emissive = float3(0.0);
   // Continent body — palette-natural intensity, no outward halo.
-  emissive += landColor * continent * landBrightness * 1.00;
+  emissive += landColor * continent * landBrightness * T.emissiveA.x;
   // Inland boost — adds the "raised over the body" feel. Operates *inside*
   // the continent mask only, so it never produces an outside-the-coast glow.
-  emissive += landColor * continentInner * landBrightness * 0.30;
+  emissive += landColor * continentInner * landBrightness * T.emissiveA.y;
   // Glass cues (rim, specular, dispersion) trimmed so they no longer outshout
   // the continent palette — otherwise their bloom halo washes the orb white.
-  // Rim/edge are boosted (1.5 / 0.90) to compensate for the sharper alpha
-  // curve below — keeps the bright silhouette line visible even though the
-  // orb is now near-fully transparent a couple of pixels inside that line.
+  // Rim/edge are boosted (1.5 / 0.90 defaults) to compensate for the sharper
+  // alpha curve below — keeps the bright silhouette line visible even though
+  // the orb is now near-fully transparent a couple of pixels inside that line.
   // Ocean seat — lets city points on islands/coasts (and sparks mid-ocean
   // from imprecise geolocation) read where there is no land mask.
-  emissive += glowColor * seaGlow * 0.40;
-  emissive += backTint * backGlow * 0.40;
-  emissive += rimColor * fresnelRim * 1.50;
-  emissive += dispersion * fresnelEdge * 0.90;
-  emissive += LAVENDER_MIST * fresnelBody * 0.08;
-  emissive += shimmer * MOON_CREAM;
+  emissive += glowColor * seaGlow * T.emissiveA.z;
+  // Coastlines participate in a lit area (T.bloomB.w) — keeps island and
+  // coastal cities readable when the sea-glow blob is zeroed in the
+  // emissive-boost look. Neutral (0) by default.
+  emissive += landColor * coastHalo * glow * T.bloomB.w;
+  // Independent lit-land term — decoupled from the base land emissive, so the
+  // unlit world can rest near-dark (low emissiveA.x) while lit regions burn
+  // bright. Neutral (0) by default.
+  float3 litColor = mix(iridContinent, glowColor, T.lit.y);
+  emissive += litColor * continent * glow * T.lit.x;
+  emissive += backTint * backGlow * T.emissiveA.w;
+  emissive += rimColor * fresnelRim * T.emissiveB.x;
+  emissive += dispersion * fresnelEdge * T.emissiveB.y;
+  emissive += LAVENDER_MIST * fresnelBody * T.emissiveB.z;
+  emissive += shimmer * MOON_CREAM * T.emissiveB.w;
 
   // ── Alpha ─────────────────────────────────────────────────────────────────
   //
@@ -454,17 +471,17 @@ fragment float4 earthSurfaceFragment(
   //
   // Rim alpha uses a *sharp* fresnel — exponent 28 keeps the opaque band
   // confined to the visible bright rim line and lets alpha collapse to ~0
-  // within a couple of pixels inside it. Doubled from 14 → 28 to match the
-  // 50%-thinner emissive rim above; keep the three exponents proportional
-  // (fresnelRim : fresnelEdge : rimAlpha ≈ 10 : 18 : 28) so the alpha band
-  // doesn't extend past the visible rim or fall short of it.
-  float rimAlpha = pow(1.0 - ndv, 28.0);
+  // within a couple of pixels inside it. The three exponents stay proportional
+  // (fresnelRim : fresnelEdge : rimAlpha ≈ 10 : 18 : 28) by construction —
+  // all scale with the one rimTightness knob (T.glass.y) — so the alpha band
+  // never extends past the visible rim or falls short of it.
+  float rimAlpha = pow(1.0 - ndv, 28.0 * T.glass.y);
   float alpha = saturate(
-      continent * 0.92
-    + coastHalo * 0.18
-    + rimAlpha * 1.20
-    + backGlow * 0.45
-    + seaGlow * 0.30
+      continent * T.alphaA.x
+    + coastHalo * T.alphaA.y
+    + rimAlpha * T.alphaA.z
+    + backGlow * T.backBleed.w
+    + seaGlow * T.alphaA.w
   );
 
   return float4(emissive, alpha);

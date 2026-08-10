@@ -37,6 +37,7 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
   private var bufferIndex = 0
   private var uniformBuffers: [MTLBuffer] = []
   private var glowBuffers: [MTLBuffer] = []
+  private var tuningBuffers: [MTLBuffer] = []
 
   // Offscreen targets — created lazily on size change.
   private var sceneTexture: MTLTexture?
@@ -148,6 +149,11 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
   private func buildBuffers() {
     let uniformLen = MemoryLayout<EarthUniforms>.stride
     let glowLen = MemoryLayout<GlowSourceGPU>.stride * EarthRendererConstants.maxGlowSources
+    let tuningLen = MemoryLayout<EarthTuningUniforms>.stride
+    // Layout-drift tripwire: the Metal mirror (EarthTuningShared.h) is 13
+    // packed float4s. If the Swift struct ever grows padding or a field,
+    // this must change in lockstep on both sides.
+    assert(tuningLen == 208, "EarthTuningUniforms layout drifted from EarthTuningShared.h")
 
     for i in 0..<Self.maxInflightFrames {
       let u = device.makeBuffer(length: uniformLen, options: .storageModeShared)!
@@ -157,6 +163,10 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
       let g = device.makeBuffer(length: glowLen, options: .storageModeShared)!
       g.label = "Earth.GlowSources.\(i)"
       glowBuffers.append(g)
+
+      let t = device.makeBuffer(length: tuningLen, options: .storageModeShared)!
+      t.label = "Earth.Tuning.\(i)"
+      tuningBuffers.append(t)
     }
   }
 
@@ -201,6 +211,13 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
       byteCount: MemoryLayout<EarthUniforms>.stride
     )
 
+    // Live look parameters — defaults reproduce the shipped literals, so this
+    // is a straight passthrough outside the DEBUG tuning panel.
+    tuningBuffers[frameIndex].contents().copyMemory(
+      from: [EarthTuning.shared.gpu],
+      byteCount: MemoryLayout<EarthTuningUniforms>.stride
+    )
+
     guard let cmd = commandQueue.makeCommandBuffer() else {
       inflightSemaphore.signal()
       return
@@ -213,10 +230,10 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
       ensureOffscreenTargets()
       if let scene = sceneTexture, let blA = bloomTexA, let blB = bloomTexB {
         encodeMainPass(cmd: cmd, into: scene, uniformIdx: frameIndex)
-        encodePostPass(cmd: cmd, pipeline: threshold, src: scene, dst: blA)
-        encodePostPass(cmd: cmd, pipeline: blurH, src: blA, dst: blB)
-        encodePostPass(cmd: cmd, pipeline: blurV, src: blB, dst: blA)
-        encodeCompositePass(cmd: cmd, pipeline: composite, scene: scene, bloom: blA, rpd: rpd)
+        encodePostPass(cmd: cmd, pipeline: threshold, src: scene, dst: blA, uniformIdx: frameIndex)
+        encodePostPass(cmd: cmd, pipeline: blurH, src: blA, dst: blB, uniformIdx: frameIndex)
+        encodePostPass(cmd: cmd, pipeline: blurV, src: blB, dst: blA, uniformIdx: frameIndex)
+        encodeCompositePass(cmd: cmd, pipeline: composite, scene: scene, bloom: blA, rpd: rpd, uniformIdx: frameIndex)
       } else {
         encodeMainPassDirect(cmd: cmd, rpd: rpd, uniformIdx: frameIndex)
       }
@@ -292,6 +309,7 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     enc.setRenderPipelineState(mainPipeline)
     enc.setFragmentBuffer(uniformBuffers[uniformIdx], offset: 0, index: 0)
     enc.setFragmentBuffer(glowBuffers[uniformIdx], offset: 0, index: 1)
+    enc.setFragmentBuffer(tuningBuffers[uniformIdx], offset: 0, index: 2)
     enc.setFragmentTexture(continentTexture, index: 0)
     enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     enc.endEncoding()
@@ -306,6 +324,7 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     enc.setRenderPipelineState(mainPipeline)
     enc.setFragmentBuffer(uniformBuffers[uniformIdx], offset: 0, index: 0)
     enc.setFragmentBuffer(glowBuffers[uniformIdx], offset: 0, index: 1)
+    enc.setFragmentBuffer(tuningBuffers[uniformIdx], offset: 0, index: 2)
     enc.setFragmentTexture(continentTexture, index: 0)
     enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     enc.endEncoding()
@@ -314,13 +333,15 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
   private func encodePostPass(cmd: MTLCommandBuffer,
                               pipeline: MTLRenderPipelineState,
                               src: MTLTexture,
-                              dst: MTLTexture) {
+                              dst: MTLTexture,
+                              uniformIdx: Int) {
     let rpd = MTLRenderPassDescriptor()
     rpd.colorAttachments[0].texture = dst
     rpd.colorAttachments[0].loadAction = .dontCare
     rpd.colorAttachments[0].storeAction = .store
     guard let enc = cmd.makeRenderCommandEncoder(descriptor: rpd) else { return }
     enc.setRenderPipelineState(pipeline)
+    enc.setFragmentBuffer(tuningBuffers[uniformIdx], offset: 0, index: 0)
     enc.setFragmentTexture(src, index: 0)
     enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     enc.endEncoding()
@@ -330,7 +351,8 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
                                    pipeline: MTLRenderPipelineState,
                                    scene: MTLTexture,
                                    bloom: MTLTexture,
-                                   rpd: MTLRenderPassDescriptor) {
+                                   rpd: MTLRenderPassDescriptor,
+                                   uniformIdx: Int) {
     rpd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
     rpd.colorAttachments[0].loadAction = .clear
     rpd.colorAttachments[0].storeAction = .store
@@ -339,8 +361,10 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     enc.setRenderPipelineState(pipeline)
     enc.setFragmentTexture(scene, index: 0)
     enc.setFragmentTexture(bloom, index: 1)
-    enc.setFragmentBuffer(uniformBuffers[bufferIndex == 0 ? Self.maxInflightFrames - 1 : bufferIndex - 1],
-                          offset: 0, index: 0)
+    // Buffer 0 here is the tuning struct (see EarthBloom.metal) — if
+    // EarthUniforms is ever needed in the composite pass, bind it at a
+    // different index.
+    enc.setFragmentBuffer(tuningBuffers[uniformIdx], offset: 0, index: 0)
     enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
     enc.endEncoding()
   }
@@ -361,15 +385,22 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     let vp = proj * view
     let invVP = vp.inverse
 
-    // Breath: 4s inhale / 6s exhale — the physiological sigh ratio per DESIGN.md.
-    let breath = breathingCurve(time: time)
+    let tuning = EarthTuning.shared.values
+
+    // Breath default: 4s inhale / 6s exhale — the physiological sigh ratio
+    // per DESIGN.md.
+    let breath = breathingCurve(
+      time: time,
+      inhale: tuning.breathInhaleSeconds,
+      exhale: tuning.breathExhaleSeconds
+    )
 
     // Sphere orientation: axial tilt + user-driven rotation + slow idle drift.
     let orientation = interaction?.orientationMatrix(time: time) ?? defaultIdleOrientation(time: time)
 
-    // Sun: from upper-left, slightly forward — warm peach key light.
+    // Sun default: from upper-left, slightly forward — warm peach key light.
     // The shader uses dot(N, sunDir) for a *soft* terminator.
-    let sun = simd_normalize(SIMD3<Float>(-0.45, 0.55, 0.7))
+    let sun = simd_normalize(SIMD3<Float>(tuning.sunX, tuning.sunY, tuning.sunZ))
 
     return EarthUniforms(
       inverseViewProj: invVP,
@@ -380,8 +411,8 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
       sphereData: SIMD4<Float>(0, 0, 0, EarthRendererConstants.sphereRadius),
       atmosphereData: SIMD4<Float>(
         EarthRendererConstants.atmosphereRadius,
-        0.55,   // atmosphere strength
-        0.12,   // baseline emissive on continents
+        tuning.atmosphereStrength,
+        0.12,   // baseline emissive — dead slot, never read by the shader
         0
       )
     )
@@ -394,17 +425,18 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     return simd_float4x4(rotationAroundY: yaw) * simd_float4x4(rotationAroundZ: tilt)
   }
 
-  private func breathingCurve(time: Float) -> Float {
-    // 4s inhale, 6s exhale → 10s period. Two-piece eased cosine.
-    let period: Float = 10.0
-    let t = time.truncatingRemainder(dividingBy: period)
-    if t < 4.0 {
-      // 0 → 1 over 4s, cosine-eased.
-      let u = t / 4.0
+  private func breathingCurve(time: Float, inhale: Float, exhale: Float) -> Float {
+    // Two-piece eased cosine, period = inhale + exhale (default 4s + 6s).
+    let inhale = max(inhale, 0.1)
+    let exhale = max(exhale, 0.1)
+    let t = time.truncatingRemainder(dividingBy: inhale + exhale)
+    if t < inhale {
+      // 0 → 1 over the inhale, cosine-eased.
+      let u = t / inhale
       return 0.5 - 0.5 * cos(u * .pi)
     } else {
-      // 1 → 0 over 6s.
-      let u = (t - 4.0) / 6.0
+      // 1 → 0 over the exhale.
+      let u = (t - inhale) / exhale
       return 0.5 + 0.5 * cos(u * .pi)
     }
   }
