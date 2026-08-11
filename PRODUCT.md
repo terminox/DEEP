@@ -68,11 +68,11 @@ Start something and it follows you: the player docks into the tab bar as a mini 
 
 ### Mind Garden
 
-Your practice, reflected back as growth rather than performance. There are no streaks to break and nothing to fail — the garden simply grows alongside you.
+Your practice, reflected back as growth rather than performance. There are no streaks to break and nothing to fail — one chosen plant simply grows alongside you.
 
-The screen greets you with today's minutes against a gentle goal, nudges you into today's practice, and shows your plants: **Seedling** at day one, **Sprout** at a week, **Bloom** at three weeks, a **Willow** at forty days. Later plants sit dormant until you reach them.
+You tend a single plant (the oak, for now). Every completed session — a Deep Session or a Global Pause — feeds it growth points, and at gentle thresholds it evolves into its next form: **Oak Seedling → Young Oak → Mature Oak**. The screen greets you with the day's line of encouragement, shows the oak as it stands beside the form it's growing into with the progress between them, and carries today's minutes against a gentle goal inside the practice card.
 
-*Today:* the layout and the plant journey are built, driven by sample state. Nothing persists yet, and which plants are unlocked is hardcoded rather than derived from a real streak — wiring the garden to actual practice is the open work here.
+*Today:* the layout is built and today's minutes are real, read from the shared practice journal. Growth points are sample state — sessions don't yet bank points and evolution doesn't persist. The Mind Tree picked in onboarding isn't wired in yet either (the garden always shows the oak); connecting both is the open work here.
 
 ### Compassion Portfolio
 
@@ -113,7 +113,7 @@ The **You** tab. Your avatar, your name, how you signed in — and a log out tha
 
 Deep is a working prototype of the whole experience, backed by a real API (`deep-api`) where it matters most: the home feed's shelves, the sound library (streamed audio), and all of **Global Pause** — schedule, synced clock, presence, live counts, peace messages — are served by the backend. Onboarding persists locally: whether you finished it, and what you answered.
 
-Two areas carry known gaps. The **Mind Garden** and **Compassion Portfolio** both display fixture state that nothing writes to — practice doesn't yet feed minutes, streaks, or hearts. And inside **Global Pause**, the lounge's remaining roles — the nightly theme music and the welcome lines — are modelled (the schedule already carries both) but not yet played or shown.
+Two areas carry known gaps. The **Mind Garden**'s growth points and the **Compassion Portfolio**'s balances are fixture state that nothing writes to — practice feeds today's minutes, but not yet growth points or hearts. And inside **Global Pause**, the lounge's remaining roles — the nightly theme music and the welcome lines — are modelled (the schedule already carries both) but not yet played or shown.
 
 ## Login
 
