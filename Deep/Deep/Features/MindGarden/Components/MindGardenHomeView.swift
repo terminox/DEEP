@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The Mind Garden home — a personal calm space. One quiet scroll: an
-/// atmospheric video header, a greeting with today's progress and streak, a
-/// nudge into today's practice, and the garden growing alongside the journey.
+/// atmospheric video header, a greeting with the oak's growth toward its next
+/// form, and a nudge into today's practice carrying today's progress.
 ///
 /// This is the leaf screen, so it owns its screen-level styling: the video hero
 /// bleeds under the status bar and `AtmosphereBackground` sits behind the scroll
@@ -10,6 +10,7 @@ import SwiftUI
 /// coordinator, so it actually renders).
 struct MindGardenHomeView: View {
   var state: GardenState = .sample
+  var greeting: GardenGreeting = .current()
   /// Extra bottom space so content clears the tab bar / any docked chrome.
   var bottomInset: CGFloat = .rhythm
 
@@ -28,15 +29,16 @@ struct MindGardenHomeView: View {
         StretchyHero(media: .video(resource: "deep_oak_mature"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          GardenGreetingCard(state: state)
+          GardenGrowthCard(greeting: greeting, growth: state.growth)
             .padding(.horizontal, .edge)
 
-          DailyPracticeCard(minutesRemaining: state.minutesRemaining) {
+          DailyPracticeCard(
+            minutesToday: state.minutesToday,
+            dailyGoalMinutes: state.dailyGoalMinutes
+          ) {
             openDeepSession(DeepSessionLibrary.balancingBreath)
           }
           .padding(.horizontal, .edge)
-
-          GrowYourGardenSection(stages: state.stages)
 
           Color.clear.frame(height: bottomInset)
         }
@@ -55,9 +57,13 @@ struct MindGardenHomeView: View {
 }
 
 #Preview("Mind Garden — Home") {
-  MindGardenHomeView(state: .sample)
+  MindGardenHomeView(state: .sample, greeting: .sample)
 }
 
 #Preview("Mind Garden — Fresh start") {
-  MindGardenHomeView(state: .fresh)
+  MindGardenHomeView(state: .fresh, greeting: .sample)
+}
+
+#Preview("Mind Garden — Flourishing") {
+  MindGardenHomeView(state: .flourishing, greeting: .evening)
 }

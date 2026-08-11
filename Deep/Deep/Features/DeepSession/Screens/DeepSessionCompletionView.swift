@@ -90,11 +90,11 @@ struct DeepSessionCompletionView: View {
       : max(0, practiceStore.minutesToday - session.durationMinutes)
   }
 
-  /// The furthest plant the practice has grown so far. The seedling is always
-  /// unlocked, so the fallback never shows.
-  private var grownPlant: PlantKind {
-    GardenStage.journey(unlockedForLongestStreak: practiceStore.longestStreakDays)
-      .last(where: \.isUnlocked)?.kind ?? .seedling
+  /// The oak's current form, derived the same way the garden home screen
+  /// derives it — one shared path, so once growth points persist this screen
+  /// follows automatically.
+  private var grownOak: OakStage {
+    GardenState(practice: practiceStore).growth.stage
   }
 
   /// One step of the staggered arrival — rises softly into place, each group
@@ -131,11 +131,26 @@ struct DeepSessionCompletionView: View {
 
   // MARK: - Plant
 
-  /// The garden made real — the user's furthest-grown plant standing on the
-  /// atmosphere, blooming up from its roots on arrival.
+  /// The garden made real — the oak in its current form, blooming up from its
+  /// roots on arrival. The artwork ships on an opaque white square, so it sits
+  /// in the same rounded, lavender-veiled frame the garden's growth card uses
+  /// rather than standing bare on the atmosphere.
   private var plant: some View {
-    PlantArtwork(kind: grownPlant)
-      .frame(height: 84)
+    Image(grownOak.imageName)
+      .resizable()
+      .scaledToFit()
+      .padding(6)
+      .frame(width: 84, height: 84)
+      .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white))
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .fill(.lavenderMist.opacity(0.08))
+      )
+      .overlay(
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .strokeBorder(.white.opacity(0.35), lineWidth: 0.5)
+      )
       .heartBurst(trigger: heartFlourish)
       .opacity(hasArrived ? 1 : 0)
       .scaleEffect(reduceMotion || hasArrived ? 1 : 0.92, anchor: .bottom)

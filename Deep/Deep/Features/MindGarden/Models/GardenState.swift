@@ -1,12 +1,11 @@
 import Foundation
 
-/// A snapshot of the user's Mind Garden — today's practice progress, the running
-/// streak, and the plants growing across the journey. Drives the home screen.
+/// A snapshot of the user's Mind Garden — today's practice progress and the
+/// oak's growth toward its next form. Drives the home screen.
 struct GardenState {
   var minutesToday: Int
   var dailyGoalMinutes: Int
-  var streakDays: Int
-  var stages: [GardenStage]
+  var growth: GardenGrowth
 
   /// Fraction of today's goal completed, clamped to 0...1.
   var progress: Double {
@@ -23,28 +22,33 @@ struct GardenState {
 extension GardenState {
   /// The live garden — a projection of the shared practice journal, re-derived
   /// wherever it's read so a finished session shows up everywhere at once.
+  /// Growth is sample data until growth points persist.
   @MainActor
   init(practice: any PracticeStore) {
     self.init(
       minutesToday: practice.minutesToday,
       dailyGoalMinutes: practice.dailyGoalMinutes,
-      streakDays: practice.currentStreakDays,
-      stages: GardenStage.journey(unlockedForLongestStreak: practice.longestStreakDays)
+      growth: .sample
     )
   }
 
   static let sample = GardenState(
     minutesToday: 7,
     dailyGoalMinutes: 10,
-    streakDays: 12,
-    stages: GardenStage.journey
+    growth: .sample
   )
 
   /// A first-day garden, before any momentum has built.
   static let fresh = GardenState(
     minutesToday: 0,
     dailyGoalMinutes: 10,
-    streakDays: 0,
-    stages: GardenStage.journey
+    growth: .sprouting
+  )
+
+  /// Goal met and the oak fully evolved — the ceiling state.
+  static let flourishing = GardenState(
+    minutesToday: 10,
+    dailyGoalMinutes: 10,
+    growth: .fullyGrown
   )
 }
