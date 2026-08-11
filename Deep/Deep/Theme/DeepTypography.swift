@@ -155,3 +155,11 @@ extension UIFont {
   static var countdown: UIFont { DeepTypePalette.countdown.uiFont }
   static var revealTitle: UIFont { DeepTypePalette.revealTitle.uiFont }
 }
+
+// MARK: - Tracking
+
+/// Letterspacing companions to the type scale, e.g. `.tracking(.microTracking)`.
+extension CGFloat {
+  /// Breathing room for all-caps `DeepType.micro` eyebrow labels.
+  static let microTracking: CGFloat = 1.4
+}

@@ -36,7 +36,7 @@ struct FeaturePlaceholderView: View {
 
         Text("Coming soon")
           .font(DeepType.micro)
-          .tracking(1.4)
+          .tracking(.microTracking)
           .foregroundStyle(.lavenderMist)
           .padding(.horizontal, 16)
           .padding(.vertical, 7)

@@ -6,6 +6,9 @@ struct GardenState {
   var minutesToday: Int
   var dailyGoalMinutes: Int
   var growth: GardenGrowth
+  /// Consecutive practice days ending today (or yesterday, before today's
+  /// session — see `PracticeMath.currentStreakDays`).
+  var streakDays: Int
 
   /// Fraction of today's goal completed, clamped to 0...1.
   var progress: Double {
@@ -28,27 +31,31 @@ extension GardenState {
     self.init(
       minutesToday: practice.minutesToday,
       dailyGoalMinutes: practice.dailyGoalMinutes,
-      growth: .sample
+      growth: .sample,
+      streakDays: practice.currentStreakDays
     )
   }
 
   static let sample = GardenState(
     minutesToday: 7,
     dailyGoalMinutes: 10,
-    growth: .sample
+    growth: .sample,
+    streakDays: 12
   )
 
   /// A first-day garden, before any momentum has built.
   static let fresh = GardenState(
     minutesToday: 0,
     dailyGoalMinutes: 10,
-    growth: .sprouting
+    growth: .sprouting,
+    streakDays: 0
   )
 
   /// Goal met and the oak fully evolved — the ceiling state.
   static let flourishing = GardenState(
     minutesToday: 10,
     dailyGoalMinutes: 10,
-    growth: .fullyGrown
+    growth: .fullyGrown,
+    streakDays: 30
   )
 }

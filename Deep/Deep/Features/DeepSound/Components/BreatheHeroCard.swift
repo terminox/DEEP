@@ -39,7 +39,7 @@ struct BreatheHeroCard: View {
           VStack(alignment: .leading, spacing: 4) {
             Text("DEEP SESSION")
               .font(DeepType.micro)
-              .tracking(1.4)
+              .tracking(.microTracking)
               .foregroundStyle(.white.opacity(0.9))
             Text("Breathe")
               .font(DeepType.displayTitle)

@@ -18,7 +18,7 @@ struct PeaceMessageComposer: View {
     VStack(alignment: .leading, spacing: 10) {
       Text("LEAVE A PEACE MESSAGE")
         .font(DeepType.micro)
-        .tracking(1.4)
+        .tracking(.microTracking)
         .foregroundStyle(.driftGrey)
 
       HStack(alignment: .bottom, spacing: 10) {

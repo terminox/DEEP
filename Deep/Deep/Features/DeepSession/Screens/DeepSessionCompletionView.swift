@@ -114,7 +114,7 @@ struct DeepSessionCompletionView: View {
         Text("Session complete")
           .textCase(.uppercase)
           .font(DeepType.micro)
-          .tracking(1.4)
+          .tracking(.microTracking)
           .foregroundStyle(.driftGrey)
         Text("Softly grown")
           .font(DeepType.displayTitle)

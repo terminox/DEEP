@@ -9,7 +9,7 @@ struct PartnerOrganizationCard: View {
     VStack(alignment: .leading, spacing: 14) {
       Text("PARTNER ORGANISATION")
         .font(DeepType.micro)
-        .tracking(1.4)
+        .tracking(.microTracking)
         .foregroundStyle(.lavenderMist)
 
       HStack(alignment: .top, spacing: 14) {

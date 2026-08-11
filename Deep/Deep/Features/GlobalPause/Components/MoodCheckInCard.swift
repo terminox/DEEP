@@ -9,7 +9,7 @@ struct MoodCheckInCard: View {
     VStack(alignment: .leading, spacing: 10) {
       Text("PERSONALIZE")
         .font(DeepType.micro)
-        .tracking(1.4)
+        .tracking(.microTracking)
         .foregroundStyle(.driftGrey)
         .padding(.horizontal, .edge)
 

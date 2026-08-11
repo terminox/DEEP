@@ -29,13 +29,14 @@ struct MindGardenHomeView: View {
         StretchyHero(media: .video(resource: "deep_oak_mature"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          GardenGrowthCard(greeting: greeting, growth: state.growth)
+          GardenGrowthCard(
+            greeting: greeting,
+            growth: state.growth,
+            streakDays: state.streakDays
+          )
             .padding(.horizontal, .edge)
 
-          DailyPracticeCard(
-            minutesToday: state.minutesToday,
-            dailyGoalMinutes: state.dailyGoalMinutes
-          ) {
+          DailyPracticeCard(state: state) {
             openDeepSession(DeepSessionLibrary.balancingBreath)
           }
           .padding(.horizontal, .edge)

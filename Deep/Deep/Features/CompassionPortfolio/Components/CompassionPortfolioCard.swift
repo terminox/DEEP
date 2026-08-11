@@ -53,7 +53,7 @@ struct CompassionPortfolioCard: View {
     VStack(alignment: .leading, spacing: 4) {
       Text("MY HEARTS")
         .font(DeepType.micro)
-        .tracking(1.4)
+        .tracking(.microTracking)
         .foregroundStyle(.driftGrey)
       Text(ledger.balance.formatted())
         .font(DeepType.bigNumber)

@@ -226,7 +226,7 @@ private struct YourPartCard: View {
     VStack(alignment: .leading, spacing: 8) {
       Text("YOUR PART")
         .font(DeepType.micro)
-        .tracking(1.4)
+        .tracking(.microTracking)
         .foregroundStyle(.lavenderMist)
 
       HStack(alignment: .top, spacing: 10) {

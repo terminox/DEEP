@@ -16,7 +16,7 @@ struct DeepSessionEntryCard: View {
         VStack(alignment: .leading, spacing: 5) {
           Text("DEEP SESSION")
             .font(DeepType.micro)
-            .tracking(1.4)
+            .tracking(.microTracking)
             .foregroundStyle(.driftGrey)
           Text(session.title)
             .font(DeepType.displayTitle)

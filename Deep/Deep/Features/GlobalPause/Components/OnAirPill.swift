@@ -17,7 +17,7 @@ struct OnAirPill: View {
 
       Text("ON AIR")
         .font(DeepType.micro)
-        .tracking(1.4)
+        .tracking(.microTracking)
         .foregroundStyle(.deepPlum)
     }
     .padding(.horizontal, 9)

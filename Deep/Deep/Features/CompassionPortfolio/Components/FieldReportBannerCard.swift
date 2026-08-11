@@ -82,7 +82,7 @@ struct FieldReportBannerCard: View {
     .overlay(alignment: .bottomLeading) {
       Text(report.categoryName.uppercased())
         .font(DeepType.micro)
-        .tracking(1.4)
+        .tracking(.microTracking)
         .foregroundStyle(.white)
         .shadow(color: Color.deepPlum.opacity(0.3), radius: 6, y: 2)
         .padding(.horizontal, 16)

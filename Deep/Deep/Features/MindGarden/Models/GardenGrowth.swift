@@ -51,6 +51,11 @@ struct GardenGrowth {
   var pointsToEvolve: Int? { stage.pointsToEvolve }
   var isFullyGrown: Bool { nextStage == nil }
 
+  /// Points still to grow before the next evolution; `nil` once fully grown.
+  var pointsRemaining: Int? {
+    pointsToEvolve.map { max(0, $0 - points) }
+  }
+
   /// Fraction of the way to the next evolution, clamped to 0...1.
   /// A fully grown plant reads as complete.
   var evolutionProgress: Double {
