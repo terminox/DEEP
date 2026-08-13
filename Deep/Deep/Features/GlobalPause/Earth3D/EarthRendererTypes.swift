@@ -73,8 +73,13 @@ struct EarthTuningUniforms {
   /// z = spark whiteness → brightness flash, w = coast glow weight
   var bloomB: SIMD4<Float>
   /// Independent lit-land term, decoupled from the base land emissive:
-  /// x = lit emissive weight, y = lit color mix (palette → warm glow), zw = reserved
+  /// x = lit emissive weight, y = lit color mix (palette → warm glow),
+  /// z = volumetric glow master gain, w = volumetric column scale height
   var lit: SIMD4<Float>
+  /// Volumetric 3D glow shell: x = column flare with height (σ widen),
+  /// y = accumulated volume → alpha lift, z = tint mix (flat lilac → warm walk),
+  /// w = far-side ghost weight through the glass body
+  var volumetric: SIMD4<Float>
 }
 
 enum EarthRendererConstants {

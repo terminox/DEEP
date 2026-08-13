@@ -54,7 +54,7 @@ final class EarthGlowStore {
   /// Every tunable constant in one struct: the DEBUG panel gets per-field
   /// sliders, reset is `tuning = Tuning()`, and defaults live once as the
   /// member initializers (the shipped look).
-  struct Tuning {
+  struct Tuning: Codable, Equatable {
     /// Per-source lerp time constant (seconds).
     var lerpTau: Float = 0.8
 
@@ -63,7 +63,7 @@ final class EarthGlowStore {
     /// point cells, so a single join can light its country or continent. The
     /// shader's land mask clips the gaussian to coastlines, so the region
     /// reads as lit land rather than a round blob.
-    enum Granularity: String, CaseIterable { case point, country, continent }
+    enum Granularity: String, CaseIterable, Codable { case point, country, continent }
     var granularity: Granularity = .point
     /// Inflates region blob radii — country mode at ~2× reads as sub-region
     /// (SEA-ish) coverage.
@@ -101,6 +101,15 @@ final class EarthGlowStore {
     /// glow with 1 − exp(−total·k), so even a full-intensity spark lands ~0.79
     /// — bright, but structurally incapable of blowing out to white under bloom.
     var sparkPeak: Float = 1.3
+
+    // Volumetric column heights (radiusPacked.z, a multiplier on the shader's
+    // scale height — see volumetricShell in EarthSurface.metal).
+    /// Home glow column height (>1 = taller than ordinary cells).
+    var homeColumnHeight: Float = 1.35
+    /// Extra column height at spark birth, decaying on the whiteness
+    /// envelope's ~0.45s time constant — a fresh join visibly throws light
+    /// upward, then settles together with the cream flash.
+    var sparkColumnBoost: Float = 1.5
   }
 
   /// Point/home values are baked into lerp *targets*, so any change must
@@ -158,7 +167,12 @@ final class EarthGlowStore {
       guard intensity > 0.003 else { return nil }
       return GlowSourceGPU(
         positionAndIntensity: SIMD4<Float>(s.position.x, s.position.y, s.position.z, intensity),
-        radiusPacked: SIMD4<Float>(s.radius, sparkWhiteness(age: s.age), 0, 0)
+        radiusPacked: SIMD4<Float>(
+          s.radius,
+          sparkWhiteness(age: s.age),
+          1 + tuning.sparkColumnBoost * expf(-s.age / 0.45),
+          0
+        )
       )
     }
 
@@ -175,7 +189,12 @@ final class EarthGlowStore {
             s.position.x, s.position.y, s.position.z,
             isHome ? s.currentIntensity * homeBreath : s.currentIntensity
           ),
-          radiusPacked: SIMD4<Float>(s.angularRadius, isHome ? tuning.homeWhiteness : 0, 0, 0)
+          radiusPacked: SIMD4<Float>(
+            s.angularRadius,
+            isHome ? tuning.homeWhiteness : 0,
+            isHome ? tuning.homeColumnHeight : 1,
+            0
+          )
         )
       }
     return steady + sparkGPU

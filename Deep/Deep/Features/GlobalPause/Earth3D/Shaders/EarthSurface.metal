@@ -26,7 +26,8 @@ using namespace metal;
 struct GlowSourceGPU {
   float4 positionAndIntensity;  // xyz = unit pos on sphere, w = intensity 0..1
   float4 radiusPacked;          // x = angular radius (rad), y = whiteness 0..1
-                                // (join sparks push toward moon-cream), zw = reserved
+                                // (join sparks push toward moon-cream),
+                                // z = volumetric column height multiplier, w = reserved
 };
 
 struct EarthUniforms {
@@ -133,6 +134,30 @@ static Hit raySphere(float3 ro, float3 rd, float3 center, float radius) {
   return h;
 }
 
+// Both roots of the ray/sphere intersection — the volumetric shell march
+// needs the full chord (`raySphere` discards the far root and misses on it).
+struct RangeHit {
+  bool hit;
+  float t0;   // near root (may be < 0 if the origin sits inside)
+  float t1;   // far root
+};
+
+static RangeHit raySphereRange(float3 ro, float3 rd, float3 center, float radius) {
+  RangeHit h;
+  h.hit = false;
+  float3 oc = ro - center;
+  float b = dot(rd, oc);
+  float c = dot(oc, oc) - radius * radius;
+  float disc = b * b - c;
+  if (disc < 0.0) return h;
+  float s = sqrt(disc);
+  h.t0 = -b - s;
+  h.t1 = -b + s;
+  if (h.t1 < 0.0) return h;   // sphere entirely behind the ray
+  h.hit = true;
+  return h;
+}
+
 // ── Spherical UV ────────────────────────────────────────────────────────────
 //
 // Equirectangular convention: U=0 at left (lon -180°), U=0.5 at lon 0°
@@ -162,6 +187,18 @@ static float3 iridescent(float t) {
     c = mix(BLUSH_POWDER, PEACH_CLOUD, smoothstep(0.75, 1.0, t));
   }
   return c;
+}
+
+// ── Glow palette walk ───────────────────────────────────────────────────────
+//
+// Shared by the surface glow and the volumetric shell: lilac → blush → peach
+// with intensity, the whiteness channel warming toward moon-cream — capped at
+// 0.55 so spark peaks read as candle-light, never raw white under bloom.
+
+static float3 glowPalette(float v, float white) {
+  float3 c = mix(SOFT_LILAC, BLUSH_POWDER, v);
+  c = mix(c, PEACH_CLOUD, smoothstep(0.55, 0.95, v));
+  return mix(c, MOON_CREAM, min(white, 0.55));
 }
 
 // ── Glow accumulator ────────────────────────────────────────────────────────
@@ -208,6 +245,88 @@ static GlowAccum accumulateGlow(float3 surfaceNormalLocal,
   return a;
 }
 
+// ── Volumetric glow shell ───────────────────────────────────────────────────
+//
+// Fixed-count midpoint march through the shell between the sphere surface and
+// the atmosphere radius. Each source contributes a column of light: the
+// surface gaussian (core only — no halo skirt), widened with height so the
+// column flares into a dome, decaying exponentially with height, and faded to
+// zero at the shell top so the breathing radius never clips a hard edge.
+// Loop order is source-major so a cheap cone test rejects far-away sources
+// before any sampling happens.
+//
+// Six midpoint samples are enough: the density field is a smooth gaussian ×
+// exponential with no texture detail, so banding cannot occur even on the
+// longest limb-tangent chord.
+
+#define VOL_SAMPLES 6
+
+struct VolAccum {
+  float glow;
+  float white;
+};
+
+static VolAccum volumetricShell(float3 ro, float3 rd,
+                                float t0, float t1,
+                                float3 center, float radius, float atmoR,
+                                float3x3 Rt,
+                                constant GlowSourceGPU* sources, int count,
+                                constant EarthTuningUniforms& T) {
+  VolAccum a;
+  a.glow = 0.0;
+  a.white = 0.0;
+  float volIntensity = T.lit.z;
+  if (volIntensity <= 0.001 || count == 0 || t1 <= t0) return a;
+
+  float gap = max(atmoR - radius, 1e-4);
+  float dt = (t1 - t0) / float(VOL_SAMPLES);
+  float w = dt / gap;                    // path-length normalization
+  float scaleH = max(T.lit.w, 0.02);     // volHeight
+  float3 midLocal = Rt * normalize(ro + rd * (0.5 * (t0 + t1)) - center);
+
+  float total = 0.0;
+  float whiteTotal = 0.0;
+  for (int i = 0; i < count; ++i) {
+    float3 p = sources[i].positionAndIntensity.xyz;
+    float intensity = sources[i].positionAndIntensity.w;
+    float srcRadius = max(sources[i].radiusPacked.x, 0.01);
+    float whiteness = sources[i].radiusPacked.y;
+    // Floored so a zero-packed buffer (stale caller) degrades to short
+    // columns instead of dividing the height falloff toward nothing.
+    float heightMul = max(sources[i].radiusPacked.z, 0.2);
+
+    // Cone rejection: the widest σ is srcRadius·(1+volSoftness), and nothing
+    // survives past ~4σ. The sampled segment sweeps at most about one
+    // shell-gap of arc — folded into the margin so limb chords don't reject
+    // a source they'd graze.
+    float margin = srcRadius * (1.0 + T.volumetric.x) * 4.0 + gap * 1.2;
+    if (acos(clamp(dot(midLocal, p), -1.0, 1.0)) > margin) continue;
+
+    float srcTotal = 0.0;
+    for (int s = 0; s < VOL_SAMPLES; ++s) {
+      float t = t0 + (float(s) + 0.5) * dt;
+      float3 q = ro + rd * t;
+      float r = length(q - center);
+      float h = clamp((r - radius) / gap, 0.0, 1.0);
+      float3 dirLocal = Rt * ((q - center) / r);
+      float angle = acos(clamp(dot(dirLocal, p), -1.0, 1.0));
+      float sigma = srcRadius * (1.0 + T.volumetric.x * h);  // dome flare upward
+      float x = angle / sigma;
+      if (x > 4.0) continue;
+      float column = exp(-x * x * 0.5);
+      float heightFall = exp(-h / (scaleH * heightMul));
+      float topFade = 1.0 - smoothstep(0.85, 1.0, h);        // soft shell top
+      srcTotal += column * heightFall * topFade;
+    }
+    float f = srcTotal * w * intensity;
+    total += f;
+    whiteTotal += f * whiteness;
+  }
+  a.glow = 1.0 - exp(-total * volIntensity);   // same compression family as the surface glow
+  a.white = clamp(whiteTotal, 0.0, 1.0);
+  return a;
+}
+
 // ── Main fragment ───────────────────────────────────────────────────────────
 
 fragment float4 earthSurfaceFragment(
@@ -245,30 +364,43 @@ fragment float4 earthSurfaceFragment(
   float breathScale = 1.0 + T.haze.z * breath;
   float radius = baseRadius * breathScale;
 
-  Hit atmoHit = raySphere(rayOrigin, rayDir, sphereCenter, atmoRadius * breathScale);
-  Hit hit = raySphere(rayOrigin, rayDir, sphereCenter, radius);
-
-  if (!hit.hit) {
-    // Atmosphere haze beyond the orb silhouette.
-    if (!atmoHit.hit) return float4(0, 0, 0, 0);
-    float3 n = atmoHit.normal;
-    float density = pow(1.0 - abs(dot(n, -rayDir)), T.haze.y);
-    float lat = n.y;
-    float3 tint = mix(SOFT_LILAC, BLUSH_POWDER, smoothstep(-0.6, 0.6, -lat));
-    tint = mix(tint, LAVENDER_MIST, 0.4);
-    float a = density * atmoStrength * T.haze.x;
-    return float4(tint * a, a);
-  }
-
-  float3 worldNormal = hit.normal;
-
-  // Local frame so continents stay anchored to the rotating sphere.
+  // Local frame so continents stay anchored to the rotating sphere. Built
+  // before the miss/hit split because the volumetric shell march needs it on
+  // both branches, not just the surface shading.
   float3x3 R = float3x3(
     U.sphereOrientation[0].xyz,
     U.sphereOrientation[1].xyz,
     U.sphereOrientation[2].xyz
   );
-  float3 localNormal = transpose(R) * worldNormal;
+  float3x3 Rt = transpose(R);
+
+  RangeHit atmoRange = raySphereRange(rayOrigin, rayDir, sphereCenter,
+                                      atmoRadius * breathScale);
+  Hit hit = raySphere(rayOrigin, rayDir, sphereCenter, radius);
+
+  if (!hit.hit) {
+    // Atmosphere haze + volumetric glow domes beyond the orb silhouette.
+    if (!atmoRange.hit) return float4(0, 0, 0, 0);
+    float3 n = normalize(rayOrigin + rayDir * atmoRange.t0 - sphereCenter);
+    float density = pow(1.0 - abs(dot(n, -rayDir)), T.haze.y);
+    float lat = n.y;
+    float3 tint = mix(SOFT_LILAC, BLUSH_POWDER, smoothstep(-0.6, 0.6, -lat));
+    tint = mix(tint, LAVENDER_MIST, 0.4);
+    float a = density * atmoStrength * T.haze.x;
+
+    // Glow columns rising past the silhouette — the core 3D read of the
+    // effect; without this the surface glow dies exactly at the limb.
+    VolAccum vol = volumetricShell(rayOrigin, rayDir,
+                                   max(atmoRange.t0, 0.0), atmoRange.t1,
+                                   sphereCenter, radius, atmoRadius * breathScale,
+                                   Rt, glowSources, glowCount, T);
+    float3 volColor = mix(SOFT_LILAC, glowPalette(vol.glow, vol.white), T.volumetric.z);
+    float outA = saturate(a + vol.glow * T.volumetric.y);
+    return float4(tint * a + volColor * vol.glow, outA);
+  }
+
+  float3 worldNormal = hit.normal;
+  float3 localNormal = Rt * worldNormal;
 
   // ── Continents from the bundled texture ───────────────────────────────────
   // Source polarity: black=land, white=ocean. Invert for our continent value.
@@ -334,11 +466,7 @@ fragment float4 earthSurfaceFragment(
   GlowAccum glowA = accumulateGlow(localNormal, glowSources, glowCount,
                                    T.glowShape.x, T.glowShape.y);
   float glow = glowA.glow;
-  float3 glowColor = mix(SOFT_LILAC, BLUSH_POWDER, glow);
-  glowColor = mix(glowColor, PEACH_CLOUD, smoothstep(0.55, 0.95, glow));
-  // Join sparks momentarily warm toward moon-cream, capped at 0.55 so the
-  // peak reads as candle-light, never raw white under bloom.
-  glowColor = mix(glowColor, MOON_CREAM, min(glowA.white, 0.55));
+  float3 glowColor = glowPalette(glow, glowA.white);
 
   // ── Glass body — sharp rim, specular, dispersion ──────────────────────────
   //
@@ -376,6 +504,8 @@ fragment float4 earthSurfaceFragment(
   float3 refr = refract(rayDir, worldNormal, ior);
   float backGlow = 0.0;
   float3 backTint = float3(0.0);
+  float farGhost = 0.0;
+  float3 farGhostColor = float3(0.0);
   if (dot(refr, refr) > 1e-4) {
     // Refracted ray starts on the front surface, points into the glass.
     float3 oc2 = hit.point - sphereCenter;
@@ -385,7 +515,7 @@ fragment float4 earthSurfaceFragment(
     if (disc2 > 0.0) {
       float t2 = -b2 + sqrt(disc2);
       float3 exitPoint = hit.point + refr * t2;
-      float3 exitNormalLocal = transpose(R) * normalize(exitPoint - sphereCenter);
+      float3 exitNormalLocal = Rt * normalize(exitPoint - sphereCenter);
       float2 exitUV = sphericalUV(exitNormalLocal);
       float backSpec = continentTex.sample(texSampler, exitUV).r;
       float backLand = 1.0 - backSpec;
@@ -394,12 +524,33 @@ fragment float4 earthSurfaceFragment(
       // and dim it overall so it stays a whisper.
       backGlow = backContinent * (T.backBleed.x - fresnelRim * T.backBleed.y);
       backTint = iridescent(T.backBleed.z);
+
+      // Far-side participant lights ghost through the glass body — core-only
+      // gaussian at the refracted exit point, rim-faded like the continent
+      // bleed so it never fights the dispersion edge.
+      if (T.volumetric.w > 0.0) {
+        GlowAccum ghostA = accumulateGlow(exitNormalLocal, glowSources, glowCount,
+                                          0.0, T.glowShape.y);
+        farGhost = ghostA.glow * T.volumetric.w
+                 * max(1.0 - fresnelRim * T.backBleed.y, 0.0);
+        farGhostColor = mix(SOFT_LILAC, BLUSH_POWDER, ghostA.glow);
+      }
     }
   }
 
   // ── Breath shimmer (very low amplitude, iridescent drift) ────────────────
   float shimmerN = fbm3(localNormal * 5.0 + float3(time * 0.04, 0, time * 0.025), 2);
   float shimmer = (shimmerN - 0.5) * T.haze.w;
+
+  // ── Volumetric glow shell (hit path) ──────────────────────────────────────
+  // March the wedge of shell in front of the orb body; ending the segment at
+  // hit.t gives occlusion by the sphere for free. Reads as light standing up
+  // off the lit surface rather than paint on it.
+  VolAccum vol = volumetricShell(rayOrigin, rayDir,
+                                 max(atmoRange.t0, 0.0), hit.t,
+                                 sphereCenter, radius, atmoRadius * breathScale,
+                                 Rt, glowSources, glowCount, T);
+  float3 volColor = mix(SOFT_LILAC, glowPalette(vol.glow, vol.white), T.volumetric.z);
 
   // ── Emissive composition (HDR linear) ─────────────────────────────────────
   //
@@ -458,6 +609,9 @@ fragment float4 earthSurfaceFragment(
   emissive += dispersion * fresnelEdge * T.emissiveB.y;
   emissive += LAVENDER_MIST * fresnelBody * T.emissiveB.z;
   emissive += shimmer * MOON_CREAM * T.emissiveB.w;
+  // Volumetric lift over the surface + far-side lights through the glass.
+  emissive += volColor * vol.glow;
+  emissive += farGhostColor * farGhost;
 
   // ── Alpha ─────────────────────────────────────────────────────────────────
   //
@@ -476,12 +630,17 @@ fragment float4 earthSurfaceFragment(
   // all scale with the one rimTightness knob (T.glass.y) — so the alpha band
   // never extends past the visible rim or falls short of it.
   float rimAlpha = pow(1.0 - ndv, 28.0 * T.glass.y);
+  // Volumetric and ghost terms must lift alpha themselves: blending is off
+  // into the HDR target, so emissive without alpha never survives the
+  // composite over clear ocean.
   float alpha = saturate(
       continent * T.alphaA.x
     + coastHalo * T.alphaA.y
     + rimAlpha * T.alphaA.z
     + backGlow * T.backBleed.w
     + seaGlow * T.alphaA.w
+    + vol.glow * T.volumetric.y
+    + farGhost * T.volumetric.y * 0.5
   );
 
   return float4(emissive, alpha);

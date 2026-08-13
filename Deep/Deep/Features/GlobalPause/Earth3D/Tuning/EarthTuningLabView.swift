@@ -7,9 +7,9 @@ import SwiftUI
 /// Deliberately standalone: it owns its own seeded `GlobalPauseEarthScene`
 /// and touches no production screen (lobby, meditation, feed). The globe
 /// fills the top of the screen and stays fully interactive (drag, flick,
-/// tap-a-country); the tuning panel scrolls beneath it. Both drive the same
-/// live objects — `EarthTuning.shared` plus this scene's stores — so every
-/// slider lands on the next rendered frame.
+/// tap-a-country); the DialKit drawer (see `EarthDials`) floats over it and
+/// mirrors every dial into the live objects — `EarthTuning.shared` plus this
+/// scene's stores — so each change lands on the next rendered frame.
 struct EarthTuningLabView: View {
   @State private var scene: GlobalPauseEarthScene = {
     // A seeded world so glow/spark knobs have something to act on:
@@ -21,22 +21,33 @@ struct EarthTuningLabView: View {
   }()
 
   var body: some View {
-    VStack(spacing: 0) {
-      LabEarthSceneView(scene: scene)
-        .frame(maxWidth: .infinity)
-        .frame(height: 340)
-        .padding(.top, 8)
+    ZStack {
+      VStack(spacing: 0) {
+        LabEarthSceneView(scene: scene)
+          .frame(maxWidth: .infinity)
+          .frame(height: 420)
+          .padding(.top, 8)
 
-      EarthTuningPanel(scene: scene, tuning: .shared)
+        Spacer(minLength: 0)
+      }
+
+      EarthDialsOverlay(scene: scene)
     }
-    .background(
-      LinearGradient(
-        colors: [.moonCream, Color.softLilac.opacity(0.35)],
-        startPoint: .top,
-        endPoint: .bottom
-      )
-      .ignoresSafeArea()
-    )
+    .background {
+      // Panel toggle flips between the night sky under tuning and the
+      // original cream gradient, for A/B comparison.
+      if NightSkyTuning.shared.enabled {
+        NightSkyBackground(tuning: .shared)
+          .ignoresSafeArea()
+      } else {
+        LinearGradient(
+          colors: [.moonCream, Color.softLilac.opacity(0.35)],
+          startPoint: .top,
+          endPoint: .bottom
+        )
+        .ignoresSafeArea()
+      }
+    }
   }
 }
 
@@ -55,7 +66,12 @@ private struct LabEarthSceneView: UIViewRepresentable {
     return view
   }
 
-  func updateUIView(_ uiView: EarthSceneView, context: Context) {}
+  func updateUIView(_ uiView: EarthSceneView, context: Context) {
+    // updateUIView tracks these @Observable reads, so both the dim slider and
+    // the night-sky toggle re-invoke it.
+    let sky = NightSkyTuning.shared
+    uiView.backdropAlpha = sky.enabled ? CGFloat(sky.values.earthBackdropDim) : 1
+  }
 }
 
 #Preview {

@@ -57,6 +57,16 @@ final class EarthSceneView: UIView {
     }
   }
 
+  /// Dims the halo + cradle backdrop gradients (view alpha over their baked-in
+  /// gradient alphas). 1 = the shipped cream-scene look; the night-sky tuning
+  /// lab drives this down so the bloom doesn't wash a dark background.
+  var backdropAlpha: CGFloat = 1 {
+    didSet {
+      halo.alpha = backdropAlpha
+      cradle.alpha = backdropAlpha
+    }
+  }
+
   init(glow: EarthGlowStore, interaction: EarthInteraction, ripples: EarthHaloRipples) {
     self.glow = glow
     self.interaction = interaction

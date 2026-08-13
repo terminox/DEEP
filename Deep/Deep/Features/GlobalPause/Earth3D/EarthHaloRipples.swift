@@ -21,7 +21,7 @@ final class EarthHaloRipples {
   private(set) var active: [Ripple] = []
 
   /// Emit + draw constants, grouped for the DEBUG panel (uniform reset/export).
-  struct Tuning {
+  struct Tuning: Codable, Equatable {
     /// Cap on simultaneous rings. The event is *ambient*, not a leaderboard —
     /// floods should not turn the orb into a fireworks display.
     var globalCap: Int = 8

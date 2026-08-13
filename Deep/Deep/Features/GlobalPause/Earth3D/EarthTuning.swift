@@ -21,7 +21,8 @@ final class EarthTuning {
   static let shared = EarthTuning()
 
   /// Every tunable value with its shipped default. Reset = `values = Values()`.
-  struct Values {
+  /// Codable + Equatable so the DEBUG dial panel can snapshot and diff it.
+  struct Values: Codable, Equatable {
     // MARK: Glow shape
     /// Halo skirt weight around each glow source (σ = 3r term).
     var glowHaloWeight: Float = 0.30
@@ -118,6 +119,21 @@ final class EarthTuning {
     var tonemapK: Float = 1.5
     var bloomAlphaLift: Float = 0.6
 
+    // MARK: Volumetric glow
+    /// Master gain for the 3D glow shell. 0 restores the flat surface-only look.
+    var volIntensity: Float = 0.85
+    /// Exponential scale height of a glow column, as a fraction of the
+    /// atmosphere gap (surface radius → atmoRadius). Higher = taller columns.
+    var volHeight: Float = 0.35
+    /// How much a column's gaussian σ widens as it rises — the dome flare.
+    var volSoftness: Float = 0.8
+    /// Accumulated volume → alpha, so limb domes composite over the backdrop.
+    var volAlphaLift: Float = 0.6
+    /// 0 = flat SOFT_LILAC volume, 1 = full warm glow palette walk.
+    var volTintMix: Float = 0.6
+    /// Far-side lights ghosting through the glass at the refracted exit point.
+    var volBackGhost: Float = 0.25
+
     // MARK: CPU-side (consumed by EarthRenderer.makeUniforms, not the GPU struct)
     /// Sun direction components, normalized before upload.
     var sunX: Float = -0.45
@@ -131,7 +147,7 @@ final class EarthTuning {
 
   var values = Values()
 
-  /// Per-frame GPU snapshot — 12 float4 packs, negligible next to the draw.
+  /// Per-frame GPU snapshot — 14 float4 packs, negligible next to the draw.
   var gpu: EarthTuningUniforms { values.gpu }
 
   func reset() { values = Values() }
@@ -152,7 +168,8 @@ extension EarthTuning.Values {
       alphaA: .init(alphaContinent, alphaCoast, alphaRim, alphaSea),
       bloomA: .init(bloomThresholdLo, bloomThresholdHi, blurStepScale, bloomStrength),
       bloomB: .init(tonemapK, bloomAlphaLift, sparkFlash, coastGlow),
-      lit: .init(litEmissive, litColorMix, 0, 0)
+      lit: .init(litEmissive, litColorMix, volIntensity, volHeight),
+      volumetric: .init(volSoftness, volAlphaLift, volTintMix, volBackGhost)
     )
   }
 }

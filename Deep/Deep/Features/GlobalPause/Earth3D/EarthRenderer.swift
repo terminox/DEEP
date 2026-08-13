@@ -150,10 +150,10 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     let uniformLen = MemoryLayout<EarthUniforms>.stride
     let glowLen = MemoryLayout<GlowSourceGPU>.stride * EarthRendererConstants.maxGlowSources
     let tuningLen = MemoryLayout<EarthTuningUniforms>.stride
-    // Layout-drift tripwire: the Metal mirror (EarthTuningShared.h) is 13
+    // Layout-drift tripwire: the Metal mirror (EarthTuningShared.h) is 14
     // packed float4s. If the Swift struct ever grows padding or a field,
     // this must change in lockstep on both sides.
-    assert(tuningLen == 208, "EarthTuningUniforms layout drifted from EarthTuningShared.h")
+    assert(tuningLen == 224, "EarthTuningUniforms layout drifted from EarthTuningShared.h")
 
     for i in 0..<Self.maxInflightFrames {
       let u = device.makeBuffer(length: uniformLen, options: .storageModeShared)!
