@@ -65,8 +65,9 @@ private struct GrowthPointsChip: View {
 }
 
 /// The oak as it stands today: its portrait inside the growth halo, beside its
-/// name, the distance to the next form, and the tending streak. One element to
-/// VoiceOver — the summary tells the whole story in a sentence.
+/// name and, in one quiet line, the two facts that matter — number-forward
+/// tokens for the distance to the next form and the tending streak. One
+/// element to VoiceOver — the summary tells the whole story in a sentence.
 private struct OakGrowthRow: View {
   let growth: GardenGrowth
   let streakDays: Int
@@ -80,24 +81,12 @@ private struct OakGrowthRow: View {
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
 
-        Text(distanceLine)
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-          .contentTransition(.numericText())
-          .monospacedDigit()
-          .fixedSize(horizontal: false, vertical: true)
-
-        if streakDays > 0 {
-          HStack(spacing: 5) {
-            Image(systemName: "sun.max.fill")
-              .font(.system(size: 11, weight: .medium))
-              .foregroundStyle(.duskRose.opacity(0.75))
-            Text(streakLine)
-              .font(DeepType.caption)
-              .foregroundStyle(.driftGrey)
-              .contentTransition(.numericText(value: Double(streakDays)))
-              .monospacedDigit()
-          }
+        // Both facts share a line where the width allows — the sun glyph is
+        // all the separation they need — and stack on narrow widths or
+        // large type.
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 14) { facts }
+          VStack(alignment: .leading, spacing: 5) { facts }
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -107,18 +96,48 @@ private struct OakGrowthRow: View {
     .accessibilityLabel(summary)
   }
 
-  /// How far the next form is — always the points still to grow, never a
-  /// banked-of-goal fraction; growth is a journey, not a scoreboard.
-  private var distanceLine: String {
-    if let next = growth.nextStage, let remaining = growth.pointsRemaining {
-      "\(remaining) more points to \(next.displayName)"
-    } else {
-      "Fully grown"
-    }
+  @ViewBuilder private var facts: some View {
+    distanceFact
+    if streakDays > 0 { streakFact }
   }
 
-  private var streakLine: String {
-    streakDays == 1 ? "1-day streak" : "\(streakDays)-day streak"
+  /// How far the next form is — always the points still to grow, never a
+  /// banked-of-goal fraction; growth is a journey, not a scoreboard.
+  private var distanceFact: some View {
+    Group {
+      if let next = growth.nextStage, let remaining = growth.pointsRemaining {
+        Text("\(remaining)")
+          .font(DeepType.caption.weight(.semibold))
+          .foregroundStyle(.deepPlum)
+        + Text(" to \(next.displayName)")
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
+      } else {
+        Text("Fully grown")
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
+      }
+    }
+    .contentTransition(.numericText())
+    .monospacedDigit()
+  }
+
+  private var streakFact: some View {
+    HStack(spacing: 5) {
+      Image(systemName: "sun.max.fill")
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(.duskRose.opacity(0.75))
+      (
+        Text("\(streakDays)")
+          .font(DeepType.caption.weight(.semibold))
+          .foregroundStyle(.deepPlum)
+        + Text(streakDays == 1 ? " day" : " days")
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
+      )
+      .contentTransition(.numericText(value: Double(streakDays)))
+      .monospacedDigit()
+    }
   }
 
   private var summary: String {
