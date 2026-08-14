@@ -2,6 +2,14 @@ import Foundation
 import SwiftUI
 import simd
 
+/// One frame's GPU upload: the packed sources plus the style-range counts the
+/// shader needs to loop each range with its own math (see `GlowSourceGPU`).
+struct EarthGlowSnapshot {
+  var sources: [GlowSourceGPU] = []
+  var classicCount: Int = 0
+  var orbCount: Int = 0
+}
+
 /// Live participant presence → smoothed gaussian glow sources on the orb's surface.
 ///
 /// Two families of light share one GPU pipeline:
@@ -86,16 +94,35 @@ final class EarthGlowStore {
     /// Warm-cream cast that separates "you" from your neighbors.
     var homeWhiteness: Float = 0.15
     /// Gentle breath: ±13% at ~10s period, modulated per-frame in
-    /// `currentGPUSources` so the lerped base stays stable.
+    /// `currentGPUSnapshot` so the lerped base stays stable.
     var homeBreathAmplitude: Float = 0.13
     var homeBreathRate: Float = 0.63  // rad/s ≈ 10s period
+
+    // MARK: 3D styles
+    /// Steady glow rendering: classic surface gaussians, or volumetric light
+    /// spheres (see accumulateLightVolumes in EarthSurface.metal) — `orb`
+    /// floats just above the surface, `dome` seats the gaussian centre on the
+    /// surface and clips the buried half away, `buried` seats it on the
+    /// surface unclipped so the planet body hides the under-glow except near
+    /// the limb. Switches the GPU packing range (and mode channel) per source.
+    enum GlowPointStyle: String, CaseIterable, Codable { case classic, orb, dome, buried }
+    var glowPointStyle: GlowPointStyle = .classic
+    /// Join spark rendering: classic surface flare (+ the 2D ripple ring), a
+    /// 3D flash + expanding light shell, or a twinkling star (scintillating
+    /// point). The scene suppresses the 2D ring unless this is `.classic`.
+    /// Region-mode sparks keep the global `shellMaxRadius` — no per-region
+    /// shell sizing in v1.
+    enum SparkStyle: String, CaseIterable, Codable { case classic, flashShell, twinkle }
+    var sparkStyle: SparkStyle = .classic
 
     // Join sparks. Lifetime: flare in ~120ms, settle into lavender, gone by
     // 2s — by which time the next poll's steady cell has taken over.
     var sparkLife: Float = 2.0
     /// Insertion gate only (no storage preallocated to it) — keep well under
     /// `maxGlowSources` so sparks can't starve steady cells of GPU slots.
-    var sparkCap = 12
+    /// A `.flashShell` spark packs up to 3 GPU sources (seat + flash + shell),
+    /// so the cap stays low enough that a join storm can't eat the buffer.
+    var sparkCap = 8
     var sparkRadius: Float = 0.030
     /// Peak 1.3 is safe by construction: the shader compresses accumulated
     /// glow with 1 − exp(−total·k), so even a full-intensity spark lands ~0.79
@@ -110,6 +137,46 @@ final class EarthGlowStore {
     /// envelope's ~0.45s time constant — a fresh join visibly throws light
     /// upward, then settles together with the cream flash.
     var sparkColumnBoost: Float = 1.5
+
+    // MARK: Flash + shell burst (CPU envelopes; inert while sparkStyle is classic)
+    /// Peak intensity of the ignition flash orb.
+    var flashPeak: Float = 1.8
+    /// Exponential decay of the flash — dead by ~3–4× this (seconds).
+    var flashDecay: Float = 0.12
+    /// Flash orb σ in world units (sphere radius = 1).
+    var flashRadius: Float = 0.05
+    /// Seconds for the shell to reach full expansion (easeOutCubic arrival).
+    var shellLife: Float = 1.4
+    /// Full-expansion shell radius in world units. 0.42 keeps the whole
+    /// bubble inside the frame with bloom headroom at every seat position.
+    var shellMaxRadius: Float = 0.42
+    /// Shell gaussian thickness at birth (world units)…
+    var shellThicknessBase: Float = 0.010
+    /// …growing with radius, so the front visibly thins out relative to its
+    /// size as it expands (thickness = base + grow · R).
+    var shellThicknessGrow: Float = 0.045
+    /// Peak shell intensity, reached just after the flash hands off.
+    var shellPeak: Float = 1.15
+    /// Brightness fade exponent over expansion: (1 − progress)^power.
+    var shellFadePower: Float = 1.5
+    /// Moon-cream whiteness decay shared by flash and shell (seconds).
+    var whiteTau: Float = 0.35
+
+    // MARK: Twinkle spark (CPU envelope; inert while the spark style isn't twinkle)
+    /// Seconds until the twinkle lands at zero (hard tail over the last 0.3s).
+    var twinkleLife: Float = 1.6
+    /// Peak intensity — hot by design so the shimmering core drives bloom.
+    var twinklePeak: Float = 2.2
+    /// σ of the star point in world units — well under `flashRadius`, a pinpoint.
+    var twinkleRadius: Float = 0.022
+    /// Base scintillation frequency (Hz); two overtones ride at ×1.73/×2.71.
+    var twinkleSpeed: Float = 10
+    /// Shimmer excursion ±depth around the envelope (0.95 max keeps it positive).
+    var twinkleDepth: Float = 0.6
+    /// Share of the shimmer that also modulates σ — the star visibly breathes.
+    var twinkleSizeJitter: Float = 0.25
+    /// Exponential decay time constant after the attack (seconds).
+    var twinkleDecay: Float = 0.45
   }
 
   /// Point/home values are baked into lerp *targets*, so any change must
@@ -149,46 +216,86 @@ final class EarthGlowStore {
       sources[i].currentIntensity += (sources[i].targetIntensity - sources[i].currentIntensity) * k
     }
 
-    // Sparks age on the same clock and expire on their own.
+    // Sparks age on the same clock and expire on their own. In flash-shell
+    // style the shell outlives the classic envelope, so the spark stays alive
+    // until the longer of the two.
     for i in sparks.indices {
       sparks[i].age += dt
     }
-    sparks.removeAll { $0.age > tuning.sparkLife }
+    let life = effectiveSparkLife
+    sparks.removeAll { $0.age > life }
   }
 
-  /// Renderer-facing snapshot. Only sources above an intensity threshold are
-  /// uploaded — saves the shader from doing N gaussian falloffs for zeros.
+  private var effectiveSparkLife: Float {
+    switch tuning.sparkStyle {
+    case .classic: return tuning.sparkLife
+    case .flashShell: return max(tuning.sparkLife, tuning.shellLife)
+    case .twinkle: return max(tuning.sparkLife, tuning.twinkleLife)
+    }
+  }
+
+  /// Renderer-facing snapshot, sorted into the three style ranges the shader
+  /// loops separately: classic surface gaussians, volumetric orbs, expanding
+  /// shells (see `GlowSourceGPU`). Only sources above an intensity threshold
+  /// are uploaded — saves the shader from doing N falloffs for zeros.
   /// Sparks always survive the 64-source budget; when steady cells overflow
   /// what's left, the dimmest are dropped first (invisible for the ~2s a
   /// spark is in flight).
-  func currentGPUSources() -> [GlowSourceGPU] {
-    let sparkGPU: [GlowSourceGPU] = sparks.compactMap { s in
-      let intensity = sparkIntensity(age: s.age)
-      guard intensity > 0.003 else { return nil }
-      return GlowSourceGPU(
-        positionAndIntensity: SIMD4<Float>(s.position.x, s.position.y, s.position.z, intensity),
-        radiusPacked: SIMD4<Float>(
-          s.radius,
-          sparkWhiteness(age: s.age),
-          1 + tuning.sparkColumnBoost * expf(-s.age / 0.45),
-          0
-        )
-      )
+  func currentGPUSnapshot() -> EarthGlowSnapshot {
+    var classicRange: [GlowSourceGPU] = []
+    var orbRange: [GlowSourceGPU] = []
+    var shellRange: [GlowSourceGPU] = []
+
+    for s in sparks {
+      // The classic surface flare stays in every style — under a flash+shell
+      // burst it's the seat that keeps the land kissed by light.
+      if let seat = classicSparkGPU(s) { classicRange.append(seat) }
+      if tuning.sparkStyle == .flashShell {
+        if let flash = flashOrbGPU(s) { orbRange.append(flash) }
+        if let shell = shellGPU(s) { shellRange.append(shell) }
+      }
+      if tuning.sparkStyle == .twinkle {
+        if let star = twinkleOrbGPU(s) { orbRange.append(star) }
+      }
     }
 
-    let budget = max(0, EarthRendererConstants.maxGlowSources - sparkGPU.count)
+    let sparkSlots = classicRange.count + orbRange.count + shellRange.count
+    let budget = max(0, EarthRendererConstants.maxGlowSources - sparkSlots)
     let homeBreath = 1 + tuning.homeBreathAmplitude * sinf(Float(lastTickTime ?? 0) * tuning.homeBreathRate)
+    let orbStyle = tuning.glowPointStyle != .classic
+    // Per-source style mode for the shader's orb loop (radiusPacked.z):
+    // 0 = elevated full orb, 1 = surface dome, 2 = buried sphere.
+    let orbMode: Float
+    switch tuning.glowPointStyle {
+    case .classic, .orb: orbMode = 0
+    case .dome: orbMode = 1
+    case .buried: orbMode = 2
+    }
     let steady = sources
       .filter { $0.currentIntensity > 0.003 }
       .sorted { $0.currentIntensity > $1.currentIntensity }
       .prefix(budget)
-      .map { s in
+      .map { s -> GlowSourceGPU in
         let isHome = s.key == Self.homeKey
+        let position = SIMD4<Float>(
+          s.position.x, s.position.y, s.position.z,
+          isHome ? s.currentIntensity * homeBreath : s.currentIntensity
+        )
+        if orbStyle {
+          // Angular σ ≈ world arc σ on the unit sphere; the clamp stops
+          // region blobs (~0.3 rad) becoming 0.3-world-unit light balls.
+          return GlowSourceGPU(
+            positionAndIntensity: position,
+            radiusPacked: SIMD4<Float>(
+              min(max(s.angularRadius, 0.018), 0.055),
+              isHome ? tuning.homeWhiteness : 0,
+              orbMode,
+              1
+            )
+          )
+        }
         return GlowSourceGPU(
-          positionAndIntensity: SIMD4<Float>(
-            s.position.x, s.position.y, s.position.z,
-            isHome ? s.currentIntensity * homeBreath : s.currentIntensity
-          ),
+          positionAndIntensity: position,
           radiusPacked: SIMD4<Float>(
             s.angularRadius,
             isHome ? tuning.homeWhiteness : 0,
@@ -197,7 +304,18 @@ final class EarthGlowStore {
           )
         )
       }
-    return steady + sparkGPU
+
+    // Steadies join their style's range; ordering inside a range is free but
+    // ranges must stay contiguous — the shader receives only the two counts.
+    var classic = orbStyle ? [] : Array(steady)
+    classic += classicRange
+    var orbs = orbStyle ? Array(steady) : []
+    orbs += orbRange
+    return EarthGlowSnapshot(
+      sources: classic + orbs + shellRange,
+      classicCount: classic.count,
+      orbCount: orbs.count
+    )
   }
 
   var activeSourceCount: Int {
@@ -216,6 +334,7 @@ final class EarthGlowStore {
     sparks.append(SparkState(
       position: region?.position ?? sphereUnitVector(latDeg: lat, lonDeg: lon),
       radius: region?.radius ?? tuning.sparkRadius,
+      seed: Float.random(in: 0..<(2 * .pi)),
       age: 0
     ))
   }
@@ -231,6 +350,83 @@ final class EarthGlowStore {
   /// "settles into lavender" before it fades out.
   private func sparkWhiteness(age: Float) -> Float {
     smoothstep(0, 0.1, age) * expf(-age / 0.45)
+  }
+
+  // MARK: - Spark GPU packing (one entry per style range; see GlowSourceGPU)
+
+  /// The classic surface flare — identical packing in every spark style.
+  private func classicSparkGPU(_ s: SparkState) -> GlowSourceGPU? {
+    let intensity = sparkIntensity(age: s.age)
+    guard intensity > 0.003 else { return nil }
+    return GlowSourceGPU(
+      positionAndIntensity: SIMD4<Float>(s.position.x, s.position.y, s.position.z, intensity),
+      radiusPacked: SIMD4<Float>(
+        s.radius,
+        sparkWhiteness(age: s.age),
+        1 + tuning.sparkColumnBoost * expf(-s.age / 0.45),
+        0
+      )
+    )
+  }
+
+  /// The ignition flash — a hot, short-lived volumetric orb at the join point.
+  private func flashOrbGPU(_ s: SparkState) -> GlowSourceGPU? {
+    let flash = smoothstep(0, 0.05, s.age) * expf(-s.age / max(tuning.flashDecay, 0.01)) * tuning.flashPeak
+    guard flash > 0.003 else { return nil }
+    return GlowSourceGPU(
+      positionAndIntensity: SIMD4<Float>(s.position.x, s.position.y, s.position.z, flash),
+      radiusPacked: SIMD4<Float>(tuning.flashRadius, expf(-s.age / tuning.whiteTau), 0, 1)
+    )
+  }
+
+  /// A twinkling star at the join: a hot orb-range point whose brightness
+  /// (and slightly size) shimmers irregularly on a per-spark random phase
+  /// while the attack→decay envelope plays out. Entirely CPU-side — the
+  /// shader sees a fresh intensity/σ each frame, exactly like the flash orb.
+  /// Mode 0 (elevated full orb) so the star sits proud of the crust.
+  private func twinkleOrbGPU(_ s: SparkState) -> GlowSourceGPU? {
+    let attack = smoothstep(0, 0.06, s.age)
+    let decay = expf(-max(0, s.age - 0.06) / max(tuning.twinkleDecay, 0.05))
+    // Hard tail: the exponential alone still carries ~3% of peak at end of
+    // life, which would pop on removal — land at exactly zero instead.
+    let tail = 1 - smoothstep(max(tuning.twinkleLife - 0.3, 0.05), tuning.twinkleLife, s.age)
+    let flicker = twinkleFlicker(age: s.age, seed: s.seed)
+    let intensity = attack * decay * tail * flicker * tuning.twinklePeak
+    guard intensity > 0.003 else { return nil }
+    let sigma = tuning.twinkleRadius * (1 + tuning.twinkleSizeJitter * (flicker - 1))
+    return GlowSourceGPU(
+      positionAndIntensity: SIMD4<Float>(s.position.x, s.position.y, s.position.z, intensity),
+      radiusPacked: SIMD4<Float>(sigma, expf(-s.age / tuning.whiteTau), 0, 1)
+    )
+  }
+
+  /// Scintillation: three incommensurate sines (1 : 1.73 : 2.71) with
+  /// seed-decorrelated phases — mean 1, excursion ±twinkleDepth, never
+  /// periodic within a spark's life, deterministic per spark.
+  private func twinkleFlicker(age: Float, seed: Float) -> Float {
+    let w = age * tuning.twinkleSpeed * 2 * .pi
+    let shimmer = 0.5 * sinf(w + seed)
+                + 0.3 * sinf(w * 1.73 + seed * 2.39)
+                + 0.2 * sinf(w * 2.71 + seed * 4.63)
+    return 1 + tuning.twinkleDepth * shimmer
+  }
+
+  /// The expanding light shell: fast start, decelerating arrival at
+  /// `shellMaxRadius`, thinning front, brightness handed off from the flash
+  /// and landing at exactly zero as expansion completes.
+  private func shellGPU(_ s: SparkState) -> GlowSourceGPU? {
+    let u = min(s.age / max(tuning.shellLife, 0.05), 1)
+    let radius = tuning.shellMaxRadius * easeOutCubic(u)
+    let thickness = tuning.shellThicknessBase + tuning.shellThicknessGrow * radius
+    // Below ~4 thicknesses of radius the "shell" is still a blob inside the
+    // flash — skip it until it's grown proud.
+    guard radius > 4 * thickness else { return nil }
+    let intensity = smoothstep(0.02, 0.14, s.age) * powf(1 - u, tuning.shellFadePower) * tuning.shellPeak
+    guard intensity > 0.01 else { return nil }
+    return GlowSourceGPU(
+      positionAndIntensity: SIMD4<Float>(s.position.x, s.position.y, s.position.z, intensity),
+      radiusPacked: SIMD4<Float>(radius, expf(-s.age / tuning.whiteTau), thickness, 2)
+    )
   }
 
   // MARK: - Target recomputation
@@ -458,6 +654,9 @@ final class EarthGlowStore {
     let position: SIMD3<Float>
     /// Resolved at spark time (point radius, or region radius in region mode).
     let radius: Float
+    /// Random scintillation phase, fixed at spawn — decorrelates twinkle
+    /// sparks so simultaneous joins never shimmer in lockstep.
+    let seed: Float
     var age: Float
   }
 }
@@ -465,6 +664,11 @@ final class EarthGlowStore {
 private func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float {
   let t = max(0, min(1, (x - edge0) / (edge1 - edge0)))
   return t * t * (3 - 2 * t)
+}
+
+private func easeOutCubic(_ x: Float) -> Float {
+  let inv = 1 - max(0, min(1, x))
+  return 1 - inv * inv * inv
 }
 
 // MARK: - Preview helpers

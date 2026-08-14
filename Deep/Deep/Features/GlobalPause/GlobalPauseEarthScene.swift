@@ -32,7 +32,11 @@ final class GlobalPauseEarthScene {
       while let self, !Task.isCancelled, !self.joinQueue.isEmpty {
         let join = self.joinQueue.removeFirst()
         self.glow.spark(lat: join.lat, lon: join.lon)
-        self.ripples.emit(lat: join.lat, lon: join.lon)
+        // The flat 2D canvas ring belongs to the classic spark style; the
+        // flash + shell style carries its own 3D wave in the shader.
+        if self.glow.tuning.sparkStyle == .classic {
+          self.ripples.emit(lat: join.lat, lon: join.lon)
+        }
         try? await Task.sleep(for: .milliseconds(150))
       }
       self?.drainTask = nil

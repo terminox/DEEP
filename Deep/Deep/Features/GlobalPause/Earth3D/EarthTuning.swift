@@ -134,6 +134,36 @@ final class EarthTuning {
     /// Far-side lights ghosting through the glass at the refracted exit point.
     var volBackGhost: Float = 0.25
 
+    // MARK: Glow orbs (3D style — inert while the glow style is classic)
+    /// σ scale on each orb's packed world radius — the size dial.
+    var orbSigmaScale: Float = 1.0
+    /// Coverage compression gain: higher plateaus the core into a solid ball.
+    var orbExposure: Float = 2.6
+    /// Compressed orb body → emissive gain.
+    var orbGain: Float = 0.9
+    /// Uncompressed hot-core gain — pushes the core over 1.0 so bloom ignites.
+    var orbHotGain: Float = 1.4
+    /// Whiteness boost inside the core (skirt stays in palette).
+    var orbCoreWhiteBoost: Float = 0.45
+    /// Orb coverage → alpha, so limb orbs composite over the backdrop.
+    var orbAlphaLift: Float = 0.85
+    /// 3σ halo skirt weight around the orb body.
+    var orbHaloWeight: Float = 0.35
+    /// Seat elevation as a ratio of σ — how proud of the surface the ball sits.
+    var orbElevRatio: Float = 1.6
+    /// Orb sources' residual weight in the classic surface glow (the land seat).
+    var orbSeatWeight: Float = 0.35
+
+    // MARK: Spark burst (3D style — inert while the spark style is classic)
+    /// Shell coverage compression gain.
+    var burstExposure: Float = 1.6
+    /// Compressed shell → emissive gain.
+    var burstGain: Float = 0.85
+    /// Uncompressed hot ring gain — bloom driver.
+    var burstHotGain: Float = 0.8
+    /// Shell coverage → alpha, so the expanding ring survives past the limb.
+    var burstAlphaLift: Float = 0.6
+
     // MARK: CPU-side (consumed by EarthRenderer.makeUniforms, not the GPU struct)
     /// Sun direction components, normalized before upload.
     var sunX: Float = -0.45
@@ -147,7 +177,7 @@ final class EarthTuning {
 
   var values = Values()
 
-  /// Per-frame GPU snapshot — 14 float4 packs, negligible next to the draw.
+  /// Per-frame GPU snapshot — 18 float4 packs, negligible next to the draw.
   var gpu: EarthTuningUniforms { values.gpu }
 
   func reset() { values = Values() }
@@ -169,7 +199,11 @@ extension EarthTuning.Values {
       bloomA: .init(bloomThresholdLo, bloomThresholdHi, blurStepScale, bloomStrength),
       bloomB: .init(tonemapK, bloomAlphaLift, sparkFlash, coastGlow),
       lit: .init(litEmissive, litColorMix, volIntensity, volHeight),
-      volumetric: .init(volSoftness, volAlphaLift, volTintMix, volBackGhost)
+      volumetric: .init(volSoftness, volAlphaLift, volTintMix, volBackGhost),
+      orbShape: .init(orbSigmaScale, orbExposure, orbGain, orbHotGain),
+      orbTint: .init(orbCoreWhiteBoost, orbAlphaLift, orbHaloWeight, orbElevRatio),
+      burstShape: .init(burstExposure, burstGain, burstHotGain, burstAlphaLift),
+      orbSeat: .init(orbSeatWeight, 0, 0, 0)
     )
   }
 }

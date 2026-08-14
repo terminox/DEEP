@@ -150,10 +150,10 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     let uniformLen = MemoryLayout<EarthUniforms>.stride
     let glowLen = MemoryLayout<GlowSourceGPU>.stride * EarthRendererConstants.maxGlowSources
     let tuningLen = MemoryLayout<EarthTuningUniforms>.stride
-    // Layout-drift tripwire: the Metal mirror (EarthTuningShared.h) is 14
+    // Layout-drift tripwire: the Metal mirror (EarthTuningShared.h) is 18
     // packed float4s. If the Swift struct ever grows padding or a field,
     // this must change in lockstep on both sides.
-    assert(tuningLen == 224, "EarthTuningUniforms layout drifted from EarthTuningShared.h")
+    assert(tuningLen == 288, "EarthTuningUniforms layout drifted from EarthTuningShared.h")
 
     for i in 0..<Self.maxInflightFrames {
       let u = device.makeBuffer(length: uniformLen, options: .storageModeShared)!
@@ -191,9 +191,10 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     let now = CACurrentMediaTime() - startTime
     onFrame?(now)
 
-    // Snapshot glow sources first so the uniform's count and the GPU buffer
+    // Snapshot glow sources first so the uniform's counts and the GPU buffer
     // contents are a consistent pair (no chance the store mutates between).
-    let glowSources = glowStore?.currentGPUSources() ?? []
+    let snapshot = glowStore?.currentGPUSnapshot() ?? EarthGlowSnapshot()
+    let glowSources = snapshot.sources
     let glowCount = min(glowSources.count, EarthRendererConstants.maxGlowSources)
     if glowCount > 0 {
       glowSources.withUnsafeBufferPointer { ptr in
@@ -205,7 +206,13 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
     }
 
     let aspect = Float(currentDrawableSize.width / max(currentDrawableSize.height, 1))
-    let uniforms = makeUniforms(time: Float(now), aspect: aspect, glowCount: glowCount)
+    let uniforms = makeUniforms(
+      time: Float(now),
+      aspect: aspect,
+      glowCount: glowCount,
+      classicCount: min(snapshot.classicCount, glowCount),
+      orbCount: min(snapshot.orbCount, max(glowCount - snapshot.classicCount, 0))
+    )
     uniformBuffers[frameIndex].contents().copyMemory(
       from: [uniforms],
       byteCount: MemoryLayout<EarthUniforms>.stride
@@ -371,7 +378,13 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
 
   // MARK: - Uniform assembly
 
-  private func makeUniforms(time: Float, aspect: Float, glowCount: Int) -> EarthUniforms {
+  private func makeUniforms(
+    time: Float,
+    aspect: Float,
+    glowCount: Int,
+    classicCount: Int,
+    orbCount: Int
+  ) -> EarthUniforms {
     // Camera at +Z looking at origin. We don't use a real view matrix here
     // because the fragment shader reconstructs world rays from NDC via the
     // inverse projection; sphere orientation handles all rotation.
@@ -407,13 +420,18 @@ final class EarthRenderer: NSObject, MTKViewDelegate {
       cameraPosition: SIMD4<Float>(0, 0, EarthRendererConstants.cameraDistance, 1),
       sphereOrientation: orientation,
       sunDirection: SIMD4<Float>(sun.x, sun.y, sun.z, 0),
-      params: SIMD4<Float>(time, breath, aspect, Float(glowCount)),
+      params: SIMD4<Float>(time, breath, Float(classicCount), Float(glowCount)),
       sphereData: SIMD4<Float>(0, 0, 0, EarthRendererConstants.sphereRadius),
       atmosphereData: SIMD4<Float>(
         EarthRendererConstants.atmosphereRadius,
         tuning.atmosphereStrength,
-        0.12,   // baseline emissive — dead slot, never read by the shader
-        0
+        Float(orbCount),
+        // World units per scene-texture pixel at the sphere's distance —
+        // the shell integral floors its thickness to ~1.5 of these so the
+        // expanding ring never aliases on small drawables (feed card).
+        2 * tan(EarthRendererConstants.cameraFovYRadians / 2)
+          * EarthRendererConstants.cameraDistance
+          / max(Float(currentDrawableSize.height), 1)
       )
     )
   }

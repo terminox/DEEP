@@ -31,6 +31,16 @@ struct EarthDialParams: Codable, Equatable {
     get { glow.granularity.rawValue }
     set { glow.granularity = .init(rawValue: newValue) ?? .point }
   }
+
+  /// String bridges for the 3D style enums — same `.select` pattern.
+  var glowPointStyleRaw: String {
+    get { glow.glowPointStyle.rawValue }
+    set { glow.glowPointStyle = .init(rawValue: newValue) ?? .classic }
+  }
+  var sparkStyleRaw: String {
+    get { glow.sparkStyle.rawValue }
+    set { glow.sparkStyle = .init(rawValue: newValue) ?? .classic }
+  }
 }
 
 extension EarthDialParams {
@@ -140,6 +150,41 @@ extension EarthDialParams {
       glow.sparkRadius = d.glow.sparkRadius
       glow.sparkPeak = d.glow.sparkPeak
       glow.sparkColumnBoost = d.glow.sparkColumnBoost
+    case "glowOrbs":
+      glow.glowPointStyle = d.glow.glowPointStyle
+      earth.orbSigmaScale = d.earth.orbSigmaScale
+      earth.orbExposure = d.earth.orbExposure
+      earth.orbGain = d.earth.orbGain
+      earth.orbHotGain = d.earth.orbHotGain
+      earth.orbCoreWhiteBoost = d.earth.orbCoreWhiteBoost
+      earth.orbAlphaLift = d.earth.orbAlphaLift
+      earth.orbHaloWeight = d.earth.orbHaloWeight
+      earth.orbElevRatio = d.earth.orbElevRatio
+      earth.orbSeatWeight = d.earth.orbSeatWeight
+    case "sparkShell":
+      glow.sparkStyle = d.glow.sparkStyle
+      glow.flashPeak = d.glow.flashPeak
+      glow.flashDecay = d.glow.flashDecay
+      glow.flashRadius = d.glow.flashRadius
+      glow.shellLife = d.glow.shellLife
+      glow.shellMaxRadius = d.glow.shellMaxRadius
+      glow.shellThicknessBase = d.glow.shellThicknessBase
+      glow.shellThicknessGrow = d.glow.shellThicknessGrow
+      glow.shellPeak = d.glow.shellPeak
+      glow.shellFadePower = d.glow.shellFadePower
+      glow.whiteTau = d.glow.whiteTau
+      earth.burstExposure = d.earth.burstExposure
+      earth.burstGain = d.earth.burstGain
+      earth.burstHotGain = d.earth.burstHotGain
+      earth.burstAlphaLift = d.earth.burstAlphaLift
+    case "twinkle":
+      glow.twinkleLife = d.glow.twinkleLife
+      glow.twinklePeak = d.glow.twinklePeak
+      glow.twinkleRadius = d.glow.twinkleRadius
+      glow.twinkleSpeed = d.glow.twinkleSpeed
+      glow.twinkleDepth = d.glow.twinkleDepth
+      glow.twinkleSizeJitter = d.glow.twinkleSizeJitter
+      glow.twinkleDecay = d.glow.twinkleDecay
     case "interaction":
       interaction = d.interaction
     case "ripples":
@@ -324,6 +369,50 @@ extension EarthDialParams {
       .slider("peak", keyPath: \.glow.sparkPeak, range: 0...3, step: 0.01),
       .slider("columnBoost", keyPath: \.glow.sparkColumnBoost, range: 0...4, step: 0.01),
       .action(resetActionPath, label: "Reset sparks"),
+    ]),
+    .group("glowOrbs", label: "Glow orbs (3D)", collapsed: true, children: [
+      .select("style", keyPath: \.glowPointStyleRaw,
+              options: EarthGlowStore.Tuning.GlowPointStyle.allCases.map(\.rawValue)),
+      .slider("sigmaScale", keyPath: \.earth.orbSigmaScale, range: 0.2...3, step: 0.01),
+      .slider("exposure", keyPath: \.earth.orbExposure, range: 0...6, step: 0.01),
+      .slider("gain", keyPath: \.earth.orbGain, range: 0...3, step: 0.01),
+      .slider("hotGain", keyPath: \.earth.orbHotGain, range: 0...4, step: 0.01),
+      .slider("coreWhiteBoost", keyPath: \.earth.orbCoreWhiteBoost, range: 0...1, step: 0.01),
+      .slider("alphaLift", keyPath: \.earth.orbAlphaLift, range: 0...1.5, step: 0.01),
+      .slider("haloWeight", keyPath: \.earth.orbHaloWeight, range: 0...1, step: 0.01),
+      // elevRatio only moves the `orb` style — dome/buried seat on the surface.
+      .slider("elevRatio", keyPath: \.earth.orbElevRatio, range: 0...3, step: 0.05),
+      .slider("seatWeight", keyPath: \.earth.orbSeatWeight, range: 0...1, step: 0.01),
+      .action(resetActionPath, label: "Reset glow orbs"),
+    ]),
+    .group("sparkShell", label: "Spark flash + shell (3D)", collapsed: true, children: [
+      .select("style", keyPath: \.sparkStyleRaw,
+              options: EarthGlowStore.Tuning.SparkStyle.allCases.map(\.rawValue)),
+      .slider("flashPeak", keyPath: \.glow.flashPeak, range: 0...4, step: 0.01),
+      .slider("flashDecay", keyPath: \.glow.flashDecay, range: 0.03...0.5, step: 0.01, unit: "s"),
+      .slider("flashRadius", keyPath: \.glow.flashRadius, range: 0.01...0.15, step: 0.001),
+      .slider("shellLife", keyPath: \.glow.shellLife, range: 0.3...4, step: 0.05, unit: "s"),
+      .slider("shellMaxRadius", keyPath: \.glow.shellMaxRadius, range: 0.1...0.9, step: 0.01),
+      .slider("thicknessBase", keyPath: \.glow.shellThicknessBase, range: 0.002...0.04, step: 0.001),
+      .slider("thicknessGrow", keyPath: \.glow.shellThicknessGrow, range: 0...0.15, step: 0.005),
+      .slider("shellPeak", keyPath: \.glow.shellPeak, range: 0...3, step: 0.01),
+      .slider("fadePower", keyPath: \.glow.shellFadePower, range: 0.5...5, step: 0.1),
+      .slider("whiteTau", keyPath: \.glow.whiteTau, range: 0.1...1, step: 0.01, unit: "s"),
+      .slider("burstExposure", keyPath: \.earth.burstExposure, range: 0...4, step: 0.01),
+      .slider("burstGain", keyPath: \.earth.burstGain, range: 0...3, step: 0.01),
+      .slider("burstHotGain", keyPath: \.earth.burstHotGain, range: 0...3, step: 0.01),
+      .slider("burstAlphaLift", keyPath: \.earth.burstAlphaLift, range: 0...1.5, step: 0.01),
+      .action(resetActionPath, label: "Reset spark shell"),
+    ]),
+    .group("twinkle", label: "Twinkle spark (3D)", collapsed: true, children: [
+      .slider("life", keyPath: \.glow.twinkleLife, range: 0.3...4, step: 0.05, unit: "s"),
+      .slider("peak", keyPath: \.glow.twinklePeak, range: 0...4, step: 0.01),
+      .slider("radius", keyPath: \.glow.twinkleRadius, range: 0.008...0.06, step: 0.001),
+      .slider("speed", keyPath: \.glow.twinkleSpeed, range: 2...20, step: 0.5, unit: "Hz"),
+      .slider("depth", keyPath: \.glow.twinkleDepth, range: 0...0.95, step: 0.01),
+      .slider("sizeJitter", keyPath: \.glow.twinkleSizeJitter, range: 0...1, step: 0.01),
+      .slider("decay", keyPath: \.glow.twinkleDecay, range: 0.1...1.5, step: 0.01, unit: "s"),
+      .action(resetActionPath, label: "Reset twinkle"),
     ]),
     .group("interaction", collapsed: true, children: [
       .slider("damping", keyPath: \.interaction.damping, range: 0.8...0.99, step: 0.005),

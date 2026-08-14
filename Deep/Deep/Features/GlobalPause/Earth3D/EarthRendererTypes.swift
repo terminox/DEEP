@@ -4,11 +4,24 @@ import simd
 // and Shaders/EarthTuningShared.h (EarthTuningUniforms). Keep struct layouts
 // in sync.
 
+/// One glow source. The buffer is sorted into three disjoint style ranges —
+/// classic `[0, classicCount)`, orb `[classicCount, classicCount+orbCount)`,
+/// shell `[classicCount+orbCount, total)` — with the counts riding in
+/// `EarthUniforms` (`params.z`, `atmosphereData.z`, `params.w`). The shader
+/// loops each range with its own math, so no per-source style branch runs and
+/// classic sources stay bit-identical to the pre-3D encoding.
+///
+/// Channel meanings per range:
+///   classic: pos.w = intensity, x = angular radius (radians), y = whiteness
+///            0...1 (join sparks push the glow toward moon-cream; steady
+///            sources send 0), z = volumetric column height multiplier, w = 0
+///   orb:     pos.w = intensity, x = σ (world units), y = whiteness,
+///            z = style mode (0 = elevated full orb, 1 = surface dome,
+///            2 = buried sphere), w = 1 (debug tag — shader uses the counts)
+///   shell:   pos.w = shell intensity, x = shell radius R (world units),
+///            y = whiteness, z = shell thickness w (world units), w = 2 (tag)
 struct GlowSourceGPU {
-  // xyz = unit position on sphere (lat/lon converted), w = intensity 0...1
   var positionAndIntensity: SIMD4<Float>
-  // x = angular radius (radians), y = whiteness 0...1 (join sparks push the
-  // glow toward moon-cream; steady sources send 0), zw = reserved
   var radiusPacked: SIMD4<Float>
 }
 
@@ -17,11 +30,14 @@ struct EarthUniforms {
   var cameraPosition: SIMD4<Float>
   var sphereOrientation: simd_float4x4
   var sunDirection: SIMD4<Float>
-  // x = time, y = breathPhase 0..1, z = aspect, w = glowCount
+  // x = time, y = breathPhase 0..1, z = classic glow-source count,
+  // w = total glow-source count (see GlowSourceGPU range packing)
   var params: SIMD4<Float>
   // xyz = sphere center (world), w = sphere radius
   var sphereData: SIMD4<Float>
-  // x = atmosphere outer radius, y = atmosphere strength, z = baseline emissive, w = reserved
+  // x = atmosphere outer radius, y = atmosphere strength,
+  // z = orb glow-source count, w = world units per scene-texture pixel
+  // (shell thickness anti-alias floor)
   var atmosphereData: SIMD4<Float>
 }
 
@@ -80,6 +96,19 @@ struct EarthTuningUniforms {
   /// y = accumulated volume → alpha lift, z = tint mix (flat lilac → warm walk),
   /// w = far-side ghost weight through the glass body
   var volumetric: SIMD4<Float>
+  /// Volumetric orb glow style: x = σ scale on the packed world radius,
+  /// y = coverage exposure (compression gain), z = base emissive gain,
+  /// w = uncompressed hot-core gain (drives bloom)
+  var orbShape: SIMD4<Float>
+  /// x = whiteness boost inside the orb core, y = coverage → alpha lift,
+  /// z = 3σ halo skirt weight, w = seat elevation as a ratio of σ
+  var orbTint: SIMD4<Float>
+  /// Flash + shell join burst: x = coverage exposure, y = base emissive gain,
+  /// z = uncompressed hot gain, w = coverage → alpha lift
+  var burstShape: SIMD4<Float>
+  /// x = orb sources' residual weight in the classic surface glow (the seat
+  /// that keeps light kissing the land under a floating orb), yzw = reserved
+  var orbSeat: SIMD4<Float>
 }
 
 enum EarthRendererConstants {
