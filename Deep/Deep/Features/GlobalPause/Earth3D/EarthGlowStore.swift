@@ -106,7 +106,7 @@ final class EarthGlowStore {
     /// surface unclipped so the planet body hides the under-glow except near
     /// the limb. Switches the GPU packing range (and mode channel) per source.
     enum GlowPointStyle: String, CaseIterable, Codable { case classic, orb, dome, buried }
-    var glowPointStyle: GlowPointStyle = .classic
+    var glowPointStyle: GlowPointStyle = .buried
     /// Join spark rendering: classic surface flare (+ the 2D ripple ring), a
     /// 3D flash + expanding light shell, or a twinkling star (scintillating
     /// point). The scene suppresses the 2D ring unless this is `.classic`.

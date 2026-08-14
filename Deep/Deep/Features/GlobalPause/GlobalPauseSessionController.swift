@@ -83,7 +83,15 @@ final class GlobalPauseSessionController: UIViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
-  override var preferredStatusBarStyle: UIStatusBarStyle { .darkContent }
+  /// Dark over the cream arrival and reflection; light once night has fallen.
+  /// Assigned inside animation blocks so the flip rides the surrounding fade.
+  private var showsLightStatusBar = false {
+    didSet { setNeedsStatusBarAppearanceUpdate() }
+  }
+
+  override var preferredStatusBarStyle: UIStatusBarStyle {
+    showsLightStatusBar ? .lightContent : .darkContent
+  }
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -120,6 +128,12 @@ final class GlobalPauseSessionController: UIViewController {
     isOverlayRevealed = true
     if let overlayHost, !hasCompleted {
       overlayHost.rootView = makeOverlayRoot()
+    }
+    // Night falls with the cascade — one composed arrival. A latecomer who
+    // landed straight in reflection stays on cream.
+    if !hasCompleted {
+      card?.setNightMode(true, animated: true)
+      UIView.animate(withDuration: .hush) { self.showsLightStatusBar = true }
     }
     turnGlobeHome()
   }
@@ -328,9 +342,12 @@ final class GlobalPauseSessionController: UIViewController {
     }
 
     closeButton.isUserInteractionEnabled = false
+    // Night lifts on the same beat, so the reverse flight flies a cream card.
+    card?.setNightMode(false, animated: true)
     UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) { [weak self] in
       self?.overlayHost?.view.alpha = 0
       self?.closeButton.alpha = 0
+      self?.showsLightStatusBar = false
     } completion: { [weak self] _ in
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
         // Tear down before the dismiss animation so the globe hands back to
@@ -383,6 +400,8 @@ final class GlobalPauseSessionController: UIViewController {
     let animator = UIViewPropertyAnimator(duration: 1.5, curve: .easeInOut) { [weak self] in
       host.view.alpha = 1
       self?.closeButton.alpha = 0
+      // The reflection is opaque cream — the status bar goes dark with it.
+      self?.showsLightStatusBar = false
     }
     animator.addCompletion { [weak self] position in
       guard position == .end else { return }
@@ -445,6 +464,10 @@ final class GlobalPauseSessionController: UIViewController {
     scene.interaction.resumeSpin(over: 1)
     scene.glow.homeLocation = nil
     card?.resetGlobePhasePlacement(animated: false)
+    // The idempotent funnel every terminal path hits — the lounge must never
+    // receive a night card.
+    card?.setNightMode(false, animated: false)
+    showsLightStatusBar = false
   }
 
   // MARK: - Card handoff

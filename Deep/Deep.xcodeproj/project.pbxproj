@@ -6,10 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		DEE9CF00000000000000E002 /* DialKit in Frameworks */ = {isa = PBXBuildFile; productRef = DEE9CF00000000000000E001 /* DialKit */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		DEE9CF0000000000000001A7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -49,7 +45,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DEE9CF00000000000000E002 /* DialKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -116,7 +111,6 @@
 			);
 			name = Deep;
 			packageProductDependencies = (
-				DEE9CF00000000000000E001 /* DialKit */,
 			);
 			productName = Deep;
 			productReference = 19AD22DD2FC58AE700C243D0 /* Deep.app */;
@@ -174,7 +168,6 @@
 			mainGroup = 19AD22D42FC58AE700C243D0;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				DEE9CF00000000000000E000 /* XCLocalSwiftPackageReference "Vendor/dialkit-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 19AD22DE2FC58AE700C243D0 /* Products */;
@@ -433,21 +426,6 @@
 			defaultConfigurationName = Dev;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		DEE9CF00000000000000E000 /* XCLocalSwiftPackageReference "Vendor/dialkit-ios" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "Vendor/dialkit-ios";
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		DEE9CF00000000000000E001 /* DialKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = DEE9CF00000000000000E000 /* XCLocalSwiftPackageReference "Vendor/dialkit-ios" */;
-			productName = DialKit;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 19AD22D52FC58AE700C243D0 /* Project object */;
 }

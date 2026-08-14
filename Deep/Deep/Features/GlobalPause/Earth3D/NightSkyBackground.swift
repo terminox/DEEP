@@ -1,20 +1,14 @@
 import SwiftUI
 
-/// Live-tunable night-sky knobs, mirroring `EarthTuning`'s shape: a shared
-/// instance the renderer-side views read, a nested `Values` struct whose
-/// defaults reproduce the shipped look exactly, and a `reset()` that swaps in
-/// a fresh struct. Inert outside the DEBUG tuning panel — nothing else writes.
+/// The production night-sky configuration, mirroring `EarthTuning`'s shape:
+/// a shared instance read by `GlobalPauseCardView` (the session's night mode)
+/// and a nested `Values` struct whose defaults ARE the shipped look — nothing
+/// writes at runtime.
 @MainActor
 @Observable
 final class NightSkyTuning {
   static let shared = NightSkyTuning()
 
-  /// Lab-only comparison flag — deliberately OUTSIDE `Values` so it never
-  /// leaks into the panel's Mirror-based "Copy Swift" export (which would
-  /// emit invalid `.true`) and survives per-section reset.
-  var enabled = true
-
-  /// Codable + Equatable so the DEBUG dial panel can snapshot and diff it.
   struct Values: Codable, Equatable {
     // MARK: Sky
     /// Top-of-sky darkness: 0 = twilight plum (DuskAtmosphere's lightest
@@ -138,7 +132,7 @@ private struct SplitMix64 {
 
 /// Night starry backdrop for the Earth orb: a dark plum gradient, a soft
 /// horizon glow, and a seeded field of twinkling stars. Every visual knob
-/// lives in `NightSkyTuning` so the DEBUG panel can drive it live.
+/// lives in `NightSkyTuning`, the single source of the shipped look.
 struct NightSkyBackground: View {
   let tuning: NightSkyTuning
   @Environment(\.accessibilityReduceMotion) private var reduceMotion

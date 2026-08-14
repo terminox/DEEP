@@ -49,7 +49,7 @@ final class EarthTuning {
 
     // MARK: Atmosphere & shimmer
     /// Haze alpha just outside the silhouette.
-    var hazeAlpha: Float = 0.55
+    var hazeAlpha: Float = 0.1
     /// Haze falloff exponent — higher hugs the rim tighter.
     var hazeExponent: Float = 2.0
     /// Whole-orb breath scale amplitude.
@@ -169,7 +169,7 @@ final class EarthTuning {
     var sunX: Float = -0.45
     var sunY: Float = 0.55
     var sunZ: Float = 0.7
-    var atmosphereStrength: Float = 0.55
+    var atmosphereStrength: Float = 0.1
     /// Physiological-sigh breath: inhale + exhale = period.
     var breathInhaleSeconds: Float = 4.0
     var breathExhaleSeconds: Float = 6.0

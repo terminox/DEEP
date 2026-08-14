@@ -42,6 +42,20 @@ final class GlobalPauseCardView: UIControl {
   private let atmosphere = CardAtmosphereView()
   private let earthScene: EarthSceneView
 
+  // MARK: Night mode state
+
+  /// The starry session backdrop, hosted between `atmosphere` and
+  /// `earthScene`. Created on the first `setNightMode(true)` and destroyed
+  /// once night has fully lifted, so its 30 fps twinkle timeline never ticks
+  /// behind the opaque cream card at feed rest. Unparented for the same
+  /// reasons as `EarthSceneView.ripplesHost`: display-only, no interaction,
+  /// no environment dependencies.
+  private var nightSkyHost: UIHostingController<NightSkyBackground>?
+  /// The running night fade; stopped (not finished) on retarget so a leave
+  /// mid-fall lifts night from wherever it visually is.
+  private var nightFadeAnimator: UIViewPropertyAnimator?
+  private var isNight = false
+
   private var globeLayout: GlobeLayout = .natural
   private var isLobby = false
   private var lobbyGlobeInsets: UIEdgeInsets = .zero
@@ -130,6 +144,7 @@ final class GlobalPauseCardView: UIControl {
   override func layoutSubviews() {
     super.layoutSubviews()
     atmosphere.frame = bounds
+    nightSkyHost?.view.frame = bounds
     chrome.frame = bounds
     borderView.frame = bounds
 
@@ -189,6 +204,73 @@ final class GlobalPauseCardView: UIControl {
     isEnabled = !isLobby
     setCornerRadius(isLobby ? 0 : .card)
     setNeedsLayout()
+  }
+
+  // MARK: - Night mode
+
+  /// Night falls for the live session — the starry sky fades in over the
+  /// cream atmosphere while the halo/cradle dim to the tuned seat, so the
+  /// bloom doesn't wash the dark sky. Falling takes `.hush` (it lands with
+  /// the session's arrival cascade); lifting is quick (0.22 s, the session's
+  /// empty-the-screen beat), so a flight home always flies a cream card.
+  /// Idempotent per state; `animated: false` snaps.
+  func setNightMode(_ on: Bool, animated: Bool) {
+    guard on != isNight else { return }
+    isNight = on
+
+    nightFadeAnimator?.stopAnimation(true)
+    nightFadeAnimator = nil
+
+    let sky = on ? installedNightSky() : nightSkyHost
+    let apply = { [weak self] in
+      sky?.view.alpha = on ? 1 : 0
+      self?.earthScene.backdropAlpha =
+        on ? CGFloat(NightSkyTuning.shared.values.earthBackdropDim) : 1
+    }
+
+    guard animated else {
+      apply()
+      if !on { removeNightSky() }
+      return
+    }
+
+    let animator = on
+      ? UIViewPropertyAnimator(duration: .hush, timingParameters: UICubicTimingParameters.hush)
+      : UIViewPropertyAnimator(duration: 0.22, curve: .easeOut)
+    animator.addAnimations(apply)
+    animator.addCompletion { [weak self] position in
+      guard position == .end else { return }
+      if on {
+        self?.nightFadeAnimator = nil
+      } else {
+        self?.removeNightSky()
+      }
+    }
+    nightFadeAnimator = animator
+    animator.startAnimation()
+  }
+
+  /// Returns the sky host, mounting it above the atmosphere at alpha 0 on
+  /// first use.
+  private func installedNightSky() -> UIHostingController<NightSkyBackground> {
+    if let nightSkyHost { return nightSkyHost }
+    let host = UIHostingController(rootView: NightSkyBackground(tuning: NightSkyTuning.shared))
+    host.view.backgroundColor = .clear
+    host.view.isUserInteractionEnabled = false
+    // Full-bleed even when the card crosses the notch/home areas at session
+    // scale — no safe-area contraction.
+    host.safeAreaRegions = []
+    host.view.alpha = 0
+    host.view.frame = bounds
+    insertSubview(host.view, aboveSubview: atmosphere)
+    nightSkyHost = host
+    return host
+  }
+
+  private func removeNightSky() {
+    nightSkyHost?.view.removeFromSuperview()
+    nightSkyHost = nil
+    nightFadeAnimator = nil
   }
 
   // MARK: - Phase hooks
@@ -414,6 +496,15 @@ final class GlobalPauseCardView: UIControl {
   let scene = GlobalPauseEarthScene.preview
   let card = GlobalPauseCardView(scene: scene)
   card.applyRestState(isLobby: true)
+  return card
+}
+
+#Preview("Card — night (session backdrop)") {
+  // The approved lab look: starry sky behind the globe, halo/cradle dimmed.
+  let scene = GlobalPauseEarthScene.previewCities
+  let card = GlobalPauseCardView(scene: scene)
+  card.applyRestState(isLobby: true)
+  card.setNightMode(true, animated: false)
   return card
 }
 

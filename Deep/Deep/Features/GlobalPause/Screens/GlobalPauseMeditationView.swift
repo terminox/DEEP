@@ -24,7 +24,9 @@ struct GlobalPauseMeditationView: View {
 
         Text("\(participantCount.formatted()) people are pausing with you")
           .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
+          // moonCream, not driftGrey — the caption sits on the night sky,
+          // anchored to the same cream its stars are drawn from.
+          .foregroundStyle(.moonCream.opacity(0.75))
           .contentTransition(.numericText())
           .cascade(revealed, order: 1, reduceMotion: reduceMotion)
       }
@@ -61,7 +63,7 @@ struct GlobalPauseMeditationView: View {
   private var progressLine: some View {
     let progress = duration > 0 ? min(1, audio.meditationElapsed / duration) : 0
     return Capsule()
-      .fill(Color.deepPlum.opacity(0.12))
+      .fill(Color.moonCream.opacity(0.18))
       .frame(height: 8)
       .overlay(alignment: .leading) {
         GeometryReader { proxy in
@@ -93,7 +95,9 @@ private extension View {
 
 #Preview("Meditation") {
   ZStack {
-    Color.moonCream.ignoresSafeArea()
+    // The overlay only ever ships over the session's night sky.
+    NightSkyBackground(tuning: NightSkyTuning())
+      .ignoresSafeArea()
     GlobalPauseMeditationView(
       audio: MockGlobalPauseAudioPlayer.meditating,
       duration: 600,
@@ -106,7 +110,8 @@ private extension View {
   @Previewable @State var revealed = false
 
   ZStack {
-    Color.moonCream.ignoresSafeArea()
+    NightSkyBackground(tuning: NightSkyTuning())
+      .ignoresSafeArea()
     GlobalPauseMeditationView(
       audio: MockGlobalPauseAudioPlayer.meditating,
       duration: 600,
