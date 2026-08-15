@@ -225,7 +225,8 @@ struct GlobalPauseCardSlot: UIViewRepresentable {
 }
 
 #Preview("Card in its slot") {
-  let scene = GlobalPauseEarthScene.preview
+  // Resting cards carry no participant glow — that belongs to the session.
+  let scene = GlobalPauseEarthScene()
   let card = GlobalPauseCardView(scene: scene)
   let slot = GlobalPauseCardSlotView()
   slot.adopt(card)

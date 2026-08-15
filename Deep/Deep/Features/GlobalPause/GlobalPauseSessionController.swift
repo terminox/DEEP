@@ -35,8 +35,8 @@ final class GlobalPauseSessionController: UIViewController {
   /// The overlay arrives empty and cascades in once the card-lift has landed,
   /// so nothing rides the flight but the globe.
   private var isOverlayRevealed = false
-  /// Join sparks wait behind this gate until the turn-to-you has settled —
-  /// otherwise the user's own spark plays mid-flight or mid-turn and is missed.
+  /// Join ripples wait behind this gate until the turn-to-you has settled —
+  /// otherwise the user's own ring plays mid-flight or mid-turn and is missed.
   private var joinsGateOpen = false
 
   private var duration: TimeInterval = 600
@@ -129,10 +129,10 @@ final class GlobalPauseSessionController: UIViewController {
     if let overlayHost, !hasCompleted {
       overlayHost.rootView = makeOverlayRoot()
     }
-    // Night falls with the cascade — one composed arrival. A latecomer who
-    // landed straight in reflection stays on cream.
+    // The card's backdrop is already night — flip the status bar light with
+    // the cascade. A latecomer who landed straight in reflection stays dark
+    // over its cream.
     if !hasCompleted {
-      card?.setNightMode(true, animated: true)
       UIView.animate(withDuration: .hush) { self.showsLightStatusBar = true }
     }
     turnGlobeHome()
@@ -156,8 +156,8 @@ final class GlobalPauseSessionController: UIViewController {
 
   /// Feeds each live poll into the globe: located participants light the
   /// surface as lat/lon points (unlocated ones as country blobs), and fresh
-  /// joins spark + ring at their coordinates. Older servers send no locations
-  /// at all — the globe then keeps the classic country glow.
+  /// joins ring at their coordinates. Older servers send no locations at
+  /// all — the globe then keeps the classic country glow.
   private func observeLiveGlobe() {
     guard !isTornDown else { return }
     let (byCountry, locations, unlocated) = withObservationTracking {
@@ -342,8 +342,6 @@ final class GlobalPauseSessionController: UIViewController {
     }
 
     closeButton.isUserInteractionEnabled = false
-    // Night lifts on the same beat, so the reverse flight flies a cream card.
-    card?.setNightMode(false, animated: true)
     UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) { [weak self] in
       self?.overlayHost?.view.alpha = 0
       self?.closeButton.alpha = 0
@@ -462,11 +460,15 @@ final class GlobalPauseSessionController: UIViewController {
     audio.stop()
     session.leaveSession()
     scene.interaction.resumeSpin(over: 1)
+    // The world's lights are the session's alone: clear every glow input so
+    // the store fades them out over its lerp (the proven home-glow path) while
+    // the card flies home, and drop any joins still queued to spark.
+    scene.cancelPendingJoins()
     scene.glow.homeLocation = nil
+    scene.glow.locations = []
+    scene.glow.unlocatedByCountry = [:]
+    scene.glow.participantsByCountry = [:]
     card?.resetGlobePhasePlacement(animated: false)
-    // The idempotent funnel every terminal path hits — the lounge must never
-    // receive a night card.
-    card?.setNightMode(false, animated: false)
     showsLightStatusBar = false
   }
 

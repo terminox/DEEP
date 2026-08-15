@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// The production night-sky configuration, mirroring `EarthTuning`'s shape:
-/// a shared instance read by `GlobalPauseCardView` (the session's night mode)
-/// and a nested `Values` struct whose defaults ARE the shipped look — nothing
-/// writes at runtime.
+/// a shared instance read by `GlobalPauseCardView` (whose permanent starry
+/// backdrop this is) and a nested `Values` struct whose defaults ARE the
+/// shipped look — nothing writes at runtime.
 @MainActor
 @Observable
 final class NightSkyTuning {

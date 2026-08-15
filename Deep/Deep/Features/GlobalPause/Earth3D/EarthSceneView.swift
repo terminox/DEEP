@@ -58,8 +58,8 @@ final class EarthSceneView: UIView {
   }
 
   /// Dims the halo + cradle backdrop gradients (view alpha over their baked-in
-  /// gradient alphas). 1 = the cream-scene look; the session's night mode
-  /// drives this down so the bloom doesn't wash the dark sky.
+  /// gradient alphas). 1 = the bare cream-scene look; `GlobalPauseCardView`
+  /// rests this at the tuned dim so the bloom doesn't wash its dark sky.
   var backdropAlpha: CGFloat = 1 {
     didSet {
       halo.alpha = backdropAlpha

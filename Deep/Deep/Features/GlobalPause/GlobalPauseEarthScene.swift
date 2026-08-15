@@ -13,14 +13,15 @@ final class GlobalPauseEarthScene {
   let ripples = EarthHaloRipples()
 
   /// A 5s poll delivers joins in a batch; draining them 150ms apart makes
-  /// each spark + ripple read as an individual person arriving. Capped so a
-  /// flood never keeps sparking long after the moment has passed.
+  /// each ripple read as an individual person arriving. Capped so a flood
+  /// never keeps ringing long after the moment has passed.
   @ObservationIgnored private var joinQueue: [PauseJoinPoint] = []
   @ObservationIgnored private var drainTask: Task<Void, Never>?
   private let joinQueueCap = 10
 
-  /// The one entry point for "someone joined": fires the glow spark and the
-  /// halo ring together at the same coordinates.
+  /// The one entry point for "someone joined": each join lands as a halo
+  /// ring at its coordinates — the ring alone is the arrival; the steady
+  /// glow the poll seeds is the person staying.
   func enqueueJoins(_ joins: [PauseJoinPoint]) {
     guard !joins.isEmpty else { return }
     joinQueue.append(contentsOf: joins)
@@ -31,16 +32,20 @@ final class GlobalPauseEarthScene {
     drainTask = Task { [weak self] in
       while let self, !Task.isCancelled, !self.joinQueue.isEmpty {
         let join = self.joinQueue.removeFirst()
-        self.glow.spark(lat: join.lat, lon: join.lon)
-        // The flat 2D canvas ring belongs to the classic spark style; the
-        // flash + shell style carries its own 3D wave in the shader.
-        if self.glow.tuning.sparkStyle == .classic {
-          self.ripples.emit(lat: join.lat, lon: join.lon)
-        }
+        self.ripples.emit(lat: join.lat, lon: join.lon)
         try? await Task.sleep(for: .milliseconds(150))
       }
       self?.drainTask = nil
     }
+  }
+
+  /// Session teardown: joins still waiting in the queue must not ring onto
+  /// the resting card as it flies home — the world's lights belong to the
+  /// session alone.
+  func cancelPendingJoins() {
+    drainTask?.cancel()
+    drainTask = nil
+    joinQueue.removeAll()
   }
 }
 

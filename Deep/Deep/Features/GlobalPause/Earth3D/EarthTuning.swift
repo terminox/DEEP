@@ -52,8 +52,9 @@ final class EarthTuning {
     var hazeAlpha: Float = 0.1
     /// Haze falloff exponent — higher hugs the rim tighter.
     var hazeExponent: Float = 2.0
-    /// Whole-orb breath scale amplitude.
-    var breathScaleAmp: Float = 0.015
+    /// Whole-orb breath scale amplitude. Zero on purpose: the Earth holds
+    /// its size — the breath reads through the light shimmer, not geometry.
+    var breathScaleAmp: Float = 0
     /// FBM breath shimmer amplitude.
     var shimmerAmp: Float = 0.06
 
