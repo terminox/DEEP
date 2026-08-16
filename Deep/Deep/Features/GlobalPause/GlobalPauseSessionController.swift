@@ -138,49 +138,81 @@ final class GlobalPauseSessionController: UIViewController {
     turnGlobeHome()
   }
 
-  /// The flight has landed: turn the world to *you* and light your home glow,
-  /// then open the joins gate so sparks (including your own) play where the
-  /// user is actually looking.
+  /// The flight has landed: turn the world to *you*, and once the turn has
+  /// settled let everything in at once — your home glow, the world's lights,
+  /// and the sparks — so the arrival is one composed moment where the user is
+  /// actually looking. A latecomer who landed straight in reflection gets
+  /// none of it: the globe is behind an opaque screen and the night is over.
   private func turnGlobeHome() {
+    guard !hasCompleted else { return }
     if let home = session.myLocation {
       scene.interaction.orient(toLatDeg: home.lat, lonDeg: home.lon, over: 2.5)
-      scene.glow.homeLocation = home
     }
     Task { [weak self] in
       try? await Task.sleep(for: .seconds(2.5))
-      guard let self, !self.isTornDown else { return }
+      guard let self, !self.isTornDown, !self.hasCompleted else { return }
       self.joinsGateOpen = true
-      self.scene.enqueueJoins(self.session.consumeNewJoins())
+      self.applyLiveGlobe()
+      // Your own arrival is the one the gate was built for — flare it here
+      // rather than wait on the server's echo of your first heartbeat, which
+      // can be a whole poll late. `GlobalPauseSession` swallows that echo.
+      if let home = self.session.myLocation {
+        self.scene.enqueueOwnJoin(home)
+      }
     }
   }
 
-  /// Feeds each live poll into the globe: located participants light the
-  /// surface as lat/lon points (unlocated ones as country blobs), and fresh
-  /// joins ring at their coordinates. Older servers send no locations at
-  /// all — the globe then keeps the classic country glow.
+  /// Keeps the globe subscribed to the live poll. The read *is* the
+  /// subscription: every input the globe follows is touched on every pass —
+  /// including while the joins gate is still shut — or the loop stops waking
+  /// and the world never lights at all.
   private func observeLiveGlobe() {
     guard !isTornDown else { return }
-    let (byCountry, locations, unlocated) = withObservationTracking {
-      (session.participantsByCountry, session.participantLocations, session.unlocatedByCountry)
+    withObservationTracking {
+      _ = session.participantsByCountry
+      _ = session.participantLocations
+      _ = session.unlocatedByCountry
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in self?.observeLiveGlobe() }
     }
-    if locations.isEmpty && unlocated.isEmpty {
-      scene.glow.participantsByCountry = byCountry
-    } else {
-      scene.glow.locations = locations
-      scene.glow.unlocatedByCountry = unlocated
-    }
-    // The server's IP-resolved home can arrive after the first render —
-    // keep the home glow seated on the freshest value.
-    if let home = session.myLocation, scene.glow.homeLocation != home {
-      scene.glow.homeLocation = home
-    }
+    applyLiveGlobe()
+  }
+
+  /// Feeds the latest poll into the globe: located participants light the
+  /// surface as lat/lon points (unlocated ones as country blobs), and fresh
+  /// joins spark + ring at their coordinates. Older servers send no locations
+  /// at all — the globe then keeps the classic country glow.
+  ///
+  /// Every light waits behind the same gate the joins do. Otherwise the first
+  /// poll — which lands while the card is still in flight — quietly lights the
+  /// whole world, and by the time the gate opens ~3s later the glows have
+  /// finished rising and each spark flares onto an already-lit planet. Gate
+  /// open, the lights and the first sparks land in one turn: every arrival
+  /// rides its own glow coming up.
+  ///
+  /// Called directly when the gate opens — never `observeLiveGlobe()`, which
+  /// would install a second self-renewing tracking chain.
+  private func applyLiveGlobe() {
+    guard !isTornDown else { return }
     if joinsGateOpen {
+      let locations = session.participantLocations
+      let unlocated = session.unlocatedByCountry
+      if locations.isEmpty && unlocated.isEmpty {
+        scene.glow.participantsByCountry = session.participantsByCountry
+      } else {
+        scene.glow.locations = locations
+        scene.glow.unlocatedByCountry = unlocated
+      }
+      // The server's IP-resolved home can arrive after the first render —
+      // keep the home glow seated on the freshest value.
+      if let home = session.myLocation, scene.glow.homeLocation != home {
+        scene.glow.homeLocation = home
+      }
       scene.enqueueJoins(session.consumeNewJoins())
     }
     // The participant count refreshes on the same poll; keep the meditation
-    // overlay's "N meditating with you" honest.
+    // overlay's "N meditating with you" honest — that has nothing to do with
+    // the globe's gate.
     if let overlayHost, !hasCompleted {
       overlayHost.rootView = makeOverlayRoot()
     }
@@ -462,8 +494,11 @@ final class GlobalPauseSessionController: UIViewController {
     scene.interaction.resumeSpin(over: 1)
     // The world's lights are the session's alone: clear every glow input so
     // the store fades them out over its lerp (the proven home-glow path) while
-    // the card flies home, and drop any joins still queued to spark.
-    scene.cancelPendingJoins()
+    // the card flies home, and drop every join queued or already sparking.
+    scene.clearJoins()
+    // The gate belongs to this visit — a late observation callback must not
+    // find it open and re-light a world the session just put out.
+    joinsGateOpen = false
     scene.glow.homeLocation = nil
     scene.glow.locations = []
     scene.glow.unlocatedByCountry = [:]
