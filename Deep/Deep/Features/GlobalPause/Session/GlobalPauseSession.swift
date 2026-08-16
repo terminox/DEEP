@@ -73,9 +73,14 @@ final class GlobalPauseSession {
   @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
   @ObservationIgnored private var pollTask: Task<Void, Never>?
   @ObservationIgnored private var foregroundObserver: NSObjectProtocol?
-  /// Joins already turned into ripples, so a poll never replays old ones.
+  /// Joins already turned into sparks, so a poll never replays old ones.
   @ObservationIgnored private var seenJoins: Set<String> = []
   @ObservationIgnored private var pendingJoins: [PauseJoinPoint] = []
+  /// Your own join comes back in the server's feed like anyone else's — but
+  /// the session screen already flares it the moment the globe lands on you,
+  /// rather than waiting a poll for the echo. Swallow that echo once so your
+  /// city doesn't spark twice.
+  @ObservationIgnored private var hasSwallowedOwnJoin = false
 
   /// One stable anonymous identity per install, so reopening the session never
   /// double-counts (the server keys signed-in users by user id instead).
@@ -232,6 +237,7 @@ final class GlobalPauseSession {
     pollTask = nil
     seenJoins = []
     pendingJoins = []
+    hasSwallowedOwnJoin = false
     myLocation = nil
     Task { [repository, presenceID] in
       await repository.leave(presenceID: presenceID)
@@ -249,12 +255,24 @@ final class GlobalPauseSession {
       let key = "\(join.iso)-\(join.at.timeIntervalSince1970)"
       guard !seenJoins.contains(key) else { continue }
       seenJoins.insert(key)
+      let point: PauseJoinPoint
       if let lat = join.lat, let lon = join.lon {
-        pendingJoins.append(PauseJoinPoint(lat: lat, lon: lon))
+        point = PauseJoinPoint(lat: lat, lon: lon)
       } else if let country = CountryLookup.shared.country(forISO: join.iso) {
         // Server couldn't locate the IP — land the spark on the country centroid.
-        pendingJoins.append(PauseJoinPoint(lat: country.latitude, lon: country.longitude))
+        point = PauseJoinPoint(lat: country.latitude, lon: country.longitude)
+      } else {
+        continue
       }
+      // The match is exact by construction: a located join carries the very
+      // coordinates the heartbeat resolved into `myLocation`, and an unlocated
+      // one falls back to the same `CountryLookup` centroid the session seeded
+      // itself with.
+      if !hasSwallowedOwnJoin, point == myLocation {
+        hasSwallowedOwnJoin = true
+        continue
+      }
+      pendingJoins.append(point)
     }
     // Clock sync can move a boundary; keep the timer honest.
     recomputeState()
@@ -262,7 +280,8 @@ final class GlobalPauseSession {
   }
 
   /// Joins that arrived since the last consume — the session screen turns
-  /// these into globe sparks + ripples. Draining keeps one per join.
+  /// these into globe sparks + ripples, minus your own, which it flares
+  /// itself. Draining keeps one per join.
   func consumeNewJoins() -> [PauseJoinPoint] {
     let joins = pendingJoins
     pendingJoins = []

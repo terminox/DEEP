@@ -273,7 +273,11 @@ final class EarthGlowStore {
     }
     let steady = sources
       .filter { $0.currentIntensity > 0.003 }
-      .sorted { $0.currentIntensity > $1.currentIntensity }
+      // Ranked by where a source is *going*, not where it is: a cell that just
+      // appeared starts at zero and would sort dead last, so on a world past
+      // the budget a fresh join's glow could be evicted for the whole life of
+      // the spark introducing it. Fading sources (target 0) still lose.
+      .sorted { max($0.currentIntensity, $0.targetIntensity) > max($1.currentIntensity, $1.targetIntensity) }
       .prefix(budget)
       .map { s -> GlowSourceGPU in
         let isHome = s.key == Self.homeKey
@@ -337,6 +341,13 @@ final class EarthGlowStore {
       seed: Float.random(in: 0..<(2 * .pi)),
       age: 0
     ))
+  }
+
+  /// Drops every spark in flight. The steady cells fade out over their lerp
+  /// when their input vanishes, but a spark has no such path — it would keep
+  /// burning wherever the orb goes next.
+  func clearSparks() {
+    sparks.removeAll()
   }
 
   /// Attack over 120ms, exponential decay — peaks bright, settles fast.

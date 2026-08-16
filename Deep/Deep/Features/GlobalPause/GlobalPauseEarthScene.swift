@@ -12,40 +12,68 @@ final class GlobalPauseEarthScene {
   let interaction = EarthInteraction()
   let ripples = EarthHaloRipples()
 
-  /// A 5s poll delivers joins in a batch; draining them 150ms apart makes
-  /// each ripple read as an individual person arriving. Capped so a flood
-  /// never keeps ringing long after the moment has passed.
+  /// A 5s poll delivers joins in a batch; draining them apart makes each
+  /// spark + ripple read as an individual person arriving. Capped so a flood
+  /// never keeps sparking long after the moment has passed.
   @ObservationIgnored private var joinQueue: [PauseJoinPoint] = []
   @ObservationIgnored private var drainTask: Task<Void, Never>?
   private let joinQueueCap = 10
+  /// The beat between two arrivals — slow enough that each reads as its own
+  /// person rather than a flicker.
+  private let joinBeat = Duration.milliseconds(150)
+  /// …but a batch has to finish inside the glow's rise (one `lerpTau`), or its
+  /// tail flares onto light that already finished coming up. Big batches
+  /// tighten their beat to fit; the one- or two-join batches a live poll
+  /// delivers keep the full 150ms.
+  private let joinBurstWindow = Duration.milliseconds(900)
 
-  /// The one entry point for "someone joined": each join lands as a halo
-  /// ring at its coordinates — the ring alone is the arrival; the steady
-  /// glow the poll seeds is the person staying.
+  /// The one entry point for "someone joined": fires the glow spark and the
+  /// halo ring together at the same coordinates.
   func enqueueJoins(_ joins: [PauseJoinPoint]) {
     guard !joins.isEmpty else { return }
     joinQueue.append(contentsOf: joins)
     if joinQueue.count > joinQueueCap {
       joinQueue.removeFirst(joinQueue.count - joinQueueCap)
     }
+    startDraining()
+  }
+
+  /// *Your* arrival, and only yours: it jumps the queue and skips the cap,
+  /// because it is the one join the session's gate was built for — a flood of
+  /// strangers must never trim it away or bury it a second deep.
+  func enqueueOwnJoin(_ join: PauseJoinPoint) {
+    joinQueue.insert(join, at: 0)
+    startDraining()
+  }
+
+  private func startDraining() {
     guard drainTask == nil else { return }
     drainTask = Task { [weak self] in
       while let self, !Task.isCancelled, !self.joinQueue.isEmpty {
+        let beat = min(self.joinBeat, self.joinBurstWindow / self.joinQueue.count)
         let join = self.joinQueue.removeFirst()
-        self.ripples.emit(lat: join.lat, lon: join.lon)
-        try? await Task.sleep(for: .milliseconds(150))
+        self.glow.spark(lat: join.lat, lon: join.lon)
+        // The flat 2D canvas ring belongs to the classic spark style; the
+        // flash + shell style carries its own 3D wave in the shader.
+        if self.glow.tuning.sparkStyle == .classic {
+          self.ripples.emit(lat: join.lat, lon: join.lon)
+        }
+        try? await Task.sleep(for: beat)
       }
       self?.drainTask = nil
     }
   }
 
-  /// Session teardown: joins still waiting in the queue must not ring onto
-  /// the resting card as it flies home — the world's lights belong to the
-  /// session alone.
-  func cancelPendingJoins() {
+  /// Session teardown: neither a queued join nor one already in flight may
+  /// land on the resting card as it flies home — a spark lives 2s and a ring
+  /// 1.2s, both longer than the 0.45s reverse flight. The world's lights
+  /// belong to the session alone.
+  func clearJoins() {
     drainTask?.cancel()
     drainTask = nil
     joinQueue.removeAll()
+    glow.clearSparks()
+    ripples.clear()
   }
 }
 

@@ -55,6 +55,13 @@ final class EarthHaloRipples {
     recentEmits.append((position, time))
   }
 
+  /// Drops every ring at once, including the cooldown memory — a session
+  /// ending must not leave a ring drawing on the card it hands home.
+  func clear() {
+    active.removeAll()
+    recentEmits.removeAll()
+  }
+
   /// Remove expired ripples. Called from the host on each frame — pass
   /// `CACurrentMediaTime()`, not the renderer's relative frame time, so the
   /// cutoff compares against the same clock `startedAt` was stamped with.
