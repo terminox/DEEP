@@ -2,8 +2,11 @@ import UIKit
 import SwiftUI
 
 /// UIKit twin of the SwiftUI `OnAirPill` recipe — a pulsing dot and a micro
-/// label in a half-white capsule — for the card chrome, which lays itself out
+/// label in a white capsule — for the card chrome, which lays itself out
 /// in UIKit. Keep the two in step: same dot, padding, tracking and pulse.
+/// One deliberate divergence: `OnAirPill` sits on bright photography at half
+/// white, while this badge seats on the card's night sky — a 0.5 fill goes
+/// mid-grey there and drowns the plum label, so it runs near-opaque instead.
 ///
 /// The pulse is a Core Animation autoreverse loop (the UIKit spelling of
 /// `.exhale.repeatForever`). CA strips animations when the app backgrounds and
@@ -17,7 +20,7 @@ final class LiveBadgeView: UIView {
   init(title: String = "LIVE") {
     super.init(frame: .zero)
     isUserInteractionEnabled = false
-    backgroundColor = UIColor.white.withAlphaComponent(0.5)
+    backgroundColor = UIColor.white.withAlphaComponent(0.85)
     clipsToBounds = true
 
     dot.backgroundColor = .blushPowder
@@ -94,7 +97,8 @@ final class LiveBadgeView: UIView {
 
 #Preview("Live badge") {
   let container = UIView()
-  container.backgroundColor = .skyWash
+  // The badge's real ground is the card's night sky.
+  container.backgroundColor = UIColor(red: 0.09, green: 0.07, blue: 0.17, alpha: 1)
   let badge = LiveBadgeView()
   badge.translatesAutoresizingMaskIntoConstraints = false
   container.addSubview(badge)

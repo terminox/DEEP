@@ -35,8 +35,8 @@ final class GlobalPauseSessionController: UIViewController {
   /// The overlay arrives empty and cascades in once the card-lift has landed,
   /// so nothing rides the flight but the globe.
   private var isOverlayRevealed = false
-  /// Join sparks wait behind this gate until the turn-to-you has settled —
-  /// otherwise the user's own spark plays mid-flight or mid-turn and is missed.
+  /// Join ripples wait behind this gate until the turn-to-you has settled —
+  /// otherwise the user's own ring plays mid-flight or mid-turn and is missed.
   private var joinsGateOpen = false
 
   private var duration: TimeInterval = 600
@@ -83,7 +83,15 @@ final class GlobalPauseSessionController: UIViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
-  override var preferredStatusBarStyle: UIStatusBarStyle { .darkContent }
+  /// Dark over the cream arrival and reflection; light once night has fallen.
+  /// Assigned inside animation blocks so the flip rides the surrounding fade.
+  private var showsLightStatusBar = false {
+    didSet { setNeedsStatusBarAppearanceUpdate() }
+  }
+
+  override var preferredStatusBarStyle: UIStatusBarStyle {
+    showsLightStatusBar ? .lightContent : .darkContent
+  }
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -121,6 +129,12 @@ final class GlobalPauseSessionController: UIViewController {
     if let overlayHost, !hasCompleted {
       overlayHost.rootView = makeOverlayRoot()
     }
+    // The card's backdrop is already night — flip the status bar light with
+    // the cascade. A latecomer who landed straight in reflection stays dark
+    // over its cream.
+    if !hasCompleted {
+      UIView.animate(withDuration: .hush) { self.showsLightStatusBar = true }
+    }
     turnGlobeHome()
   }
 
@@ -142,8 +156,8 @@ final class GlobalPauseSessionController: UIViewController {
 
   /// Feeds each live poll into the globe: located participants light the
   /// surface as lat/lon points (unlocated ones as country blobs), and fresh
-  /// joins spark + ring at their coordinates. Older servers send no locations
-  /// at all — the globe then keeps the classic country glow.
+  /// joins ring at their coordinates. Older servers send no locations at
+  /// all — the globe then keeps the classic country glow.
   private func observeLiveGlobe() {
     guard !isTornDown else { return }
     let (byCountry, locations, unlocated) = withObservationTracking {
@@ -331,6 +345,7 @@ final class GlobalPauseSessionController: UIViewController {
     UIView.animate(withDuration: 0.22, delay: 0, options: [.curveEaseOut]) { [weak self] in
       self?.overlayHost?.view.alpha = 0
       self?.closeButton.alpha = 0
+      self?.showsLightStatusBar = false
     } completion: { [weak self] _ in
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
         // Tear down before the dismiss animation so the globe hands back to
@@ -383,6 +398,8 @@ final class GlobalPauseSessionController: UIViewController {
     let animator = UIViewPropertyAnimator(duration: 1.5, curve: .easeInOut) { [weak self] in
       host.view.alpha = 1
       self?.closeButton.alpha = 0
+      // The reflection is opaque cream — the status bar goes dark with it.
+      self?.showsLightStatusBar = false
     }
     animator.addCompletion { [weak self] position in
       guard position == .end else { return }
@@ -443,8 +460,16 @@ final class GlobalPauseSessionController: UIViewController {
     audio.stop()
     session.leaveSession()
     scene.interaction.resumeSpin(over: 1)
+    // The world's lights are the session's alone: clear every glow input so
+    // the store fades them out over its lerp (the proven home-glow path) while
+    // the card flies home, and drop any joins still queued to spark.
+    scene.cancelPendingJoins()
     scene.glow.homeLocation = nil
+    scene.glow.locations = []
+    scene.glow.unlocatedByCountry = [:]
+    scene.glow.participantsByCountry = [:]
     card?.resetGlobePhasePlacement(animated: false)
+    showsLightStatusBar = false
   }
 
   // MARK: - Card handoff

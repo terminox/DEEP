@@ -39,8 +39,13 @@ final class GlobalPauseCardView: UIControl {
   /// Hairline card border; fades with the chrome.
   let borderView = UIView()
 
-  private let atmosphere = CardAtmosphereView()
   private let earthScene: EarthSceneView
+
+  /// The card's permanent backdrop: the starry night sky, hosted beneath the
+  /// globe unit at every scale — feed card, lounge, and the presented session
+  /// alike. Unparented for the same reasons as `EarthSceneView.ripplesHost`:
+  /// display-only, no interaction, no environment dependencies.
+  private let nightSkyHost: UIHostingController<NightSkyBackground>
 
   private var globeLayout: GlobeLayout = .natural
   private var isLobby = false
@@ -96,6 +101,7 @@ final class GlobalPauseCardView: UIControl {
   init(scene: GlobalPauseEarthScene, caption: String = "Breathe with the world, together") {
     earthScene = EarthSceneView(glow: scene.glow, interaction: scene.interaction, ripples: scene.ripples)
     chrome = GlobalPauseCardChromeView(caption: caption)
+    nightSkyHost = UIHostingController(rootView: NightSkyBackground(tuning: NightSkyTuning.shared))
     super.init(frame: .zero)
 
     clipsToBounds = true
@@ -108,10 +114,19 @@ final class GlobalPauseCardView: UIControl {
     borderView.layer.cornerRadius = .card
     borderView.layer.cornerCurve = .continuous
 
-    addSubview(atmosphere)
+    nightSkyHost.view.backgroundColor = .clear
+    nightSkyHost.view.isUserInteractionEnabled = false
+    // Full-bleed even when the card crosses the notch/home areas at session
+    // scale — no safe-area contraction.
+    nightSkyHost.safeAreaRegions = []
+
+    addSubview(nightSkyHost.view)
     addSubview(earthScene)
     addSubview(chrome)
     addSubview(borderView)
+
+    // The cream halo/cradle rest dimmed on the dark sky — the tuned seat.
+    earthScene.backdropAlpha = CGFloat(NightSkyTuning.shared.values.earthBackdropDim)
 
     addTarget(self, action: #selector(handleTap), for: .touchUpInside)
 
@@ -129,7 +144,15 @@ final class GlobalPauseCardView: UIControl {
 
   override func layoutSubviews() {
     super.layoutSubviews()
-    atmosphere.frame = bounds
+    // The sky rides the globe's rule: nothing hosted may re-layout during the
+    // card-lift animator's per-frame `layoutIfNeeded`. The hosting view keeps
+    // one fixed full-screen frame (top-left anchored) and the clipping card is
+    // a window onto it — the lift *reveals* a static night, stars never move,
+    // and at session scale the frame is exactly the screen.
+    let skySize = window?.bounds.size ?? UIScreen.main.bounds.size
+    if nightSkyHost.view.bounds.size != skySize {
+      nightSkyHost.view.frame = CGRect(origin: .zero, size: skySize)
+    }
     chrome.frame = bounds
     borderView.frame = bounds
 
@@ -388,7 +411,8 @@ final class GlobalPauseCardView: UIControl {
 }
 
 #Preview("Card — feed scale") {
-  let scene = GlobalPauseEarthScene.preview
+  // Resting cards carry no participant glow — that belongs to the session.
+  let scene = GlobalPauseEarthScene()
   let card = GlobalPauseCardView(scene: scene)
   let container = UIView()
   container.backgroundColor = .moonCream
@@ -401,7 +425,8 @@ final class GlobalPauseCardView: UIControl {
 #Preview("Card — narrow device") {
   // The corner inset is measured in orb radii, and the orb follows the card's
   // fixed height — so an SE-width card must crop the globe identically.
-  let scene = GlobalPauseEarthScene.preview
+  // Resting cards carry no participant glow — that belongs to the session.
+  let scene = GlobalPauseEarthScene()
   let card = GlobalPauseCardView(scene: scene)
   let container = UIView()
   container.backgroundColor = .moonCream
@@ -411,14 +436,16 @@ final class GlobalPauseCardView: UIControl {
 }
 
 #Preview("Card — lobby scale") {
-  let scene = GlobalPauseEarthScene.preview
+  // Resting cards carry no participant glow — that belongs to the session.
+  let scene = GlobalPauseEarthScene()
   let card = GlobalPauseCardView(scene: scene)
   card.applyRestState(isLobby: true)
   return card
 }
 
 #Preview("Card — live") {
-  let scene = GlobalPauseEarthScene.preview
+  // Resting cards carry no participant glow — that belongs to the session.
+  let scene = GlobalPauseEarthScene()
   let card = GlobalPauseCardView(scene: scene)
   let container = UIView()
   container.backgroundColor = .moonCream
@@ -430,7 +457,8 @@ final class GlobalPauseCardView: UIControl {
 }
 
 #Preview("Card — countdown") {
-  let scene = GlobalPauseEarthScene.preview
+  // Resting cards carry no participant glow — that belongs to the session.
+  let scene = GlobalPauseEarthScene()
   let card = GlobalPauseCardView(scene: scene)
   let container = UIView()
   container.backgroundColor = .moonCream

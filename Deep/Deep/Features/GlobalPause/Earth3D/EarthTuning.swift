@@ -21,7 +21,8 @@ final class EarthTuning {
   static let shared = EarthTuning()
 
   /// Every tunable value with its shipped default. Reset = `values = Values()`.
-  struct Values {
+  /// Codable + Equatable so the DEBUG dial panel can snapshot and diff it.
+  struct Values: Codable, Equatable {
     // MARK: Glow shape
     /// Halo skirt weight around each glow source (σ = 3r term).
     var glowHaloWeight: Float = 0.30
@@ -48,11 +49,12 @@ final class EarthTuning {
 
     // MARK: Atmosphere & shimmer
     /// Haze alpha just outside the silhouette.
-    var hazeAlpha: Float = 0.55
+    var hazeAlpha: Float = 0.1
     /// Haze falloff exponent — higher hugs the rim tighter.
     var hazeExponent: Float = 2.0
-    /// Whole-orb breath scale amplitude.
-    var breathScaleAmp: Float = 0.015
+    /// Whole-orb breath scale amplitude. Zero on purpose: the Earth holds
+    /// its size — the breath reads through the light shimmer, not geometry.
+    var breathScaleAmp: Float = 0
     /// FBM breath shimmer amplitude.
     var shimmerAmp: Float = 0.06
 
@@ -118,12 +120,57 @@ final class EarthTuning {
     var tonemapK: Float = 1.5
     var bloomAlphaLift: Float = 0.6
 
+    // MARK: Volumetric glow
+    /// Master gain for the 3D glow shell. 0 restores the flat surface-only look.
+    var volIntensity: Float = 0.85
+    /// Exponential scale height of a glow column, as a fraction of the
+    /// atmosphere gap (surface radius → atmoRadius). Higher = taller columns.
+    var volHeight: Float = 0.35
+    /// How much a column's gaussian σ widens as it rises — the dome flare.
+    var volSoftness: Float = 0.8
+    /// Accumulated volume → alpha, so limb domes composite over the backdrop.
+    var volAlphaLift: Float = 0.6
+    /// 0 = flat SOFT_LILAC volume, 1 = full warm glow palette walk.
+    var volTintMix: Float = 0.6
+    /// Far-side lights ghosting through the glass at the refracted exit point.
+    var volBackGhost: Float = 0.25
+
+    // MARK: Glow orbs (3D style — inert while the glow style is classic)
+    /// σ scale on each orb's packed world radius — the size dial.
+    var orbSigmaScale: Float = 1.0
+    /// Coverage compression gain: higher plateaus the core into a solid ball.
+    var orbExposure: Float = 2.6
+    /// Compressed orb body → emissive gain.
+    var orbGain: Float = 0.9
+    /// Uncompressed hot-core gain — pushes the core over 1.0 so bloom ignites.
+    var orbHotGain: Float = 1.4
+    /// Whiteness boost inside the core (skirt stays in palette).
+    var orbCoreWhiteBoost: Float = 0.45
+    /// Orb coverage → alpha, so limb orbs composite over the backdrop.
+    var orbAlphaLift: Float = 0.85
+    /// 3σ halo skirt weight around the orb body.
+    var orbHaloWeight: Float = 0.35
+    /// Seat elevation as a ratio of σ — how proud of the surface the ball sits.
+    var orbElevRatio: Float = 1.6
+    /// Orb sources' residual weight in the classic surface glow (the land seat).
+    var orbSeatWeight: Float = 0.35
+
+    // MARK: Spark burst (3D style — inert while the spark style is classic)
+    /// Shell coverage compression gain.
+    var burstExposure: Float = 1.6
+    /// Compressed shell → emissive gain.
+    var burstGain: Float = 0.85
+    /// Uncompressed hot ring gain — bloom driver.
+    var burstHotGain: Float = 0.8
+    /// Shell coverage → alpha, so the expanding ring survives past the limb.
+    var burstAlphaLift: Float = 0.6
+
     // MARK: CPU-side (consumed by EarthRenderer.makeUniforms, not the GPU struct)
     /// Sun direction components, normalized before upload.
     var sunX: Float = -0.45
     var sunY: Float = 0.55
     var sunZ: Float = 0.7
-    var atmosphereStrength: Float = 0.55
+    var atmosphereStrength: Float = 0.1
     /// Physiological-sigh breath: inhale + exhale = period.
     var breathInhaleSeconds: Float = 4.0
     var breathExhaleSeconds: Float = 6.0
@@ -131,7 +178,7 @@ final class EarthTuning {
 
   var values = Values()
 
-  /// Per-frame GPU snapshot — 12 float4 packs, negligible next to the draw.
+  /// Per-frame GPU snapshot — 18 float4 packs, negligible next to the draw.
   var gpu: EarthTuningUniforms { values.gpu }
 
   func reset() { values = Values() }
@@ -152,7 +199,12 @@ extension EarthTuning.Values {
       alphaA: .init(alphaContinent, alphaCoast, alphaRim, alphaSea),
       bloomA: .init(bloomThresholdLo, bloomThresholdHi, blurStepScale, bloomStrength),
       bloomB: .init(tonemapK, bloomAlphaLift, sparkFlash, coastGlow),
-      lit: .init(litEmissive, litColorMix, 0, 0)
+      lit: .init(litEmissive, litColorMix, volIntensity, volHeight),
+      volumetric: .init(volSoftness, volAlphaLift, volTintMix, volBackGhost),
+      orbShape: .init(orbSigmaScale, orbExposure, orbGain, orbHotGain),
+      orbTint: .init(orbCoreWhiteBoost, orbAlphaLift, orbHaloWeight, orbElevRatio),
+      burstShape: .init(burstExposure, burstGain, burstHotGain, burstAlphaLift),
+      orbSeat: .init(orbSeatWeight, 0, 0, 0)
     )
   }
 }

@@ -4,7 +4,7 @@
 // Mirrored byte-for-byte from `EarthTuningUniforms` in EarthRendererTypes.swift.
 // Keep struct layouts in sync. This header is the ONLY Metal-side definition —
 // both EarthSurface.metal and EarthBloom.metal include it, so the mirror can't
-// fork between passes. All slots are float4 (16-byte aligned, 208 bytes total;
+// fork between passes. All slots are float4 (16-byte aligned, 288 bytes total;
 // the Swift side asserts the stride in EarthRenderer.buildBuffers).
 //
 // Defaults live once, in EarthTuning.Values (Swift) — they reproduce the
@@ -23,7 +23,12 @@ struct EarthTuningUniforms {
   float4 alphaA;         // x=continent y=coastHalo z=rim w=seaGlow
   float4 bloomA;         // x=thresholdLo y=thresholdHi z=blurStepScale w=strength
   float4 bloomB;         // x=tonemapK y=alphaLift z=sparkFlash w=coastGlow
-  float4 lit;            // x=litEmissive y=litColorMix zw=reserved
+  float4 lit;            // x=litEmissive y=litColorMix z=volIntensity w=volHeight
+  float4 volumetric;     // x=volSoftness y=volAlphaLift z=volTintMix w=volBackGhost
+  float4 orbShape;       // x=sigmaScale y=exposure z=baseGain w=hotGain
+  float4 orbTint;        // x=coreWhiteBoost y=alphaLift z=haloWeight w=elevRatio
+  float4 burstShape;     // x=exposure y=baseGain z=hotGain w=alphaLift
+  float4 orbSeat;        // x=seatWeight yzw=reserved
 };
 
 #endif

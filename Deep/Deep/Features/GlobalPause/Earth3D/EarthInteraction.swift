@@ -4,6 +4,13 @@ import simd
 /// Owns the orb's orientation state: drag-driven yaw/pitch, momentum decay,
 /// idle Lissajous drift, and tap raycast → country resolution.
 ///
+/// North-up model: orientation is *derived* from two scalars — `pitch` about
+/// the world/camera X axis, then `yaw` about the globe's polar Y axis. Two
+/// degrees of freedom means roll is structurally impossible: vertical drag
+/// always tilts toward/away from a pole, horizontal drag always spins, and
+/// no drag sequence can tumble the globe sideways. Pitch is clamped short of
+/// ±90° so the composition never gimbal-flips.
+///
 /// The renderer asks for `orientationMatrix(time:)` each frame; touch events
 /// arrive from EarthMTKView.
 @MainActor
@@ -12,11 +19,16 @@ final class EarthInteraction {
   // MARK: - Configuration
 
   /// Feel parameters, grouped so the DEBUG panel gets uniform reset/export.
-  struct Tuning {
+  struct Tuning: Codable, Equatable {
     /// Damping applied per render frame. ~0.92 ≈ "globe on bearings" friction.
     var damping: Float = 0.92
-    /// Sensitivity (radians per point of drag).
-    var dragSensitivity: Float = 0.006
+    /// Dimensionless drag gain. 1.0 = arc-length-correct: the surface point
+    /// under the finger tracks the finger (at orb center) regardless of the
+    /// view's size, because deltas are normalized by the orb's pixel radius.
+    var dragGain: Float = 1.0
+    /// Max tilt toward either pole, in degrees. Keeps a sliver of
+    /// over-the-pole context and prevents gimbal flip at exactly 90°.
+    var pitchLimitDegrees: Float = 85
     /// Seconds of no input before idle drift takes over.
     var idleAfterSeconds: TimeInterval = 2.0
     /// Idle drift base angular speed (radians/sec). Slow — design system mandate.
@@ -69,7 +81,9 @@ final class EarthInteraction {
 
   /// In-flight turn-to-place animation, eased in `advance` on the frame clock
   /// like `gateAnimation`. A grabbing finger cancels it — the user always wins.
-  private var orientAnimation: (from: simd_quatf, to: simd_quatf, startTime: TimeInterval?, duration: TimeInterval)?
+  private var orientAnimation:
+    (fromYaw: Float, fromPitch: Float, toYaw: Float, toPitch: Float,
+     startTime: TimeInterval?, duration: TimeInterval)?
 
   /// Gently rotates the globe so the given lat/lon faces the camera, north
   /// kept up. Used when the session lands: the world turns to *you*.
@@ -77,19 +91,45 @@ final class EarthInteraction {
   /// Target derivation: yaw −lon brings the point's meridian to the front,
   /// then pitch +lat lifts it to dead center — `T·p = (0,0,1)`. The axial
   /// tilt composed at render time is a Z-rotation, which leaves the front
-  /// axis fixed, so the point stays centered after tilt.
+  /// axis fixed, so the point stays centered after tilt. Yaw lands on the
+  /// equivalent angle nearest the current one (shortest path — never a
+  /// multi-revolution spin to a neighboring longitude).
   func orient(toLatDeg lat: Float, lonDeg lon: Float, over duration: TimeInterval = 2.5) {
-    let latR = lat * .pi / 180
-    let lonR = lon * .pi / 180
-    let target = simd_quatf(angle: latR, axis: SIMD3<Float>(1, 0, 0))
-      * simd_quatf(angle: -lonR, axis: SIMD3<Float>(0, 1, 0))
-    orientAnimation = (from: orientation, to: target, startTime: nil, duration: duration)
+    let targetPitch = clampPitch(lat * .pi / 180)
+    let yawDelta = (-lon * .pi / 180 - yaw).remainder(dividingBy: 2 * .pi)
+    orientAnimation = (fromYaw: yaw, fromPitch: pitch,
+                       toYaw: yaw + yawDelta, toPitch: targetPitch,
+                       startTime: nil, duration: duration)
+    // The turn owns the view: a leftover flick must not sit out the animation
+    // undamped and replay against the target when it completes.
+    momentum = .zero
   }
 
   // MARK: - State
 
-  /// Current orientation (sphere-local rotation), composed with axial tilt at render time.
-  private var orientation = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 1, 0))
+  /// North-up view state (sphere-local, composed with axial tilt at render
+  /// time). Pitch tilts about the world X axis, yaw spins about the polar Y
+  /// axis; the quaternion is derived, never stored, so the two scalars are
+  /// the whole truth about where the user is looking.
+  private var yaw: Float = 0            // radians; wrapped to (-π, π] when free
+  private var pitch: Float = 0          // radians; clamped to ±pitchLimit
+
+  private var orientation: simd_quatf {
+    simd_quatf(angle: pitch, axis: SIMD3<Float>(1, 0, 0))
+      * simd_quatf(angle: yaw, axis: SIMD3<Float>(0, 1, 0))
+  }
+
+  private var pitchLimit: Float { tuning.pitchLimitDegrees * .pi / 180 }
+
+  private func clampPitch(_ value: Float) -> Float {
+    min(max(value, -pitchLimit), pitchLimit)
+  }
+
+  /// The orb's on-screen radius in points — the normalization that makes
+  /// `dragGain 1.0` mean "the surface tracks the finger" at every view size.
+  private func orbPixelRadius(viewSize: CGSize) -> Float {
+    max(1, EarthRendererConstants.orbScreenRadiusFractionOfHeight * Float(viewSize.height))
+  }
   /// Active drag delta (cleared on touch end).
   private var dragVelocity = SIMD2<Float>(0, 0)
   /// Continuing post-release momentum (radians/sec in yaw, pitch).
@@ -165,7 +205,10 @@ final class EarthInteraction {
       }
     }
 
-    // Turn-to-place animation: slerp on the same smoothstep ease as the gate.
+    // Turn-to-place animation: lerp the two scalars on the same smoothstep
+    // ease as the gate. Momentum and drift are skipped while it owns the view
+    // (they'd silently lose to the overwrite anyway — an explicit skip avoids
+    // a last-frame pop).
     if var anim = orientAnimation {
       let start = anim.startTime ?? time
       if anim.startTime == nil {
@@ -173,21 +216,34 @@ final class EarthInteraction {
         orientAnimation = anim
       }
       if anim.duration <= 0 {
-        orientation = anim.to
+        yaw = anim.toYaw
+        pitch = anim.toPitch
         orientAnimation = nil
+        lastInteractionTime = time
       } else {
         let t = Float(min(1, max(0, (time - start) / anim.duration)))
         let eased = t * t * (3 - 2 * t)
-        orientation = simd_normalize(simd_slerp(anim.from, anim.to, eased))
-        if t >= 1 { orientAnimation = nil }
+        yaw = anim.fromYaw + (anim.toYaw - anim.fromYaw) * eased
+        pitch = anim.fromPitch + (anim.toPitch - anim.fromPitch) * eased
+        if t >= 1 {
+          orientAnimation = nil
+          // The world just turned to the target — idle drift waits a full
+          // idleAfterSeconds before wandering off it.
+          lastInteractionTime = time
+        }
       }
+      return
     }
 
-    // Apply momentum, gated.
+    // Apply momentum, gated. Clamp contact kills the pitch component so a
+    // vertical flick lands at the pole and rests there instead of straining
+    // against the limit.
     if simd_length(momentum) > 0.0001 {
-      let yaw = momentum.x * dt * driveGate
-      let pitch = momentum.y * dt * driveGate
-      applyAngularDelta(yaw: yaw, pitch: pitch)
+      yaw += momentum.x * dt * driveGate
+      let target = pitch + momentum.y * dt * driveGate
+      let clamped = clampPitch(target)
+      if clamped != target { momentum.y = 0 }
+      pitch = clamped
       // Frame-rate-independent damping: convert per-frame 0.92 → per-second.
       let perSecondDamping = powf(tuning.damping, 60.0)
       momentum *= powf(perSecondDamping, dt)
@@ -204,21 +260,20 @@ final class EarthInteraction {
 
     // Idle Lissajous drift, integrated incrementally. Prime-ratio periods so
     // the loop never visibly repeats; the pitch term is the derivative of the
-    // original `sin(t · 0.097) · 0.04` sweep. Gated: while held the gate is 0,
-    // so drift cannot restart regardless of how long the globe idles.
+    // original `sin(t · 0.097) · 0.04` sweep, absorbed by the clamp near a
+    // pole (yaw drift still orbits it). Gated: while held the gate is 0, so
+    // drift cannot restart regardless of how long the globe idles.
     let idleFor = time - lastInteractionTime
     if idleFor > tuning.idleAfterSeconds, dt > 0, driveGate > 0 {
       let strength = min(1.0, Float(idleFor - tuning.idleAfterSeconds) / 1.5)
-      let yaw = tuning.idleDriftSpeed * dt * strength * driveGate
-      let pitch = cos(Float(time) * 0.097) * 0.04 * 0.097 * dt * strength * driveGate
-      applyAngularDelta(yaw: yaw, pitch: pitch)
+      yaw += tuning.idleDriftSpeed * dt * strength * driveGate
+      pitch = clampPitch(pitch + cos(Float(time) * 0.097) * 0.04 * 0.097 * dt * strength * driveGate)
     }
-  }
 
-  private func applyAngularDelta(yaw: Float, pitch: Float) {
-    let qYaw = simd_quatf(angle: yaw, axis: SIMD3<Float>(0, 1, 0))
-    let qPitch = simd_quatf(angle: pitch, axis: SIMD3<Float>(1, 0, 0))
-    orientation = simd_normalize(qYaw * orientation * qPitch)
+    // Precision hygiene: yaw is unbounded under drift. Wrapping is safe here
+    // because no orient animation owns the value (wrapping mid-animation
+    // would fight its absolute from/to endpoints).
+    yaw = yaw.remainder(dividingBy: 2 * .pi)
   }
 
   // MARK: - Touch handling (called by EarthMTKView)
@@ -239,13 +294,19 @@ final class EarthInteraction {
     // kills the "turn to you" mid-flight.
     orientAnimation = nil
 
-    let yaw = dx * tuning.dragSensitivity
-    let pitch = dy * tuning.dragSensitivity
-    applyAngularDelta(yaw: yaw, pitch: pitch)
+    let radiansPerPoint = tuning.dragGain / orbPixelRadius(viewSize: viewSize)
+    let dYaw = dx * radiansPerPoint
+    let newPitch = clampPitch(pitch + dy * radiansPerPoint)
+    // The *applied* pitch delta, not the requested one — releasing while
+    // pinned at the clamp must store zero vertical momentum, not a ghost
+    // flick straining against the pole.
+    let dPitch = newPitch - pitch
+    yaw += dYaw
+    pitch = newPitch
 
     // Track instantaneous velocity for post-release momentum.
-    // Convert drag/frame → radians/sec assuming ~120Hz touch sampling.
-    dragVelocity = SIMD2<Float>(yaw, pitch) * 60.0
+    // Convert drag/frame → radians/sec assuming ~60Hz touch delivery.
+    dragVelocity = SIMD2<Float>(dYaw, dPitch) * 60.0
     lastInteractionTime = lastFrameTime ?? 0
   }
 

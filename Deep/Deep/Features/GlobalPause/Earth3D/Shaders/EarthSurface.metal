@@ -23,10 +23,19 @@ using namespace metal;
 // palette. Pastel only; no high-saturation values anywhere.
 // ───────────────────────────────────────────────────────────────────────────
 
+// Sorted into three disjoint style ranges — classic `[0, classicCount)`,
+// orb `[classicCount, classicCount+orbCount)`, shell `[…, glowCount)` — so
+// each accumulator loops only its own range and no per-source style branch
+// runs. Channel meanings per range (mirrors EarthRendererTypes.swift):
+//   classic: pos.w = intensity, x = angular radius (rad), y = whiteness 0..1
+//            (join sparks push toward moon-cream), z = volumetric column
+//            height multiplier, w = 0
+//   orb:     pos.w = intensity, x = σ (world units), y = whiteness, w = 1
+//   shell:   pos.w = shell intensity, x = shell radius R (world units),
+//            y = whiteness, z = shell thickness (world units), w = 2
 struct GlowSourceGPU {
-  float4 positionAndIntensity;  // xyz = unit pos on sphere, w = intensity 0..1
-  float4 radiusPacked;          // x = angular radius (rad), y = whiteness 0..1
-                                // (join sparks push toward moon-cream), zw = reserved
+  float4 positionAndIntensity;
+  float4 radiusPacked;
 };
 
 struct EarthUniforms {
@@ -34,9 +43,11 @@ struct EarthUniforms {
   float4   cameraPosition;
   float4x4 sphereOrientation;
   float4   sunDirection;
-  float4   params;          // x=time, y=breathPhase 0..1, z=aspect, w=glowCount
+  float4   params;          // x=time, y=breathPhase 0..1, z=classic glow count,
+                            // w=total glow count
   float4   sphereData;      // xyz=center, w=radius
-  float4   atmosphereData;  // x=atmoRadius, y=atmoStrength, z=baselineEmissive
+  float4   atmosphereData;  // x=atmoRadius, y=atmoStrength, z=orb glow count,
+                            // w=world units per scene pixel (shell AA floor)
 };
 
 // ── Palette (Deep design system) ────────────────────────────────────────────
@@ -133,6 +144,30 @@ static Hit raySphere(float3 ro, float3 rd, float3 center, float radius) {
   return h;
 }
 
+// Both roots of the ray/sphere intersection — the volumetric shell march
+// needs the full chord (`raySphere` discards the far root and misses on it).
+struct RangeHit {
+  bool hit;
+  float t0;   // near root (may be < 0 if the origin sits inside)
+  float t1;   // far root
+};
+
+static RangeHit raySphereRange(float3 ro, float3 rd, float3 center, float radius) {
+  RangeHit h;
+  h.hit = false;
+  float3 oc = ro - center;
+  float b = dot(rd, oc);
+  float c = dot(oc, oc) - radius * radius;
+  float disc = b * b - c;
+  if (disc < 0.0) return h;
+  float s = sqrt(disc);
+  h.t0 = -b - s;
+  h.t1 = -b + s;
+  if (h.t1 < 0.0) return h;   // sphere entirely behind the ray
+  h.hit = true;
+  return h;
+}
+
 // ── Spherical UV ────────────────────────────────────────────────────────────
 //
 // Equirectangular convention: U=0 at left (lon -180°), U=0.5 at lon 0°
@@ -164,6 +199,18 @@ static float3 iridescent(float t) {
   return c;
 }
 
+// ── Glow palette walk ───────────────────────────────────────────────────────
+//
+// Shared by the surface glow and the volumetric shell: lilac → blush → peach
+// with intensity, the whiteness channel warming toward moon-cream — capped at
+// 0.55 so spark peaks read as candle-light, never raw white under bloom.
+
+static float3 glowPalette(float v, float white) {
+  float3 c = mix(SOFT_LILAC, BLUSH_POWDER, v);
+  c = mix(c, PEACH_CLOUD, smoothstep(0.55, 0.95, v));
+  return mix(c, MOON_CREAM, min(white, 0.55));
+}
+
 // ── Glow accumulator ────────────────────────────────────────────────────────
 //
 // Two-term profile per source: the original gaussian core plus a quarter-weight
@@ -174,6 +221,13 @@ static float3 iridescent(float t) {
 // `white` carries the join-spark whiteness channel (radiusPacked.y): each
 // source's contribution weighted by its whiteness, clamped 0..1 — used to
 // momentarily warm the glow color toward moon-cream at a fresh join.
+//
+// The loop runs the classic range plus the orb range: orb sources keep a
+// dimmed surface gaussian (`seatWeight`) so the land under a floating light
+// ball still catches its glow. For orbs, radiusPacked.x is a world-unit σ,
+// which equals angular σ to first order on the unit sphere — close enough
+// for a seat. Shell sources are excluded entirely by the caller's `count`
+// (their radiusPacked.x is a shell radius, not an angular radius).
 
 struct GlowAccum {
   float glow;
@@ -182,7 +236,9 @@ struct GlowAccum {
 
 static GlowAccum accumulateGlow(float3 surfaceNormalLocal,
                                 constant GlowSourceGPU* sources,
+                                int classicCount,
                                 int count,
+                                float seatWeight,
                                 float haloWeight,
                                 float exposure) {
   float total = 0.0;
@@ -199,12 +255,262 @@ static GlowAccum accumulateGlow(float3 surfaceNormalLocal,
     float core = exp(-x * x * 0.5);
     float halo = haloWeight * exp(-x * x * 0.5 / 9.0);  // σ = 3r skirt
     float f = (core + halo) * intensity;
+    if (i >= classicCount) f *= seatWeight;       // orb range: residual seat only
     total += f;
     whiteTotal += f * whiteness;
   }
   GlowAccum a;
   a.glow = 1.0 - exp(-total * exposure);
   a.white = clamp(whiteTotal, 0.0, 1.0);
+  return a;
+}
+
+// ── Volumetric glow shell ───────────────────────────────────────────────────
+//
+// Fixed-count midpoint march through the shell between the sphere surface and
+// the atmosphere radius. Each source contributes a column of light: the
+// surface gaussian (core only — no halo skirt), widened with height so the
+// column flares into a dome, decaying exponentially with height, and faded to
+// zero at the shell top so the breathing radius never clips a hard edge.
+// Loop order is source-major so a cheap cone test rejects far-away sources
+// before any sampling happens.
+//
+// Six midpoint samples are enough: the density field is a smooth gaussian ×
+// exponential with no texture detail, so banding cannot occur even on the
+// longest limb-tangent chord.
+
+#define VOL_SAMPLES 6
+
+struct VolAccum {
+  float glow;
+  float white;
+};
+
+static VolAccum volumetricShell(float3 ro, float3 rd,
+                                float t0, float t1,
+                                float3 center, float radius, float atmoR,
+                                float3x3 Rt,
+                                constant GlowSourceGPU* sources, int count,
+                                constant EarthTuningUniforms& T) {
+  VolAccum a;
+  a.glow = 0.0;
+  a.white = 0.0;
+  float volIntensity = T.lit.z;
+  if (volIntensity <= 0.001 || count == 0 || t1 <= t0) return a;
+
+  float gap = max(atmoR - radius, 1e-4);
+  float dt = (t1 - t0) / float(VOL_SAMPLES);
+  float w = dt / gap;                    // path-length normalization
+  float scaleH = max(T.lit.w, 0.02);     // volHeight
+  float3 midLocal = Rt * normalize(ro + rd * (0.5 * (t0 + t1)) - center);
+
+  float total = 0.0;
+  float whiteTotal = 0.0;
+  for (int i = 0; i < count; ++i) {
+    float3 p = sources[i].positionAndIntensity.xyz;
+    float intensity = sources[i].positionAndIntensity.w;
+    float srcRadius = max(sources[i].radiusPacked.x, 0.01);
+    float whiteness = sources[i].radiusPacked.y;
+    // Floored so a zero-packed buffer (stale caller) degrades to short
+    // columns instead of dividing the height falloff toward nothing.
+    float heightMul = max(sources[i].radiusPacked.z, 0.2);
+
+    // Cone rejection: the widest σ is srcRadius·(1+volSoftness), and nothing
+    // survives past ~4σ. The sampled segment sweeps at most about one
+    // shell-gap of arc — folded into the margin so limb chords don't reject
+    // a source they'd graze.
+    float margin = srcRadius * (1.0 + T.volumetric.x) * 4.0 + gap * 1.2;
+    if (acos(clamp(dot(midLocal, p), -1.0, 1.0)) > margin) continue;
+
+    float srcTotal = 0.0;
+    for (int s = 0; s < VOL_SAMPLES; ++s) {
+      float t = t0 + (float(s) + 0.5) * dt;
+      float3 q = ro + rd * t;
+      float r = length(q - center);
+      float h = clamp((r - radius) / gap, 0.0, 1.0);
+      float3 dirLocal = Rt * ((q - center) / r);
+      float angle = acos(clamp(dot(dirLocal, p), -1.0, 1.0));
+      float sigma = srcRadius * (1.0 + T.volumetric.x * h);  // dome flare upward
+      float x = angle / sigma;
+      if (x > 4.0) continue;
+      float column = exp(-x * x * 0.5);
+      float heightFall = exp(-h / (scaleH * heightMul));
+      float topFade = 1.0 - smoothstep(0.85, 1.0, h);        // soft shell top
+      srcTotal += column * heightFall * topFade;
+    }
+    float f = srcTotal * w * intensity;
+    total += f;
+    whiteTotal += f * whiteness;
+  }
+  a.glow = 1.0 - exp(-total * volIntensity);   // same compression family as the surface glow
+  a.white = clamp(whiteTotal, 0.0, 1.0);
+  return a;
+}
+
+// ── Volumetric light orbs + expanding shells (3D glow styles) ───────────────
+//
+// Both effects are closed-form line integrals — no marching. They run in the
+// sphere's local frame with the ray origin REBASED to its closest approach to
+// the globe center: unrebased, b² = |u|² − tc² cancels two values near 72
+// (camera distance²) and the ~3e-5 absolute error is a visible fraction of a
+// shell's thickness. After rebasing |u|² ≲ 7 and the error is harmless.
+// Nothing straddles the camera (distance 8.5, light volumes ≤ ~1.55), so the
+// t > 0 restriction is dropped entirely — after rebasing, tc < 0 is
+// legitimate for near-hemisphere sources and a step(0, t) guard would delete
+// them. tMax is a finite sentinel (1e6) on miss rays, never INFINITY.
+
+// Peak-normalised line integral of exp(−|p−c|²/2σ²) along ro + t·rd over
+// t ∈ (−∞, tMax]. Returns x = core (σ), y = halo (3σ), each already
+// occlusion-clipped — a centred, unoccluded ray returns (1, 1) for every σ,
+// so intensity means peak brightness and σ means size (orthogonal dials).
+// MSL has no erf; Φ ≈ smoothstep(−2, 2, ·), max abs error 0.029 — invisible
+// through the bloom chain, and exactly 0/1 beyond ±2σ so early-outs stay
+// exact. The halo clips with its own σ or the 3σ skirt would be cut with a
+// 1σ terminator and read as a hard edge over the limb.
+static float2 orbCoreHalo(float3 ro, float3 rd, float3 c, float sigma, float tMax) {
+  float3 u  = c - ro;
+  float  tc = dot(u, rd);
+  float  b2 = max(dot(u, u) - tc * tc, 0.0);      // max() guards float cancellation
+  float  s2 = sigma * sigma;
+  if (b2 > 56.25 * s2) return float2(0.0);        // 7.5σ, matches accumulateGlow reach
+  float  g = 0.5 * b2 / s2;
+  float  d = (tMax - tc) / sigma;
+  return float2(exp(-g)             * smoothstep(-2.0, 2.0, d),
+                exp(-g * (1.0/9.0)) * smoothstep(-6.0, 6.0, d));
+}
+
+// Peak-normalised line integral of exp(−|p−c|²/2σ²) restricted to the
+// half-space dot(p − c, n) ≥ 0 (n = outward surface normal at the seat),
+// over t ∈ (−∞, tMax] — a dome of light resting on the crust. The plane is
+// linear along the ray (A + t·B), so the truncation stays closed-form:
+// orbCoreHalo's single Φ occlusion factor becomes a Φ difference over
+// [tLo, tHi] = half-space ∩ (−∞, tMax]. The ×2 restores "intensity = peak
+// brightness seen top-down" (a centred above-plane ray integrates half the
+// gaussian); seat-skimming full-chord rays legitimately reach 2 — dome limb
+// brightening, compressed downstream by 1 − exp. The halo clips with the
+// same plane at its own 3σ edges, matching orbCoreHalo's terminator softness.
+static float2 domeCoreHalo(float3 ro, float3 rd, float3 c, float3 n,
+                           float sigma, float tMax) {
+  float3 u  = c - ro;
+  float  tc = dot(u, rd);
+  float  b2 = max(dot(u, u) - tc * tc, 0.0);      // max() guards float cancellation
+  float  s2 = sigma * sigma;
+  if (b2 > 56.25 * s2) return float2(0.0);        // 7.5σ, matches orbCoreHalo
+  float  g = 0.5 * b2 / s2;
+  float  A = -dot(u, n);                          // dot(ro − c, n)
+  float  B = dot(rd, n);
+  // Sign-preserved floor keeps tPlane finite; Φ saturation then resolves the
+  // ray-parallel-to-plane case (all-above → full span, all-below → empty).
+  float  Bs = (B >= 0.0) ? max(B, 1e-4) : min(B, -1e-4);
+  float  tPlane = -A / Bs;
+  float  tLo = (B >= 0.0) ? tPlane : -1e6;
+  float  tHi = (B >= 0.0) ? tMax   : min(tPlane, tMax);
+  float  dHi = (tHi - tc) / sigma;
+  float  dLo = (tLo - tc) / sigma;
+  float  core = max(smoothstep(-2.0, 2.0, dHi) - smoothstep(-2.0, 2.0, dLo), 0.0);
+  float  halo = max(smoothstep(-6.0, 6.0, dHi) - smoothstep(-6.0, 6.0, dLo), 0.0);
+  return 2.0 * float2(exp(-g)             * core,
+                      exp(-g * (1.0/9.0)) * halo);
+}
+
+// Line integral of a thin spherical shell ρ(p) = exp(−(|p−c|−R)²/2w²),
+// normalised so an unoccluded face-on ray (b = 0) returns 1.0. Two-crossing
+// model: the ray crosses |p−c| = R at t = tc ± q with |cosθ| = q/R at both
+// crossings; each contributes w√(2π)/cosθ — the 1/cosθ IS the thin-shell
+// limb brightening, which on screen is the bright expanding ring with correct
+// perspective. The graze clamp and exp outer skirt are numerically fitted
+// against brute-force integration (L∞ ≈ 11% of ring peak, ring position
+// exact); without the skirt the model is discontinuous at b = R and prints a
+// hard outer edge. A crossing behind tMax is invisible — that single test
+// covers both the far hemisphere hiding behind the planet and the buried
+// half of a surface-seated shell, softened over the shell's longitudinal
+// extent (w/cosθ) so the terminator isn't a hard line.
+static float shellIntegral(float3 ro, float3 rd, float3 c,
+                           float R, float w, float tMax) {
+  float3 u  = c - ro;
+  float  tc = dot(u, rd);
+  float  b2 = max(dot(u, u) - tc * tc, 0.0);
+  float  rOut = R + 3.0 * w;
+  if (b2 > rOut * rOut) return 0.0;               // no crossing, no tail
+  float  q = sqrt(max(R * R - b2, 0.0));          // = R·cosθ (0 outside the shell)
+  if (tc - q > tMax) return 0.0;                  // whole shell behind the globe
+  float  Rs     = max(R, 4.0 * w);                // ⇒ cosMin ≤ 0.75
+  float  cosMin = 1.50 * sqrt(w / Rs);            // graze clamp ⇒ 1/cosC ≤ 4.8
+  float  cosC   = max(q / max(R, 1e-4), cosMin);
+  float  path   = 1.0 / cosC;
+  float  sw = max(w * path, 1e-5);                // smoothstep(a, a, ·) is NaN
+  float  v0 = smoothstep(-sw, sw, tMax - (tc - q));   // near crossing
+  float  v1 = smoothstep(-sw, sw, tMax - (tc + q));   // far crossing
+  float  dOut = max(sqrt(b2) - R, 0.0) / (0.7 * w);
+  return 0.5 * path * (v0 + v1) * exp(-0.5 * dOut * dOut);
+}
+
+struct LightVolumeAccum {
+  float orbDensity;    // Σ (core + haloWeight·halo)·I — compressed by caller
+  float orbHot;        // Σ core²·I — uncompressed HDR spike, bloom driver
+  float orbWhite;      // Σ f·whiteness (normalise by orbDensity for the mean)
+  float shellDensity;  // Σ shellIntegral·I
+  float shellWhite;
+};
+
+// Sweeps the orb and shell ranges of the source buffer. Expects the rebased
+// local-frame ray (see the section comment above).
+static LightVolumeAccum accumulateLightVolumes(float3 ro, float3 rd, float tMax,
+                                               float radius,
+                                               constant GlowSourceGPU* sources,
+                                               int classicCount, int orbCount,
+                                               int totalCount,
+                                               float worldPerPixel,
+                                               constant EarthTuningUniforms& T) {
+  LightVolumeAccum a;
+  a.orbDensity = 0.0;
+  a.orbHot = 0.0;
+  a.orbWhite = 0.0;
+  a.shellDensity = 0.0;
+  a.shellWhite = 0.0;
+
+  int orbEnd = classicCount + orbCount;
+  for (int i = classicCount; i < orbEnd; ++i) {
+    float3 p = sources[i].positionAndIntensity.xyz;
+    float intensity = sources[i].positionAndIntensity.w;
+    float whiteness = sources[i].radiusPacked.y;
+    float sigma = max(sources[i].radiusPacked.x * T.orbShape.x, 1e-3);
+    // Per-source style mode rides radiusPacked.z (free in the orb range —
+    // volumetricShell reads it only for classic sources): 0 = elevated full
+    // orb (bit-identical legacy path), 1 = surface dome (half-space clipped),
+    // 2 = buried sphere (the planet body clips it via tMax alone). Branching
+    // on a source field is wavefront-uniform — every fragment loops the same
+    // sources — so it costs nothing measurable.
+    float mode = sources[i].radiusPacked.z;
+    // Seat elevation rides σ (bigger ball sits prouder) but stays clamped so
+    // tuning extremes can't sink the ball or float it visibly off the crust.
+    // Dome and buried seat their gaussian centre exactly on the surface.
+    float elev = (mode < 0.5) ? clamp(T.orbTint.w * sigma, 0.015, 0.05) : 0.0;
+    float3 c = p * (radius + elev);
+    float2 ch = (mode > 0.5 && mode < 1.5)
+      ? domeCoreHalo(ro, rd, c, p, sigma, tMax)
+      : orbCoreHalo(ro, rd, c, sigma, tMax);
+    float f = (ch.x + T.orbTint.z * ch.y) * intensity;
+    a.orbDensity += f;
+    // core² is a gaussian of σ/√2 — a compact spike that exists only within
+    // ~1σ, pushed over 1.0 by the hot gain so bloom ignites the center.
+    a.orbHot += ch.x * ch.x * intensity;
+    a.orbWhite += f * min(whiteness + T.orbTint.x * ch.x, 1.0);
+  }
+
+  for (int i = orbEnd; i < totalCount; ++i) {
+    float3 p = sources[i].positionAndIntensity.xyz;
+    float intensity = sources[i].positionAndIntensity.w;
+    float whiteness = sources[i].radiusPacked.y;
+    float R = sources[i].radiusPacked.x;
+    // Thickness floors at ~1.5 scene pixels so the ring never aliases on
+    // small drawables (the feed card renders the orb ~600 px tall).
+    float w = max(sources[i].radiusPacked.z, 1.5 * worldPerPixel);
+    float3 c = p * radius;
+    float f = shellIntegral(ro, rd, c, R, w, tMax) * intensity;
+    a.shellDensity += f;
+    a.shellWhite += f * whiteness;
+  }
   return a;
 }
 
@@ -245,30 +551,96 @@ fragment float4 earthSurfaceFragment(
   float breathScale = 1.0 + T.haze.z * breath;
   float radius = baseRadius * breathScale;
 
-  Hit atmoHit = raySphere(rayOrigin, rayDir, sphereCenter, atmoRadius * breathScale);
-  Hit hit = raySphere(rayOrigin, rayDir, sphereCenter, radius);
-
-  if (!hit.hit) {
-    // Atmosphere haze beyond the orb silhouette.
-    if (!atmoHit.hit) return float4(0, 0, 0, 0);
-    float3 n = atmoHit.normal;
-    float density = pow(1.0 - abs(dot(n, -rayDir)), T.haze.y);
-    float lat = n.y;
-    float3 tint = mix(SOFT_LILAC, BLUSH_POWDER, smoothstep(-0.6, 0.6, -lat));
-    tint = mix(tint, LAVENDER_MIST, 0.4);
-    float a = density * atmoStrength * T.haze.x;
-    return float4(tint * a, a);
-  }
-
-  float3 worldNormal = hit.normal;
-
-  // Local frame so continents stay anchored to the rotating sphere.
+  // Local frame so continents stay anchored to the rotating sphere. Built
+  // before the miss/hit split because the volumetric shell march needs it on
+  // both branches, not just the surface shading.
   float3x3 R = float3x3(
     U.sphereOrientation[0].xyz,
     U.sphereOrientation[1].xyz,
     U.sphereOrientation[2].xyz
   );
-  float3 localNormal = transpose(R) * worldNormal;
+  float3x3 Rt = transpose(R);
+
+  RangeHit atmoRange = raySphereRange(rayOrigin, rayDir, sphereCenter,
+                                      atmoRadius * breathScale);
+  Hit hit = raySphere(rayOrigin, rayDir, sphereCenter, radius);
+
+  // ── 3D light volumes (orbs + shells), computed before the miss/hit split ──
+  // A shell expands to ~1.4× the sphere radius — far past the 1.06 atmosphere
+  // — so these must not live behind the atmosphere early-out below. Local
+  // frame, ray origin rebased to closest approach (see the section comment at
+  // orbCoreHalo). Classic-only frames never enter the accumulator: both
+  // ranges are empty, coverage stays exactly 0, and every addition below is
+  // + 0.0 — bit-identical to the pre-3D output.
+  int classicCount = int(U.params.z);
+  int orbCount = int(U.atmosphereData.z);
+  int surfaceCount = min(classicCount + orbCount, glowCount);
+
+  LightVolumeAccum lv;
+  lv.orbDensity = 0.0;
+  lv.orbHot = 0.0;
+  lv.orbWhite = 0.0;
+  lv.shellDensity = 0.0;
+  lv.shellWhite = 0.0;
+  if (glowCount > classicCount) {
+    float3 roL = Rt * (rayOrigin - sphereCenter);
+    float3 rdL = Rt * rayDir;
+    float tS = -dot(roL, rdL);
+    roL += rdL * tS;
+    float tMaxL = hit.hit ? (hit.t - tS) : 1e6;
+    lv = accumulateLightVolumes(roL, rdL, tMaxL, radius, glowSources,
+                                classicCount, orbCount, glowCount,
+                                U.atmosphereData.w, T);
+  }
+  float orbCov = 1.0 - exp(-lv.orbDensity * T.orbShape.y);
+  float shellCov = 1.0 - exp(-lv.shellDensity * T.burstShape.x);
+  float3 lvEmissive = float3(0.0);
+  float lvAlpha = 0.0;
+  if (orbCov + shellCov > 5e-4) {
+    // Whiteness as a density-weighted mean, not the raw clamped sum the
+    // surface accumulators use — more correct when several sources overlap.
+    float3 orbCol = glowPalette(orbCov,
+                                clamp(lv.orbWhite / max(lv.orbDensity, 1e-4), 0.0, 1.0));
+    float3 shellCol = glowPalette(shellCov,
+                                  clamp(lv.shellWhite / max(lv.shellDensity, 1e-4), 0.0, 1.0));
+    // Hot terms are uncompressed HDR by design (bloom drivers) and must not
+    // feed alpha — bloom's own alpha lift handles their spill.
+    lvEmissive = orbCol * orbCov * T.orbShape.z
+               + mix(orbCol, MOON_CREAM, 0.6) * lv.orbHot * T.orbShape.w
+               + shellCol * shellCov * T.burstShape.y
+               + mix(shellCol, MOON_CREAM, 0.5) * lv.shellDensity * T.burstShape.z;
+    lvAlpha = orbCov * T.orbTint.y + shellCov * T.burstShape.w;
+  }
+
+  if (!hit.hit) {
+    // Atmosphere haze + volumetric glow domes beyond the orb silhouette.
+    // Rays that miss even the atmosphere can still carry an orb skirt or an
+    // expanding shell — they composite alone.
+    if (!atmoRange.hit) {
+      if (orbCov + shellCov <= 5e-4) return float4(0, 0, 0, 0);
+      return float4(lvEmissive, saturate(lvAlpha));
+    }
+    float3 n = normalize(rayOrigin + rayDir * atmoRange.t0 - sphereCenter);
+    float density = pow(1.0 - abs(dot(n, -rayDir)), T.haze.y);
+    float lat = n.y;
+    float3 tint = mix(SOFT_LILAC, BLUSH_POWDER, smoothstep(-0.6, 0.6, -lat));
+    tint = mix(tint, LAVENDER_MIST, 0.4);
+    float a = density * atmoStrength * T.haze.x;
+
+    // Glow columns rising past the silhouette — the core 3D read of the
+    // effect; without this the surface glow dies exactly at the limb.
+    // Classic range only: orbs and shells replace the column, not stack on it.
+    VolAccum vol = volumetricShell(rayOrigin, rayDir,
+                                   max(atmoRange.t0, 0.0), atmoRange.t1,
+                                   sphereCenter, radius, atmoRadius * breathScale,
+                                   Rt, glowSources, classicCount, T);
+    float3 volColor = mix(SOFT_LILAC, glowPalette(vol.glow, vol.white), T.volumetric.z);
+    float outA = saturate(a + vol.glow * T.volumetric.y + lvAlpha);
+    return float4(tint * a + volColor * vol.glow + lvEmissive, outA);
+  }
+
+  float3 worldNormal = hit.normal;
+  float3 localNormal = Rt * worldNormal;
 
   // ── Continents from the bundled texture ───────────────────────────────────
   // Source polarity: black=land, white=ocean. Invert for our continent value.
@@ -331,14 +703,11 @@ fragment float4 earthSurfaceFragment(
   float continentInner = smoothstep(T.continentBand.z, T.continentBand.w, landRaw);
 
   // ── Participant glow (city points, country blobs, join sparks) ───────────
-  GlowAccum glowA = accumulateGlow(localNormal, glowSources, glowCount,
+  GlowAccum glowA = accumulateGlow(localNormal, glowSources,
+                                   classicCount, surfaceCount, T.orbSeat.x,
                                    T.glowShape.x, T.glowShape.y);
   float glow = glowA.glow;
-  float3 glowColor = mix(SOFT_LILAC, BLUSH_POWDER, glow);
-  glowColor = mix(glowColor, PEACH_CLOUD, smoothstep(0.55, 0.95, glow));
-  // Join sparks momentarily warm toward moon-cream, capped at 0.55 so the
-  // peak reads as candle-light, never raw white under bloom.
-  glowColor = mix(glowColor, MOON_CREAM, min(glowA.white, 0.55));
+  float3 glowColor = glowPalette(glow, glowA.white);
 
   // ── Glass body — sharp rim, specular, dispersion ──────────────────────────
   //
@@ -376,6 +745,8 @@ fragment float4 earthSurfaceFragment(
   float3 refr = refract(rayDir, worldNormal, ior);
   float backGlow = 0.0;
   float3 backTint = float3(0.0);
+  float farGhost = 0.0;
+  float3 farGhostColor = float3(0.0);
   if (dot(refr, refr) > 1e-4) {
     // Refracted ray starts on the front surface, points into the glass.
     float3 oc2 = hit.point - sphereCenter;
@@ -385,7 +756,7 @@ fragment float4 earthSurfaceFragment(
     if (disc2 > 0.0) {
       float t2 = -b2 + sqrt(disc2);
       float3 exitPoint = hit.point + refr * t2;
-      float3 exitNormalLocal = transpose(R) * normalize(exitPoint - sphereCenter);
+      float3 exitNormalLocal = Rt * normalize(exitPoint - sphereCenter);
       float2 exitUV = sphericalUV(exitNormalLocal);
       float backSpec = continentTex.sample(texSampler, exitUV).r;
       float backLand = 1.0 - backSpec;
@@ -394,12 +765,35 @@ fragment float4 earthSurfaceFragment(
       // and dim it overall so it stays a whisper.
       backGlow = backContinent * (T.backBleed.x - fresnelRim * T.backBleed.y);
       backTint = iridescent(T.backBleed.z);
+
+      // Far-side participant lights ghost through the glass body — core-only
+      // gaussian at the refracted exit point, rim-faded like the continent
+      // bleed so it never fights the dispersion edge.
+      if (T.volumetric.w > 0.0) {
+        GlowAccum ghostA = accumulateGlow(exitNormalLocal, glowSources,
+                                          classicCount, surfaceCount, T.orbSeat.x,
+                                          0.0, T.glowShape.y);
+        farGhost = ghostA.glow * T.volumetric.w
+                 * max(1.0 - fresnelRim * T.backBleed.y, 0.0);
+        farGhostColor = mix(SOFT_LILAC, BLUSH_POWDER, ghostA.glow);
+      }
     }
   }
 
   // ── Breath shimmer (very low amplitude, iridescent drift) ────────────────
   float shimmerN = fbm3(localNormal * 5.0 + float3(time * 0.04, 0, time * 0.025), 2);
   float shimmer = (shimmerN - 0.5) * T.haze.w;
+
+  // ── Volumetric glow shell (hit path) ──────────────────────────────────────
+  // March the wedge of shell in front of the orb body; ending the segment at
+  // hit.t gives occlusion by the sphere for free. Reads as light standing up
+  // off the lit surface rather than paint on it. Classic range only — orbs
+  // and shells replace the column with their own 3D volumes.
+  VolAccum vol = volumetricShell(rayOrigin, rayDir,
+                                 max(atmoRange.t0, 0.0), hit.t,
+                                 sphereCenter, radius, atmoRadius * breathScale,
+                                 Rt, glowSources, classicCount, T);
+  float3 volColor = mix(SOFT_LILAC, glowPalette(vol.glow, vol.white), T.volumetric.z);
 
   // ── Emissive composition (HDR linear) ─────────────────────────────────────
   //
@@ -458,6 +852,12 @@ fragment float4 earthSurfaceFragment(
   emissive += dispersion * fresnelEdge * T.emissiveB.y;
   emissive += LAVENDER_MIST * fresnelBody * T.emissiveB.z;
   emissive += shimmer * MOON_CREAM * T.emissiveB.w;
+  // Volumetric lift over the surface + far-side lights through the glass.
+  emissive += volColor * vol.glow;
+  emissive += farGhostColor * farGhost;
+  // 3D light volumes in front of the body (orb balls, expanding shells) —
+  // occluded by the surface via tMax inside the integrals.
+  emissive += lvEmissive;
 
   // ── Alpha ─────────────────────────────────────────────────────────────────
   //
@@ -476,12 +876,18 @@ fragment float4 earthSurfaceFragment(
   // all scale with the one rimTightness knob (T.glass.y) — so the alpha band
   // never extends past the visible rim or falls short of it.
   float rimAlpha = pow(1.0 - ndv, 28.0 * T.glass.y);
+  // Volumetric and ghost terms must lift alpha themselves: blending is off
+  // into the HDR target, so emissive without alpha never survives the
+  // composite over clear ocean.
   float alpha = saturate(
       continent * T.alphaA.x
     + coastHalo * T.alphaA.y
     + rimAlpha * T.alphaA.z
     + backGlow * T.backBleed.w
     + seaGlow * T.alphaA.w
+    + vol.glow * T.volumetric.y
+    + farGhost * T.volumetric.y * 0.5
+    + lvAlpha
   );
 
   return float4(emissive, alpha);

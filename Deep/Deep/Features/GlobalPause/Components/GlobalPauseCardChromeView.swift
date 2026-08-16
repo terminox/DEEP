@@ -2,12 +2,16 @@ import UIKit
 import SwiftUI
 
 /// UIKit twin of the retired SwiftUI `GlobalPauseCardChrome`: the card's
-/// bottom chrome — a cream legibility scrim, the "Global Pause" title, a
+/// bottom chrome — a night legibility scrim, the "Global Pause" title, a
 /// caption, and a state-driven block underneath. Off shows the schedule line
 /// alone; the final lead before the meditation adds a grey pill ticking
 /// "Live in 13:44"; live swaps the caption for "The world is pausing", shows
 /// the "Join now" pill (both pills are styled labels, not buttons: the whole
 /// card is the tap target), and a pulsing LIVE badge top-left.
+///
+/// The chrome sits on the card's starry night backdrop, so text runs
+/// moonCream-on-dark and the scrim deepens the sky toward the bottom edge to
+/// seat it against the globe's glow.
 ///
 /// Fills the card's bounds (the scrim runs centre → bottom); content pins
 /// bottom-leading with Auto Layout — a stack, so hidden elements collapse and
@@ -16,8 +20,13 @@ import SwiftUI
 /// snapshots — which is also why the LIVE badge lives in here: it must vanish
 /// with the rest of the chrome during the flight and at lobby rest.
 final class GlobalPauseCardChromeView: UIView {
+  /// Raw night-plum on purpose — a night-only shade darker than the sky's own
+  /// bottom stop (`NightSkyBackground` precedent), so the scrim deepens the
+  /// backdrop rather than hazing it the way a deepPlum wash would.
+  private static let nightScrim = UIColor(red: 0.05, green: 0.04, blue: 0.11, alpha: 1)
+
   private let scrim = LinearGradientView(
-    colors: [.moonCream.withAlphaComponent(0), .moonCream.withAlphaComponent(0.85)],
+    colors: [nightScrim.withAlphaComponent(0), nightScrim.withAlphaComponent(0.75)],
     startPoint: CGPoint(x: 0.5, y: 0.5),
     endPoint: CGPoint(x: 0.5, y: 1)
   )
@@ -130,12 +139,14 @@ final class GlobalPauseCardChromeView: UIView {
 
     titleLabel.text = "Global Pause"
     titleLabel.font = .displayTitle
-    titleLabel.textColor = .deepPlum
+    titleLabel.textColor = .moonCream
     titleLabel.adjustsFontForContentSizeCategory = true
 
     captionLabel.text = caption
     captionLabel.font = .caption
-    captionLabel.textColor = .driftGrey
+    // moonCream, not driftGrey — the caption sits on the night sky, anchored
+    // to the same cream its stars are drawn from.
+    captionLabel.textColor = .moonCream.withAlphaComponent(0.75)
     captionLabel.adjustsFontForContentSizeCategory = true
 
     countdownLabel.font = .countdown
@@ -156,7 +167,9 @@ final class GlobalPauseCardChromeView: UIView {
 
     pillLabel.text = "Join now"
     pillLabel.font = .bodyMedium
-    pillLabel.textColor = .white
+    // deepPlum, not white — white on the pastel gradient measures under 2.2:1
+    // and vanishes; plum-on-light is the house pairing (see LiveBadgeView).
+    pillLabel.textColor = .deepPlum
     pillLabel.adjustsFontForContentSizeCategory = true
 
     pill.clipsToBounds = true
@@ -242,16 +255,20 @@ private final class PillShadowView: UIView {
   }
 }
 
+/// Previews sit on a flat night-sky plum so the moonCream chrome reads in
+/// context without spinning up the full starry backdrop.
+private let previewNight = UIColor(red: 0.09, green: 0.07, blue: 0.17, alpha: 1)
+
 #Preview("Chrome — off") {
   let chrome = GlobalPauseCardChromeView(caption: "Breathe with the world, together")
-  chrome.backgroundColor = .skyWash
+  chrome.backgroundColor = previewNight
   chrome.setState(.off(scheduleLine: "Tonight · 20:40 Thailand Time"), animated: false)
   return chrome
 }
 
 #Preview("Chrome — countdown") {
   let chrome = GlobalPauseCardChromeView(caption: "Breathe with the world, together")
-  chrome.backgroundColor = .skyWash
+  chrome.backgroundColor = previewNight
   chrome.setState(
     .countdown(target: Date().addingTimeInterval(899), scheduleLine: "Tonight · 20:40 Thailand Time"),
     animated: false
@@ -261,7 +278,7 @@ private final class PillShadowView: UIView {
 
 #Preview("Chrome — live") {
   let chrome = GlobalPauseCardChromeView(caption: "Breathe with the world, together")
-  chrome.backgroundColor = .skyWash
+  chrome.backgroundColor = previewNight
   chrome.setState(.live, animated: false)
   return chrome
 }
