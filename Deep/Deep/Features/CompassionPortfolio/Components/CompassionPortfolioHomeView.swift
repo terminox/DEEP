@@ -65,13 +65,13 @@ struct CompassionPortfolioHomeView: View {
 #Preview("Compassion — Home") {
   CompassionPortfolioHomeView()
     .environment(\.heartLedger, .sample)
-    .environment(\.openCategory, { _ in })
+    .environment(\.openDonation, { _ in })
 }
 
 #Preview("Compassion — Fresh start") {
   CompassionPortfolioHomeView()
     .environment(\.heartLedger, .fresh)
-    .environment(\.openCategory, { _ in })
+    .environment(\.openDonation, { _ in })
 }
 
 /// The one state where the balance reads as a bare zero — worth its own canvas
@@ -79,5 +79,5 @@ struct CompassionPortfolioHomeView: View {
 #Preview("Compassion — Spent") {
   CompassionPortfolioHomeView()
     .environment(\.heartLedger, .spent)
-    .environment(\.openCategory, { _ in })
+    .environment(\.openDonation, { _ in })
 }

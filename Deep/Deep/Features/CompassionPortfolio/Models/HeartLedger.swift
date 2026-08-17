@@ -47,7 +47,7 @@ final class HeartLedger {
   /// Hearts the whole community has pooled across every cause — the total the
   /// allocation ring divides up.
   var heartsPooled: Int {
-    categories.reduce(0) { $0 + $1.heartsShared }
+    categories.heartsPooled
   }
 
   /// Per-cause tally of hearts this user has personally sent, by category id.
@@ -72,24 +72,33 @@ final class HeartLedger {
     }
   }
 
-  /// Send a single heart to a cause — and, when given, the specific project the
-  /// user tapped. No-op once the balance reaches zero. Animated so the balance
-  /// and pooled totals settle together.
-  func sendHeart(to category: CompassionCategory, project: CompassionProject? = nil) {
-    guard canGive else { return }
+  /// Sends `hearts` to a cause — and, when given, the specific project the user
+  /// tapped. The amount is clamped to the balance, so an over-ask gives
+  /// everything that's left rather than failing; a member who types past what
+  /// they hold gets the generous reading of what they meant. Animated so the
+  /// balance and pooled totals settle together.
+  func send(_ hearts: Int, to category: CompassionCategory, project: CompassionProject? = nil) {
+    let amount = Swift.min(hearts, balance)
+    guard amount > 0 else { return }
     guard let index = categories.firstIndex(where: { $0.id == category.id }) else { return }
 
     withAnimation(.exhale) {
-      balance -= 1
-      heartsGiven += 1
-      categories[index].heartsShared += 1
-      givenByUser[category.id, default: 0] += 1
+      balance -= amount
+      heartsGiven += amount
+      categories[index].heartsShared += amount
+      givenByUser[category.id, default: 0] += amount
 
       if let project,
          let projectIndex = categories[index].projects.firstIndex(where: { $0.id == project.id }) {
-        categories[index].projects[projectIndex].heartsShared += 1
+        categories[index].projects[projectIndex].heartsShared += amount
       }
     }
+  }
+
+  /// Send a single heart to a cause — the one-tap paths. No-op once the balance
+  /// reaches zero.
+  func sendHeart(to category: CompassionCategory, project: CompassionProject? = nil) {
+    send(1, to: category, project: project)
   }
 }
 

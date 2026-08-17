@@ -11,7 +11,7 @@ struct CommunityPoolCard: View {
   let peopleReached: Int
 
   private var pooled: Int {
-    categories.reduce(0) { $0 + $1.heartsShared }
+    categories.heartsPooled
   }
 
   var body: some View {
@@ -108,10 +108,10 @@ struct CommunityPoolCard: View {
     .accessibilityElement(children: .combine)
   }
 
-  /// This category's slice of the pool. The `max(pooled, 1)` guard mirrors the
-  /// old halo's divide-by-zero protection for an empty pool.
+  /// This category's slice of the pool — read from the model's one definition,
+  /// so this legend and the cause cards below can't drift apart.
   private func share(of category: CompassionCategory) -> Double {
-    Double(category.heartsShared) / Double(max(pooled, 1))
+    categories.shareOfGiving(category)
   }
 }
 

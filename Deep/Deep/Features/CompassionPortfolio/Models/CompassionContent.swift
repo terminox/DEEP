@@ -2,7 +2,7 @@ import Foundation
 
 /// A cause the app supports. Hearts the user sends here are pooled across the
 /// community; the app owner then donates real money to the partner organisation
-/// in proportion to the cause's `allocation`, and reports outcomes back via
+/// in proportion to the hearts that reached it, and reports outcomes back via
 /// `FieldReport`s. Until real imagery exists, each cause renders as a gradient
 /// `palette` carrying its `symbol` motif (see `SoundArtwork`).
 struct CompassionCategory: Identifiable, Hashable {
@@ -12,14 +12,29 @@ struct CompassionCategory: Identifiable, Hashable {
   /// SF Symbol motif drawn over the gradient artwork (e.g. "bird.fill").
   let symbol: String
   let palette: ArtworkPalette
-  /// Share of the owner's giving this cause receives, 0...1.
-  let allocation: Double
   let peopleReached: Int
   let partner: CompassionPartner
   /// The cause's initiatives. Mutable so a project's pooled hearts can climb.
   var projects: [CompassionProject]
   /// Community hearts pooled into this cause. Mutated as members send hearts.
   var heartsShared: Int
+}
+
+extension Array where Element == CompassionCategory {
+  /// Hearts the community has pooled across these causes.
+  var heartsPooled: Int {
+    reduce(0) { $0 + $1.heartsShared }
+  }
+
+  /// One cause's share of the pool — and therefore its share of Deep's real
+  /// giving, which follows the pool (PRODUCT.md). This is the *only* place that
+  /// ratio is worked out: a cause card, the pool legend and the cause detail all
+  /// read it from here, so the figure can never say two different things in two
+  /// places. The `max(_, 1)` guard mirrors the ring's protection for an empty
+  /// pool.
+  func shareOfGiving(_ category: Element) -> Double {
+    Double(category.heartsShared) / Double(Swift.max(heartsPooled, 1))
+  }
 }
 
 /// The real-world organisation a cause's donations flow to.
