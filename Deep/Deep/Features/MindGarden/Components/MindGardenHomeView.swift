@@ -19,11 +19,29 @@ struct MindGardenHomeView: View {
   /// threshold through the coordinator.
   @Environment(\.openDeepSession) private var openDeepSession
 
-  private let heroHeight: CGFloat = 320
+  /// The oak owns half the screen on this screen only, so the garden opens on
+  /// the tree. Measured rather than hardcoded — half of 852pt is not half of
+  /// 956pt — and the hero bleeds under the status bar, so the fraction is of
+  /// the whole screen, safe areas included.
+  private let heroScreenFraction: CGFloat = 0.5
+
   /// How far the greeting card rides up over the hero.
   private let heroOverlap: CGFloat = 52
 
   var body: some View {
+    // An outer reader, not told to ignore anything, sees the true safe-area
+    // insets; the scroll below ignores the top edge, so a reader inside it
+    // would under-report (the same trick `CollapsibleHomeHeader` uses to find
+    // the status-bar height). Size plus both insets is the whole screen.
+    GeometryReader { proxy in
+      garden(
+        heroHeight: (proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom)
+          * heroScreenFraction
+      )
+    }
+  }
+
+  private func garden(heroHeight: CGFloat) -> some View {
     ScrollView {
       VStack(spacing: 0) {
         StretchyHero(media: .video(resource: "deep_oak_mature"), height: heroHeight)
