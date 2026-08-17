@@ -4,6 +4,15 @@ import Foundation
 /// partners and projects, plus a "from the field" feed. Mirrors `SoundLibrary`:
 /// hand-authored mock data until a backend exists.
 enum CompassionLibrary {
+  /// Order is load-bearing: `CommunityPoolCard`'s ring lays its arcs out in this
+  /// order and its legend repeats it, as does the causes carousel.
+  ///
+  /// So are the palettes. Each cause wears one of the five single-hue pairings
+  /// (`veil`, `petal`, `iris`, `shore`, `hearth`) — one cause, one colour, on its
+  /// arc, its legend chip, its tile banner and its card tint. They're assigned so
+  /// that neighbours *on the ring* sit far apart on the wheel, wrap included:
+  /// lilac → pink → violet → blue → peach → back to lilac. The two violets
+  /// (`veil`, `iris`) are deliberately never adjacent.
   static let categories: [CompassionCategory] = [
     peace, healthcare, education, nature, community,
   ]
@@ -13,7 +22,7 @@ enum CompassionLibrary {
     name: "Peace & Well-being",
     tagline: "Calmer minds, a kinder world",
     symbol: "bird.fill",
-    palette: .aurora,
+    palette: .veil,
     allocation: 0.20,
     peopleReached: 124_580,
     partner: CompassionPartner(
@@ -37,7 +46,7 @@ enum CompassionLibrary {
     name: "Healthcare",
     tagline: "Caring for health and well-being",
     symbol: "cross.fill",
-    palette: .bloom,
+    palette: .petal,
     allocation: 0.24,
     peopleReached: 96_240,
     partner: CompassionPartner(
@@ -61,7 +70,7 @@ enum CompassionLibrary {
     name: "Education",
     tagline: "Empowering minds, building tomorrow",
     symbol: "book.fill",
-    palette: .ember,
+    palette: .iris,
     allocation: 0.18,
     peopleReached: 124_580,
     partner: CompassionPartner(
@@ -85,7 +94,7 @@ enum CompassionLibrary {
     name: "Nature",
     tagline: "Protecting nature for future generations",
     symbol: "leaf.fill",
-    palette: .mist,
+    palette: .shore,
     allocation: 0.22,
     peopleReached: 124_580,
     partner: CompassionPartner(
@@ -109,7 +118,7 @@ enum CompassionLibrary {
     name: "Community",
     tagline: "Stronger communities, brighter futures",
     symbol: "house.fill",
-    palette: .tide,
+    palette: .hearth,
     allocation: 0.16,
     peopleReached: 124_580,
     partner: CompassionPartner(

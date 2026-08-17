@@ -38,23 +38,32 @@ struct CommunityPoolCard: View {
 
   private var ring: some View {
     ZStack {
-      CompassionRing(segments: .allocation(of: categories), lineWidth: 12)
-      VStack(spacing: 2) {
+      CompassionRing(segments: .allocation(of: categories), lineWidth: 14)
+      // A heart crowning the count, where the word "POOLED" used to sit: the
+      // card is already titled, so the glyph says what kind of number this is
+      // without spelling it. Blush, at the app's usual heart weight.
+      VStack(spacing: 4) {
+        Image(systemName: "heart.fill")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(.blushPowder)
         Text(pooled.formatted(.number.notation(.compactName)))
           .font(DeepType.counter)
           .foregroundStyle(.deepPlum)
           .monospacedDigit()
           .contentTransition(.numericText(value: Double(pooled)))
-        Text("POOLED")
-          .font(DeepType.micro)
-          .tracking(.microTracking)
-          .foregroundStyle(.driftGrey)
+          .lineLimit(1)
+          .minimumScaleFactor(0.7)
       }
     }
-    .frame(width: 116, height: 116)
-    // The legend below is the accessible chart now; the ring itself is
-    // decorative to VoiceOver.
-    .accessibilityHidden(true)
+    // 140, not 116: the taller centre stack needs the room, and wider arcs give
+    // each cause's colour enough area to be told apart at a glance.
+    .frame(width: 140, height: 140)
+    // The arcs stay decorative — `CompassionRing` hides itself, and the legend
+    // below is the accessible chart. But the total is spoken nowhere else, and
+    // the heart that replaced "POOLED" can't be read aloud, so name it here.
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Hearts pooled")
+    .accessibilityValue(pooled.formatted())
   }
 
   private var legend: some View {
@@ -73,13 +82,12 @@ struct CommunityPoolCard: View {
 
   private func legendRow(for category: CompassionCategory) -> some View {
     HStack(spacing: 10) {
-      // The marker is a glyph, not a colour dot. `CompassionRing` resolves each
-      // arc's gradient across the *full circle's* bounds, so an arc shows only
-      // the slice of its gradient beneath it — colour can't map a legend row to
-      // an arc at any size (two palettes can render nearly the same colour;
-      // `.mist` and `.tide` are exact reverses of one another). The glyph maps
-      // the row to the *cause* instead, and thence to that cause's card in the
-      // carousel below — the mapping a member actually needs.
+      // The marker carries both readings. Its colour maps the row to an arc —
+      // honestly, now that each cause wears a single-hue palette: `CompassionRing`
+      // resolves an arc's gradient across the *full circle's* bounds, so an arc
+      // shows only the slice beneath it, and only a one-colour palette survives
+      // that. Its glyph maps the row to the *cause*, and thence to that cause's
+      // card in the carousel below — the mapping a member actually needs.
       CompassionMotif(
         symbol: category.symbol,
         palette: category.palette,
