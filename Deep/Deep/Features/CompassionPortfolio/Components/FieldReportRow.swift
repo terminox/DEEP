@@ -50,8 +50,8 @@ struct FieldReportRow: View {
     // `RadialGradient` centred at the leading edge, which reads as an even
     // wash on a ~210pt carousel card but concentrates entirely under this
     // row's 60pt motif thumb at full width, leaving the trailing half plain.
-    // The thumb already carries the cause's colour; a second tinted surface
-    // here would also repeat palettes already worn by the causes above.
+    // The thumb already carries the report's colour, and tinting the surface
+    // too would put a second, competing hue beside the single-hue causes above.
     .frostedCard()
     .accessibilityElement(children: .combine)
   }

@@ -22,9 +22,10 @@ struct RingSegment: Equatable {
 struct CompassionRing: View {
   let segments: [RingSegment]
   var lineWidth: CGFloat = 12
-  /// Angular breathing room between arcs, as a fraction of the circle. A single
+  /// Angular breathing room between arcs, as a fraction of the circle — the gap
+  /// you actually see, not the gap that gets trimmed (see `arcs`). A single
   /// progress arc passes `0`.
-  var gap: Double = 0.014
+  var gap: Double = 0.016
 
   var body: some View {
     ZStack {
@@ -45,26 +46,38 @@ struct CompassionRing: View {
   }
 
   private var arcs: some View {
-    ZStack {
-      ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
-        let start = segments.prefix(index).reduce(0) { $0 + $1.share }
-        let inset = segments.count > 1 ? gap / 2 : 0
-        let from = start + inset
-        let to = max(from, start + segment.share - inset)
+    // A `.round` cap overhangs the trimmed end by half the stroke width, so a gap
+    // trimmed out of the path is partly drawn back in by the two caps facing across
+    // it. At these proportions the caps swallow it whole — neighbouring arcs touch,
+    // and five causes read as four. Measure that overhang against the circumference
+    // and inset past it, so `gap` means the gap that survives at any size.
+    GeometryReader { geo in
+      // `body` already inset this by `lineWidth / 2`, so the box handed to us here
+      // *is* the stroke's path — its half-width is the radius the arcs ride on.
+      let radius = min(geo.size.width, geo.size.height) / 2
+      let capBleed = radius > 0 ? (lineWidth / 2) / (2 * .pi * radius) : 0
+      let inset = segments.count > 1 ? gap / 2 + capBleed : 0
 
-        Circle()
-          .trim(from: from, to: to)
-          .stroke(
-            LinearGradient(
-              colors: segment.colors,
-              startPoint: .topLeading,
-              endPoint: .bottomTrailing
-            ),
-            style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-          )
+      ZStack {
+        ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
+          let start = segments.prefix(index).reduce(0) { $0 + $1.share }
+          let from = start + inset
+          let to = max(from, start + segment.share - inset)
+
+          Circle()
+            .trim(from: from, to: to)
+            .stroke(
+              LinearGradient(
+                colors: segment.colors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              ),
+              style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+            )
+        }
       }
+      .rotationEffect(.degrees(-90))
     }
-    .rotationEffect(.degrees(-90))
   }
 }
 

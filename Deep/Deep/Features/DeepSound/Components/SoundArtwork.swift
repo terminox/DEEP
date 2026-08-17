@@ -24,12 +24,15 @@ struct SoundArtwork: View {
 }
 
 #Preview {
-  HStack(spacing: 16) {
-    ForEach(ArtworkPalette.allCases, id: \.self) { palette in
-      SoundArtwork(palette: palette)
-        .frame(width: 80, height: 80)
+  // Scrolling, not a plain row: the palette has outgrown a screen's width.
+  ScrollView(.horizontal) {
+    HStack(spacing: 16) {
+      ForEach(ArtworkPalette.allCases, id: \.self) { palette in
+        SoundArtwork(palette: palette)
+          .frame(width: 80, height: 80)
+      }
     }
+    .padding()
   }
-  .padding()
   .background(.moonCream)
 }
