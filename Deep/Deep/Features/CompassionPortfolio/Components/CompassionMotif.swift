@@ -18,6 +18,10 @@ struct CompassionMotif: View {
   var symbolOpacity: Double = 0.92
   /// Softens the symbol into the gradient. Kept at 0 for crisp tile motifs.
   var symbolBlur: CGFloat = 0
+  /// The plum drop shadow that seats the symbol on the gradient. Its radius is
+  /// fixed, so at chip sizes (a 20pt legend marker) it smears across the whole
+  /// motif instead of grounding the glyph — switch it off there.
+  var symbolShadow: Bool = true
   var symbolAlignment: Alignment = .center
   /// See `ArtworkImage.bordered` — full-bleed artwork switches the rim off.
   var bordered: Bool = true
@@ -31,7 +35,7 @@ struct CompassionMotif: View {
             .font(.system(size: edge * symbolScale, weight: .semibold))
             .foregroundStyle(.white.opacity(symbolOpacity))
             .blur(radius: symbolBlur)
-            .shadow(color: Color.deepPlum.opacity(0.18), radius: 8, y: 3)
+            .shadow(color: Color.deepPlum.opacity(symbolShadow ? 0.18 : 0), radius: 8, y: 3)
         }
         // The watermark deliberately overruns its frame; the clip keeps the
         // overflow inside the artwork instead of bleeding over neighbours.

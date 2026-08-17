@@ -1,9 +1,13 @@
 import SwiftUI
 
 /// The Compassion portfolio home — one quiet scroll that reads as a story: an
-/// atmospheric hero, then the portfolio itself (what you hold, where the
-/// community's hearts have gone, what you've given), the causes they flow to,
-/// and finally the dispatches that show what came back.
+/// atmospheric hero, then what you hold, then where the community's hearts have
+/// gone, then the causes they flow to, and finally the dispatches that show what
+/// came back.
+///
+/// The rhythm is deliberate — centred card, centred card, horizontal shelf,
+/// vertical list. Causes are peers you browse, so they get a shelf; dispatches
+/// are a chronology you read down, so they get rows.
 ///
 /// This is the leaf screen, so it owns its screen-level styling: the video hero
 /// bleeds under the status bar and `AtmosphereBackground` sits behind the scroll
@@ -24,13 +28,18 @@ struct CompassionPortfolioHomeView: View {
         StretchyHero(media: .video(resource: "sky"), height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
+          // Mine, then ours. The two cards' blooms overlap at `.rhythm`, which is
+          // what makes them read as one pair rather than two tallies.
           CompassionPortfolioCard(ledger: ledger)
             .padding(.horizontal, .edge)
 
-          CausesSection(
+          CommunityPoolCard(
             categories: ledger.categories,
             peopleReached: ledger.peopleReached
           )
+          .padding(.horizontal, .edge)
+
+          CausesSection(categories: ledger.categories)
 
           FieldReportsSection(reports: ledger.reports)
 
@@ -43,25 +52,13 @@ struct CompassionPortfolioHomeView: View {
     .scrollBounceBehavior(.always)
     .ignoresSafeArea(edges: .top)
     .background { AtmosphereBackground() }
+    // No trailing balance chip: the portfolio card carries that number a few
+    // points below, and "Where your hearts go" now titles the causes shelf, so
+    // the header must not say it too.
     .collapsibleHomeHeader(
       title: "Compassion",
-      subtitle: "Where your hearts go"
-    ) {
-      HeaderHeartBalance()
-    }
-  }
-}
-
-/// The live heart balance for the home header's trailing slot. Reads the ledger
-/// and the header's over-hero state so the chip flips its light/plum treatment
-/// in step with the collapsing title — keeping `CollapsibleHomeHeader` ignorant
-/// of the ledger.
-private struct HeaderHeartBalance: View {
-  @Environment(\.heartLedger) private var ledger
-  @Environment(\.headerOverDarkHero) private var overDarkHero
-
-  var body: some View {
-    HeartBalanceChip(balance: ledger.balance, overDarkHero: overDarkHero)
+      subtitle: "Turn practice into giving"
+    )
   }
 }
 
@@ -74,5 +71,13 @@ private struct HeaderHeartBalance: View {
 #Preview("Compassion — Fresh start") {
   CompassionPortfolioHomeView()
     .environment(\.heartLedger, .fresh)
+    .environment(\.openCategory, { _ in })
+}
+
+/// The one state where the balance reads as a bare zero — worth its own canvas
+/// now that the altar makes that number the first thing on the screen.
+#Preview("Compassion — Spent") {
+  CompassionPortfolioHomeView()
+    .environment(\.heartLedger, .spent)
     .environment(\.openCategory, { _ in })
 }

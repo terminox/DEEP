@@ -1,24 +1,22 @@
 import SwiftUI
 
 /// The "from the field" feed — recent real-world outcomes reported back to the
-/// app, so members see what their hearts set in motion. Runs horizontally, like
-/// the app's other shelves, so the dispatches read as their own kind of content
-/// rather than a fourth stack of rows.
+/// app, so members see what their hearts set in motion. Unlike the causes
+/// carousel above it, this is a chronology read top to bottom rather than a
+/// shelf of parallel choices, so each dispatch gets its own full-width row.
 struct FieldReportsSection: View {
   let reports: [FieldReport]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      HomeSectionHeader(title: "From the field")
+      SectionHeader(title: "From the field")
 
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(alignment: .top, spacing: 16) {
-          ForEach(reports) { report in
-            FieldReportBannerCard(report: report)
-          }
+      VStack(spacing: 12) {
+        ForEach(reports) { report in
+          FieldReportRow(report: report)
         }
-        .padding(.horizontal, .edge)
       }
+      .padding(.horizontal, .edge)
     }
   }
 }
