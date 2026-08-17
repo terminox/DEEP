@@ -83,7 +83,7 @@ struct CompassionCategoryView: View {
       ),
       ImpactStat(
         label: "Share of giving",
-        value: "\(Int((live.allocation * 100).rounded()))%",
+        value: "\(Int((ledger.categories.shareOfGiving(live) * 100).rounded()))%",
         symbol: "chart.pie.fill"
       ),
     ]

@@ -22,8 +22,7 @@ enum CompassionLibrary {
     name: "Peace & Well-being",
     tagline: "Calmer minds, a kinder world",
     symbol: "bird.fill",
-    palette: .veil,
-    allocation: 0.20,
+    palette: .aurora,
     peopleReached: 124_580,
     partner: CompassionPartner(
       name: "V-Peace Foundation",
@@ -46,8 +45,7 @@ enum CompassionLibrary {
     name: "Healthcare",
     tagline: "Caring for health and well-being",
     symbol: "cross.fill",
-    palette: .petal,
-    allocation: 0.24,
+    palette: .bloom,
     peopleReached: 96_240,
     partner: CompassionPartner(
       name: "Ramathibodi Foundation",
@@ -70,8 +68,7 @@ enum CompassionLibrary {
     name: "Education",
     tagline: "Empowering minds, building tomorrow",
     symbol: "book.fill",
-    palette: .iris,
-    allocation: 0.18,
+    palette: .ember,
     peopleReached: 124_580,
     partner: CompassionPartner(
       name: "One Buddhist",
@@ -94,8 +91,7 @@ enum CompassionLibrary {
     name: "Nature",
     tagline: "Protecting nature for future generations",
     symbol: "leaf.fill",
-    palette: .shore,
-    allocation: 0.22,
+    palette: .mist,
     peopleReached: 124_580,
     partner: CompassionPartner(
       name: "Seub Nakhasathien Foundation",
@@ -118,8 +114,7 @@ enum CompassionLibrary {
     name: "Community",
     tagline: "Stronger communities, brighter futures",
     symbol: "house.fill",
-    palette: .hearth,
-    allocation: 0.16,
+    palette: .tide,
     peopleReached: 124_580,
     partner: CompassionPartner(
       name: "Together Foundation",

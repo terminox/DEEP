@@ -8,7 +8,7 @@ struct CausesSection: View {
   let categories: [CompassionCategory]
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 6) {
       SectionHeader(
         title: "Where your hearts go",
         subtitle: "Send them to a cause and we give, for real, on your behalf."
@@ -20,15 +20,21 @@ struct CausesSection: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, .edge)
-        // Deliberately no `.scrollClipDisabled()`. `frostedCard`'s shadow is
-        // `radius: 24, y: 12` — with clipping off it bleeds ~36pt into the
-        // header and next section, and slides sideways as you scroll. This
-        // vertical padding is what preserves the soft part of the plume
-        // instead. Every shelf carrying `frostedCard` cards ships this way
-        // (`FieldReportsSection`, `RecommendationsSection`,
-        // `CollectionCarousel`); `FeatureCarousel` is the outlier, not the
-        // pattern — don't "fix" this to match it.
-        .padding(.vertical, 6)
+        // The room each tile's bloom needs, given in full: `frostedCard`'s
+        // shadow is `lavenderMist 0.18, radius 24, y 12`, so it reaches 12pt
+        // above a card and 36pt below it. Anything less clips the plume off
+        // square along the scroll's edge.
+        //
+        // Still deliberately no `.scrollClipDisabled()`: that doesn't give the
+        // shadow room, it just lets it escape — the plume then rides over the
+        // header and the next section, and drifts across both as you scroll.
+        // Real space is the only honest way to show a shadow. (The shelf's
+        // outer `VStack` spacing drops to 6 to pay for the top padding, and the
+        // wider gap this leaves before "From the field" is the plume's, not
+        // waste.) This is the only shelf in the app whose tiles carry
+        // `frostedCard`, so it's the only one that needs this.
+        .padding(.top, 14)
+        .padding(.bottom, 38)
       }
       .scrollBounceBehavior(.basedOnSize)
     }
@@ -41,5 +47,6 @@ struct CausesSection: View {
       .padding(.vertical)
   }
   .background { AtmosphereBackground() }
-  .environment(\.openCategory, { _ in })
+  .environment(\.heartLedger, .sample)
+  .environment(\.openDonation, { _ in })
 }
