@@ -11,6 +11,10 @@ import SwiftUI
 /// once the engine finishes; Return dismisses it.
 struct DeepSessionCompletionView: View {
   let session: DeepSession
+  /// Whether the practice earned a heart. A day gives at most
+  /// `HeartLedger.dailyEarnCeiling`, and this beat must not promise one the day
+  /// has already spent.
+  var heartEarned: Bool = true
   var onReturn: () -> Void = {}
 
   @Environment(\.practiceStore) private var practiceStore
@@ -71,12 +75,15 @@ struct DeepSessionCompletionView: View {
           try? await Task.sleep(for: .seconds(1.2))
           withAnimation(.exhale) { minutesGrown = true }
         }
-        // The heart rises from the plant once everything has settled.
+        // The heart rises from the plant once everything has settled — only when
+        // there is a heart to rise.
         try? await Task.sleep(for: .seconds(0.8))
-        heartFlourish += 1
+        if heartEarned {
+          heartFlourish += 1
+        }
       }
       AccessibilityNotification.Announcement(
-        "Session complete. \(practiceStore.minutesToday) minutes in your garden today. A heart ready to give."
+        "Session complete. \(practiceStore.minutesToday) minutes in your garden today. \(heartNote.sentence)"
       ).post()
     }
   }
@@ -88,6 +95,15 @@ struct DeepSessionCompletionView: View {
     minutesGrown
       ? practiceStore.minutesToday
       : max(0, practiceStore.minutesToday - session.durationMinutes)
+  }
+
+  /// What this practice earned, in the same words the portfolio card uses — a
+  /// day that has given all thirty of its hearts is *full*, and saying so is
+  /// kinder than promising a heart that isn't coming.
+  private var heartNote: (phrase: String, sentence: String) {
+    heartEarned
+      ? ("a heart ready to give", "A heart ready to give.")
+      : ("today is full", "Today is full.")
   }
 
   /// The oak's current form, derived the same way the garden home screen
@@ -120,7 +136,7 @@ struct DeepSessionCompletionView: View {
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
       }
-      Text("\(minutesShown) min in your garden today · a heart ready to give")
+      Text("\(minutesShown) min in your garden today · \(heartNote.phrase)")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
         .multilineTextAlignment(.center)
