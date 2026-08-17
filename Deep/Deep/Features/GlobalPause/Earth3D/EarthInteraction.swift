@@ -85,20 +85,33 @@ final class EarthInteraction {
     (fromYaw: Float, fromPitch: Float, toYaw: Float, toPitch: Float,
      startTime: TimeInterval?, duration: TimeInterval)?
 
-  /// Gently rotates the globe so the given lat/lon faces the camera, north
-  /// kept up. Used when the session lands: the world turns to *you*.
+  /// The arrival: the world keeps turning for `duration` and comes to rest with
+  /// the given lat/lon facing the camera, north kept up — the session's opening
+  /// move, where the world turns to find *you*.
   ///
   /// Target derivation: yaw −lon brings the point's meridian to the front,
   /// then pitch +lat lifts it to dead center — `T·p = (0,0,1)`. The axial
   /// tilt composed at render time is a Z-rotation, which leaves the front
-  /// axis fixed, so the point stays centered after tilt. Yaw lands on the
-  /// equivalent angle nearest the current one (shortest path — never a
-  /// multi-revolution spin to a neighboring longitude).
-  func orient(toLatDeg lat: Float, lonDeg lon: Float, over duration: TimeInterval = 2.5) {
+  /// axis fixed, so the point stays centered after tilt.
+  ///
+  /// Yaw is taken *forward* — the direction idle drift already turns — and at
+  /// least `minimumTurns` whole revolutions away. A shortest-path target would
+  /// make the arrival a nudge or a half-sweep depending on where the globe
+  /// happened to be pointing when the session opened; going the long way round
+  /// makes every arrival read the same, and never reverses the spin the globe
+  /// came in with. `minimumTurns: 0` is the correction case: re-aim an arrival
+  /// already in flight without adding another lap.
+  func settle(
+    onLatDeg lat: Float,
+    lonDeg lon: Float,
+    over duration: TimeInterval,
+    minimumTurns: Float = 1
+  ) {
     let targetPitch = clampPitch(lat * .pi / 180)
-    let yawDelta = (-lon * .pi / 180 - yaw).remainder(dividingBy: 2 * .pi)
+    let shortest = (-lon * .pi / 180 - yaw).remainder(dividingBy: 2 * .pi)
+    let ahead = shortest < 0 ? shortest + 2 * .pi : shortest
     orientAnimation = (fromYaw: yaw, fromPitch: pitch,
-                       toYaw: yaw + yawDelta, toPitch: targetPitch,
+                       toYaw: yaw + ahead + minimumTurns * 2 * .pi, toPitch: targetPitch,
                        startTime: nil, duration: duration)
     // The turn owns the view: a leftover flick must not sit out the animation
     // undamped and replay against the target when it completes.
@@ -205,10 +218,9 @@ final class EarthInteraction {
       }
     }
 
-    // Turn-to-place animation: lerp the two scalars on the same smoothstep
-    // ease as the gate. Momentum and drift are skipped while it owns the view
-    // (they'd silently lose to the overwrite anyway — an explicit skip avoids
-    // a last-frame pop).
+    // Turn-to-place animation: lerp the two scalars. Momentum and drift are
+    // skipped while it owns the view (they'd silently lose to the overwrite
+    // anyway — an explicit skip avoids a last-frame pop).
     if var anim = orientAnimation {
       let start = anim.startTime ?? time
       if anim.startTime == nil {
@@ -222,7 +234,10 @@ final class EarthInteraction {
         lastInteractionTime = time
       } else {
         let t = Float(min(1, max(0, (time - start) / anim.duration)))
-        let eased = t * t * (3 - 2 * t)
+        // Ease out, not smoothstep: the globe arrives already spinning, so the
+        // turn has to inherit that motion and coast down onto the target rather
+        // than stall at the start and ease back up into it.
+        let eased = t * (2 - t)
         yaw = anim.fromYaw + (anim.toYaw - anim.fromYaw) * eased
         pitch = anim.fromPitch + (anim.toPitch - anim.fromPitch) * eased
         if t >= 1 {

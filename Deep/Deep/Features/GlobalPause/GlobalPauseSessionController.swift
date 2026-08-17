@@ -29,14 +29,30 @@ final class GlobalPauseSessionController: UIViewController {
   /// Wall-clock completion fallback — covers a missing or failed audio URL.
   private var completionTask: Task<Void, Never>?
 
+  /// The arrival turn: the world spins for this long and stops on you.
+  private static let arrivalTurn: TimeInterval = 60
+  /// The self-spin gate shuts a beat before the turn lands, so idle drift has
+  /// nothing left to restart with and the globe stays exactly where it stopped.
+  /// Invisible while the turn owns the globe — drift is skipped anyway.
+  private static let arrivalGate: TimeInterval = 55
+  /// When the arrival must land. Stamped once the card-lift has, so the minute
+  /// is measured from what the user sees, not from the tap.
+  private var arrivalDeadline: Date?
+  /// The location the in-flight arrival is aimed at, so a corrected one can be
+  /// spotted. Nil until the arrival is armed.
+  private var arrivalTarget: PauseJoinPoint?
+  /// Fires the user's own join spark as the globe lands on them.
+  private var ownJoinTask: Task<Void, Never>?
+
   private var hasStartedMeditation = false
   private var hasCompleted = false
   private var isTornDown = false
   /// The overlay arrives empty and cascades in once the card-lift has landed,
   /// so nothing rides the flight but the globe.
   private var isOverlayRevealed = false
-  /// Join ripples wait behind this gate until the turn-to-you has settled —
-  /// otherwise the user's own ring plays mid-flight or mid-turn and is missed.
+  /// The world's lights wait behind this gate until the card-lift has landed —
+  /// otherwise the first poll lights the whole world mid-flight, and the glows
+  /// have finished rising before anyone is looking at them.
   private var joinsGateOpen = false
 
   private var duration: TimeInterval = 600
@@ -138,28 +154,72 @@ final class GlobalPauseSessionController: UIViewController {
     turnGlobeHome()
   }
 
-  /// The flight has landed: turn the world to *you*, and once the turn has
-  /// settled let everything in at once — your home glow, the world's lights,
-  /// and the sparks — so the arrival is one composed moment where the user is
-  /// actually looking. A latecomer who landed straight in reflection gets
-  /// none of it: the globe is behind an opaque screen and the night is over.
+  /// The flight has landed, and the arrival begins: the world keeps turning for
+  /// a minute and comes to rest on *you*.
+  ///
+  /// Two beats, deliberately apart. The world's lights come up early so the
+  /// globe turns lit and alive rather than as a dark ball. Your own light is
+  /// held to the landing — it flares as the globe stops on you, which is both
+  /// the moment worth marking and the only moment your point is guaranteed to
+  /// be on the near hemisphere (a ripple emitted on the back face is culled and
+  /// simply never draws).
+  ///
+  /// A latecomer who landed straight in reflection gets none of it: the globe
+  /// is behind an opaque screen and the night is over.
   private func turnGlobeHome() {
     guard !hasCompleted else { return }
-    if let home = session.myLocation {
-      scene.interaction.orient(toLatDeg: home.lat, lonDeg: home.lon, over: 2.5)
-    }
+    arrivalDeadline = Date().addingTimeInterval(Self.arrivalTurn)
+    armArrivalTurn()
     Task { [weak self] in
       try? await Task.sleep(for: .seconds(2.5))
       guard let self, !self.isTornDown, !self.hasCompleted else { return }
       self.joinsGateOpen = true
       self.applyLiveGlobe()
-      // Your own arrival is the one the gate was built for — flare it here
-      // rather than wait on the server's echo of your first heartbeat, which
-      // can be a whole poll late. `GlobalPauseSession` swallows that echo.
-      if let home = self.session.myLocation {
-        self.scene.enqueueOwnJoin(home)
-      }
     }
+  }
+
+  /// Aims the arrival at the user's location, once, and schedules their own
+  /// spark for the landing. Re-aims if a better location turns up while the
+  /// turn is still well clear of touching down.
+  ///
+  /// The re-aim is not defensive coding: `enterSession()` seeds `myLocation`
+  /// synchronously from the *locale country centroid* so the globe has somewhere
+  /// to turn immediately, and the server's IP-resolved point overwrites it on
+  /// the first heartbeat. Landing on the centroid of a large country can be 20°
+  /// of longitude from where the user actually is — visibly not "on you".
+  ///
+  /// Nothing to aim at means nothing happens: no turn, no spark. The globe then
+  /// drifts and is stilled by the gate, which is what it did before any of this.
+  private func armArrivalTurn() {
+    guard !isTornDown, !hasCompleted,
+          let deadline = arrivalDeadline,
+          let home = session.myLocation
+    else { return }
+    let remaining = max(0, deadline.timeIntervalSinceNow)
+
+    if arrivalTarget == nil {
+      arrivalTarget = home
+      scene.interaction.settle(onLatDeg: home.lat, lonDeg: home.lon, over: remaining)
+      ownJoinTask = Task { [weak self] in
+        try? await Task.sleep(for: .seconds(remaining))
+        guard let self, !self.isTornDown, !self.hasCompleted else { return }
+        // Flare it from here rather than wait on the server's echo of the first
+        // heartbeat, which can be a whole poll late. `GlobalPauseSession`
+        // swallows that echo.
+        if let home = self.session.myLocation {
+          self.scene.enqueueOwnJoin(home)
+        }
+      }
+      return
+    }
+
+    // A correction, not a fresh arrival: same landing time, and no extra lap —
+    // but still taken forward, so the globe never reverses mid-turn.
+    guard home != arrivalTarget, remaining > 10 else { return }
+    arrivalTarget = home
+    scene.interaction.settle(
+      onLatDeg: home.lat, lonDeg: home.lon, over: remaining, minimumTurns: 0
+    )
   }
 
   /// Keeps the globe subscribed to the live poll. The read *is* the
@@ -172,6 +232,9 @@ final class GlobalPauseSessionController: UIViewController {
       _ = session.participantsByCountry
       _ = session.participantLocations
       _ = session.unlocatedByCountry
+      // The arrival follows this one too: it aims the turn, and a corrected
+      // location has to be able to wake the loop on its own.
+      _ = session.myLocation
     } onChange: { [weak self] in
       Task { @MainActor [weak self] in self?.observeLiveGlobe() }
     }
@@ -210,6 +273,9 @@ final class GlobalPauseSessionController: UIViewController {
       }
       scene.enqueueJoins(session.consumeNewJoins())
     }
+    // The location the arrival aims at rides the same poll. This is also the
+    // path that arms it at all when no location existed as the card landed.
+    armArrivalTurn()
     // The participant count refreshes on the same poll; keep the meditation
     // overlay's "N meditating with you" honest — that has nothing to do with
     // the globe's gate.
@@ -238,10 +304,17 @@ final class GlobalPauseSessionController: UIViewController {
       session?.meditationElapsed ?? 0
     }
 
-    // The world stills — idle drift and momentum die — but the globe stays
-    // touchable: you can turn it to look for your own light (drags pass
-    // through the held gate by design), and country taps still reveal names.
-    scene.interaction.decelerateToRest(over: 5)
+    // Hand the globe over to the arrival: the turn armed once the card lands
+    // owns the motion for the next minute, and this shuts the self-spin down
+    // underneath it so drift has nothing left to restart with when the turn
+    // touches down — the globe stays exactly where it stopped. Invisible while
+    // the turn runs (drift is skipped outright), and the fallback that stills
+    // the globe anyway if no location is ever resolved to aim at.
+    //
+    // The globe stays touchable throughout: you can turn it to look for your
+    // own light (drags pass through the held gate by design, and cancel the
+    // arrival — the user always wins), and country taps still reveal names.
+    scene.interaction.decelerateToRest(over: Self.arrivalGate)
     card?.resetGlobePhasePlacement(animated: false)
 
     if let url = session.schedule?.meditationAudioURL {
@@ -489,6 +562,11 @@ final class GlobalPauseSessionController: UIViewController {
     isTornDown = true
     completionTask?.cancel()
     completionTask = nil
+    // Leaving mid-arrival: the landing never comes, so neither does the spark.
+    ownJoinTask?.cancel()
+    ownJoinTask = nil
+    arrivalDeadline = nil
+    arrivalTarget = nil
     audio.stop()
     session.leaveSession()
     scene.interaction.resumeSpin(over: 1)
