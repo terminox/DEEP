@@ -24,6 +24,10 @@ struct DeepSessionCoordinatorView: View {
   /// The completion is credited exactly once, the moment the engine finishes —
   /// so closing from the finished screen still counts.
   @State private var didRecord = false
+  /// Whether this session actually earned a heart. A day hands over at most
+  /// `HeartLedger.dailyEarnCeiling` of them, so the completion beat has to know
+  /// before it promises one.
+  @State private var heartEarned = true
 
   @Environment(\.soundPlayer) private var soundPlayer
   @Environment(\.practiceStore) private var practiceStore
@@ -51,7 +55,11 @@ struct DeepSessionCoordinatorView: View {
         )
         .transition(.softDrift)
       case .completion:
-        DeepSessionCompletionView(session: session, onReturn: onFinish)
+        DeepSessionCompletionView(
+          session: session,
+          heartEarned: heartEarned,
+          onReturn: onFinish
+        )
           .transition(.softDrift)
       }
     }
@@ -72,7 +80,7 @@ struct DeepSessionCoordinatorView: View {
       guard phase == .finished, !didRecord else { return }
       didRecord = true
       practiceStore.recordCompletion(of: session)
-      heartLedger.earn()
+      heartEarned = heartLedger.earn() > 0
       // Let the final exhale settle (the orb blooms to its rest) before the
       // hush into the completion beat — no tap required to move on. The
       // longer crossfade absorbs part of what used to be dead time, so the
