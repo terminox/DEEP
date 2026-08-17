@@ -1,73 +1,53 @@
 import SwiftUI
 
-/// The garden's opening card — a compact greeting beside the growth-point
-/// balance, over the oak itself: only the current form, held in a halo that
-/// closes as points bank. The next form is named, never shown — evolving stays
-/// something to look forward to — and beneath the name sit the two facts that
-/// matter: how far the next form is, and how many days in a row the garden has
-/// been tended.
+/// The garden's opening card — a greeting over the oak itself: only the current
+/// form, held in a halo that closes as points bank. The next form is named,
+/// never shown — evolving stays something to look forward to — and beside the
+/// name sit the two facts that matter, each on ground of its own colour: how
+/// far the next form is, and how many days in a row the garden has been tended.
 struct GardenGrowthCard: View {
   let greeting: GardenGreeting
   let growth: GardenGrowth
-  /// Consecutive practice days; 0 hides the streak line entirely — a fresh
-  /// garden shouldn't open with a zero.
+  /// Consecutive practice days; 0 hides the streak entirely — a fresh garden
+  /// shouldn't open with a zero.
   var streakDays: Int = 0
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      HStack(alignment: .top, spacing: 12) {
-        VStack(alignment: .leading, spacing: 3) {
-          Text(greeting.salutation)
-            .font(DeepType.sectionTitle)
-            .foregroundStyle(.deepPlum)
-          Text(greeting.quote)
-            .font(DeepType.caption)
-            .foregroundStyle(.driftGrey)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-
-        GrowthPointsChip(points: growth.points)
-      }
+      salutation
 
       OakGrowthRow(growth: growth, streakDays: streakDays)
     }
     .padding(20)
     .frostedCard()
   }
-}
 
-/// The banked growth balance as a soft pill — what the oak has drunk so far.
-/// Silent to VoiceOver: the growth row's summary carries the figure instead.
-private struct GrowthPointsChip: View {
-  let points: Int
-
-  var body: some View {
-    HStack(spacing: 6) {
-      Image(systemName: "leaf.fill")
-        .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(GardenColor.fern)
-      Text(points.formatted())
-        .font(DeepType.caption.weight(.semibold))
+  /// The greeting takes the whole card width — nothing shares its line, so the
+  /// day's quote breaks where the sentence wants to rather than where a chip
+  /// in the corner forces it.
+  private var salutation: some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text(greeting.salutation)
+        .font(DeepType.sectionTitle)
         .foregroundStyle(.deepPlum)
-        .contentTransition(.numericText(value: Double(points)))
-        .monospacedDigit()
+      Text(greeting.quote)
+        .font(DeepType.caption)
+        .foregroundStyle(.driftGrey)
+        .fixedSize(horizontal: false, vertical: true)
     }
-    .padding(.horizontal, 12)
-    .padding(.vertical, 8)
-    .background {
-      Capsule()
-        .fill(.white.opacity(0.65))
-        .overlay(Capsule().strokeBorder(.white.opacity(0.4), lineWidth: 0.5))
-    }
-    .accessibilityHidden(true)
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
 /// The oak as it stands today: its portrait inside the growth halo, beside its
-/// name and, in one quiet line, the two facts that matter — number-forward
-/// tokens for the distance to the next form and the tending streak. One
-/// element to VoiceOver — the summary tells the whole story in a sentence.
+/// name and the two facts that matter, stacked one per line.
+///
+/// Each figure is tinted to the world it comes from — foliage green for what
+/// the oak has drunk, sunlight rose for the days that fed it — so it carries
+/// the colour of its own glyph. Only the numeral takes the tint; the words
+/// around it stay grey, which keeps the colour to a mark rather than a wash.
+///
+/// One element to VoiceOver — the summary tells the whole story in a sentence.
 private struct OakGrowthRow: View {
   let growth: GardenGrowth
   let streakDays: Int
@@ -81,13 +61,8 @@ private struct OakGrowthRow: View {
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
 
-        // Both facts share a line where the width allows — the sun glyph is
-        // all the separation they need — and stack on narrow widths or
-        // large type.
-        ViewThatFits(in: .horizontal) {
-          HStack(spacing: 14) { facts }
-          VStack(alignment: .leading, spacing: 5) { facts }
-        }
+        growthFact
+        if streakDays > 0 { streakFact }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -96,59 +71,71 @@ private struct OakGrowthRow: View {
     .accessibilityLabel(summary)
   }
 
-  @ViewBuilder private var facts: some View {
-    distanceFact
-    if streakDays > 0 { streakFact }
+  /// How far the next form is, as banked over goal — the figure the halo shows
+  /// as an arc, said precisely. The next form is named but never pictured.
+  private var growthFact: some View {
+    fact(symbol: "leaf.fill", tint: GardenColor.fern) {
+      figures
+        .contentTransition(.numericText())
+        .monospacedDigit()
+        .fixedSize(horizontal: false, vertical: true)
+    }
   }
 
-  /// How far the next form is — always the points still to grow, never a
-  /// banked-of-goal fraction; growth is a journey, not a scoreboard.
-  private var distanceFact: some View {
-    Group {
-      if let next = growth.nextStage, let remaining = growth.pointsRemaining {
-        Text("\(remaining)")
-          .font(DeepType.caption.weight(.semibold))
-          .foregroundStyle(.deepPlum)
-        + Text(" to \(next.displayName)")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-      } else {
-        Text("Fully grown")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-      }
+  private var figures: Text {
+    guard let next = growth.nextStage, let goal = growth.pointsToEvolve else {
+      return Text("Fully grown")
+        .font(DeepType.caption)
+        .foregroundStyle(GardenColor.fern)
     }
-    .contentTransition(.numericText())
-    .monospacedDigit()
+    return Text(growth.points.formatted())
+      .font(DeepType.caption.weight(.semibold))
+      .foregroundStyle(GardenColor.fern)
+      + Text("/\(goal.formatted()) to \(next.displayName)")
+        .font(DeepType.caption)
+        .foregroundStyle(.driftGrey)
   }
 
   private var streakFact: some View {
-    HStack(spacing: 5) {
-      Image(systemName: "sun.max.fill")
-        .font(.system(size: 11, weight: .medium))
-        .foregroundStyle(.duskRose.opacity(0.75))
+    fact(symbol: "sun.max.fill", tint: .duskRose.opacity(0.8)) {
       (
-        Text("\(streakDays)")
+        Text(streakDays.formatted())
           .font(DeepType.caption.weight(.semibold))
-          .foregroundStyle(.deepPlum)
-        + Text(streakDays == 1 ? " day" : " days")
+          .foregroundStyle(.duskRose)
+        + Text(streakDays == 1 ? " day in a row" : " days in a row")
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
       )
       .contentTransition(.numericText(value: Double(streakDays)))
       .monospacedDigit()
+      .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  /// The app's glyph-and-numeral fact, bare on the frost. The glyph and the
+  /// figure it introduces share a colour, so the pair reads as one mark.
+  private func fact<Label: View>(
+    symbol: String,
+    tint: Color,
+    @ViewBuilder label: () -> Label
+  ) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 5) {
+      Image(systemName: symbol)
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(tint)
+      label()
     }
   }
 
   private var summary: String {
     var parts = [growth.stage.displayName]
-    if let next = growth.nextStage, let remaining = growth.pointsRemaining {
-      parts.append("\(growth.points) growth points, \(remaining) more to \(next.displayName)")
+    if let next = growth.nextStage, let goal = growth.pointsToEvolve {
+      parts.append("\(growth.points) of \(goal) growth points to \(next.displayName)")
     } else {
-      parts.append("fully grown, \(growth.points) growth points")
+      parts.append("fully grown")
     }
     if streakDays > 0 {
-      parts.append(streakDays == 1 ? "1 day streak" : "\(streakDays) day streak")
+      parts.append(streakDays == 1 ? "1 day in a row" : "\(streakDays) days in a row")
     }
     return parts.joined(separator: ", ")
   }
@@ -159,6 +146,11 @@ private struct OakGrowthRow: View {
 /// vignette melts the white edge into the frost so it doesn't sit like a
 /// sticker. The halo fills with the `.exhale` motion as growth points bank,
 /// and once the ring closes it settles into a gentle glow.
+///
+/// The arc glows into the card rather than sitting on it — a blurred, dimmed
+/// copy of itself underneath, the same bloom `CompassionRing` gives every other
+/// ring in the app — and the track it rides is `meadow`, so the distance still
+/// to go reads as green rather than as an absence.
 private struct OakGrowthHalo: View {
   let stage: OakStage
   /// 0...1 fraction toward the next form; 1 once fully grown.
@@ -183,20 +175,27 @@ private struct OakGrowthHalo: View {
   private var halo: some View {
     ZStack {
       Circle()
-        .stroke(GardenColor.sage.opacity(0.18), lineWidth: ringWidth)
-      Circle()
-        .trim(from: 0, to: min(1, max(0, progress)))
-        .stroke(
-          LinearGradient(
-            colors: [GardenColor.sage, GardenColor.fern],
-            startPoint: .topLeading, endPoint: .bottomTrailing
-          ),
-          style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
-        )
-        .rotationEffect(.degrees(-90))
+        .stroke(GardenColor.meadow.opacity(0.55), lineWidth: ringWidth)
+      arc
+        .blur(radius: ringWidth * 0.6)
+        .opacity(0.5)
+      arc
         .shadow(color: isComplete ? GardenColor.fern.opacity(0.3) : .clear, radius: 6)
     }
     .padding(ringWidth / 2)
+  }
+
+  private var arc: some View {
+    Circle()
+      .trim(from: 0, to: min(1, max(0, progress)))
+      .stroke(
+        LinearGradient(
+          colors: [GardenColor.sage, GardenColor.fern],
+          startPoint: .topLeading, endPoint: .bottomTrailing
+        ),
+        style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
+      )
+      .rotationEffect(.degrees(-90))
   }
 
   private var portrait: some View {
@@ -235,6 +234,14 @@ private struct OakGrowthHalo: View {
   }
 }
 
+#Preview("Growth — first day") {
+  ZStack {
+    AtmosphereBackground()
+    GardenGrowthCard(greeting: .sample, growth: .sprouting, streakDays: 1)
+      .padding(.edge)
+  }
+}
+
 #Preview("Growth — fully grown") {
   ZStack {
     AtmosphereBackground()
@@ -249,4 +256,13 @@ private struct OakGrowthHalo: View {
     GardenGrowthCard(greeting: .sample, growth: .sample, streakDays: 365)
       .frame(width: 335)
   }
+}
+
+#Preview("Growth — large type") {
+  ZStack {
+    AtmosphereBackground()
+    GardenGrowthCard(greeting: .sample, growth: .sample, streakDays: 12)
+      .padding(.edge)
+  }
+  .environment(\.dynamicTypeSize, .accessibility2)
 }
