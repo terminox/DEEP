@@ -78,7 +78,6 @@ struct MindGardenHomeView: View {
             GardenGrowthCard(
               greeting: greeting,
               growth: growth,
-              streakDays: state.streakDays,
               onChangePlant: openPlantPicker
             )
             .padding(.horizontal, .edge)

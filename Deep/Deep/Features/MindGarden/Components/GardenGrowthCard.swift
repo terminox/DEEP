@@ -3,15 +3,11 @@ import SwiftUI
 /// The garden's opening card — a greeting over the plant itself: only the
 /// current form, held in a halo that closes as sunlight banks. The next form is
 /// named, never shown — evolving stays something to look forward to — and
-/// beside the name sit the two facts that matter, each on ground of its own
-/// colour: how far the next form is, and how many days in a row the garden has
-/// been tended.
+/// beside the name sits the one fact that matters: how much sunlight still
+/// stands between this plant and what it becomes next.
 struct GardenGrowthCard: View {
   let greeting: GardenGreeting
   let growth: GardenGrowth
-  /// Consecutive practice days; 0 hides the streak entirely — a fresh garden
-  /// shouldn't open with a zero.
-  var streakDays: Int = 0
   /// When set, a whisper of a "Change" affordance sits under the plant's name
   /// — the way into the plant picker. Nil (previews, fixtures) hides it.
   var onChangePlant: (() -> Void)? = nil
@@ -20,7 +16,7 @@ struct GardenGrowthCard: View {
     VStack(alignment: .leading, spacing: 16) {
       salutation
 
-      PlantGrowthRow(growth: growth, streakDays: streakDays, onChangePlant: onChangePlant)
+      PlantGrowthRow(growth: growth, onChangePlant: onChangePlant)
     }
     .padding(20)
     .frostedCard()
@@ -44,17 +40,17 @@ struct GardenGrowthCard: View {
 }
 
 /// The plant as it stands today: its portrait inside the growth halo, beside
-/// its name and the two facts that matter, stacked one per line.
+/// its name and the sunlight it still owes its next form.
 ///
-/// Each figure is tinted to the world it comes from — foliage green for what
-/// the plant has drunk, sunlight rose for the days that fed it — so it carries
-/// the colour of its own glyph. Only the numeral takes the tint; the words
-/// around it stay grey, which keeps the colour to a mark rather than a wash.
+/// The fact is tinted to what it counts — `sunbeam` gold for sunlight, the
+/// thing the plant drinks — so its glyph and its figure read as one mark. Green
+/// stays the plant's own colour, kept for the halo. Only the numeral takes the
+/// tint; the words around it stay grey, which keeps the colour to a mark rather
+/// than a wash.
 ///
 /// One element to VoiceOver — the summary tells the whole story in a sentence.
 private struct PlantGrowthRow: View {
   let growth: GardenGrowth
-  let streakDays: Int
   var onChangePlant: (() -> Void)? = nil
 
   var body: some View {
@@ -70,8 +66,7 @@ private struct PlantGrowthRow: View {
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
 
-        growthFact
-        if streakDays > 0 { streakFact }
+        sunlightFact
         if onChangePlant != nil { changeAffordance }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -107,45 +102,30 @@ private struct PlantGrowthRow: View {
     }
   }
 
-  /// How far the next form is, as banked over goal — the figure the halo shows
-  /// as an arc, said precisely. The next form is named but never pictured.
-  private var growthFact: some View {
-    fact(symbol: "leaf.fill", tint: GardenColor.fern) {
-      figures
+  /// How far the next form is, as sunlight banked over goal — the figure the
+  /// halo shows as an arc, said precisely. The next form is named but never
+  /// pictured.
+  private var sunlightFact: some View {
+    fact(symbol: "sun.max.fill", tint: GardenColor.sunbeam) {
+      sunlightFigures
         .contentTransition(.numericText())
         .monospacedDigit()
         .fixedSize(horizontal: false, vertical: true)
     }
   }
 
-  private var figures: Text {
-    guard let next = growth.nextStage, let goal = growth.pointsToEvolve else {
+  private var sunlightFigures: Text {
+    guard let next = growth.nextStage, let goal = growth.sunlightToEvolve else {
       return Text("Fully grown")
         .font(DeepType.caption)
-        .foregroundStyle(GardenColor.fern)
+        .foregroundStyle(GardenColor.sunbeam)
     }
     return Text(growth.sunlight.formatted())
       .font(DeepType.caption.weight(.semibold))
-      .foregroundStyle(GardenColor.fern)
+      .foregroundStyle(GardenColor.sunbeam)
       + Text("/\(goal.formatted()) to \(next.name)")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
-  }
-
-  private var streakFact: some View {
-    fact(symbol: "sun.max.fill", tint: .duskRose.opacity(0.8)) {
-      (
-        Text(streakDays.formatted())
-          .font(DeepType.caption.weight(.semibold))
-          .foregroundStyle(.duskRose)
-        + Text(streakDays == 1 ? " day in a row" : " days in a row")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-      )
-      .contentTransition(.numericText(value: Double(streakDays)))
-      .monospacedDigit()
-      .fixedSize(horizontal: false, vertical: true)
-    }
   }
 
   /// The app's glyph-and-numeral fact, bare on the frost. The glyph and the
@@ -164,16 +144,10 @@ private struct PlantGrowthRow: View {
   }
 
   private var summary: String {
-    var parts = [growth.stage.name]
-    if let next = growth.nextStage, let goal = growth.pointsToEvolve {
-      parts.append("\(growth.sunlight) of \(goal) sunlight to \(next.name)")
-    } else {
-      parts.append("fully grown")
+    guard let next = growth.nextStage, let goal = growth.sunlightToEvolve else {
+      return "\(growth.stage.name), fully grown"
     }
-    if streakDays > 0 {
-      parts.append(streakDays == 1 ? "1 day in a row" : "\(streakDays) days in a row")
-    }
-    return parts.joined(separator: ", ")
+    return "\(growth.stage.name), \(growth.sunlight) of \(goal) sunlight to \(next.name)"
   }
 }
 
@@ -187,7 +161,8 @@ private struct PlantGrowthRow: View {
 /// The arc glows into the card rather than sitting on it — a blurred, dimmed
 /// copy of itself underneath, the same bloom `CompassionRing` gives every other
 /// ring in the app — and the track it rides is `meadow`, so the distance still
-/// to go reads as green rather than as an absence.
+/// to go reads as green rather than as an absence. The ring is the plant, so it
+/// stays green; the gold beside it belongs to the sunlight that fills it.
 private struct PlantGrowthHalo: View {
   let stage: PlantStage
   let palette: ArtworkPalette
@@ -262,7 +237,7 @@ private struct PlantGrowthHalo: View {
 #Preview("Growth — sample") {
   ZStack {
     AtmosphereBackground()
-    GardenGrowthCard(greeting: .sample, growth: .sample, streakDays: 12)
+    GardenGrowthCard(greeting: .sample, growth: .sample)
       .padding(.edge)
   }
 }
@@ -270,7 +245,7 @@ private struct PlantGrowthHalo: View {
 #Preview("Growth — change affordance") {
   ZStack {
     AtmosphereBackground()
-    GardenGrowthCard(greeting: .sample, growth: .sample, streakDays: 12, onChangePlant: {})
+    GardenGrowthCard(greeting: .sample, growth: .sample, onChangePlant: {})
       .padding(.edge)
   }
 }
@@ -278,15 +253,7 @@ private struct PlantGrowthHalo: View {
 #Preview("Growth — fresh") {
   ZStack {
     AtmosphereBackground()
-    GardenGrowthCard(greeting: .sample, growth: .sprouting, streakDays: 0)
-      .padding(.edge)
-  }
-}
-
-#Preview("Growth — first day") {
-  ZStack {
-    AtmosphereBackground()
-    GardenGrowthCard(greeting: .sample, growth: .sprouting, streakDays: 1)
+    GardenGrowthCard(greeting: .sample, growth: .sprouting)
       .padding(.edge)
   }
 }
@@ -294,7 +261,7 @@ private struct PlantGrowthHalo: View {
 #Preview("Growth — fully grown") {
   ZStack {
     AtmosphereBackground()
-    GardenGrowthCard(greeting: .evening, growth: .fullyGrown, streakDays: 30)
+    GardenGrowthCard(greeting: .evening, growth: .fullyGrown)
       .padding(.edge)
   }
 }
@@ -302,7 +269,7 @@ private struct PlantGrowthHalo: View {
 #Preview("Growth — narrow") {
   ZStack {
     AtmosphereBackground()
-    GardenGrowthCard(greeting: .sample, growth: .sample, streakDays: 365)
+    GardenGrowthCard(greeting: .sample, growth: .sample)
       .frame(width: 335)
   }
 }
@@ -310,7 +277,7 @@ private struct PlantGrowthHalo: View {
 #Preview("Growth — large type") {
   ZStack {
     AtmosphereBackground()
-    GardenGrowthCard(greeting: .sample, growth: .sample, streakDays: 12)
+    GardenGrowthCard(greeting: .sample, growth: .sample)
       .padding(.edge)
   }
   .environment(\.dynamicTypeSize, .accessibility2)

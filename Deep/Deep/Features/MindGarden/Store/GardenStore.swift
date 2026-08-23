@@ -127,11 +127,11 @@ final class GardenStore {
 
   /// Optimistic credit the moment a practice completes — the halo ticks
   /// instantly; the practice sync's absolute figures reconcile it.
-  func creditSunlight(_ points: Int = 1) {
-    guard points > 0, let plant else { return }
+  func creditSunlight(_ amount: Int = 1) {
+    guard amount > 0, let plant else { return }
     withAnimation(.exhale) {
-      sunlight += points
-      sunlightByPlant[plant.id, default: 0] += points
+      sunlight += amount
+      sunlightByPlant[plant.id, default: 0] += amount
     }
     persist()
   }

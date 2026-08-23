@@ -39,7 +39,7 @@ struct GardenGrowth: Equatable {
 
   /// Cumulative sunlight the next form asks for — the card's denominator in
   /// "X/Y to <next form>". `nil` once fully grown.
-  var pointsToEvolve: Int? { nextStage?.threshold }
+  var sunlightToEvolve: Int? { nextStage?.threshold }
 
   /// Fraction of the way through the CURRENT stage, clamped to 0...1 — the
   /// halo's arc. A fully grown plant reads as complete.
