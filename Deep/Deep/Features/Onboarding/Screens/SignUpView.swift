@@ -6,6 +6,7 @@ import SwiftUI
 /// a gentle invitation, never a wall.
 struct SignUpView: View {
   @Environment(\.accountStore) private var accountStore
+  @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.onboardingAdvance) private var advance
 
   @State private var name = ""
@@ -117,6 +118,17 @@ struct SignUpView: View {
       async let floor: Void? = try? Task.sleep(for: .breatheFloor)
       do {
         try await accountStore.signUp(name: trimmedName, email: email, password: password)
+        // A brand-new account cannot have completed onboarding — but a stale
+        // local flag (left by a previous account on this install) would open
+        // `AppRootView`'s gate the instant the account lands, unmounting this
+        // flow before the crafting space can sync the answers (its cancelled
+        // task would skip the PUT entirely). Re-assert the gathered answers
+        // with `completed: false` so the crafting beat always runs and syncs.
+        onboardingStore.hydrate(
+          quizAnswers: onboardingStore.state.quizAnswers,
+          mindTree: onboardingStore.state.mindTree,
+          completed: false
+        )
         // Awaited before advancing: routing on would cut the beat short.
         _ = await floor
         advance(.craftingSpace)

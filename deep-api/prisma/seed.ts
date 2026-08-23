@@ -1,8 +1,9 @@
 // Seeds the DB with the content the iOS app used to hardcode:
 //  - Deep Sound: 5 categories -> collections -> tracks (from SoundLibrary.swift)
-//  - Onboarding config: 2 quiz questions + 4 mind trees (from the iOS fixtures)
+//  - Onboarding config: 2 quiz questions + 4 plants with growth stages (from the iOS fixtures)
 //  - A couple of multi-language lyrics to exercise the lyrics feature
-// Idempotent: wipes content tables and re-inserts. Users/sessions are untouched.
+// Idempotent: wipes content tables and re-inserts. Plants/stages are upserted by
+// id, not wiped (user progress + selection FK them). Users/sessions are untouched.
 import fs from "node:fs";
 import path from "node:path";
 import { PrismaClient, type TrackKind } from "@prisma/client";
@@ -327,7 +328,28 @@ const QUESTIONS = [
   },
 ];
 
-const MIND_TREES = [
+interface SeedPlantStage {
+  id: string;
+  name: string;
+  sunlightRequired: number;
+  mascotPath?: string;
+  mascotBgPath?: string;
+  heroVideoPath?: string;
+}
+interface SeedPlant {
+  id: string;
+  name: string;
+  tagline: string;
+  palette: string;
+  imageUrl: string;
+  stages: SeedPlantStage[];
+}
+
+// Real, admin-editable growth stages for oak (cumulative sunlight thresholds
+// mirror the iOS fixtures: Seedling/Young/Mature at 0/200/700). The other
+// three plants get placeholder stages with null assets and varying stage
+// counts, so the picker/detail UIs exercise more than one shape.
+const PLANTS: SeedPlant[] = [
   {
     id: "oak",
     name: "Oak",
@@ -335,6 +357,27 @@ const MIND_TREES = [
     palette: "tide",
     imageUrl:
       "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=800&q=80&fm=jpg&fit=crop",
+    stages: [
+      {
+        id: "oak-stage-0",
+        name: "Seedling",
+        sunlightRequired: 0,
+        mascotPath: "/media/garden/images/oak-seedling.png",
+      },
+      {
+        id: "oak-stage-1",
+        name: "Young Oak",
+        sunlightRequired: 200,
+        mascotPath: "/media/garden/images/oak-young.png",
+      },
+      {
+        id: "oak-stage-2",
+        name: "Mature Oak",
+        sunlightRequired: 700,
+        mascotPath: "/media/garden/images/oak-mature.png",
+        heroVideoPath: "/media/garden/videos/oak-mature.mp4",
+      },
+    ],
   },
   {
     id: "sakura",
@@ -343,6 +386,12 @@ const MIND_TREES = [
     palette: "bloom",
     imageUrl:
       "https://images.unsplash.com/photo-1522383225653-ed111181a951?w=800&q=80&fm=jpg&fit=crop",
+    stages: [
+      { id: "sakura-stage-0", name: "Bud", sunlightRequired: 0 },
+      { id: "sakura-stage-1", name: "Budding Branch", sunlightRequired: 150 },
+      { id: "sakura-stage-2", name: "Blossoming", sunlightRequired: 400 },
+      { id: "sakura-stage-3", name: "Full Bloom", sunlightRequired: 900 },
+    ],
   },
   {
     id: "lotus",
@@ -351,6 +400,11 @@ const MIND_TREES = [
     palette: "mist",
     imageUrl:
       "https://images.unsplash.com/photo-1474557157379-8aa74a6ef541?w=800&q=80&fm=jpg&fit=crop",
+    stages: [
+      { id: "lotus-stage-0", name: "Seed", sunlightRequired: 0 },
+      { id: "lotus-stage-1", name: "Rising Stem", sunlightRequired: 250 },
+      { id: "lotus-stage-2", name: "Open Lotus", sunlightRequired: 650 },
+    ],
   },
   {
     id: "orange",
@@ -359,6 +413,11 @@ const MIND_TREES = [
     palette: "ember",
     imageUrl:
       "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Bitter_orange_-_Citrus_%C3%97_aurantium_03.jpg/500px-Bitter_orange_-_Citrus_%C3%97_aurantium_03.jpg",
+    stages: [
+      { id: "orange-stage-0", name: "Sprout", sunlightRequired: 0 },
+      { id: "orange-stage-1", name: "Sapling", sunlightRequired: 300 },
+      { id: "orange-stage-2", name: "Fruit-Bearing", sunlightRequired: 800 },
+    ],
   },
 ];
 
@@ -371,6 +430,24 @@ async function main() {
     }
   }
 
+  // The oak stages below point at real garden assets; everything else is a
+  // null-asset placeholder. Fail fast if those weren't copied in yet.
+  const gardenImagesDir = path.resolve("media/garden/images");
+  const gardenVideosDir = path.resolve("media/garden/videos");
+  const OAK_MEDIA_FILES = [
+    path.join(gardenImagesDir, "oak-seedling.png"),
+    path.join(gardenImagesDir, "oak-young.png"),
+    path.join(gardenImagesDir, "oak-mature.png"),
+    path.join(gardenVideosDir, "oak-mature.mp4"),
+  ];
+  for (const file of OAK_MEDIA_FILES) {
+    if (!fs.existsSync(file)) {
+      throw new Error(
+        `Missing garden asset: ${file} — run \`npm run seed:assets\` to copy the oak Mind Garden assets into media/garden/ first.`,
+      );
+    }
+  }
+
   // Wipe content (cascades to collections/tracks/lyrics + options).
   await prisma.trackLyrics.deleteMany();
   await prisma.soundTrack.deleteMany();
@@ -378,7 +455,8 @@ async function main() {
   await prisma.soundCategory.deleteMany();
   await prisma.quizOption.deleteMany();
   await prisma.quizQuestion.deleteMany();
-  await prisma.mindTree.deleteMany();
+  // Plants are upserted, not wiped: user progress FKs (Restrict) and selected
+  // plants point at these rows.
   await prisma.pauseWelcomeMessage.deleteMany();
   await prisma.pauseIntentionOption.deleteMany();
   await prisma.peaceMessage.deleteMany();
@@ -401,8 +479,34 @@ async function main() {
       },
     });
   }
-  for (const [i, t] of MIND_TREES.entries()) {
-    await prisma.mindTree.create({ data: { ...t, displayOrder: i } });
+  for (const [i, p] of PLANTS.entries()) {
+    const { stages, ...plantFields } = p;
+    const data = { ...plantFields, displayOrder: i, isDefault: true, isActive: true };
+    await prisma.plant.upsert({ where: { id: p.id }, update: data, create: data });
+
+    const seededStageIds: string[] = [];
+    for (const [si, s] of stages.entries()) {
+      const stageData = {
+        plantId: p.id,
+        name: s.name,
+        displayOrder: si,
+        sunlightRequired: s.sunlightRequired,
+        mascotPath: s.mascotPath ?? null,
+        mascotBgPath: s.mascotBgPath ?? null,
+        heroVideoPath: s.heroVideoPath ?? null,
+      };
+      await prisma.plantStage.upsert({
+        where: { id: s.id },
+        update: stageData,
+        create: { id: s.id, ...stageData },
+      });
+      seededStageIds.push(s.id);
+    }
+    // Drop stray stages from a previous seed shape (e.g. a shrunk stage
+    // count) without touching other plants' stages.
+    await prisma.plantStage.deleteMany({
+      where: { plantId: p.id, id: { notIn: seededStageIds } },
+    });
   }
 
   // Deep Sound
@@ -602,7 +706,8 @@ async function main() {
     collections: await prisma.soundCollection.count(),
     tracks: await prisma.soundTrack.count(),
     questions: await prisma.quizQuestion.count(),
-    mindTrees: await prisma.mindTree.count(),
+    plants: await prisma.plant.count(),
+    plantStages: await prisma.plantStage.count(),
     welcomeMessages: await prisma.pauseWelcomeMessage.count(),
     intentions: await prisma.pauseIntentionOption.count(),
     peaceMessages: await prisma.peaceMessage.count(),

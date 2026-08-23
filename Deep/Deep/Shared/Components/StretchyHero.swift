@@ -15,6 +15,10 @@ struct StretchyHero: View {
     case video(resource: String)
     /// Asset-catalog still, filled edge to edge.
     case image(name: String)
+    /// Server-hosted looping video: the poster paints first, footage
+    /// cross-fades in when ready and is cached for the next launch. A nil
+    /// `url` shows the poster alone; a nil poster falls back to a gradient.
+    case remoteVideo(url: URL?, posterURL: URL?)
   }
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -79,6 +83,8 @@ struct StretchyHero: View {
       Image(name)
         .resizable()
         .scaledToFill()
+    case .remoteVideo(let url, let posterURL):
+      RemoteLoopingVideoView(url: url, posterURL: posterURL, isAnimating: !reduceMotion)
     }
   }
 
@@ -101,6 +107,21 @@ struct StretchyHero: View {
   }
   .ignoresSafeArea(edges: .top)
   .background { AtmosphereBackground() }
+}
+
+#Preview("Stretchy remote-video hero") {
+  ScrollView {
+    StretchyHero(
+      media: .remoteVideo(
+        url: Bundle.main.url(forResource: "deep_oak_mature", withExtension: "mp4"),
+        posterURL: nil
+      )
+    )
+    Color.clear.frame(height: 600)
+  }
+  .ignoresSafeArea(edges: .top)
+  .background { AtmosphereBackground() }
+  .environment(\.imageLoader, FixtureImageLoader())
 }
 
 #Preview("Stretchy image hero") {

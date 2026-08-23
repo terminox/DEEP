@@ -8,7 +8,7 @@ import Foundation
 private final class FailingPracticeRemote: PracticeRemote {
   struct RemoteFailure: Error {}
 
-  func upload(_ completions: [PracticeCompletion]) async throws -> [UUID] {
+  func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult {
     throw RemoteFailure()
   }
 
@@ -17,16 +17,18 @@ private final class FailingPracticeRemote: PracticeRemote {
   }
 }
 
-/// `PracticeRemote` that records what it was asked to upload and hands back
-/// a canned server log for `fetchAll`.
+/// `PracticeRemote` that records what it was asked to upload, optionally
+/// awards, and hands back a canned server log for `fetchAll`.
 @MainActor
 private final class RecordingPracticeRemote: PracticeRemote {
   private(set) var uploadedBatches: [[PracticeCompletion]] = []
   var canned: [PracticeCompletion] = []
+  /// Riding every accepted upload, when set — exercises the award sink.
+  var awards: AwardGrant?
 
-  func upload(_ completions: [PracticeCompletion]) async throws -> [UUID] {
+  func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult {
     uploadedBatches.append(completions)
-    return completions.map(\.id)
+    return PracticeSyncResult(synced: completions.map(\.id), awards: awards)
   }
 
   func fetchAll() async throws -> [PracticeCompletion] {
@@ -136,6 +138,59 @@ struct PracticeDefaultsStoreTests {
 
     #expect(store.completions.first?.isSynced == false)
     #expect(store.minutesToday == 1)
+  }
+
+  // MARK: - Award sink
+
+  @Test
+  func syncForwardsAwardsToSink() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    // Seeded as unsynced, so the refresh's push is the only upload in play —
+    // `recordCompletion`'s own background push never races the assertion.
+    let pending = PracticeCompletion(
+      id: UUID(), title: "Balancing breath", durationSeconds: 300,
+      completedAt: Self.now, isSynced: false
+    )
+    Self.seed([pending], in: defaults)
+
+    let grant = AwardGrant(hearts: 1, sunlight: 1, plantId: "oak", heartsBalance: 7, plantSunlight: 241)
+    let remote = RecordingPracticeRemote()
+    remote.awards = grant
+
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: remote, calendar: Self.calendar, now: { Self.now }
+    )
+    var received: [AwardGrant] = []
+    store.awardSink = { received.append($0) }
+
+    await store.refresh()
+    #expect(received == [grant])
+    #expect(store.completions.first?.isSynced == true)
+  }
+
+  @Test
+  func syncWithoutAwardsLeavesSinkUntouched() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let pending = PracticeCompletion(
+      id: UUID(), title: "Balancing breath", durationSeconds: 300,
+      completedAt: Self.now, isSynced: false
+    )
+    Self.seed([pending], in: defaults)
+
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: RecordingPracticeRemote(),
+      calendar: Self.calendar, now: { Self.now }
+    )
+    var received: [AwardGrant] = []
+    store.awardSink = { received.append($0) }
+
+    await store.refresh()
+    #expect(received.isEmpty)
+    #expect(store.completions.first?.isSynced == true)
   }
 
   // MARK: - Pull merge

@@ -25,13 +25,18 @@ function serializeProfile(p: {
 
 export async function onboardingRoutes(app: FastifyInstance) {
   // Public: the quiz questions + mind trees that drive the onboarding UI.
+  // "Mind trees" are the plant catalog's published, non-premium defaults —
+  // the key and field shape are unchanged, so old clients keep working.
   app.get("/onboarding/config", async () => {
     const [questions, trees] = await Promise.all([
       prisma.quizQuestion.findMany({
         orderBy: { displayOrder: "asc" },
         include: { options: true },
       }),
-      prisma.mindTree.findMany({ orderBy: { displayOrder: "asc" } }),
+      prisma.plant.findMany({
+        where: { isActive: true, isDefault: true, isPremium: false },
+        orderBy: { displayOrder: "asc" },
+      }),
     ]);
     return serializeOnboardingConfig(questions, trees);
   });
@@ -66,6 +71,36 @@ export async function onboardingRoutes(app: FastifyInstance) {
         ...(body.completed ? { completedAt: new Date() } : {}),
       },
     });
+
+    // The onboarding pick seeds the Mind Garden selection — but only when the
+    // user hasn't chosen a plant yet (the garden's own choice always wins) and
+    // the answer names a published, non-premium plant.
+    if (body.mindTree) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { selectedPlantId: true },
+      });
+      if (user && !user.selectedPlantId) {
+        const plant = await prisma.plant.findFirst({
+          where: { id: body.mindTree, isActive: true, isPremium: false },
+          select: { id: true },
+        });
+        if (plant) {
+          await prisma.$transaction([
+            prisma.user.update({
+              where: { id: userId },
+              data: { selectedPlantId: plant.id },
+            }),
+            prisma.userPlantProgress.upsert({
+              where: { userId_plantId: { userId, plantId: plant.id } },
+              create: { userId, plantId: plant.id },
+              update: {},
+            }),
+          ]);
+        }
+      }
+    }
+
     return serializeProfile(profile);
   });
 }

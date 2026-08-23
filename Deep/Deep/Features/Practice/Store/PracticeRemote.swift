@@ -1,20 +1,33 @@
 import Foundation
 
+/// What one sync settled: the ids the server accepted, plus the awards the
+/// newly-stored sessions earned — already folded into a single grant (deltas
+/// summed, absolutes from the wallet/plant snapshots). `awards` is nil when
+/// nothing was granted or an older server answered.
+struct PracticeSyncResult {
+  let synced: [UUID]
+  let awards: AwardGrant?
+}
+
 /// The backend seam for practice: offer completed sessions up, pull the full
 /// log back down. The store depends on this protocol so previews and tests run
 /// against `MockPracticeRemote`.
 protocol PracticeRemote: AnyObject {
-  /// Uploads completions and returns the ids the server has accepted.
-  func upload(_ completions: [PracticeCompletion]) async throws -> [UUID]
+  /// Uploads completions; the result carries the accepted ids and any awards.
+  func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult
   /// The server's whole log for the signed-in user, already marked synced.
   func fetchAll() async throws -> [PracticeCompletion]
 }
 
-/// Hermetic default for previews — accepts everything, remembers nothing.
+/// Hermetic default for previews — accepts everything, remembers nothing,
+/// awards nothing (unless a test sets `awards`).
 @MainActor
 final class MockPracticeRemote: PracticeRemote {
-  func upload(_ completions: [PracticeCompletion]) async throws -> [UUID] {
-    completions.map(\.id)
+  /// Handed back on every upload — tests set this to exercise the award sink.
+  var awards: AwardGrant?
+
+  func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult {
+    PracticeSyncResult(synced: completions.map(\.id), awards: awards)
   }
 
   func fetchAll() async throws -> [PracticeCompletion] { [] }
@@ -29,7 +42,7 @@ final class APIPracticeRemote: PracticeRemote {
     self.client = client
   }
 
-  func upload(_ completions: [PracticeCompletion]) async throws -> [UUID] {
+  func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult {
     let dto: PracticeSyncResponseDTO = try await client.request(
       "/me/practice/sessions",
       method: "POST",
@@ -42,7 +55,10 @@ final class APIPracticeRemote: PracticeRemote {
         )
       })
     )
-    return dto.synced.compactMap(UUID.init(uuidString:))
+    return PracticeSyncResult(
+      synced: dto.synced.compactMap(UUID.init(uuidString:)),
+      awards: AwardGrant(outcomes: dto.awards ?? [], wallet: dto.wallet, plant: dto.plant)
+    )
   }
 
   func fetchAll() async throws -> [PracticeCompletion] {

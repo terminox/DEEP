@@ -13,16 +13,33 @@ struct SendAHeartBar: View {
   @State private var burst = 0
 
   var body: some View {
-    Group {
-      if ledger.canGive {
-        sendButton
-      } else {
-        spentNote
+    VStack(spacing: 8) {
+      Group {
+        if ledger.canGive {
+          sendButton
+        } else {
+          spentNote
+        }
+      }
+      .animation(.exhale, value: ledger.canGive)
+
+      // A refused spend rolled back quietly; the next send clears the caption.
+      if let failure = ledger.spendFailure, failure.categoryID == category.id {
+        Text(rollbackLine(for: failure))
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
+          .transition(.opacity)
       }
     }
-    .animation(.exhale, value: ledger.canGive)
+    .animation(.settle, value: ledger.spendFailure)
     .padding(.horizontal, .edge)
     .padding(.bottom, 6)
+  }
+
+  private func rollbackLine(for failure: HeartLedger.SpendFailure) -> String {
+    failure.amount == 1
+      ? "That heart couldn't be sent — it's back in your balance."
+      : "Those \(failure.amount.formatted()) hearts couldn't be sent — they're back in your balance."
   }
 
   private var sendButton: some View {
@@ -88,6 +105,8 @@ struct SendAHeartBar: View {
       .environment(\.heartLedger, .sample)
     SendAHeartBar(category: CompassionLibrary.nature)
       .environment(\.heartLedger, .spent)
+    SendAHeartBar(category: CompassionLibrary.nature)
+      .environment(\.heartLedger, .sendRefused)
   }
   .padding(.bottom, .rhythm)
   .background { AtmosphereBackground() }

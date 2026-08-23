@@ -4,13 +4,17 @@ import SwiftUI
 /// Posting requires a signed-in account; the server also gates by phase, and
 /// both refusals surface as quiet inline notes rather than alerts.
 struct PeaceMessageComposer: View {
-  /// Performs the post; throws `APIError` on refusal.
-  var send: (String) async throws -> Void
+  /// Performs the post; throws `APIError` on refusal. Returns whether the
+  /// message earned an award (the first message of the night does), so the
+  /// sent-note can acknowledge the heart.
+  var send: (String) async throws -> Bool
 
   @State private var text = ""
   @State private var isSending = false
   @State private var note: String?
   @State private var sent = false
+  /// True when the sent message carried a granted award.
+  @State private var earnedHeart = false
 
   private let limit = 280
 
@@ -42,10 +46,14 @@ struct PeaceMessageComposer: View {
           .foregroundStyle(.driftGrey)
           .transition(.opacity)
       } else if sent {
-        Text("Sent to the world. Thank you.")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-          .transition(.opacity)
+        Text(
+          earnedHeart
+            ? "Sent to the world. A heart for your kindness."
+            : "Sent to the world. Thank you."
+        )
+        .font(DeepType.caption)
+        .foregroundStyle(.driftGrey)
+        .transition(.opacity)
       }
     }
     .animation(.settle, value: note)
@@ -92,7 +100,7 @@ struct PeaceMessageComposer: View {
     isSending = true
     defer { isSending = false }
     do {
-      try await send(trimmed)
+      earnedHeart = try await send(trimmed)
       text = ""
       sent = true
     } catch let error as APIError {
@@ -114,7 +122,8 @@ struct PeaceMessageComposer: View {
 
 #Preview("Composer") {
   VStack(spacing: 24) {
-    PeaceMessageComposer { _ in }
+    PeaceMessageComposer { _ in true }
+    PeaceMessageComposer { _ in false }
     PeaceMessageComposer { _ in throw APIError.unauthorized }
   }
   .padding(.edge)

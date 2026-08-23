@@ -13,6 +13,8 @@ struct ProfileView: View {
   @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.subscriptionStore) private var subscriptionStore
   @Environment(\.practiceStore) private var practiceStore
+  @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.heartLedger) private var heartLedger
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -230,10 +232,13 @@ struct ProfileView: View {
       await accountStore.logOut()
       // Resetting onboarding flips `hasCompletedOnboarding`, which `AppRootView`
       // observes — together with the now-signed-out state it crossfades back to
-      // the welcome flow. The practice journal belongs to the account, so it
-      // leaves with it.
+      // the welcome flow. The practice journal, garden, and wallet belong to
+      // the account, so they leave with it — a later sign-up must never open
+      // on this user's plants or balance.
       onboardingStore.reset()
       practiceStore.reset()
+      gardenStore.resetLocalState()
+      heartLedger.resetLocalState()
     }
   }
 
@@ -246,6 +251,8 @@ struct ProfileView: View {
         // the in-flight state never needs resetting on success.
         onboardingStore.reset()
         practiceStore.reset()
+        gardenStore.resetLocalState()
+        heartLedger.resetLocalState()
       } catch {
         isDeletingAccount = false
         deleteFailed = true

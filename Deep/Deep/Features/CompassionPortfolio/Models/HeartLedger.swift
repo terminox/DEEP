@@ -11,7 +11,15 @@ import SwiftUI
 final class HeartLedger {
   /// The most hearts one day of practice can hand you. A ceiling, not a target:
   /// the day fills up and then rests, so practice never turns into farming.
+  /// Mirrors the server's daily cap.
   static let dailyEarnCeiling = 30
+
+  /// A spend the server refused after the optimistic decrement had already
+  /// played — the rollback's quiet caption reads it.
+  struct SpendFailure: Equatable {
+    let amount: Int
+    let categoryID: String
+  }
 
   /// Hearts the user currently holds, earned through practice in the app.
   private(set) var balance: Int
@@ -20,13 +28,24 @@ final class HeartLedger {
   private(set) var categories: [CompassionCategory]
   let reports: [FieldReport]
 
+  /// Set when a spend was rolled back; cleared by the next send or explicitly.
+  private(set) var spendFailure: SpendFailure?
+
+  /// The backend seam for real spends. Nil for fixtures, whose sends stay
+  /// purely local — exactly the old behaviour.
+  @ObservationIgnored private let remote: (any RewardsRemote)?
+  /// The most recent spend's round trip — tests await it to make the
+  /// reconcile/rollback deterministic.
+  @ObservationIgnored private(set) var pendingSpend: Task<Void, Never>?
+
   init(
     balance: Int,
     heartsGiven: Int = 0,
     heartsEarnedToday: Int = 0,
     givenByUser: [String: Int] = [:],
     categories: [CompassionCategory] = CompassionLibrary.categories,
-    reports: [FieldReport] = CompassionLibrary.reports
+    reports: [FieldReport] = CompassionLibrary.reports,
+    remote: (any RewardsRemote)? = nil
   ) {
     self.balance = balance
     self.heartsGiven = heartsGiven
@@ -35,6 +54,13 @@ final class HeartLedger {
     self.givenByUser = givenByUser
     self.categories = categories
     self.reports = reports
+    self.remote = remote
+  }
+
+  /// The live ledger: starts empty and is hydrated by the first garden/wallet
+  /// fetch — no more 2,450-heart fixture on launch.
+  convenience init(remote: any RewardsRemote) {
+    self.init(balance: 0, remote: remote)
   }
 
   /// Whether the user has a heart left to give.
@@ -123,21 +149,133 @@ final class HeartLedger {
   /// everything that's left rather than failing; a member who types past what
   /// they hold gets the generous reading of what they meant. Animated so the
   /// balance and pooled totals settle together.
+  ///
+  /// Optimistic: the local books move immediately, then the spend goes to the
+  /// server under a client-generated idempotency UUID. Success reconciles the
+  /// balance to the server's absolute figures; refusal (`insufficient_hearts`,
+  /// or any failure) rolls the whole mutation back and leaves a quiet
+  /// `spendFailure` for the caption. Without a remote (fixtures, previews) the
+  /// send stays purely local.
   func send(_ hearts: Int, to category: CompassionCategory, project: CompassionProject? = nil) {
     let amount = Swift.min(hearts, balance)
     guard amount > 0 else { return }
     guard let index = categories.firstIndex(where: { $0.id == category.id }) else { return }
 
+    let projectID = project?.id
+    spendFailure = nil
     withAnimation(.exhale) {
       balance -= amount
       heartsGiven += amount
       categories[index].heartsShared += amount
       givenByUser[category.id, default: 0] += amount
 
-      if let project,
-         let projectIndex = categories[index].projects.firstIndex(where: { $0.id == project.id }) {
+      if let projectID,
+         let projectIndex = categories[index].projects.firstIndex(where: { $0.id == projectID }) {
         categories[index].projects[projectIndex].heartsShared += amount
       }
+    }
+
+    guard let remote else { return }
+    let spendID = UUID()
+    let categoryID = category.id
+    pendingSpend = Task { [weak self] in
+      do {
+        let summary = try await remote.spendHearts(
+          id: spendID, amount: amount, category: categoryID, projectId: projectID
+        )
+        self?.reconcile(with: summary)
+      } catch {
+        self?.rollback(amount, category: categoryID, projectID: projectID)
+      }
+    }
+  }
+
+  /// Adopts the server's absolute wallet figures — the garden fetch feeds this
+  /// through `GardenStore.heartsChanged`, and a settled spend reconciles here.
+  func hydrate(_ summary: HeartsSummary) {
+    withAnimation(.exhale) {
+      balance = summary.balance
+      heartsGiven = summary.given
+      earnedTally = min(summary.earnedToday, Self.dailyEarnCeiling)
+      tallyDay = .now
+      // Server truth for the per-cause spread; local optimistic sends are
+      // already reflected there once their POST has landed.
+      if !summary.givenByCategory.isEmpty || givenByUser.isEmpty {
+        givenByUser = summary.givenByCategory
+      }
+    }
+  }
+
+  /// Applies a settled award. Absolutes SET the balance and today's tally, so
+  /// the completion beat's optimistic `earn()` is reconciled rather than
+  /// double-counted; the delta path only serves responses without snapshots.
+  func apply(_ grant: AwardGrant) {
+    withAnimation(.exhale) {
+      if let balanceNow = grant.heartsBalance {
+        balance = balanceNow
+      } else if grant.hearts > 0 {
+        balance += grant.hearts
+      }
+      if let earnedToday = grant.heartsEarnedToday {
+        earnedTally = min(earnedToday, Self.dailyEarnCeiling)
+        tallyDay = .now
+      } else if grant.hearts > 0 {
+        if !Calendar.current.isDateInToday(tallyDay) {
+          tallyDay = .now
+          earnedTally = 0
+        }
+        earnedTally = min(earnedTally + grant.hearts, Self.dailyEarnCeiling)
+      }
+      if let given = grant.heartsGiven {
+        heartsGiven = given
+      }
+    }
+  }
+
+  /// Clears the rollback caption once it has been seen.
+  func clearSpendFailure() {
+    spendFailure = nil
+  }
+
+  /// Forgets the signed-out account's wallet, so the next account never sees a
+  /// previous user's balance while its first garden fetch is still in flight.
+  /// In-memory only (the ledger persists nothing); the community categories
+  /// stay — they are app content, not user state.
+  func resetLocalState() {
+    balance = 0
+    heartsGiven = 0
+    earnedTally = 0
+    tallyDay = .now
+    givenByUser = [:]
+    spendFailure = nil
+  }
+
+  /// A settled spend: the balance and given totals adopt the server's
+  /// absolutes (normally identical to the optimistic figures, so nothing
+  /// visibly moves).
+  private func reconcile(with summary: HeartsSummary) {
+    withAnimation(.exhale) {
+      balance = summary.balance
+      heartsGiven = summary.given
+      if !summary.givenByCategory.isEmpty {
+        givenByUser = summary.givenByCategory
+      }
+    }
+  }
+
+  /// Reverses one optimistic send after the server refused it.
+  private func rollback(_ amount: Int, category categoryID: String, projectID: String?) {
+    guard let index = categories.firstIndex(where: { $0.id == categoryID }) else { return }
+    withAnimation(.exhale) {
+      balance += amount
+      heartsGiven -= amount
+      categories[index].heartsShared -= amount
+      givenByUser[categoryID, default: 0] -= amount
+      if let projectID,
+         let projectIndex = categories[index].projects.firstIndex(where: { $0.id == projectID }) {
+        categories[index].projects[projectIndex].heartsShared -= amount
+      }
+      spendFailure = SpendFailure(amount: amount, categoryID: categoryID)
     }
   }
 
@@ -165,6 +303,14 @@ extension HeartLedger {
   /// A first-run portfolio: hearts to give, nothing given yet, the day untouched.
   static var fresh: HeartLedger {
     HeartLedger(balance: 120, heartsGiven: 0)
+  }
+
+  /// A portfolio whose last send the server refused and rolled back — the
+  /// quiet caption under the send/donate CTAs.
+  static var sendRefused: HeartLedger {
+    let ledger = sample
+    ledger.spendFailure = SpendFailure(amount: 1, categoryID: "nature")
+    return ledger
   }
 
   /// An emptied portfolio for testing the "no hearts left" state — and, with a

@@ -1,75 +1,64 @@
 import Foundation
 
-/// The oak's evolution ladder. Declaration order is growth order — each stage
-/// evolves into the next once enough growth points are banked.
-enum OakStage: Int, CaseIterable, Identifiable {
-  case seedling
-  case young
-  case mature
+/// A plant's growth, derived purely from `(plant, sunlight)` — no stored stage,
+/// no counter that resets. The stage is the last form on the ladder whose
+/// cumulative threshold the banked sunlight has reached; the card's fraction is
+/// the *cumulative* figure over the next threshold (so the number never resets
+/// on an evolution), and the halo's arc is the fraction of the way through the
+/// current stage alone.
+struct GardenGrowth: Equatable {
+  var plant: Plant
+  /// Total sunlight this plant has drunk over its whole life, across stages.
+  var sunlight: Int
 
-  var id: Int { rawValue }
-
-  /// The form this stage grows into, or `nil` once fully grown.
-  var next: OakStage? { OakStage(rawValue: rawValue + 1) }
-
-  var displayName: String {
-    switch self {
-    case .seedling: "Oak Seedling"
-    case .young: "Young Oak"
-    case .mature: "Mature Oak"
+  /// Index of the form the plant currently holds.
+  var stageIndex: Int {
+    var index = 0
+    for (offset, stage) in plant.stages.enumerated() where stage.threshold <= sunlight {
+      index = offset
     }
+    return index
   }
 
-  /// Asset-catalog image for this stage's artwork.
-  var imageName: String {
-    switch self {
-    case .seedling: "MindGardenOakSeedling"
-    case .young: "MindGardenOakYoung"
-    case .mature: "MindGardenOakMature"
-    }
+  /// The form the plant currently holds. A plant with no authored stages yet
+  /// reads as a bare seed rather than crashing the derivation.
+  var stage: PlantStage {
+    plant.stages.indices.contains(stageIndex)
+      ? plant.stages[stageIndex]
+      : PlantStage(id: "\(plant.id)-seed", name: plant.name, threshold: 0)
   }
 
-  /// Growth points needed to evolve out of this stage; `nil` once fully grown.
-  var pointsToEvolve: Int? {
-    switch self {
-    case .seedling: 200
-    case .young: 500
-    case .mature: nil
-    }
+  /// The form this plant grows into next — named by the card, never shown —
+  /// or `nil` once fully grown.
+  var nextStage: PlantStage? {
+    let next = stageIndex + 1
+    return plant.stages.indices.contains(next) ? plant.stages[next] : nil
   }
-}
 
-/// A snapshot of the selected plant's growth — which form it's in and the
-/// points banked toward the next evolution. Completed sessions will feed this;
-/// for now it's sample data only, not yet persisted.
-struct GardenGrowth {
-  var stage: OakStage
-  /// Points earned within the current stage.
-  var points: Int
-
-  var nextStage: OakStage? { stage.next }
-  var pointsToEvolve: Int? { stage.pointsToEvolve }
   var isFullyGrown: Bool { nextStage == nil }
 
-  /// Points still to grow before the next evolution; `nil` once fully grown.
-  var pointsRemaining: Int? {
-    pointsToEvolve.map { max(0, $0 - points) }
-  }
+  /// Cumulative sunlight the next form asks for — the card's denominator in
+  /// "X/Y to <next form>". `nil` once fully grown.
+  var pointsToEvolve: Int? { nextStage?.threshold }
 
-  /// Fraction of the way to the next evolution, clamped to 0...1.
-  /// A fully grown plant reads as complete.
+  /// Fraction of the way through the CURRENT stage, clamped to 0...1 — the
+  /// halo's arc. A fully grown plant reads as complete.
   var evolutionProgress: Double {
-    guard let goal = pointsToEvolve, goal > 0 else { return 1 }
-    return min(1, Double(points) / Double(goal))
+    guard let next = nextStage else { return 1 }
+    let base = stage.threshold
+    let span = next.threshold - base
+    guard span > 0 else { return 1 }
+    return min(1, max(0, Double(sunlight - base) / Double(span)))
   }
 }
 
 extension GardenGrowth {
-  static let sample = GardenGrowth(stage: .young, points: 240)
+  /// A mid-journey oak — Young, 240 banked toward the Mature form.
+  static let sample = GardenGrowth(plant: .oakFixture, sunlight: 240)
 
   /// A brand-new garden — the seed has just been planted.
-  static let sprouting = GardenGrowth(stage: .seedling, points: 0)
+  static let sprouting = GardenGrowth(plant: .oakFixture, sunlight: 0)
 
   /// The ceiling state: the oak has reached its final form.
-  static let fullyGrown = GardenGrowth(stage: .mature, points: 0)
+  static let fullyGrown = GardenGrowth(plant: .oakFixture, sunlight: 700)
 }
