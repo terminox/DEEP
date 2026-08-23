@@ -99,16 +99,19 @@ export async function grantAward(input: GrantAwardInput): Promise<AwardOutcome> 
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // Ensure the day's tally row exists, then lock it for the transaction.
-      await tx.dailyEarnTally.upsert({
-        where: { userId_dayKey: { userId, dayKey: tallyDayKey } },
-        create: { userId, dayKey: tallyDayKey },
-        update: {},
-      });
+      // Create-or-lock the day's tally row in ONE atomic statement. A Prisma
+      // upsert will not do: with an empty `update` it compiles to a
+      // find-then-insert, so two concurrent first-grants of the same user-day
+      // both insert and one dies on the primary key (losing its award).
+      // `ON CONFLICT DO UPDATE` resolves that race in the database AND takes
+      // the same row lock `FOR UPDATE` would — which is what serializes the
+      // rest of this transaction.
       const locked = await tx.$queryRaw<{ hearts: number }[]>`
-        SELECT "hearts" FROM "daily_earn_tallies"
-        WHERE "userId" = ${userId} AND "dayKey" = ${tallyDayKey}
-        FOR UPDATE
+        INSERT INTO "daily_earn_tallies" ("userId", "dayKey", "hearts", "sunlight")
+        VALUES (${userId}, ${tallyDayKey}, 0, 0)
+        ON CONFLICT ("userId", "dayKey") DO UPDATE
+          SET "hearts" = "daily_earn_tallies"."hearts"
+        RETURNING "hearts"
       `;
       const heartsTallyToday = locked[0]?.hearts ?? 0;
 
