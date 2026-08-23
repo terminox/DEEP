@@ -79,7 +79,7 @@ struct GardenStoreTests {
     let store = GardenStore(remote: MockRewardsRemote(), defaults: defaults)
     store.seed(plant: .oakFixture, sunlight: 240)
 
-    store.creditSunlight(1) // The completion beat's optimistic tick.
+    #expect(store.creditSunlight(1) == 1) // The completion beat's optimistic tick.
     #expect(store.sunlight == 241)
 
     store.apply(AwardGrant(hearts: 1, sunlight: 1, plantId: "oak", plantSunlight: 241))
@@ -107,7 +107,7 @@ struct GardenStoreTests {
     defer { defaults.removePersistentDomain(forName: name) }
 
     let store = GardenStore(remote: MockRewardsRemote(), defaults: defaults)
-    store.creditSunlight(1)
+    #expect(store.creditSunlight(1) == 0)
     #expect(store.sunlight == 0)
   }
 

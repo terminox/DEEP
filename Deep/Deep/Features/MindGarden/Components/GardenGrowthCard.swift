@@ -163,7 +163,7 @@ private struct PlantGrowthRow: View {
 /// ring in the app — and the track it rides is `meadow`, so the distance still
 /// to go reads as green rather than as an absence. The ring is the plant, so it
 /// stays green; the gold beside it belongs to the sunlight that fills it.
-private struct PlantGrowthHalo: View {
+struct PlantGrowthHalo: View {
   let stage: PlantStage
   let palette: ArtworkPalette
   /// 0...1 fraction toward the next form; 1 once fully grown.
