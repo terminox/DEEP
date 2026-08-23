@@ -29,14 +29,27 @@ model User {
   passwordHash String
   displayName  String
   role         Role     @default(USER)
+  // Last-seen IANA device timezone (from the X-Device-Timezone header),
+  // persisted opportunistically; the day-key fallback when the header is absent.
+  timezone     String?
+  // The plant currently receiving sunlight; lazily assigned on first award.
+  selectedPlantId String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  selectedPlant Plant? @relation("SelectedPlant", fields: [selectedPlantId], references: [id], onDelete: SetNull)
 
   sessions         AuthSession[]
   onboarding       OnboardingProfile?
   practiceSessions PracticeSession[]
   peaceMessages    PeaceMessage[]
   reflections      PauseReflection[]
+  plantProgress    UserPlantProgress[]
+  awards           Award[]
+  earnTallies      DailyEarnTally[]
+  wallet           UserWallet?
+  heartSpends      HeartSpend[]
+  pauseAttendances PauseAttendance[]
 
   @@map("users")
 }
@@ -104,15 +117,65 @@ model QuizOption {
   @@map("quiz_options")
 }
 
-model MindTree {
-  id           String @id
+// ---- Mind Garden plants (admin-managed catalog; was MindTree) ----
+
+// One growable plant. Keeps the string slug PK ("oak" | admin slug
+// /^[a-z0-9-]{2,32}$/) so onboarding answers and iOS ids carry over.
+model Plant {
+  id           String   @id
   name         String
   tagline      String
+  // Picker card art; relative /media/... path or absolute URL.
   imageUrl     String?
   palette      String
-  displayOrder Int    @default(0)
+  displayOrder Int      @default(0)
+  // Premium plants are hidden from ALL user-facing endpoints until premium ships.
+  isPremium    Boolean  @default(false)
+  // Shown in onboarding (multiple allowed).
+  isDefault    Boolean  @default(false)
+  // Publish switch so half-built plants never leak into the picker.
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@map("mind_trees")
+  stages       PlantStage[]
+  userProgress UserPlantProgress[]
+  selectedBy   User[]              @relation("SelectedPlant")
+
+  @@map("plants")
+}
+
+// One growth stage. sunlightRequired is the CUMULATIVE sunlight needed to
+// REACH the stage; the first stage (by displayOrder) must be 0.
+model PlantStage {
+  id               String  @id @default(uuid())
+  plantId          String
+  name             String
+  displayOrder     Int     @default(0)
+  sunlightRequired Int     @default(0)
+  // Relative media paths (/media/garden/...); served absolute to clients.
+  mascotPath       String?
+  mascotBgPath     String?
+  heroVideoPath    String?
+
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@index([plantId, displayOrder])
+  @@map("plant_stages")
+}
+
+// Per-plant persistent sunlight: switching plants pauses/resumes, never resets.
+model UserPlantProgress {
+  userId   String
+  plantId  String
+  sunlight Int    @default(0)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Restrict protects user progress; deleting a plant in use → 409 plant_in_use.
+  plant Plant @relation(fields: [plantId], references: [id], onDelete: Restrict)
+
+  @@id([userId, plantId])
+  @@map("user_plant_progress")
 }
 
 // ---- Deep Sound content ----
@@ -201,6 +264,86 @@ model PracticeSession {
   @@map("practice_sessions")
 }
 
+// ---- Hearts & sunlight rewards ----
+
+enum AwardKind {
+  SESSION_COMPLETED
+  TRACK_COMPLETED
+  PAUSE_ATTENDED
+  PEACE_MESSAGE
+  DAILY_CHECKIN
+}
+
+// Append-only award ledger; the unique constraint is the idempotency contract
+// (retries and sync replays land on the same row and grant nothing twice).
+model Award {
+  id        String    @id @default(uuid())
+  userId    String
+  kind      AwardKind
+  // User-local day the award counts against — or the Bangkok pauseDate for
+  // pause-family kinds.
+  dayKey    String
+  // sessionId | trackId | "" — empty string, NOT null (null breaks the unique).
+  sourceId  String    @default("")
+  // Granted amounts, stored separately per kind (they may diverge later).
+  hearts    Int
+  sunlight  Int
+  // The plant the sunlight was credited to (historical record; no FK on purpose
+  // so the ledger survives plant deletion).
+  plantId   String?
+  timezone  String
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, dayKey, sourceId])
+  @@index([userId, createdAt])
+  @@map("awards")
+}
+
+// Per-user-per-day earn counter: the 30-hearts/day cap lives here, and its row
+// lock (SELECT ... FOR UPDATE) serializes a user's concurrent grants.
+model DailyEarnTally {
+  userId   String
+  dayKey   String
+  hearts   Int    @default(0)
+  sunlight Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dayKey])
+  @@map("daily_earn_tallies")
+}
+
+// Spendable hearts balance; lazily upserted on first award/spend.
+model UserWallet {
+  userId        String @id
+  heartsBalance Int    @default(0)
+  heartsEarned  Int    @default(0)
+  heartsGiven   Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_wallets")
+}
+
+// One heart spend (send/donate). The id is CLIENT-generated so a retried
+// request lands on the same row instead of double-spending.
+model HeartSpend {
+  id        String   @id
+  userId    String
+  amount    Int
+  // Opaque client catalog strings (compassion category/project stay a fixture).
+  category  String
+  projectId String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("heart_spends")
+}
+
 // ---- Global Pause (the nightly synchronized event) ----
 
 enum PeaceMessageStatus {
@@ -283,4 +426,20 @@ model PauseReflection {
 
   @@unique([userId, pauseDate])
   @@map("pause_reflections")
+}
+
+// Durable "was present" record per user per night (live presence is
+// in-memory); feeds the attended-through-meditation award eligibility.
+model PauseAttendance {
+  id          String   @id @default(uuid())
+  userId      String
+  pauseDate   String
+  firstSeenAt DateTime
+  lastSeenAt  DateTime
+  beats       Int      @default(1)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pauseDate])
+  @@map("pause_attendances")
 }

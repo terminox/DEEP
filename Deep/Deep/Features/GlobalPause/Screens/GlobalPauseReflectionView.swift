@@ -12,6 +12,9 @@ struct GlobalPauseReflectionView: View {
   @State private var intentionSelection: Intention.ID?
   @State private var showMoodChips = false
   @State private var moodSelection: String?
+  /// Fires the award caption's heart bloom exactly once, whether the claim
+  /// settled before this screen appeared or lands while it's up.
+  @State private var awardBurst = 0
 
   private let moods: [Intention] = [
     Intention(key: "calm", label: "Calm"),
@@ -31,7 +34,8 @@ struct GlobalPauseReflectionView: View {
           header
 
           PeaceMessageComposer { text in
-            _ = try await session.post(message: text)
+            let posted = try await session.post(message: text)
+            return posted.award.map { $0.hearts > 0 || $0.sunlight > 0 } ?? false
           }
           .padding(.horizontal, .edge)
 
@@ -65,9 +69,38 @@ struct GlobalPauseReflectionView: View {
       Text("Carry tonight's calm with you.")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
+
+      if let line = awardLine {
+        Text(line)
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
+          .padding(.top, 4)
+          .heartBurst(trigger: awardBurst)
+          .transition(.opacity)
+      }
     }
     .padding(.horizontal, .edge)
     .padding(.top, 76)
+    .animation(.settle, value: awardLine)
+    .onAppear {
+      if awardLine != nil { awardBurst = 1 }
+    }
+    .onChange(of: session.pauseAward) { previous, settled in
+      guard previous == nil, settled != nil, awardLine != nil else { return }
+      awardBurst += 1
+    }
+  }
+
+  /// The attendance award, said once and quietly — the actual granted figures,
+  /// e.g. "+5 hearts · +5 sunlight for pausing with the world". Nil until a
+  /// grant lands (an ineligible night simply never says anything).
+  private var awardLine: String? {
+    guard let award = session.pauseAward else { return nil }
+    var parts: [String] = []
+    if award.hearts > 0 { parts.append("+\(award.hearts) hearts") }
+    if award.sunlight > 0 { parts.append("+\(award.sunlight) sunlight") }
+    guard !parts.isEmpty else { return nil }
+    return parts.joined(separator: " · ") + " for pausing with the world"
   }
 
   @ViewBuilder
@@ -126,4 +159,9 @@ struct GlobalPauseReflectionView: View {
 #Preview("Reflection") {
   GlobalPauseReflectionView(onDone: {})
     .environment(\.globalPauseSession, .preview())
+}
+
+#Preview("Reflection — awarded") {
+  GlobalPauseReflectionView(onDone: {})
+    .environment(\.globalPauseSession, .previewAwarded())
 }

@@ -14,13 +14,18 @@ import { soundRoutes } from "./routes/sound.js";
 import { pauseRoutes } from "./routes/pause.js";
 import { practiceRoutes } from "./routes/practice.js";
 import { pauseLiveRoutes } from "./routes/pauseLive.js";
+import { gardenRoutes } from "./routes/garden.js";
+import { heartsRoutes } from "./routes/hearts.js";
 import { adminRoutes } from "./routes/admin.js";
+import { adminGardenRoutes } from "./routes/adminGarden.js";
 
 export function buildApp() {
   const app = Fastify({ logger: true, trustProxy: true });
 
   app.register(cors, { origin: true });
-  app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
+  // 200MB covers the largest per-call limit (stage hero videos); individual
+  // upload routes still enforce their own tighter limits via req.file({limits}).
+  app.register(multipart, { limits: { fileSize: 200 * 1024 * 1024 } });
 
   // Remember the origin this request arrived on so mediaUrl() can hand back
   // absolute URLs the caller can actually reach. `req.headers.host` rather than
@@ -34,6 +39,8 @@ export function buildApp() {
   // Serve uploaded/seeded media at /media (progressive HTTP; AVPlayer-friendly).
   const mediaRoot = path.resolve(env.MEDIA_DIR);
   fs.mkdirSync(path.join(mediaRoot, "audio"), { recursive: true });
+  fs.mkdirSync(path.join(mediaRoot, "garden", "images"), { recursive: true });
+  fs.mkdirSync(path.join(mediaRoot, "garden", "videos"), { recursive: true });
   // maxAge lets clients reuse media for a week; ETags stay on, so stable-but-
   // mutable seed filenames still revalidate cheaply after expiry (no immutable).
   app.register(fastifyStatic, { root: mediaRoot, prefix: "/media/", maxAge: "7d" });
@@ -65,7 +72,10 @@ export function buildApp() {
   app.register(pauseRoutes);
   app.register(practiceRoutes);
   app.register(pauseLiveRoutes);
+  app.register(gardenRoutes);
+  app.register(heartsRoutes);
   app.register(adminRoutes);
+  app.register(adminGardenRoutes);
 
   return app;
 }

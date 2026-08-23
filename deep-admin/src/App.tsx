@@ -7,6 +7,8 @@ import CategoriesPage from './pages/Categories'
 import CategoryDetailPage from './pages/CategoryDetail'
 import CollectionsPage from './pages/Collections'
 import CollectionDetailPage from './pages/CollectionDetail'
+import PlantsPage from './pages/Plants'
+import PlantDetailPage from './pages/PlantDetail'
 import UsersPage from './pages/Users'
 import PauseSettingsPage from './pages/PauseSettings'
 import PeaceMessagesPage from './pages/PeaceMessages'
@@ -29,6 +31,8 @@ function App() {
           <Route path="/categories/:id" element={<CategoryDetailPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/collections/:id" element={<CollectionDetailPage />} />
+          <Route path="/plants" element={<PlantsPage />} />
+          <Route path="/plants/:id" element={<PlantDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/pause-settings" element={<PauseSettingsPage />} />
           <Route path="/peace-messages" element={<PeaceMessagesPage />} />

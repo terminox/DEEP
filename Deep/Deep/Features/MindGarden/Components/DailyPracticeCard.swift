@@ -5,6 +5,9 @@ import SwiftUI
 /// with the minutes resting beneath it, so the card stays a single quiet row.
 struct DailyPracticeCard: View {
   var state: GardenState
+  /// The selected plant's display name ("Sakura"); nil while the garden is
+  /// still loading, when the copy falls back to the plant-agnostic "garden".
+  var plantName: String? = nil
   var action: () -> Void = {}
 
   private var headline: String {
@@ -14,7 +17,7 @@ struct DailyPracticeCard: View {
   private var subtitle: String {
     state.minutesRemaining == 0
       ? "Return tomorrow for new growth"
-      : "Each session feeds your oak"
+      : "Each session feeds your \(plantName?.lowercased() ?? "garden")"
   }
 
   private var accessibilitySummary: String {
@@ -91,9 +94,11 @@ struct DailyPracticeCard: View {
   ZStack {
     AtmosphereBackground()
     VStack(spacing: 16) {
-      DailyPracticeCard(state: .sample)
+      DailyPracticeCard(state: .sample, plantName: "Oak")
+      DailyPracticeCard(state: .fresh, plantName: "Sakura")
+      // No plant yet (garden still loading) — the copy falls back to "garden".
       DailyPracticeCard(state: .fresh)
-      DailyPracticeCard(state: .flourishing)
+      DailyPracticeCard(state: .flourishing, plantName: "Oak")
     }
     .padding(.edge)
   }

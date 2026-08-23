@@ -20,11 +20,13 @@ final class MainTabController: UITabBarController {
   /// a sound started in Sounds drive the same bottom accessory and Now Playing.
   private let sharedPlayer: any SoundPlaying
 
-  /// The shared practice journal and heart ledger, injected into every hosted
-  /// tab: the Deep Session flow presents from inside any tab's tree and must
-  /// credit the same journal/ledger the Garden and Portfolio read.
+  /// The shared practice journal, heart ledger, and garden, injected into
+  /// every hosted tab: the Deep Session flow presents from inside any tab's
+  /// tree and must credit the same journal/ledger/garden the Garden and
+  /// Portfolio read.
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
+  private let gardenStore: GardenStore
 
   /// The app-long Global Pause engine + backend, handed to the Global Pause
   /// coordinator (phases in the lobby; the caption/schedule now surfaces on
@@ -35,6 +37,10 @@ final class MainTabController: UITabBarController {
   /// The shared artwork cache, injected into every hosted tab so all tiles
   /// draw from one memory/disk store.
   private let imageLoader: any ImageLoading
+
+  /// The hero-footage disk cache, injected the same way — nil in previews,
+  /// where remote heroes stream without caching.
+  private let videoCache: VideoCache?
 
   /// Hosts the mini player inside the tab bar's bottom accessory. Created on
   /// first playback and kept as a child VC for the controller's lifetime.
@@ -66,9 +72,11 @@ final class MainTabController: UITabBarController {
     soundPlayer: any SoundPlaying,
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
+    gardenStore: GardenStore,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
-    imageLoader: any ImageLoading
+    imageLoader: any ImageLoading,
+    videoCache: VideoCache? = nil
   ) {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
@@ -77,9 +85,11 @@ final class MainTabController: UITabBarController {
     self.sharedPlayer = soundPlayer
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
+    self.gardenStore = gardenStore
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
+    self.videoCache = videoCache
     super.init(nibName: nil, bundle: nil)
   }
 
@@ -112,6 +122,7 @@ final class MainTabController: UITabBarController {
       soundRepository: soundRepository,
       practiceStore: practiceStore,
       heartLedger: heartLedger,
+      gardenStore: gardenStore,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
       imageLoader: imageLoader
@@ -243,16 +254,19 @@ final class MainTabController: UITabBarController {
     title: String,
     systemImage: String
   ) -> UIViewController {
-    // Every tab gets the shared player, journal, and ledger: the Deep Session
-    // flow presents itself as a full-screen cover from inside a tab's tree,
-    // pauses playback on entry, and records its completion — without these it
-    // would reach the environment's throwaway defaults and credit nobody.
+    // Every tab gets the shared player, journal, ledger, and garden: the Deep
+    // Session flow presents itself as a full-screen cover from inside a tab's
+    // tree, pauses playback on entry, and records its completion — without
+    // these it would reach the environment's throwaway defaults and credit
+    // nobody.
     let rootView = view
       .environment(\.soundPlayer, sharedPlayer)
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
+      .environment(\.gardenStore, gardenStore)
       .environment(\.imageLoader, imageLoader)
+      .environment(\.videoCache, videoCache)
     let controller = UIHostingController(rootView: rootView)
     controller.view.backgroundColor = .clear
     controller.tabBarItem = tabItem(title: title, systemImage: systemImage)

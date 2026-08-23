@@ -61,12 +61,20 @@ struct CraftingSpaceView: View {
   /// then flip the local completion flag (which opens `AppRootView`'s gate). If
   /// the network is unavailable we still complete locally so the user is never
   /// stranded — the answers persist and can sync later.
+  ///
+  /// Cancellation is not a network failure: if this view is torn down mid-beat,
+  /// the `.task` is cancelled, the sleeps above all return instantly, and the
+  /// save's request throws `CancellationError` before it ever leaves the device.
+  /// Completing locally then would open the gate *without* the sync — so a
+  /// cancelled run simply stops.
   private func syncAndFinish() async {
+    guard !Task.isCancelled else { return }
     try? await remote.save(
       quizAnswers: store.state.quizAnswers,
       mindTree: store.state.mindTree,
       completed: true
     )
+    guard !Task.isCancelled else { return }
     store.completeOnboarding()
   }
 }

@@ -9,9 +9,13 @@ import type {
   TrackLyrics,
   QuizQuestion,
   QuizOption,
-  MindTree,
+  Plant,
+  PlantStage,
+  HeartSpend,
 } from "@prisma/client";
 import { mediaUrl } from "./media.js";
+import { deriveStageIndex } from "./awardRules.js";
+import type { AwardOutcome, WalletSummary } from "./awards.js";
 
 export function serializeUser(u: User) {
   return {
@@ -90,7 +94,7 @@ export function serializeLyrics(l: TrackLyrics) {
 
 export function serializeOnboardingConfig(
   questions: (QuizQuestion & { options: QuizOption[] })[],
-  trees: MindTree[],
+  trees: Plant[],
 ) {
   return {
     questions: questions.map((q) => ({
@@ -113,5 +117,94 @@ export function serializeOnboardingConfig(
       imageUrl: mediaUrl(t.imageUrl),
       palette: t.palette,
     })),
+  };
+}
+
+// ---- Mind Garden plants + hearts ----
+
+export function serializePlant(p: Plant) {
+  return {
+    id: p.id,
+    name: p.name,
+    tagline: p.tagline,
+    imageUrl: mediaUrl(p.imageUrl),
+    palette: p.palette,
+    displayOrder: p.displayOrder,
+    isPremium: p.isPremium,
+    isDefault: p.isDefault,
+    isActive: p.isActive,
+  };
+}
+
+export function serializePlantStage(s: PlantStage) {
+  return {
+    id: s.id,
+    plantId: s.plantId,
+    name: s.name,
+    displayOrder: s.displayOrder,
+    sunlightRequired: s.sunlightRequired,
+    mascotUrl: mediaUrl(s.mascotPath),
+    mascotBgUrl: mediaUrl(s.mascotBgPath),
+    heroVideoUrl: mediaUrl(s.heroVideoPath),
+  };
+}
+
+export function serializePlantWithStages(p: Plant & { stages: PlantStage[] }) {
+  return {
+    ...serializePlant(p),
+    stages: p.stages
+      .slice()
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map(serializePlantStage),
+  };
+}
+
+export function serializeWallet(w: WalletSummary) {
+  return {
+    heartsBalance: w.heartsBalance,
+    heartsEarned: w.heartsEarned,
+    heartsGiven: w.heartsGiven,
+    earnedToday: w.earnedToday,
+    remainingToday: w.remainingToday,
+    dailyCap: w.dailyCap,
+    givenByCategory: w.givenByCategory,
+  };
+}
+
+export function serializeAwardOutcome(o: AwardOutcome) {
+  return {
+    kind: o.kind,
+    granted: o.granted,
+    heartsGranted: o.hearts,
+    sunlightGranted: o.sunlight,
+    plantId: o.plantId,
+    cappedBy: o.cappedBy,
+  };
+}
+
+/** The `/me/garden` garden shape: the selected plant at its earned stage. */
+export function serializeGarden(
+  plant: Plant,
+  stages: PlantStage[],
+  sunlight: number,
+  sunlightByPlant: Record<string, number>,
+) {
+  const ordered = stages.slice().sort((a, b) => a.displayOrder - b.displayOrder);
+  return {
+    selectedPlant: serializePlant(plant),
+    sunlight,
+    currentStageIndex: deriveStageIndex(ordered, sunlight),
+    stages: ordered.map(serializePlantStage),
+    sunlightByPlant,
+  };
+}
+
+export function serializeSpend(s: HeartSpend) {
+  return {
+    id: s.id,
+    amount: s.amount,
+    category: s.category,
+    projectId: s.projectId,
+    createdAt: s.createdAt.toISOString(),
   };
 }

@@ -33,15 +33,26 @@ struct DonateHeartsView: View {
         HeartAmountPad(
           onDigit: append,
           onDelete: {
+            ledger.clearSpendFailure()
             amount /= 10
             entryIsFresh = false
           },
           onClear: {
+            ledger.clearSpendFailure()
             amount = 0
             entryIsFresh = true
           }
         )
         action
+
+        // A refused spend rolled back quietly; touching the pad again — or
+        // the next donate — clears the caption.
+        if let failure = ledger.spendFailure, failure.categoryID == category.id {
+          Text(rollbackLine(for: failure))
+            .font(DeepType.caption)
+            .foregroundStyle(.driftGrey)
+            .transition(.opacity)
+        }
       }
       .padding(.horizontal, .edge)
       .padding(.top, .rhythm)
@@ -51,6 +62,7 @@ struct DonateHeartsView: View {
     }
     .scrollBounceBehavior(.basedOnSize)
     .scrollIndicators(.hidden)
+    .animation(.settle, value: ledger.spendFailure)
     .sensoryFeedback(.selection, trigger: amount)
     .presentationDetents([.height(560), .large])
     .presentationBackground { AtmosphereBackground() }
@@ -136,6 +148,7 @@ struct DonateHeartsView: View {
   private func chip(label: String, value: Int) -> some View {
     let selected = amount == value
     return Button {
+      ledger.clearSpendFailure()
       withAnimation(.exhale) { amount = value }
       entryIsFresh = true
     } label: {
@@ -171,8 +184,15 @@ struct DonateHeartsView: View {
   /// numeral already says what the ceiling is, so the number simply declines to
   /// climb rather than throwing anything away.
   private func append(_ digit: Int) {
+    ledger.clearSpendFailure()
     amount = Swift.min(entryIsFresh ? digit : amount * 10 + digit, ledger.balance)
     entryIsFresh = false
+  }
+
+  private func rollbackLine(for failure: HeartLedger.SpendFailure) -> String {
+    failure.amount == 1
+      ? "That heart couldn't be sent — it's back in your balance."
+      : "Those \(failure.amount.formatted()) hearts couldn't be sent — they're back in your balance."
   }
 
   // MARK: - Action
@@ -350,6 +370,16 @@ private struct PadKey<Label: View>: View {
       DonateHeartsView(category: CompassionLibrary.nature)
     }
     .environment(\.heartLedger, HeartLedger(balance: 7, heartsGiven: 41))
+}
+
+#Preview("Donate hearts — send refused") {
+  @Previewable @State var open = true
+  Color.clear
+    .background { AtmosphereBackground() }
+    .sheet(isPresented: $open) {
+      DonateHeartsView(category: CompassionLibrary.nature)
+    }
+    .environment(\.heartLedger, .sendRefused)
 }
 
 #Preview("Donate hearts — accessibility1") {

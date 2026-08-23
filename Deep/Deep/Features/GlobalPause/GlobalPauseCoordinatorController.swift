@@ -13,9 +13,10 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
   /// Threaded through for the home feed's Deep Session doorway — a session
-  /// launched from this tab must credit the shared journal and ledger.
+  /// launched from this tab must credit the shared journal, ledger and garden.
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
+  private let gardenStore: GardenStore
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
   private let imageLoader: any ImageLoading
@@ -49,6 +50,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     soundRepository: any SoundContentRepository,
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
+    gardenStore: GardenStore,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
     imageLoader: any ImageLoading
@@ -57,6 +59,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     self.soundRepository = soundRepository
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
+    self.gardenStore = gardenStore
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
@@ -126,6 +129,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.soundPlayer, player)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
+      .environment(\.gardenStore, gardenStore)
       .environment(\.globalPauseSession, pauseSession)
       .environment(\.pauseEventRepository, pauseRepository)
       .environment(\.imageLoader, imageLoader)
@@ -190,6 +194,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         .environment(\.soundPlayer, player)
         .environment(\.practiceStore, practiceStore)
         .environment(\.heartLedger, heartLedger)
+        .environment(\.gardenStore, gardenStore)
     )
   }
 

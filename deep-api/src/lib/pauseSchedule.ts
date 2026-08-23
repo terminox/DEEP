@@ -69,27 +69,38 @@ function zonedInstant(dateKey: string, hms: string, timeZone: string): Date {
 }
 
 /**
+ * The phase windows of the pause on one specific calendar date (`dateKey`,
+ * "YYYY-MM-DD" in the config timezone) — regardless of whether that night has
+ * already ended. Lets the award claim rebuild tonight's meditation window for
+ * the rest of the day, after resolveOccurrence has rolled to tomorrow.
+ */
+export function occurrenceOn(
+  config: PauseConfig,
+  dateKey: string,
+): { pauseDate: string; phases: PhaseWindow[] } {
+  const at = (hms: string) => zonedInstant(dateKey, hms, config.timezone);
+  const boundaries: [PausePhaseKey, string, string][] = [
+    ["lobby", config.lobbyStart, config.welcomeStart],
+    ["welcome", config.welcomeStart, config.meditationStart],
+    ["meditation", config.meditationStart, config.feedbackStart],
+    ["feedback", config.feedbackStart, config.windowEnd],
+  ];
+  return {
+    pauseDate: dateKey,
+    phases: boundaries.map(([key, start, end]) => ({
+      key,
+      startsAt: at(start),
+      endsAt: at(end),
+    })),
+  };
+}
+
+/**
  * Resolves the occurrence `now` belongs to: today's pause in the config
  * timezone, or tomorrow's once tonight's window has fully ended.
  */
 export function resolveOccurrence(config: PauseConfig, now: Date): PauseOccurrence {
-  const build = (dateKey: string): { pauseDate: string; phases: PhaseWindow[] } => {
-    const at = (hms: string) => zonedInstant(dateKey, hms, config.timezone);
-    const boundaries: [PausePhaseKey, string, string][] = [
-      ["lobby", config.lobbyStart, config.welcomeStart],
-      ["welcome", config.welcomeStart, config.meditationStart],
-      ["meditation", config.meditationStart, config.feedbackStart],
-      ["feedback", config.feedbackStart, config.windowEnd],
-    ];
-    return {
-      pauseDate: dateKey,
-      phases: boundaries.map(([key, start, end]) => ({
-        key,
-        startsAt: at(start),
-        endsAt: at(end),
-      })),
-    };
-  };
+  const build = (dateKey: string) => occurrenceOn(config, dateKey);
 
   let occurrence = build(localDate(now, config.timezone));
   const windowEnd = occurrence.phases[occurrence.phases.length - 1]!.endsAt;

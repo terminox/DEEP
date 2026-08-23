@@ -8,6 +8,13 @@ struct PeaceMessagesPage {
   let nextCursor: String?
 }
 
+/// A freshly posted peace message, plus the award the first message of the
+/// night earns — nil for every later message (and on older servers).
+struct PostedPeaceMessage {
+  let message: PeaceMessage
+  let award: AwardGrant?
+}
+
 /// Backend seam for the Global Pause event: tonight's schedule, live presence,
 /// and peace messages. UI depends on this protocol so screens preview against
 /// the fixture with no network.
@@ -23,7 +30,7 @@ protocol PauseEventRepository: AnyObject {
   /// Best-effort; failures are irrelevant (the server sweeps stale presence).
   func leave(presenceID: String) async
   func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage
-  func postMessage(_ text: String, countryISO: String?) async throws -> PeaceMessage
+  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage
   func submitReflection(intention: String?, mood: String?) async throws
 }
 
@@ -124,14 +131,21 @@ final class APIPauseEventRepository: PauseEventRepository {
     return PeaceMessagesPage(messages: dto.messages.map(mapMessage), nextCursor: dto.nextCursor)
   }
 
-  func postMessage(_ text: String, countryISO: String?) async throws -> PeaceMessage {
+  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage {
     let dto: PauseMessagePostResponseDTO = try await client.request(
       "/pause/messages",
       method: "POST",
       body: PeaceMessagePostRequestDTO(text: text, countryISO: countryISO)
     )
     clock.sync(serverNow: date(dto.serverNow))
-    return mapMessage(dto.message)
+    return PostedPeaceMessage(
+      message: mapMessage(dto.message),
+      award: AwardGrant(
+        outcomes: [dto.award].compactMap { $0 },
+        wallet: dto.wallet,
+        plant: dto.plant
+      )
+    )
   }
 
   func submitReflection(intention: String?, mood: String?) async throws {
@@ -315,7 +329,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
     )
   }
 
-  func postMessage(_ text: String, countryISO: String?) async throws -> PeaceMessage {
+  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage {
     let message = PeaceMessage(
       id: UUID().uuidString,
       displayName: "You",
@@ -323,8 +337,12 @@ final class FixturePauseEventRepository: PauseEventRepository {
       text: text,
       createdAt: Date()
     )
+    let isFirstOfTheNight = posted.isEmpty
     posted.insert(message, at: 0)
-    return message
+    return PostedPeaceMessage(
+      message: message,
+      award: isFirstOfTheNight ? AwardGrant(hearts: 1, sunlight: 1, plantId: Plant.oakFixture.id) : nil
+    )
   }
 
   func submitReflection(intention: String?, mood: String?) async throws {}

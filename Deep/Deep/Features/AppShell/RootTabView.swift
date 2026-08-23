@@ -14,9 +14,11 @@ struct RootTabView: UIViewControllerRepresentable {
   let soundPlayer: any SoundPlaying
   let practiceStore: any PracticeStore
   let heartLedger: HeartLedger
+  let gardenStore: GardenStore
   let pauseSession: GlobalPauseSession
   let pauseRepository: any PauseEventRepository
   let imageLoader: any ImageLoading
+  let videoCache: VideoCache?
 
   func makeUIViewController(context: Context) -> MainTabController {
     MainTabController(
@@ -27,9 +29,11 @@ struct RootTabView: UIViewControllerRepresentable {
       soundPlayer: soundPlayer,
       practiceStore: practiceStore,
       heartLedger: heartLedger,
+      gardenStore: gardenStore,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
-      imageLoader: imageLoader
+      imageLoader: imageLoader,
+      videoCache: videoCache
     )
   }
 
@@ -45,12 +49,14 @@ struct RootTabView: UIViewControllerRepresentable {
     soundPlayer: SoundPlayer(),
     practiceStore: MockPracticeStore(),
     heartLedger: .sample,
+    gardenStore: .sample,
     pauseSession: GlobalPauseSession(
       clock: SyncedClock(),
       repository: FixturePauseEventRepository()
     ),
     pauseRepository: FixturePauseEventRepository(),
-    imageLoader: FixtureImageLoader()
+    imageLoader: FixtureImageLoader(),
+    videoCache: nil
   )
   .ignoresSafeArea()
 }

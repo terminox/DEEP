@@ -19,6 +19,14 @@ struct MindGardenHomeView: View {
   /// threshold through the coordinator.
   @Environment(\.openDeepSession) private var openDeepSession
 
+  /// The growth card's quiet "Change" affordance pushes the plant picker —
+  /// again through the coordinator.
+  @Environment(\.openPlantPicker) private var openPlantPicker
+
+  /// The plant's growth — server-backed sunlight, persisted offline. The
+  /// practice snapshot above stays a plain value; growth is the one live thing.
+  @Environment(\.gardenStore) private var gardenStore
+
   /// The oak owns half the screen on this screen only, so the garden opens on
   /// the tree. Measured rather than hardcoded — half of 852pt is not half of
   /// 956pt — and the hero bleeds under the status bar, so the fraction is of
@@ -41,20 +49,45 @@ struct MindGardenHomeView: View {
     }
   }
 
+  /// What the hero plays: the selected plant's current form, as the catalog
+  /// authored it — its stage video when one exists, else its stage portrait as
+  /// a poster. The oak keeps the bundled mature-oak loop wherever the catalog
+  /// has no footage for its stage (and while the garden is still loading), so
+  /// the flagship scene — and every preview on fixtures — never goes flat.
+  private var heroMedia: StretchyHero.Media {
+    guard let growth = gardenStore.growth else {
+      return .video(resource: "deep_oak_mature")
+    }
+    let stage = growth.stage
+    if stage.heroVideoURL == nil, growth.plant.id == "oak" {
+      return .video(resource: "deep_oak_mature")
+    }
+    return .remoteVideo(
+      url: stage.heroVideoURL,
+      posterURL: stage.mascotBgURL ?? stage.mascotURL
+    )
+  }
+
   private func garden(heroHeight: CGFloat) -> some View {
     ScrollView {
       VStack(spacing: 0) {
-        StretchyHero(media: .video(resource: "deep_oak_mature"), height: heroHeight)
+        StretchyHero(media: heroMedia, height: heroHeight)
 
         VStack(alignment: .leading, spacing: .rhythm) {
-          GardenGrowthCard(
-            greeting: greeting,
-            growth: state.growth,
-            streakDays: state.streakDays
-          )
+          if let growth = gardenStore.growth {
+            GardenGrowthCard(
+              greeting: greeting,
+              growth: growth,
+              streakDays: state.streakDays,
+              onChangePlant: openPlantPicker
+            )
             .padding(.horizontal, .edge)
+          } else {
+            growthSkeleton
+              .padding(.horizontal, .edge)
+          }
 
-          DailyPracticeCard(state: state) {
+          DailyPracticeCard(state: state, plantName: gardenStore.growth?.plant.name) {
             openDeepSession(DeepSessionLibrary.balancingBreath)
           }
           .padding(.horizontal, .edge)
@@ -73,16 +106,50 @@ struct MindGardenHomeView: View {
       subtitle: "Tend to your calm"
     )
   }
+
+  /// Mirrors the growth card's geometry — salutation lines, the halo's circle,
+  /// the name and fact lines — while the first garden snapshot is still on its
+  /// way, so the page doesn't reflow when the plant arrives.
+  private var growthSkeleton: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      VStack(alignment: .leading, spacing: 8) {
+        SkeletonTextLine(width: 150)
+        SkeletonTextLine(width: 230)
+      }
+
+      HStack(spacing: 16) {
+        SkeletonBlock(cornerRadius: 50.5)
+          .frame(width: 101, height: 101)
+
+        VStack(alignment: .leading, spacing: 8) {
+          SkeletonTextLine(width: 130)
+          SkeletonTextLine(width: 160)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      }
+    }
+    .padding(20)
+    .frostedCard()
+    .skeletonBreath()
+  }
 }
 
 #Preview("Mind Garden — Home") {
   MindGardenHomeView(state: .sample, greeting: .sample)
+    .environment(\.gardenStore, .sample)
 }
 
 #Preview("Mind Garden — Fresh start") {
   MindGardenHomeView(state: .fresh, greeting: .sample)
+    .environment(\.gardenStore, .fresh)
 }
 
 #Preview("Mind Garden — Flourishing") {
   MindGardenHomeView(state: .flourishing, greeting: .evening)
+    .environment(\.gardenStore, .flourishing)
+}
+
+#Preview("Mind Garden — Loading") {
+  MindGardenHomeView(state: .fresh, greeting: .sample)
+    .environment(\.gardenStore, .loading)
 }

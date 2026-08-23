@@ -18,6 +18,7 @@ struct DeepSessionCompletionView: View {
   var onReturn: () -> Void = {}
 
   @Environment(\.practiceStore) private var practiceStore
+  @Environment(\.gardenStore) private var gardenStore
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   /// The content blooms in from rest once, on arrival — reflection first, then
@@ -106,11 +107,10 @@ struct DeepSessionCompletionView: View {
       : ("today is full", "Today is full.")
   }
 
-  /// The oak's current form, derived the same way the garden home screen
-  /// derives it — one shared path, so once growth points persist this screen
-  /// follows automatically.
-  private var grownOak: OakStage {
-    GardenState(practice: practiceStore).growth.stage
+  /// The plant's current form, read from the same store the garden home reads
+  /// — one shared truth, so the practice just credited is already visible here.
+  private var growth: GardenGrowth? {
+    gardenStore.growth
   }
 
   /// One step of the staggered arrival — rises softly into place, each group
@@ -147,14 +147,19 @@ struct DeepSessionCompletionView: View {
 
   // MARK: - Plant
 
-  /// The garden made real — the oak in its current form, blooming up from its
-  /// roots on arrival. The artwork ships on an opaque white square, so it sits
-  /// in the same rounded, lavender-veiled frame the garden's growth card uses
+  /// The garden made real — the plant in its current form, blooming up from
+  /// its roots on arrival. The mascot renders through `ArtworkImage` (falling
+  /// back to the plant's gradient while art loads or none exists), seated in
+  /// the same rounded, lavender-veiled frame the garden's growth card uses
   /// rather than standing bare on the atmosphere.
   private var plant: some View {
-    Image(grownOak.imageName)
-      .resizable()
-      .scaledToFit()
+    ArtworkImage(
+      url: growth?.stage.mascotURL,
+      colors: (growth?.plant.palette ?? .mist).colors,
+      cornerRadius: 12,
+      placeholderSystemImage: "leaf.fill",
+      bordered: false
+    )
       .padding(6)
       .frame(width: 84, height: 84)
       .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white))
@@ -201,6 +206,7 @@ struct DeepSessionCompletionView: View {
 #Preview("Deep session — softly grown") {
   DeepSessionCompletionView(session: DeepSessionLibrary.balancingBreath)
     .environment(\.practiceStore, MockPracticeStore())
+    .environment(\.gardenStore, .sample)
 }
 
 #Preview("Deep session — first practice") {
@@ -210,6 +216,7 @@ struct DeepSessionCompletionView: View {
       currentStreakDays: 1,
       longestStreakDays: 1
     ))
+    .environment(\.gardenStore, .fresh)
 }
 
 #Preview("Deep session — deep roots") {
@@ -219,4 +226,5 @@ struct DeepSessionCompletionView: View {
       currentStreakDays: 30,
       longestStreakDays: 45
     ))
+    .environment(\.gardenStore, .flourishing)
 }

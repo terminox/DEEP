@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { PeaceMessage } from "@prisma/client";
 import { z } from "zod";
@@ -5,7 +6,18 @@ import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireAuth, optionalAuth } from "../auth/middleware.js";
 import { mediaUrl } from "../lib/media.js";
-import { resolveOccurrence, resolveNow, setLiveWindow, localDate } from "../lib/pauseSchedule.js";
+import {
+  resolveOccurrence,
+  occurrenceOn,
+  resolveNow,
+  setLiveWindow,
+  localDate,
+} from "../lib/pauseSchedule.js";
+import { attendanceCovers } from "../lib/awardRules.js";
+import { grantAward } from "../lib/awards.js";
+import { requestTimezone, rememberTimezone, userDayKey } from "../lib/clientDay.js";
+import { rewardSnapshot } from "../lib/rewardPayload.js";
+import { serializeAwardOutcome } from "../lib/serialize.js";
 import * as presence from "../lib/pausePresence.js";
 import * as geoip from "../lib/geoip.js";
 import { env } from "../env.js";
@@ -60,6 +72,30 @@ async function loadConfig() {
   });
 }
 
+/**
+ * Durable "was present" record behind the attendance award: first beat of the
+ * night creates the row, later beats increment `beats` and widen
+ * [firstSeenAt, lastSeenAt] — never narrowing, so the dev time-travel loop
+ * wrapping to the window start can't shrink an attendance already recorded.
+ *
+ * One atomic upsert rather than read-then-write: two heartbeats racing on
+ * the same (userId, pauseDate) could otherwise both read the same "existing"
+ * row and one write could clobber the other's lastSeenAt backwards. Postgres
+ * resolves the conflict itself, using GREATEST/LEAST against the row as it
+ * stands at write time, so the result is correct under concurrency without a
+ * lock.
+ */
+async function recordAttendance(userId: string, pauseDate: string, now: Date) {
+  await prisma.$executeRaw`
+    INSERT INTO "pause_attendances" ("id", "userId", "pauseDate", "firstSeenAt", "lastSeenAt", "beats")
+    VALUES (${crypto.randomUUID()}, ${userId}, ${pauseDate}, ${now}, ${now}, 1)
+    ON CONFLICT ("userId", "pauseDate") DO UPDATE SET
+      "lastSeenAt" = GREATEST("pause_attendances"."lastSeenAt", EXCLUDED."lastSeenAt"),
+      "firstSeenAt" = LEAST("pause_attendances"."firstSeenAt", EXCLUDED."firstSeenAt"),
+      "beats" = "pause_attendances"."beats" + 1
+  `;
+}
+
 export async function pauseLiveRoutes(app: FastifyInstance) {
   // Everything a client needs to run the event locally: absolute phase
   // instants for tonight's occurrence, audio, welcome copy, intentions —
@@ -110,7 +146,19 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       body.countryISO ?? null,
       isNew ? (loc ? { lat: loc.lat, lon: loc.lon } : null) : undefined,
     );
-    return { ok: true, serverNow: resolveNow().toISOString(), location: result.location };
+
+    // Signed-in beats landing inside the meditation window also leave a
+    // durable attendance record — the evidence POST /me/pause/award judges.
+    const now = resolveNow();
+    if (req.auth) {
+      const config = await loadConfig();
+      const occurrence = resolveOccurrence(config, now);
+      if (occurrence.phaseAt(now) === "meditation") {
+        await recordAttendance(req.auth.sub, occurrence.pauseDate, now);
+      }
+    }
+
+    return { ok: true, serverNow: now.toISOString(), location: result.location };
   });
 
   app.delete("/pause/presence/:presenceId", { preHandler: optionalAuth }, async (req) => {
@@ -152,6 +200,54 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     };
   });
 
+  // Explicit attendance-award claim, called by the app on entering the
+  // feedback phase — but honoured for the rest of the (config-timezone) day,
+  // so a client that missed the moment can still claim. The server judges
+  // eligibility from the durable heartbeat record; grantAward's ledger unique
+  // makes the claim idempotent.
+  app.post("/me/pause/award", { preHandler: requireAuth }, async (req) => {
+    const userId = req.auth!.sub;
+    const now = resolveNow();
+    const config = await loadConfig();
+    // Today's pause — deliberately NOT resolveOccurrence, which rolls to
+    // tomorrow once tonight's window has ended.
+    const { pauseDate, phases } = occurrenceOn(config, localDate(now, config.timezone));
+    const meditation = phases.find((p) => p.key === "meditation")!;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw ApiError.unauthorized();
+    const tz = requestTimezone(req, user.timezone, config.timezone);
+    rememberTimezone(userId, tz, user.timezone);
+
+    const attendance = await prisma.pauseAttendance.findUnique({
+      where: { userId_pauseDate: { userId, pauseDate } },
+    });
+    const eligible =
+      attendance != null &&
+      attendanceCovers(
+        { startsAt: meditation.startsAt, endsAt: meditation.endsAt },
+        attendance,
+      );
+
+    const outcome = eligible
+      ? await grantAward({
+          userId,
+          kind: "PAUSE_ATTENDED",
+          dayKey: pauseDate,
+          tallyDayKey: userDayKey(now, tz),
+          timezone: tz,
+        })
+      : null;
+
+    const snapshot = await rewardSnapshot(userId, userDayKey(now, tz));
+    return {
+      eligible,
+      award: outcome ? serializeAwardOutcome(outcome) : null,
+      ...snapshot,
+      serverNow: now.toISOString(),
+    };
+  });
+
   // Peace messages are accepted any time of day — pauseDate stamps the
   // calendar night of posting in the config timezone, not the resolved
   // occurrence (which rolls to tomorrow once tonight's window has closed).
@@ -186,7 +282,26 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         pauseDate,
       },
     });
-    return { message: serializePeaceMessage(message), serverNow: now.toISOString() };
+
+    // First message of the night earns; the award ledger's unique on
+    // (user, kind, pauseDate) turns every later one into `duplicate`.
+    const tz = requestTimezone(req, user.timezone, config.timezone);
+    rememberTimezone(user.id, tz, user.timezone);
+    const outcome = await grantAward({
+      userId: user.id,
+      kind: "PEACE_MESSAGE",
+      dayKey: pauseDate,
+      tallyDayKey: userDayKey(now, tz),
+      timezone: tz,
+    });
+    const snapshot = await rewardSnapshot(user.id, userDayKey(now, tz));
+
+    return {
+      message: serializePeaceMessage(message),
+      serverNow: now.toISOString(),
+      award: serializeAwardOutcome(outcome),
+      ...snapshot,
+    };
   });
 
   // Public read of published messages, newest first — available around the

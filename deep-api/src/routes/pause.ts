@@ -105,7 +105,7 @@ export async function pauseRoutes(app: FastifyInstance) {
     if (personalized && profile) {
       const [tree, options] = await Promise.all([
         profile.mindTree
-          ? prisma.mindTree.findUnique({ where: { id: profile.mindTree } })
+          ? prisma.plant.findUnique({ where: { id: profile.mindTree } })
           : Promise.resolve(null),
         prisma.quizOption.findMany(),
       ]);
