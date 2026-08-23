@@ -81,6 +81,45 @@ export type Lyrics = {
   content: string
 }
 
+export type StageAssetKind = 'mascot' | 'mascotBg' | 'heroVideo'
+
+export type Plant = {
+  id: string
+  name: string
+  tagline: string
+  imageUrl: string | null
+  palette: Palette
+  displayOrder: number
+  isPremium: boolean
+  isDefault: boolean
+  isActive: boolean
+  stageCount?: number
+}
+
+export type PlantStage = {
+  id: string
+  plantId: string
+  name: string
+  displayOrder: number
+  sunlightRequired: number
+  mascotUrl: string | null
+  mascotBgUrl: string | null
+  heroVideoUrl: string | null
+}
+
+export type PlantDetail = {
+  id: string
+  name: string
+  tagline: string
+  imageUrl: string | null
+  palette: Palette
+  displayOrder: number
+  isPremium: boolean
+  isDefault: boolean
+  isActive: boolean
+  stages: PlantStage[]
+}
+
 export type PauseConfig = {
   id: number
   timezone: string

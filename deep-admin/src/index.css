@@ -468,6 +468,16 @@ textarea {
   margin-bottom: 14px;
 }
 
+.warning-banner {
+  background: #fbf1d8;
+  color: #9a7a1f;
+  border: 1px solid #f0dfb0;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
 .empty {
   padding: 30px;
   text-align: center;

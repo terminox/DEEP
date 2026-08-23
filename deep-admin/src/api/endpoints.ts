@@ -13,6 +13,10 @@ import type {
   PauseStats,
   PauseWelcomeMessage,
   PeaceMessageStatus,
+  Plant,
+  PlantDetail,
+  PlantStage,
+  StageAssetKind,
   Track,
   TrackKind,
 } from './types'
@@ -193,6 +197,136 @@ export async function uploadTrackAudio(
     { headers: { 'Content-Type': 'multipart/form-data' } }
   )
   return data.track
+}
+
+// ---- Plants ----
+export async function listPlants(): Promise<Plant[]> {
+  const { data } = await http.get<{ plants: Plant[] }>('/admin/plants')
+  return data.plants
+}
+
+export async function getPlant(id: string): Promise<PlantDetail> {
+  const { data } = await http.get<{ plant: PlantDetail }>(`/admin/plants/${id}`)
+  return data.plant
+}
+
+export type PlantInput = {
+  name?: string
+  tagline?: string
+  palette?: Palette
+  imageUrl?: string | null
+  isPremium?: boolean
+  isDefault?: boolean
+  isActive?: boolean
+  displayOrder?: number
+}
+
+export async function createPlant(body: {
+  id: string
+  name: string
+  tagline: string
+  palette: Palette
+  isPremium?: boolean
+  isDefault?: boolean
+  isActive?: boolean
+  displayOrder?: number
+}): Promise<PlantDetail> {
+  const { data } = await http.post<{ plant: PlantDetail }>('/admin/plants', body)
+  return data.plant
+}
+
+export async function updatePlant(
+  id: string,
+  body: PlantInput
+): Promise<PlantDetail> {
+  const { data } = await http.patch<{ plant: PlantDetail }>(
+    `/admin/plants/${id}`,
+    body
+  )
+  return data.plant
+}
+
+export async function deletePlant(id: string): Promise<void> {
+  await http.delete(`/admin/plants/${id}`)
+}
+
+export async function reorderPlants(ids: string[]): Promise<void> {
+  await http.post('/admin/plants/reorder', { ids })
+}
+
+export async function uploadPlantImage(id: string, file: File): Promise<Plant> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await http.post<{ plant: Plant }>(
+    `/admin/plants/${id}/image`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+  return data.plant
+}
+
+// ---- Plant stages ----
+export async function createStage(
+  plantId: string,
+  body: { name: string; sunlightRequired: number; displayOrder?: number }
+): Promise<PlantStage> {
+  const { data } = await http.post<{ stage: PlantStage }>(
+    `/admin/plants/${plantId}/stages`,
+    body
+  )
+  return data.stage
+}
+
+export type StageInput = {
+  name?: string
+  sunlightRequired?: number
+}
+
+export async function updateStage(
+  id: string,
+  body: StageInput
+): Promise<PlantStage> {
+  const { data } = await http.patch<{ stage: PlantStage }>(
+    `/admin/plant-stages/${id}`,
+    body
+  )
+  return data.stage
+}
+
+export async function deleteStage(id: string): Promise<void> {
+  await http.delete(`/admin/plant-stages/${id}`)
+}
+
+export async function reorderStages(
+  plantId: string,
+  ids: string[]
+): Promise<void> {
+  await http.post(`/admin/plants/${plantId}/stages/reorder`, { ids })
+}
+
+export async function uploadStageAsset(
+  stageId: string,
+  kind: StageAssetKind,
+  file: File
+): Promise<PlantStage> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await http.post<{ stage: PlantStage }>(
+    `/admin/plant-stages/${stageId}/assets/${kind}`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+  return data.stage
+}
+
+export async function deleteStageAsset(
+  stageId: string,
+  kind: StageAssetKind
+): Promise<PlantStage> {
+  const { data } = await http.delete<{ stage: PlantStage }>(
+    `/admin/plant-stages/${stageId}/assets/${kind}`
+  )
+  return data.stage
 }
 
 // ---- Lyrics ----
