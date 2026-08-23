@@ -25,6 +25,9 @@ private struct DeepSessionRunModifier: ViewModifier {
   @Environment(\.soundPlayer) private var soundPlayer
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.heartLedger) private var heartLedger
+  @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.imageLoader) private var imageLoader
+  @Environment(\.videoCache) private var videoCache
 
   func body(content: Content) -> some View {
     content
@@ -34,6 +37,14 @@ private struct DeepSessionRunModifier: ViewModifier {
             .environment(\.soundPlayer, soundPlayer)
             .environment(\.practiceStore, practiceStore)
             .environment(\.heartLedger, heartLedger)
+            .environment(\.gardenStore, gardenStore)
+            // The completion screen draws the plant's mascot artwork; the
+            // UIKit presentation severs the environment, so without the real
+            // loader it reaches the throwaway default and always falls back
+            // to the gradient. The video cache rides along for the same
+            // reason wherever stage footage appears.
+            .environment(\.imageLoader, imageLoader)
+            .environment(\.videoCache, videoCache)
             .preferredColorScheme(.light)
         }
         .frame(width: 0, height: 0)

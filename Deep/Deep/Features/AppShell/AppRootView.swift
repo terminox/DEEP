@@ -75,9 +75,11 @@ struct AppRootView: View {
           soundPlayer: deps.soundPlayer,
           practiceStore: deps.practiceStore,
           heartLedger: deps.heartLedger,
+          gardenStore: deps.gardenStore,
           pauseSession: deps.pauseSession,
           pauseRepository: deps.pauseRepository,
-          imageLoader: deps.imageLoader
+          imageLoader: deps.imageLoader,
+          videoCache: deps.videoCache
         )
         .ignoresSafeArea()
         .transition(.opacity)
@@ -100,13 +102,35 @@ struct AppRootView: View {
     .environment(\.soundContentRepository, deps.soundRepository)
     .environment(\.practiceStore, deps.practiceStore)
     .environment(\.heartLedger, deps.heartLedger)
+    .environment(\.gardenStore, deps.gardenStore)
     .environment(\.imageLoader, deps.imageLoader)
+    .environment(\.videoCache, deps.videoCache)
     .task { await bootstrap() }
     // Returning to the foreground retries the practice journal's offline
-    // queue and picks up sessions recorded on other installs.
+    // queue, picks up sessions recorded on other installs, and re-pulls the
+    // garden (plant + sunlight + wallet) from the server.
     .onChange(of: scenePhase) { _, phase in
       guard phase == .active, didRestore, deps.accountStore.isSignedIn else { return }
-      Task { await deps.practiceStore.refresh() }
+      Task {
+        async let garden: Void = deps.gardenStore.refresh()
+        await deps.practiceStore.refresh()
+        await garden
+      }
+    }
+    // An in-app sign-in or sign-up completing (flow → main) pulls the fresh
+    // account's garden (plant + sunlight + wallet) and practice journal the
+    // moment the shell opens — bootstrap only covers launch, so without this
+    // the garden sits on its skeleton until a manual pull. Runs after the
+    // onboarding sync (the gate opens once `completeOnboarding()` lands), so
+    // a just-picked Mind Tree is already the server's selected plant. Launch
+    // itself arrives restoring → main and is refreshed by `bootstrap()`.
+    .onChange(of: phase) { old, new in
+      guard old == .flow, new == .main else { return }
+      Task {
+        async let garden: Void = deps.gardenStore.refresh()
+        await deps.practiceStore.refresh()
+        await garden
+      }
     }
   }
 
@@ -116,9 +140,11 @@ struct AppRootView: View {
     async let floor: Void? = try? Task.sleep(for: .breatheFloor)
     await deps.accountStore.restore()
     if deps.accountStore.isSignedIn {
-      // Concurrent: neither depends on the other, and against an unreachable
-      // dev host their timeouts overlap instead of stacking.
+      // Concurrent: none depends on another, and against an unreachable
+      // dev host their timeouts overlap instead of stacking. The garden pull
+      // also hydrates the heart ledger (the wallet rides the same response).
       async let refreshed: Void = deps.practiceStore.refresh()
+      async let gardenRefreshed: Void = deps.gardenStore.refresh()
       if let profile = try? await deps.onboardingRemote.fetchProfile() {
         deps.onboardingStore.hydrate(
           quizAnswers: profile.quizAnswers,
@@ -127,6 +153,7 @@ struct AppRootView: View {
         )
       }
       await refreshed
+      await gardenRefreshed
     }
     _ = await floor
     // The staged send-off: text exhales in place, the destination surfaces

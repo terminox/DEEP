@@ -471,6 +471,10 @@ final class GlobalPauseSessionController: UIViewController {
     completionTask?.cancel()
     completionTask = nil
 
+    // Claim tonight's attendance award as reflection begins — always; the
+    // server judges eligibility, so an ineligible claim resolves to nothing.
+    session.claimPauseAward()
+
     // A leave confirmation still up when the meditation ends would strand the
     // user over the reflection — retire it.
     leaveAlert?.dismiss(animated: true)

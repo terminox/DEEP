@@ -48,6 +48,14 @@ final class GlobalPauseSession {
   /// The session screen turns the globe here and seats the home glow.
   private(set) var myLocation: PauseJoinPoint?
 
+  /// Tonight's settled attendance award, once the claim has landed — the
+  /// reflection screen's quiet caption reads it. Nil until claimed (or when
+  /// the server judged the night ineligible). Deliberately *not* cleared by
+  /// `leaveSession()`: the reflection handback releases presence while the
+  /// reflection screen — the award's one reader — is still up, and the claim
+  /// may still be in flight. Cleared as the next session visit begins.
+  private(set) var pauseAward: AwardGrant?
+
   /// When the next meditation begins — the countdown target for the card's
   /// caption. Nil until the schedule lands.
   var nextMeditationStart: Date? {
@@ -69,6 +77,13 @@ final class GlobalPauseSession {
   static let countdownLead: TimeInterval = 15 * 60
 
   private let repository: any PauseEventRepository
+  /// The reward backend, for the attendance claim. Nil in fixtures/previews —
+  /// the claim then quietly does nothing.
+  @ObservationIgnored private let rewards: (any RewardsRemote)?
+  /// Where settled awards (attendance claim, first peace message) are handed —
+  /// `AppDependencies` points this at the shared ingest closure.
+  @ObservationIgnored private let awardSink: (@MainActor (AwardGrant) -> Void)?
+  @ObservationIgnored private var pauseAwardTask: Task<Void, Never>?
   @ObservationIgnored private var boundaryTask: Task<Void, Never>?
   @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
   @ObservationIgnored private var pollTask: Task<Void, Never>?
@@ -92,9 +107,16 @@ final class GlobalPauseSession {
     return fresh
   }()
 
-  init(clock: SyncedClock, repository: any PauseEventRepository) {
+  init(
+    clock: SyncedClock,
+    repository: any PauseEventRepository,
+    rewards: (any RewardsRemote)? = nil,
+    awardSink: (@MainActor (AwardGrant) -> Void)? = nil
+  ) {
     self.clock = clock
     self.repository = repository
+    self.rewards = rewards
+    self.awardSink = awardSink
     foregroundObserver = NotificationCenter.default.addObserver(
       forName: UIApplication.willEnterForegroundNotification,
       object: nil,
@@ -200,6 +222,12 @@ final class GlobalPauseSession {
   /// presented.
   func enterSession() {
     guard heartbeatTask == nil else { return }
+    // A fresh visit must not greet tonight's reflection with a stale award
+    // from an earlier night — forget it (and any orphaned claim) here rather
+    // than on leave, which runs mid-reflection (see `pauseAward`).
+    pauseAwardTask?.cancel()
+    pauseAwardTask = nil
+    pauseAward = nil
     let country = Locale.current.region?.identifier.uppercased()
 
     // Locale-centroid fallback immediately, so the globe can turn to
@@ -241,6 +269,25 @@ final class GlobalPauseSession {
     myLocation = nil
     Task { [repository, presenceID] in
       await repository.leave(presenceID: presenceID)
+    }
+  }
+
+  // MARK: - Awards
+
+  /// Claims tonight's attendance award — called as reflection begins. Always
+  /// claims; the server judges eligibility (attended through the meditation,
+  /// once per pause night), so an ineligible claim just resolves to nothing.
+  func claimPauseAward() {
+    guard pauseAward == nil, pauseAwardTask == nil, let rewards else { return }
+    pauseAwardTask = Task { [weak self] in
+      let grant = try? await rewards.claimPauseAward()
+      // A cancelled claim (a fresh visit superseded it) must not touch state —
+      // its `pauseAwardTask` slot may already belong to the new visit's claim.
+      guard let self, !Task.isCancelled else { return }
+      self.pauseAwardTask = nil
+      guard let grant else { return }
+      withAnimation(.exhale) { self.pauseAward = grant }
+      self.awardSink?(grant)
     }
   }
 
@@ -290,9 +337,18 @@ final class GlobalPauseSession {
 
   // MARK: - Reflection (messages, intention & mood)
 
-  func post(message text: String) async throws -> PeaceMessage {
+  /// Posts a peace message. Returns the whole posted envelope — the composer
+  /// reads the award to phrase its sent-note ("A heart for your kindness")
+  /// when the first message of the night earned one.
+  @discardableResult
+  func post(message text: String) async throws -> PostedPeaceMessage {
     let country = Locale.current.region?.identifier.uppercased()
-    return try await repository.postMessage(text, countryISO: country)
+    let posted = try await repository.postMessage(text, countryISO: country)
+    // The first message of the night earns; later ones come back bare.
+    if let award = posted.award {
+      awardSink?(award)
+    }
+    return posted
   }
 
   func submit(intention: String?, mood: String?) async throws {
@@ -341,6 +397,14 @@ extension GlobalPauseSession {
   static func preview(cardState: GlobalPauseCardState) -> GlobalPauseSession {
     let session = preview(live: cardState == .live)
     session.cardState = cardState
+    return session
+  }
+
+  /// A session whose attendance claim has settled — the reflection screen's
+  /// award caption reads it.
+  static func previewAwarded() -> GlobalPauseSession {
+    let session = preview()
+    session.pauseAward = AwardGrant(hearts: 5, sunlight: 5, plantId: "oak")
     return session
   }
 }

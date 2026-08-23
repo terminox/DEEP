@@ -183,6 +183,12 @@ struct PracticeSyncRequestDTO: Encodable {
 
 struct PracticeSyncResponseDTO: Decodable {
   let synced: [String]
+  // Awards settled by this sync — one outcome per newly-stored session — plus
+  // the post-award wallet/plant snapshots. All optional: an older server
+  // simply syncs without awarding.
+  let awards: [AwardOutcomeDTO]?
+  let wallet: WalletDTO?
+  let plant: PlantProgressDTO?
 }
 
 struct PracticeSessionsResponseDTO: Decodable {
@@ -259,6 +265,11 @@ struct PauseMessagesResponseDTO: Decodable {
 struct PauseMessagePostResponseDTO: Decodable {
   let message: PeaceMessageDTO
   let serverNow: String
+  // The first peace message of the night earns an award; every later message
+  // (and every older server) omits all three.
+  let award: AwardOutcomeDTO?
+  let wallet: WalletDTO?
+  let plant: PlantProgressDTO?
 }
 
 struct PauseHeartbeatRequestDTO: Encodable {
@@ -284,4 +295,112 @@ struct PeaceMessagePostRequestDTO: Encodable {
 struct PauseReflectionRequestDTO: Encodable {
   let intention: String?
   let mood: String?
+}
+
+// MARK: - Garden & rewards
+// Every award-bearing response carries the same trio: the award outcome(s),
+// plus sibling `wallet` and `plant` snapshots with the ABSOLUTE post-award
+// figures. All new fields are optional so an older server stays decodable.
+
+struct PlantStageDTO: Decodable {
+  let id: String
+  let name: String
+  /// Cumulative sunlight to REACH this stage; first stage is 0.
+  let sunlightRequired: Int
+  let mascotUrl: String?
+  let mascotBgUrl: String?
+  let heroVideoUrl: String?
+}
+
+struct PlantDTO: Decodable {
+  let id: String
+  let name: String
+  let tagline: String?
+  let imageUrl: String?
+  let palette: String?
+  let stages: [PlantStageDTO]?
+}
+
+struct WalletDTO: Decodable {
+  let heartsBalance: Int
+  let heartsEarned: Int?
+  let heartsGiven: Int?
+  let earnedToday: Int?
+  let remainingToday: Int?
+  let dailyCap: Int?
+  let givenByCategory: [String: Int]?
+}
+
+/// The credited plant's post-award progress.
+struct PlantProgressDTO: Decodable {
+  let plantId: String
+  let sunlight: Int
+  let currentStageIndex: Int?
+}
+
+struct AwardOutcomeDTO: Decodable {
+  let kind: String?
+  let granted: Bool?
+  let heartsGranted: Int?
+  let sunlightGranted: Int?
+  let plantId: String?
+  /// Why the award was withheld: "daily_cap" | "kind_cap" | "duplicate".
+  let cappedBy: String?
+}
+
+struct GardenStateDTO: Decodable {
+  let selectedPlant: PlantDTO?
+  /// Sunlight banked into the selected plant.
+  let sunlight: Int?
+  let currentStageIndex: Int?
+  /// The selected plant's stages, when not nested inside `selectedPlant`.
+  let stages: [PlantStageDTO]?
+  /// Lifetime sunlight per plant id — the picker shows every plant at its
+  /// own earned stage.
+  let sunlightByPlant: [String: Int]?
+}
+
+struct GardenResponseDTO: Decodable {
+  let garden: GardenStateDTO
+  let wallet: WalletDTO?
+}
+
+struct PlantsResponseDTO: Decodable {
+  let plants: [PlantDTO]
+}
+
+struct WalletResponseDTO: Decodable {
+  let wallet: WalletDTO
+}
+
+struct SelectPlantRequestDTO: Encodable {
+  let plantId: String
+}
+
+struct SpendHeartsRequestDTO: Encodable {
+  /// Client-generated UUID — the idempotency key for a safe retry.
+  let id: String
+  let amount: Int
+  let category: String
+  let projectId: String?
+}
+
+struct ListenRequestDTO: Encodable {
+  let trackId: String
+}
+
+/// `POST /me/sound/listens` and any single-award response.
+struct AwardResponseDTO: Decodable {
+  let award: AwardOutcomeDTO?
+  let wallet: WalletDTO?
+  let plant: PlantProgressDTO?
+}
+
+/// `POST /me/pause/award` — the explicit attendance claim.
+struct PauseAwardResponseDTO: Decodable {
+  let eligible: Bool?
+  let award: AwardOutcomeDTO?
+  let wallet: WalletDTO?
+  let plant: PlantProgressDTO?
+  let serverNow: String?
 }

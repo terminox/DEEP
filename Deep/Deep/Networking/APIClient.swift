@@ -99,6 +99,9 @@ final class APIClient {
     }
     var req = URLRequest(url: url)
     req.httpMethod = method
+    // The user's day boundary travels with every request: award day-keys and
+    // "earned today" figures follow the device timezone server-side.
+    req.setValue(TimeZone.current.identifier, forHTTPHeaderField: "X-Device-Timezone")
     if let bodyData {
       req.httpBody = bodyData
       req.setValue(contentType, forHTTPHeaderField: "Content-Type")
@@ -137,8 +140,10 @@ final class APIClient {
     return data
   }
 
-  /// Single-flight refresh: concurrent 401s await one rotation. On failure the
-  /// tokens are cleared so the app falls back to signed-out.
+  /// Single-flight refresh: concurrent 401s await one rotation. Tokens are
+  /// cleared only when the server actually *rejects* the refresh (a 4xx) —
+  /// a timeout or unreachable host is not a revoked session, and clearing on
+  /// it would log the user out every time the backend blips.
   private func refreshTokens() async throws {
     if let existing = refreshTask {
       return try await existing.value
@@ -164,8 +169,27 @@ final class APIClient {
     do {
       try await task.value
     } catch {
-      tokens.clear()
-      throw APIError.unauthorized
+      if Self.isAuthRejection(error) {
+        tokens.clear()
+        throw APIError.unauthorized
+      }
+      // Transport / server hiccup: keep the token pair, surface the real
+      // error — the caller retries later with the session intact.
+      throw error
+    }
+  }
+
+  /// Whether an error is the server refusing the credentials themselves —
+  /// the only failures that may end a session. Transport errors, 5xx, and
+  /// malformed responses are outages, not revocations.
+  static func isAuthRejection(_ error: Error) -> Bool {
+    switch error {
+    case APIError.unauthorized:
+      return true
+    case APIError.http(let status, _, _):
+      return (400..<500).contains(status)
+    default:
+      return false
     }
   }
 

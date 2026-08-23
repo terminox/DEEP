@@ -15,6 +15,9 @@ import SwiftUI
 /// coordinator, so it actually renders).
 struct CompassionPortfolioHomeView: View {
   @Environment(\.heartLedger) private var ledger
+  /// One pull refreshes the garden, and the wallet rides the same response —
+  /// `GardenStore.heartsChanged` hydrates the ledger this screen reads.
+  @Environment(\.gardenStore) private var gardenStore
   /// Extra bottom space so content clears the tab bar.
   var bottomInset: CGFloat = .rhythm
 
@@ -59,6 +62,7 @@ struct CompassionPortfolioHomeView: View {
       title: "Compassion",
       subtitle: "Turn practice into giving"
     )
+    .heroRefreshable { await gardenStore.refresh() }
   }
 }
 

@@ -32,6 +32,7 @@ struct DeepSessionCoordinatorView: View {
   @Environment(\.soundPlayer) private var soundPlayer
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.heartLedger) private var heartLedger
+  @Environment(\.gardenStore) private var gardenStore
   @Environment(\.scenePhase) private var scenePhase
 
   init(session: DeepSession, onFinish: @escaping () -> Void = {}) {
@@ -80,7 +81,20 @@ struct DeepSessionCoordinatorView: View {
       guard phase == .finished, !didRecord else { return }
       didRecord = true
       practiceStore.recordCompletion(of: session)
-      heartEarned = heartLedger.earn() > 0
+      // The optimistic promise is gated by a client mirror of the server's
+      // sessions-per-day award rule — the beat must never promise a heart the
+      // practice sync won't deliver. The count includes the session just
+      // recorded, so the limit-th session still earns and the next one rests.
+      let sessionsToday = PracticeMath.completionsToday(
+        in: practiceStore.completions, calendar: .current, now: .now
+      )
+      heartEarned = sessionsToday <= RewardRules.deepSessionDailyLimit
+        && heartLedger.earn() > 0
+      // Hearts and sunlight are granted together (1♥ + 1☀), so the garden
+      // ticks on the same gate; the sync's absolute figures reconcile both.
+      if heartEarned {
+        gardenStore.creditSunlight(1)
+      }
       // Let the final exhale settle (the orb blooms to its rest) before the
       // hush into the completion beat — no tap required to move on. The
       // longer crossfade absorbs part of what used to be dead time, so the
@@ -105,4 +119,5 @@ struct DeepSessionCoordinatorView: View {
     .environment(\.soundPlayer, MockSoundPlayer.idle)
     .environment(\.practiceStore, MockPracticeStore())
     .environment(\.heartLedger, .sample)
+    .environment(\.gardenStore, .sample)
 }

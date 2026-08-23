@@ -26,6 +26,11 @@ final class StreamingSoundPlayer: SoundPlaying {
   @ObservationIgnored private var endObserver: NSObjectProtocol?
   @ObservationIgnored private var sessionConfigured = false
 
+  /// Fired when a track plays through to its natural end — the reward seam.
+  /// `AppDependencies` points this at the listen report; skips and manual
+  /// nexts never fire it.
+  @ObservationIgnored private let trackFinished: (@MainActor (SoundTrack) -> Void)?
+
   var currentTrack: SoundTrack? {
     queue.indices.contains(index) ? queue[index] : nil
   }
@@ -36,7 +41,8 @@ final class StreamingSoundPlayer: SoundPlaying {
     return min(1, max(0, elapsed / duration))
   }
 
-  init() {
+  init(trackFinished: (@MainActor (SoundTrack) -> Void)? = nil) {
+    self.trackFinished = trackFinished
     player.volume = Float(volume)
     addTimeObserver()
   }
@@ -126,7 +132,16 @@ final class StreamingSoundPlayer: SoundPlaying {
       object: item,
       queue: .main
     ) { [weak self] _ in
-      MainActor.assumeIsolated { self?.next() }
+      MainActor.assumeIsolated {
+        guard let self else { return }
+        // Capture the finished track BEFORE advancing — `next()` moves
+        // `currentTrack` onto the following one.
+        let finished = self.currentTrack
+        self.next()
+        if let finished {
+          self.trackFinished?(finished)
+        }
+      }
     }
   }
 

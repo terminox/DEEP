@@ -72,6 +72,29 @@ struct PracticeMathTests {
     #expect(minutes == 0)
   }
 
+  // MARK: - completionsToday
+
+  @Test
+  func completionsTodayCountsSessionsNotMinutes() {
+    let yesterdayLate = Self.date(year: 2026, month: 7, day: 22, hour: 23, minute: 59)
+    let completions = [
+      Self.completion(durationSeconds: 300, on: Self.now),
+      Self.completion(durationSeconds: 60, on: Self.date(year: 2026, month: 7, day: 23, hour: 8)),
+      Self.completion(durationSeconds: 600, on: yesterdayLate),
+    ]
+
+    let count = PracticeMath.completionsToday(
+      in: completions, calendar: Self.calendar, now: Self.now
+    )
+    #expect(count == 2)
+  }
+
+  @Test
+  func completionsTodayEmptyIsZero() {
+    let count = PracticeMath.completionsToday(in: [], calendar: Self.calendar, now: Self.now)
+    #expect(count == 0)
+  }
+
   // MARK: - currentStreakDays
 
   @Test

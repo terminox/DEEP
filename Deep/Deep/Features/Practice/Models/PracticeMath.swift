@@ -18,6 +18,17 @@ enum PracticeMath {
     return max(1, seconds / 60)
   }
 
+  /// Sessions completed today — the client mirror of the server's per-day
+  /// session award rule (`RewardRules.deepSessionDailyLimit`), so the
+  /// completion beat never promises a heart the sync will not deliver.
+  static func completionsToday(
+    in completions: [PracticeCompletion],
+    calendar: Calendar,
+    now: Date
+  ) -> Int {
+    completions.count { calendar.isDate($0.completedAt, inSameDayAs: now) }
+  }
+
   /// Consecutive practice days ending today — or yesterday, so a streak isn't
   /// "broken" while today simply hasn't happened yet.
   static func currentStreakDays(

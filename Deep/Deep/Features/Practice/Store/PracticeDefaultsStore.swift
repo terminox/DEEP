@@ -27,6 +27,10 @@ final class PracticeDefaultsStore: PracticeStore {
     didSet { persist() }
   }
 
+  /// Awards settled by a practice sync land here — `AppDependencies` points
+  /// this at the shared ingest closure so the ledger and garden reconcile.
+  @ObservationIgnored var awardSink: (@MainActor (AwardGrant) -> Void)?
+
   private let defaults: UserDefaults
   private let remote: any PracticeRemote
   private let calendar: Calendar
@@ -100,14 +104,20 @@ final class PracticeDefaultsStore: PracticeStore {
   private func pushUnsynced() async {
     let pending = state.completions.filter { !$0.isSynced }
     guard !pending.isEmpty else { return }
-    guard let accepted = try? await remote.upload(pending) else { return }
+    guard let result = try? await remote.upload(pending) else { return }
 
-    let acceptedIDs = Set(accepted)
+    let acceptedIDs = Set(result.synced)
     var completions = state.completions
     for index in completions.indices where acceptedIDs.contains(completions[index].id) {
       completions[index].isSynced = true
     }
     state.completions = completions
+
+    // Awards ride the sync: hand the settled grant (absolute figures included)
+    // to whoever reconciles the ledger and garden.
+    if let awards = result.awards {
+      awardSink?(awards)
+    }
   }
 
   /// Merges the server's log into the journal by id — entries recorded on
