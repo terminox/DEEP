@@ -2,9 +2,11 @@ import SwiftUI
 
 /// The second reward: practice becomes a heart the member can give outward.
 /// The portfolio's daily halo is reduced to the earned change and live balance.
-struct DeepSessionCompassionRewardView: View {
-  let receipt: DeepSessionRewardReceipt
+struct CompassionRewardView: View {
+  let receipt: RewardReceipt
   let buttonTitle: String
+  /// Whether this step closes the ritual — the button reads its hint from this.
+  let isFinal: Bool
   let onContinue: () -> Void
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -15,12 +17,14 @@ struct DeepSessionCompassionRewardView: View {
   @State private var hasArrived = false
 
   init(
-    receipt: DeepSessionRewardReceipt,
+    receipt: RewardReceipt,
     buttonTitle: String,
+    isFinal: Bool = false,
     onContinue: @escaping () -> Void
   ) {
     self.receipt = receipt
     self.buttonTitle = buttonTitle
+    self.isFinal = isFinal
     self.onContinue = onContinue
     _displayedBalance = State(initialValue: receipt.heartBalanceBefore)
     _displayedToday = State(initialValue: receipt.heartsEarnedTodayBefore)
@@ -52,7 +56,7 @@ struct DeepSessionCompassionRewardView: View {
     }
     .scrollIndicators(.hidden)
     .safeAreaInset(edge: .bottom) {
-      DeepSessionRewardButton(title: buttonTitle, action: onContinue)
+      RewardContinueButton(title: buttonTitle, isFinal: isFinal, action: onContinue)
         .padding(.horizontal, .edge)
         .padding(.bottom, .rhythm)
     }
@@ -159,21 +163,27 @@ struct DeepSessionCompassionRewardView: View {
 }
 
 #Preview("Compassion reward") {
-  DeepSessionCompassionRewardView(receipt: .sample, buttonTitle: "Continue", onContinue: {})
+  CompassionRewardView(receipt: .sample, buttonTitle: "Continue", onContinue: {})
 }
 
 #Preview("Compassion reward — final") {
-  DeepSessionCompassionRewardView(
+  CompassionRewardView(
     receipt: .laterToday,
     buttonTitle: "Carry this calm",
+    isFinal: true,
     onContinue: {}
   )
 }
 
 #Preview("Compassion reward — capped") {
-  DeepSessionCompassionRewardView(
+  CompassionRewardView(
     receipt: .capped,
     buttonTitle: "Carry this calm",
+    isFinal: true,
     onContinue: {}
   )
+}
+
+#Preview("Compassion reward — pause night") {
+  CompassionRewardView(receipt: .pauseNight, buttonTitle: "Continue", onContinue: {})
 }

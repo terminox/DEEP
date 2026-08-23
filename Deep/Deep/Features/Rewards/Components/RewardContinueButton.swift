@@ -2,8 +2,11 @@ import SwiftUI
 
 /// The one forward affordance shared by every reward step. Its label changes
 /// at the edge of the ritual, while its shape and placement remain familiar.
-struct DeepSessionRewardButton: View {
+struct RewardContinueButton: View {
   let title: String
+  /// Whether this tap closes the ritual rather than advancing it — the
+  /// accessibility hint reads from this, never from the label.
+  var isFinal = false
   let action: () -> Void
 
   var body: some View {
@@ -23,15 +26,17 @@ struct DeepSessionRewardButton: View {
       }
       .shadow(color: .lavenderMist.opacity(0.4), radius: 12, x: 0, y: 6)
       .buttonStyle(.softPress)
-      .accessibilityHint(title == "Continue"
-        ? "Shows the next part of your session rewards"
-        : "Closes the session and returns to the app")
+      .accessibilityHint(isFinal
+        ? "Closes the session and returns to the app"
+        : "Shows the next part of your session rewards")
   }
 }
 
 #Preview {
-  DeepSessionRewardButton(title: "Carry this calm", action: {})
-    .padding(.edge)
-    .background(.moonCream)
+  VStack(spacing: .rhythm) {
+    RewardContinueButton(title: "Continue", action: {})
+    RewardContinueButton(title: "Carry this calm", isFinal: true, action: {})
+  }
+  .padding(.edge)
+  .background(.moonCream)
 }
-

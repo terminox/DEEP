@@ -2,9 +2,11 @@ import SwiftUI
 
 /// The first reward: the member's chosen plant receives this session's
 /// sunlight. It borrows the garden's portrait halo, stripped to one calm fact.
-struct DeepSessionGardenRewardView: View {
-  let receipt: DeepSessionRewardReceipt
+struct GardenRewardView: View {
+  let receipt: RewardReceipt
   let buttonTitle: String
+  /// Whether this step closes the ritual — the button reads its hint from this.
+  let isFinal: Bool
   let onContinue: () -> Void
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -15,12 +17,14 @@ struct DeepSessionGardenRewardView: View {
   @State private var hasArrived = false
 
   init(
-    receipt: DeepSessionRewardReceipt,
+    receipt: RewardReceipt,
     buttonTitle: String,
+    isFinal: Bool = false,
     onContinue: @escaping () -> Void
   ) {
     self.receipt = receipt
     self.buttonTitle = buttonTitle
+    self.isFinal = isFinal
     self.onContinue = onContinue
     let initial = receipt.gardenBefore ?? receipt.gardenAfter
     _displayedGrowth = State(initialValue: initial)
@@ -54,7 +58,7 @@ struct DeepSessionGardenRewardView: View {
     }
     .scrollIndicators(.hidden)
     .safeAreaInset(edge: .bottom) {
-      DeepSessionRewardButton(title: buttonTitle, action: onContinue)
+      RewardContinueButton(title: buttonTitle, isFinal: isFinal, action: onContinue)
         .padding(.horizontal, .edge)
         .padding(.bottom, .rhythm)
     }
@@ -208,22 +212,26 @@ struct DeepSessionGardenRewardView: View {
 }
 
 #Preview("Garden reward") {
-  DeepSessionGardenRewardView(receipt: .sample, buttonTitle: "Continue", onContinue: {})
+  GardenRewardView(receipt: .sample, buttonTitle: "Continue", onContinue: {})
 }
 
 #Preview("Garden reward — evolution") {
-  DeepSessionGardenRewardView(receipt: .evolving, buttonTitle: "Continue", onContinue: {})
+  GardenRewardView(receipt: .evolving, buttonTitle: "Continue", onContinue: {})
 }
 
 #Preview("Garden reward — capped") {
-  DeepSessionGardenRewardView(receipt: .capped, buttonTitle: "Continue", onContinue: {})
+  GardenRewardView(receipt: .capped, buttonTitle: "Continue", onContinue: {})
 }
 
 #Preview("Garden reward — catching up") {
-  DeepSessionGardenRewardView(receipt: .catchingUp, buttonTitle: "Continue", onContinue: {})
+  GardenRewardView(receipt: .catchingUp, buttonTitle: "Continue", onContinue: {})
 }
 
 #Preview("Garden reward — large type") {
-  DeepSessionGardenRewardView(receipt: .sample, buttonTitle: "Continue", onContinue: {})
+  GardenRewardView(receipt: .sample, buttonTitle: "Continue", onContinue: {})
     .environment(\.dynamicTypeSize, .accessibility2)
+}
+
+#Preview("Garden reward — pause night") {
+  GardenRewardView(receipt: .pauseNight, buttonTitle: "Continue", onContinue: {})
 }

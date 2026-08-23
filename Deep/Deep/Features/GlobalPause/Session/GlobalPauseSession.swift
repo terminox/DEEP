@@ -56,6 +56,11 @@ final class GlobalPauseSession {
   /// may still be in flight. Cleared as the next session visit begins.
   private(set) var pauseAward: AwardGrant?
 
+  /// Tonight's peace-message award, when the first message of the night earned
+  /// one. Held for the same reason as `pauseAward`: the ending ritual totals
+  /// both, and it is composed after the composer has had its say.
+  private(set) var messageAward: AwardGrant?
+
   /// When the next meditation begins — the countdown target for the card's
   /// caption. Nil until the schedule lands.
   var nextMeditationStart: Date? {
@@ -228,6 +233,7 @@ final class GlobalPauseSession {
     pauseAwardTask?.cancel()
     pauseAwardTask = nil
     pauseAward = nil
+    messageAward = nil
     let country = Locale.current.region?.identifier.uppercased()
 
     // Locale-centroid fallback immediately, so the globe can turn to
@@ -291,6 +297,21 @@ final class GlobalPauseSession {
     }
   }
 
+  /// Lets a claim already in flight land before the ending ritual reads the
+  /// books, so the first reward screen opens on settled figures rather than
+  /// zeros. Returns the moment it settles, or after `timeout` — a claim that
+  /// never arrives simply reconciles the stores behind the ritual.
+  func settlePauseAward(timeout: Duration = .seconds(2)) async {
+    guard pauseAwardTask != nil else { return }
+    let tick = Duration.milliseconds(100)
+    var waited = Duration.zero
+    while pauseAwardTask != nil, waited < timeout {
+      try? await Task.sleep(for: tick)
+      guard !Task.isCancelled else { return }
+      waited += tick
+    }
+  }
+
   private func pollLive() async {
     guard let snapshot = try? await repository.live() else { return }
     participantCount = snapshot.participantCount
@@ -346,6 +367,7 @@ final class GlobalPauseSession {
     let posted = try await repository.postMessage(text, countryISO: country)
     // The first message of the night earns; later ones come back bare.
     if let award = posted.award {
+      messageAward = award
       awardSink?(award)
     }
     return posted

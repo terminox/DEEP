@@ -25,7 +25,7 @@ struct DeepSessionCoordinatorView: View {
   /// so closing from the finished screen still counts.
   @State private var didRecord = false
   /// The immutable before/after truth rendered by the reward sequence.
-  @State private var rewardReceipt: DeepSessionRewardReceipt?
+  @State private var rewardReceipt: RewardReceipt?
   /// Owns the final-exhale hold so dismissal tears it down cleanly.
   @State private var completionTask: Task<Void, Never>?
 
@@ -33,6 +33,7 @@ struct DeepSessionCoordinatorView: View {
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.continuityWitness) private var continuityWitness
   @Environment(\.scenePhase) private var scenePhase
 
   init(session: DeepSession, onFinish: @escaping () -> Void = {}) {
@@ -57,8 +58,9 @@ struct DeepSessionCoordinatorView: View {
         .transition(.softDrift)
       case .completion:
         if let rewardReceipt {
-          DeepSessionCompletionView(
+          RewardRitualView(
             receipt: rewardReceipt,
+            continuityHeadline: "You returned today",
             onFinish: onFinish
           )
           .transition(.softDrift)
@@ -100,15 +102,13 @@ struct DeepSessionCoordinatorView: View {
     didRecord = true
 
     let now = Date.now
-    let completionsBefore = PracticeMath.completionsToday(
-      in: practiceStore.completions,
-      calendar: .current,
-      now: now
-    )
     let gardenBefore = gardenStore.growth
     let heartBalanceBefore = heartLedger.balance
     let heartsEarnedTodayBefore = heartLedger.heartsEarnedToday
     let continuityBefore = practiceStore.currentStreakDays
+    // Frozen before the ritual runs: whichever practice reaches the beat
+    // first today is the one that shows it.
+    let continuityWitnessedToday = continuityWitness.hasWitnessedToday
 
     practiceStore.recordCompletion(of: session)
 
@@ -123,7 +123,7 @@ struct DeepSessionCoordinatorView: View {
     // this award, sunlight rests too, matching the server contract.
     let sunlightAwarded = heartsAwarded > 0 ? gardenStore.creditSunlight(1) : 0
 
-    rewardReceipt = DeepSessionRewardReceipt(
+    rewardReceipt = RewardReceipt(
       gardenBefore: gardenBefore,
       gardenAfter: gardenStore.growth,
       sunlightAwarded: sunlightAwarded,
@@ -134,7 +134,7 @@ struct DeepSessionCoordinatorView: View {
       heartsAwarded: heartsAwarded,
       continuityBefore: continuityBefore,
       continuityAfter: practiceStore.currentStreakDays,
-      completionsTodayBefore: completionsBefore
+      continuityWitnessedToday: continuityWitnessedToday
     )
 
     // Let the final exhale settle before the first reward blooms in.
@@ -152,4 +152,5 @@ struct DeepSessionCoordinatorView: View {
     .environment(\.practiceStore, MockPracticeStore())
     .environment(\.heartLedger, .sample)
     .environment(\.gardenStore, .sample)
+    .environment(\.continuityWitness, .unwitnessed)
 }

@@ -27,6 +27,9 @@ final class MainTabController: UITabBarController {
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
   private let gardenStore: GardenStore
+  /// The one day-stamp behind the continuity beat, so a Deep Session and a
+  /// Global Pause on the same day share the single moment.
+  private let continuityWitness: ContinuityWitness
 
   /// The app-long Global Pause engine + backend, handed to the Global Pause
   /// coordinator (phases in the lobby; the caption/schedule now surfaces on
@@ -73,6 +76,7 @@ final class MainTabController: UITabBarController {
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
+    continuityWitness: ContinuityWitness,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
     imageLoader: any ImageLoading,
@@ -86,6 +90,7 @@ final class MainTabController: UITabBarController {
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
+    self.continuityWitness = continuityWitness
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
@@ -123,6 +128,7 @@ final class MainTabController: UITabBarController {
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       gardenStore: gardenStore,
+      continuityWitness: continuityWitness,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
       imageLoader: imageLoader
@@ -265,6 +271,7 @@ final class MainTabController: UITabBarController {
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
       .environment(\.gardenStore, gardenStore)
+      .environment(\.continuityWitness, continuityWitness)
       .environment(\.imageLoader, imageLoader)
       .environment(\.videoCache, videoCache)
     let controller = UIHostingController(rootView: rootView)

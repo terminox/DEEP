@@ -17,6 +17,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
   private let gardenStore: GardenStore
+  private let continuityWitness: ContinuityWitness
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
   private let imageLoader: any ImageLoading
@@ -51,6 +52,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
+    continuityWitness: ContinuityWitness,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
     imageLoader: any ImageLoading
@@ -60,6 +62,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
+    self.continuityWitness = continuityWitness
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
@@ -130,6 +133,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
       .environment(\.gardenStore, gardenStore)
+      .environment(\.continuityWitness, continuityWitness)
       .environment(\.globalPauseSession, pauseSession)
       .environment(\.pauseEventRepository, pauseRepository)
       .environment(\.imageLoader, imageLoader)
@@ -195,6 +199,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         .environment(\.practiceStore, practiceStore)
         .environment(\.heartLedger, heartLedger)
         .environment(\.gardenStore, gardenStore)
+        .environment(\.continuityWitness, continuityWitness)
     )
   }
 
@@ -252,7 +257,12 @@ final class GlobalPauseCoordinatorController: UIViewController {
     let controller = GlobalPauseSessionController(
       session: pauseSession,
       scene: scene,
-      audio: audio
+      audio: audio,
+      practiceStore: practiceStore,
+      heartLedger: heartLedger,
+      gardenStore: gardenStore,
+      continuityWitness: continuityWitness,
+      imageLoader: imageLoader
     ) { [weak self, weak presenter] in
       presenter?.dismiss(animated: true)
       self?.sessionAudio = nil

@@ -2,8 +2,13 @@ import SwiftUI
 
 /// The once-daily closing beat. It celebrates returning without introducing a
 /// streak to defend: the count is continuity witnessed, never a warning.
-struct DeepSessionContinuityRewardView: View {
-  let receipt: DeepSessionRewardReceipt
+struct ContinuityRewardView: View {
+  let receipt: RewardReceipt
+  /// How the return is named. A Deep Session credits today ("You returned
+  /// today"); a Global Pause, which adds no practice day, witnesses the run
+  /// instead ("Your rhythm continues").
+  let headline: String
+  let buttonTitle: String
   let onFinish: () -> Void
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -12,8 +17,15 @@ struct DeepSessionContinuityRewardView: View {
   @State private var hasArrived = false
   @State private var haloReleased = false
 
-  init(receipt: DeepSessionRewardReceipt, onFinish: @escaping () -> Void) {
+  init(
+    receipt: RewardReceipt,
+    headline: String,
+    buttonTitle: String,
+    onFinish: @escaping () -> Void
+  ) {
     self.receipt = receipt
+    self.headline = headline
+    self.buttonTitle = buttonTitle
     self.onFinish = onFinish
     _displayedDays = State(initialValue: receipt.continuityBefore)
   }
@@ -26,7 +38,7 @@ struct DeepSessionContinuityRewardView: View {
             .font(DeepType.micro)
             .tracking(.microTracking)
             .foregroundStyle(.driftGrey)
-          Text("You returned today")
+          Text(headline)
             .font(DeepType.displayTitle)
             .foregroundStyle(.deepPlum)
             .multilineTextAlignment(.center)
@@ -44,7 +56,7 @@ struct DeepSessionContinuityRewardView: View {
     }
     .scrollIndicators(.hidden)
     .safeAreaInset(edge: .bottom) {
-      DeepSessionRewardButton(title: "Carry this calm", action: onFinish)
+      RewardContinueButton(title: buttonTitle, isFinal: true, action: onFinish)
         .padding(.horizontal, .edge)
         .padding(.bottom, .rhythm)
     }
@@ -98,7 +110,7 @@ struct DeepSessionContinuityRewardView: View {
 
   private var accessibilitySummary: String {
     let unit = receipt.continuityAfter == 1 ? "day" : "days"
-    return "You returned today. \(receipt.continuityAfter) \(unit) of returning. Each return is enough."
+    return "\(headline). \(receipt.continuityAfter) \(unit) of returning. Each return is enough."
   }
 
   private func playEntrance() async {
@@ -120,14 +132,38 @@ struct DeepSessionContinuityRewardView: View {
 }
 
 #Preview("Continuity reward") {
-  DeepSessionContinuityRewardView(receipt: .sample, onFinish: {})
+  ContinuityRewardView(
+    receipt: .sample,
+    headline: "You returned today",
+    buttonTitle: "Carry this calm",
+    onFinish: {}
+  )
+}
+
+#Preview("Continuity reward — pause night") {
+  ContinuityRewardView(
+    receipt: .pauseNight,
+    headline: "Your rhythm continues",
+    buttonTitle: "Carry this calm",
+    onFinish: {}
+  )
 }
 
 #Preview("Continuity reward — first day") {
-  DeepSessionContinuityRewardView(receipt: .evolving, onFinish: {})
+  ContinuityRewardView(
+    receipt: .evolving,
+    headline: "You returned today",
+    buttonTitle: "Carry this calm",
+    onFinish: {}
+  )
 }
 
 #Preview("Continuity reward — large type") {
-  DeepSessionContinuityRewardView(receipt: .sample, onFinish: {})
-    .environment(\.dynamicTypeSize, .accessibility2)
+  ContinuityRewardView(
+    receipt: .sample,
+    headline: "You returned today",
+    buttonTitle: "Carry this calm",
+    onFinish: {}
+  )
+  .environment(\.dynamicTypeSize, .accessibility2)
 }

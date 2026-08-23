@@ -106,9 +106,10 @@ struct MindGardenHomeView: View {
     )
   }
 
-  /// Mirrors the growth card's geometry — salutation lines, the halo's circle,
-  /// the name and fact lines — while the first garden snapshot is still on its
-  /// way, so the page doesn't reflow when the plant arrives.
+  /// Mirrors the growth card's geometry — salutation lines, the halo's circle
+  /// with the change pill beneath it, the name and fact lines — while the first
+  /// garden snapshot is still on its way, so the page doesn't reflow when the
+  /// plant arrives.
   private var growthSkeleton: some View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 8) {
@@ -117,8 +118,12 @@ struct MindGardenHomeView: View {
       }
 
       HStack(spacing: 16) {
-        SkeletonBlock(cornerRadius: 50.5)
-          .frame(width: 101, height: 101)
+        VStack(spacing: 10) {
+          SkeletonBlock(cornerRadius: 50.5)
+            .frame(width: 101, height: 101)
+          SkeletonBlock(cornerRadius: .chip)
+            .frame(width: 92, height: 30)
+        }
 
         VStack(alignment: .leading, spacing: 8) {
           SkeletonTextLine(width: 130)

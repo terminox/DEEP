@@ -4,9 +4,9 @@ import Foundation
 
 /// The pause-award lifecycle around the reflection screen. The regression this
 /// guards: `leaveSession()` runs mid-reflection (the handback releases presence
-/// while the caption's one reader is still up), so clearing the award there —
-/// or cancelling a claim still in flight — meant the caption never rendered
-/// even though the server had granted the hearts.
+/// while the ending ritual — the award's one reader — is still up), so clearing
+/// the award there, or cancelling a claim still in flight, meant the night's
+/// hearts never showed even though the server had granted them.
 @MainActor
 struct GlobalPauseAwardTests {
   private func makeSession(
@@ -80,5 +80,55 @@ struct GlobalPauseAwardTests {
     let award = try await settledAward(of: session)
     #expect(award.hearts == 5)
     #expect(sunk.count == 1)
+  }
+
+  @Test("Waiting for a claim returns once it settles")
+  func settleWaitsForTheClaim() async throws {
+    let session = makeSession(rewards: MockRewardsRemote())
+
+    session.enterSession()
+    session.claimPauseAward()
+    await session.settlePauseAward()
+
+    // The ritual composes straight after this call, so the grant must be here.
+    #expect(session.pauseAward?.hearts == 5)
+    session.leaveSession()
+  }
+
+  @Test("Waiting when nothing is in flight returns at once")
+  func settleReturnsWithoutAClaim() async throws {
+    let session = makeSession(rewards: MockRewardsRemote())
+
+    await session.settlePauseAward()
+
+    #expect(session.pauseAward == nil)
+  }
+
+  @Test("The night's first peace message is kept for the ritual's total")
+  func firstMessageAwardIsKept() async throws {
+    let session = makeSession(rewards: MockRewardsRemote())
+    session.enterSession()
+
+    _ = try await session.post(message: "Peace to you all")
+    #expect(session.messageAward?.hearts == 1)
+    #expect(session.messageAward?.sunlight == 1)
+
+    // Later messages come back bare — the first award stays the night's truth.
+    _ = try await session.post(message: "And again")
+    #expect(session.messageAward?.hearts == 1)
+    session.leaveSession()
+  }
+
+  @Test("The next session visit starts without last night's message award")
+  func nextVisitForgetsTheMessageAward() async throws {
+    let session = makeSession(rewards: MockRewardsRemote())
+    session.enterSession()
+    _ = try await session.post(message: "Peace to you all")
+    #expect(session.messageAward != nil)
+    session.leaveSession()
+
+    session.enterSession()
+    #expect(session.messageAward == nil)
+    session.leaveSession()
   }
 }

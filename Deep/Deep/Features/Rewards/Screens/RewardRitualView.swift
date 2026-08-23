@@ -1,16 +1,23 @@
 import SwiftUI
 
-/// Conducts the rewarding end of a finished Deep Session. The sequence only
-/// moves forward: garden, compassion, then the once-daily continuity beat.
-struct DeepSessionCompletionView: View {
+/// Conducts the rewarding end of a finished practice. The sequence only moves
+/// forward: garden, compassion, then the once-daily continuity beat — shared
+/// by every ending, with only the closing words changing between them.
+struct RewardRitualView: View {
   private enum Step {
     case garden
     case compassion
     case continuity
   }
 
-  let receipt: DeepSessionRewardReceipt
+  let receipt: RewardReceipt
+  /// How the continuity beat names the return. See `ContinuityRewardView`.
+  var continuityHeadline = "You returned today"
+  /// The label on the tap that ends the ritual.
+  var finalButtonTitle = "Carry this calm"
   var onFinish: () -> Void = {}
+
+  @Environment(\.continuityWitness) private var continuityWitness
 
   @State private var step = Step.garden
   @State private var isTransitioning = false
@@ -22,7 +29,7 @@ struct DeepSessionCompletionView: View {
 
       switch step {
       case .garden:
-        DeepSessionGardenRewardView(
+        GardenRewardView(
           receipt: receipt,
           buttonTitle: "Continue",
           onContinue: showCompassion
@@ -31,24 +38,27 @@ struct DeepSessionCompletionView: View {
 
       case .compassion:
         if receipt.showsContinuity {
-          DeepSessionCompassionRewardView(
+          CompassionRewardView(
             receipt: receipt,
             buttonTitle: "Continue",
             onContinue: showContinuity
           )
           .transition(.softDrift)
         } else {
-          DeepSessionCompassionRewardView(
+          CompassionRewardView(
             receipt: receipt,
-            buttonTitle: "Carry this calm",
+            buttonTitle: finalButtonTitle,
+            isFinal: true,
             onContinue: finish
           )
           .transition(.softDrift)
         }
 
       case .continuity:
-        DeepSessionContinuityRewardView(
+        ContinuityRewardView(
           receipt: receipt,
+          headline: continuityHeadline,
+          buttonTitle: finalButtonTitle,
           onFinish: finish
         )
         .transition(.softDrift)
@@ -60,7 +70,12 @@ struct DeepSessionCompletionView: View {
     move(to: .compassion)
   }
 
+  /// The day's one witnessing is spent here rather than when the receipt was
+  /// composed, so an ending the member walks away from leaves the beat waiting
+  /// for their next practice.
   private func showContinuity() {
+    guard !isTransitioning else { return }
+    continuityWitness.witnessToday()
     move(to: .continuity)
   }
 
@@ -82,13 +97,24 @@ struct DeepSessionCompletionView: View {
 }
 
 #Preview("Reward sequence") {
-  DeepSessionCompletionView(receipt: .sample)
+  RewardRitualView(receipt: .sample)
+    .environment(\.continuityWitness, .unwitnessed)
 }
 
 #Preview("Reward sequence — later today") {
-  DeepSessionCompletionView(receipt: .laterToday)
+  RewardRitualView(receipt: .laterToday)
+    .environment(\.continuityWitness, .witnessed)
 }
 
 #Preview("Reward sequence — capped") {
-  DeepSessionCompletionView(receipt: .capped)
+  RewardRitualView(receipt: .capped)
+    .environment(\.continuityWitness, .witnessed)
+}
+
+#Preview("Reward sequence — pause night") {
+  RewardRitualView(
+    receipt: .pauseNight,
+    continuityHeadline: "Your rhythm continues"
+  )
+  .environment(\.continuityWitness, .unwitnessed)
 }

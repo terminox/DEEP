@@ -124,6 +124,8 @@ A two-family system — a soft serif for emotional moments and a humanist sans f
 
 **Voice in text.** Sentence case everywhere except micro-labels. Punctuation is gentle — periods over exclamation marks. The app speaks in second person, present tense, with warmth: *"Take a moment. You're here now."*
 
+**No middle dots.** The `·` separator is banned in user-facing copy. Two facts crammed onto one line with a dot between them read as a spec sheet, not a sentence — give each fact its own line, its own glyph, or its own sentence. (`Stage 2 · 240 sunlight` becomes the stage's name with a sunlight mark beneath it.)
+
 ---
 
 ## In summary
