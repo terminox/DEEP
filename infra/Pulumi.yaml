@@ -1,0 +1,3 @@
+name: deep-infra
+runtime: nodejs
+description: GCP infrastructure for the Deep backend (Cloud Run, Cloud SQL, GCS media, Secret Manager)

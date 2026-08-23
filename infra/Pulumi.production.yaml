@@ -1,0 +1,15 @@
+config:
+  gcp:project: deep-production-app
+  gcp:region: asia-southeast1
+  deep:adminBootstrapEmail: admin@deep.app
+  # Secrets are NOT stored here in plaintext — set them encrypted per the README:
+  #   pulumi config set --secret deep:jwtSecret "$(openssl rand -hex 32)"
+  #   pulumi config set --secret deep:adminBootstrapPassword <password>
+  # Each deploy sets the image per build:
+  #   pulumi config set deep:image asia-southeast1-docker.pkg.dev/deep-production-app/backend/api:<sha>
+
+  deep:jwtSecret:
+    secure: AAABAB9TFytbvbpdTR0L9jcDFnWH8E4JOEMX3ReCDlf9U/eQdag+DS9icp6y10hLB4KvpROVckCaIQZQ+hxbWOM97mJCYjzNacbBRM2UmAeZaciOsJa7lRQpNy+Ak8Bm
+  deep:adminBootstrapPassword:
+    secure: AAABAFdE/qf5Aze1pW6kSrn/0K+xGbu6Z1kNyI1sS2YS5D85DkLp2H8hjsrODy6rv7MfLBG3FrU=
+  deep:image: asia-southeast1-docker.pkg.dev/deep-production-app/backend/api:ecda447-2
