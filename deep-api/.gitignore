@@ -8,3 +8,6 @@ media/audio/*.mp3
 !media/audio/.gitkeep
 *.log
 geoip/
+
+# Garden seed assets are copies of the iOS bundle art; regenerate with `npm run seed:assets`.
+media/garden/
