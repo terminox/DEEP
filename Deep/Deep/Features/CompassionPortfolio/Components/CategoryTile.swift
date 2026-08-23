@@ -9,6 +9,11 @@ import SwiftUI
 /// to it, the share of Deep's giving that follows, and the donate button that
 /// opens the amount sheet through the coordinator's injected `openDonation`
 /// action. The card body itself is not a button; only the capsule acts.
+///
+/// The capsule stays live whatever the balance. Withdrawing it at zero hearts
+/// would answer a question nobody asked and hide the one route into giving; a
+/// member who taps it finds out in the sheet — the one place that can also say
+/// what changes it — that there is nothing left to give yet.
 struct CategoryTile: View {
   @Environment(\.heartLedger) private var ledger
   @Environment(\.openDonation) private var openDonation
@@ -57,7 +62,7 @@ struct CategoryTile: View {
         // even when a name scales down or a fact wraps.
         Spacer(minLength: 12)
 
-        action
+        donateButton
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       // Belt-and-braces against Dynamic Type: lets the text column stretch
@@ -150,21 +155,6 @@ struct CategoryTile: View {
     }
   }
 
-  /// Once the balance is spent the capsule becomes a quiet note rather than a
-  /// dimmed button — `SendAHeartBar`'s doctrine: Deep would rather say "come
-  /// back after a practice" than "you can't".
-  @ViewBuilder
-  private var action: some View {
-    Group {
-      if ledger.canGive {
-        donateButton
-      } else {
-        spentNote
-      }
-    }
-    .animation(.exhale, value: ledger.canGive)
-  }
-
   /// The house gradient CTA (`SendAHeartBar.sendButton`), minus its shadow: the
   /// frosted card is already blooming, and a second bloom inside a 224pt card
   /// gathers into a smudge instead of lifting the button.
@@ -193,19 +183,6 @@ struct CategoryTile: View {
     .buttonStyle(.softPress)
     .accessibilityLabel("Donate hearts to \(live.name)")
   }
-
-  private var spentNote: some View {
-    Text("Practice earns more")
-      .font(DeepType.sectionTitle)
-      .foregroundStyle(.driftGrey)
-      .lineLimit(1)
-      .minimumScaleFactor(0.75)
-      .padding(.horizontal, 16)
-      .padding(.vertical, 13)
-      .frame(maxWidth: .infinity)
-      .pebble(cornerRadius: .chip)
-      .accessibilityLabel("No hearts left. Practice earns more.")
-  }
 }
 
 #Preview("Category tile") {
@@ -225,6 +202,8 @@ struct CategoryTile: View {
   .environment(\.openDonation, { _ in })
 }
 
+/// An empty balance: the capsule is still there, still tappable — the sheet is
+/// what tells the member there is nothing to send.
 #Preview("Category tile — no hearts left") {
   ZStack {
     AtmosphereBackground()
