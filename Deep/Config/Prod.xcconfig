@@ -2,7 +2,9 @@
 
 // ---- Environment ----
 APP_ENV = prod
-API_BASE_URL = https:/$()/api.deep.app
+// Production Cloud Run URL (deterministic: deep-api-<projectNumber>.<region>.run.app).
+// Swap for a custom domain (e.g. api.deep.app) once one is attached.
+API_BASE_URL = https:/$()/deep-api-157102552469.asia-southeast1.run.app
 // Production keeps the plain bundle id (no suffix).
 BUNDLE_ID_SUFFIX =
 APP_DISPLAY_NAME = DEEP
