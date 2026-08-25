@@ -6,7 +6,7 @@ import { apiErrorMessage } from '../api/errors'
 
 function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('admin@deep.local')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
