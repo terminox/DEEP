@@ -313,6 +313,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B1 /* Dev.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = D45XUJ5XY2;
 			};
 			name = Dev;
 		};
@@ -320,6 +321,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B2 /* Staging.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = D45XUJ5XY2;
 			};
 			name = Staging;
 		};
@@ -327,6 +329,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B3 /* Pilot.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = D45XUJ5XY2;
 			};
 			name = Pilot;
 		};
@@ -334,6 +337,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B4 /* Prod.xcconfig */;
 			buildSettings = {
+				DEVELOPMENT_TEAM = D45XUJ5XY2;
 			};
 			name = Prod;
 		};
