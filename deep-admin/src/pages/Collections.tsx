@@ -8,11 +8,13 @@ import {
   listCollections,
   reorderCollections,
   updateCollection,
+  uploadMedia,
 } from '../api/endpoints'
 import { PALETTES, type Collection, type Palette } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
+import { MediaDropzone } from '../components/MediaDropzone'
 
 type FormState = {
   categoryId: string
@@ -200,21 +202,26 @@ function CollectionsPage() {
                 required
               />
             </div>
-            <div className="field">
-              <label>Cover image URL</label>
-              <input
-                type="url"
-                value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                placeholder="https://…"
-              />
-            </div>
+            <MediaDropzone
+              label="Cover image"
+              kind="image"
+              currentUrl={form.imageUrl || null}
+              onUpload={async (file, onProgress) => {
+                const media = await uploadMedia('image', file, onProgress)
+                setForm((f) => (f ? { ...f, imageUrl: media.path } : f))
+              }}
+              onClear={() => setForm((f) => (f ? { ...f, imageUrl: '' } : f))}
+              urlInput={{
+                value: form.imageUrl,
+                onChange: (v) => setForm((f) => (f ? { ...f, imageUrl: v } : f)),
+                placeholder: 'https://…',
+              }}
+            />
             <div className="field checkbox-field">
               <input
                 id="isPremium"
                 type="checkbox"
                 checked={form.isPremium}
-                style={{ width: 'auto' }}
                 onChange={(e) => setForm({ ...form, isPremium: e.target.checked })}
               />
               <label htmlFor="isPremium">Premium</label>

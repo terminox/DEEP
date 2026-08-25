@@ -185,7 +185,6 @@ function PlantsPage() {
                 id="plantPremium"
                 type="checkbox"
                 checked={form.isPremium}
-                style={{ width: 'auto' }}
                 onChange={(e) => setForm({ ...form, isPremium: e.target.checked })}
               />
               <label htmlFor="plantPremium">Premium</label>
@@ -195,7 +194,6 @@ function PlantsPage() {
                 id="plantDefault"
                 type="checkbox"
                 checked={form.isDefault}
-                style={{ width: 'auto' }}
                 onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
               />
               <label htmlFor="plantDefault">Default</label>
@@ -206,7 +204,6 @@ function PlantsPage() {
               id="plantActive"
               type="checkbox"
               checked={form.isActive}
-              style={{ width: 'auto' }}
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
             />
             <label htmlFor="plantActive">Active</label>

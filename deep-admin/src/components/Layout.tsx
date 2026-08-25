@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { clearSession } from '../auth/session'
 
@@ -19,6 +20,18 @@ function Layout() {
     navigate('/login', { replace: true })
   }
 
+  useEffect(() => {
+    // Without this, missing a dropzone by a few pixels makes the browser
+    // navigate away from the admin and silently discard unsaved form state.
+    const swallow = (e: DragEvent) => e.preventDefault()
+    window.addEventListener('dragover', swallow)
+    window.addEventListener('drop', swallow)
+    return () => {
+      window.removeEventListener('dragover', swallow)
+      window.removeEventListener('drop', swallow)
+    }
+  }, [])
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -26,7 +39,7 @@ function Layout() {
           <span className="brand-dot" />
           Deep Admin
         </div>
-        <nav>
+        <nav className="nav-links">
           {navItems.map((item) => (
             <NavLink
               key={item.to}

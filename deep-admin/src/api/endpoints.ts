@@ -1,4 +1,6 @@
+import type { AxiosProgressEvent } from 'axios'
 import { http } from './http'
+import type { MediaKind } from '../lib/mediaKinds'
 import type {
   AdminPeaceMessage,
   AdminUser,
@@ -19,7 +21,38 @@ import type {
   StageAssetKind,
   Track,
   TrackKind,
+  UploadedMedia,
 } from './types'
+
+// Axios sets the multipart boundary itself for a FormData body, so no
+// Content-Type is set here. onUploadProgress measures bytes *sent* - it hits
+// 100% while the server is still writing to storage, so callers must keep
+// showing "uploading" until the promise resolves.
+function uploadConfig(onProgress?: (percent: number) => void) {
+  return {
+    onUploadProgress: onProgress
+      ? (e: AxiosProgressEvent) => {
+          if (e.total) onProgress(Math.round((e.loaded * 100) / e.total))
+        }
+      : undefined,
+  }
+}
+
+// ---- Media ----
+export async function uploadMedia(
+  kind: MediaKind,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<UploadedMedia> {
+  const form = new FormData()
+  form.append('file', file)
+  const { data } = await http.post<{ media: UploadedMedia }>(
+    `/admin/media/${kind}`,
+    form,
+    uploadConfig(onProgress)
+  )
+  return data.media
+}
 
 // ---- Auth ----
 export async function login(
@@ -187,14 +220,15 @@ export async function reorderTracks(ids: string[]): Promise<void> {
 
 export async function uploadTrackAudio(
   id: string,
-  file: File
+  file: File,
+  onProgress?: (percent: number) => void
 ): Promise<Track> {
   const form = new FormData()
   form.append('file', file)
   const { data } = await http.post<{ track: Track }>(
     `/admin/tracks/${id}/audio`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    uploadConfig(onProgress)
   )
   return data.track
 }
@@ -254,13 +288,17 @@ export async function reorderPlants(ids: string[]): Promise<void> {
   await http.post('/admin/plants/reorder', { ids })
 }
 
-export async function uploadPlantImage(id: string, file: File): Promise<Plant> {
+export async function uploadPlantImage(
+  id: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<Plant> {
   const form = new FormData()
   form.append('file', file)
   const { data } = await http.post<{ plant: Plant }>(
     `/admin/plants/${id}/image`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    uploadConfig(onProgress)
   )
   return data.plant
 }
@@ -307,14 +345,15 @@ export async function reorderStages(
 export async function uploadStageAsset(
   stageId: string,
   kind: StageAssetKind,
-  file: File
+  file: File,
+  onProgress?: (percent: number) => void
 ): Promise<PlantStage> {
   const form = new FormData()
   form.append('file', file)
   const { data } = await http.post<{ stage: PlantStage }>(
     `/admin/plant-stages/${stageId}/assets/${kind}`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    uploadConfig(onProgress)
   )
   return data.stage
 }

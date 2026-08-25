@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { updateTrack, uploadTrackAudio } from '../api/endpoints'
 import type { Track, TrackKind } from '../api/types'
 import { TRACK_KINDS } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
-import { formatDuration, resolveMediaUrl } from '../lib/media'
+import { formatDuration } from '../lib/media'
 import { LyricsEditor } from './LyricsEditor'
+import { MediaDropzone } from './MediaDropzone'
 
 type Props = {
   track: Track
@@ -20,14 +21,11 @@ export function TrackCard({ track, index, count, onMove, onDelete, onChanged }: 
   const [editing, setEditing] = useState(false)
   const [showLyrics, setShowLyrics] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const fileInput = useRef<HTMLInputElement>(null)
 
   const [title, setTitle] = useState(track.title)
   const [duration, setDuration] = useState(String(track.durationSeconds))
   const [kind, setKind] = useState<TrackKind>(track.kind)
   const [isPremium, setIsPremium] = useState(track.isPremium)
-
-  const audioUrl = resolveMediaUrl(track.audioUrl)
 
   const save = useMutation({
     mutationFn: () =>
@@ -40,16 +38,6 @@ export function TrackCard({ track, index, count, onMove, onDelete, onChanged }: 
     onSuccess: () => {
       setEditing(false)
       setError(null)
-      onChanged()
-    },
-    onError: (e) => setError(apiErrorMessage(e)),
-  })
-
-  const upload = useMutation({
-    mutationFn: (file: File) => uploadTrackAudio(track.id, file),
-    onSuccess: () => {
-      setError(null)
-      if (fileInput.current) fileInput.current.value = ''
       onChanged()
     },
     onError: (e) => setError(apiErrorMessage(e)),
@@ -91,7 +79,6 @@ export function TrackCard({ track, index, count, onMove, onDelete, onChanged }: 
               <input
                 type="checkbox"
                 checked={isPremium}
-                style={{ width: 'auto' }}
                 onChange={(e) => setIsPremium(e.target.checked)}
               />
               <label>Premium</label>
@@ -158,34 +145,16 @@ export function TrackCard({ track, index, count, onMove, onDelete, onChanged }: 
 
       {!editing && (
         <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-          <div className="panel-title" style={{ marginBottom: 10 }}>
-            Audio
-          </div>
-          {audioUrl ? (
-            <div style={{ marginBottom: 10 }}>
-              <audio controls src={audioUrl} />
-              <div className="subtitle-cell" style={{ marginTop: 4, wordBreak: 'break-all' }}>
-                {track.audioUrl}
-              </div>
-            </div>
-          ) : (
-            <div className="subtitle-cell" style={{ marginBottom: 10 }}>
-              No audio uploaded yet.
-            </div>
-          )}
-          <div className="inline-form">
-            <input
-              ref={fileInput}
-              type="file"
-              accept="audio/*"
-              style={{ width: 'auto' }}
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) upload.mutate(file)
-              }}
-            />
-            {upload.isPending && <span className="muted">Uploading…</span>}
-          </div>
+          <MediaDropzone
+            label="Audio"
+            kind="audio"
+            currentUrl={track.audioUrl}
+            onUpload={async (file, onProgress) => {
+              await uploadTrackAudio(track.id, file, onProgress)
+              onChanged()
+            }}
+            onDurationDetected={(seconds) => setDuration(String(Math.round(seconds)))}
+          />
 
           <div style={{ marginTop: 16 }}>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowLyrics((v) => !v)}>

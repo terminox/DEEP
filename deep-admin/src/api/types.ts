@@ -192,3 +192,8 @@ export type ApiError = {
     issues?: unknown
   }
 }
+
+export type UploadedMedia = {
+  path: string // relative /media/... path to store on the row
+  url: string // absolute URL, for immediate preview
+}

@@ -13,10 +13,12 @@ import {
   updatePauseConfig,
   updatePauseIntention,
   updatePauseWelcomeMessage,
+  uploadMedia,
 } from '../api/endpoints'
 import type { PauseIntentionOption, PauseWelcomeMessage } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
+import { MediaDropzone } from '../components/MediaDropzone'
 
 type ConfigForm = {
   timezone: string
@@ -55,6 +57,53 @@ function validateConfig(form: ConfigForm): string | null {
   return null
 }
 
+// Parses an HH:mm:ss value into seconds since local midnight, per TIME_RE.
+function timeToSeconds(time: string): number | null {
+  if (!TIME_RE.test(time)) return null
+  const [h, m, s] = time.split(':').map(Number)
+  return h * 3600 + m * 60 + s
+}
+
+// Formats seconds since local midnight back into the HH:mm:ss shape the
+// other time fields use.
+function secondsToTime(totalSeconds: number): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  const s = totalSeconds % 60
+  return `${pad(h)}:${pad(m)}:${pad(s)}`
+}
+
+type WindowMismatch = {
+  meditationStart: string
+  feedbackStart: string
+  windowSeconds: number
+  duration: number
+  correctedFeedbackStart: string
+}
+
+// The meditation phase runs meditationStart -> feedbackStart; that span
+// should equal meditationDurationSeconds, or a mid-window join seeks past
+// end-of-file. Non-blocking - a different cut of the window may be
+// intentional, so this only informs, it never validates.
+function computeWindowMismatch(form: ConfigForm): WindowMismatch | null {
+  const start = timeToSeconds(form.meditationStart)
+  const end = timeToSeconds(form.feedbackStart)
+  const duration = Number(form.meditationDurationSeconds)
+  if (start == null || end == null || !Number.isInteger(duration) || duration <= 0) {
+    return null
+  }
+  const windowSeconds = end - start
+  if (windowSeconds === duration) return null
+  return {
+    meditationStart: form.meditationStart,
+    feedbackStart: form.feedbackStart,
+    windowSeconds,
+    duration,
+    correctedFeedbackStart: secondsToTime(start + duration),
+  }
+}
+
 function ConfigPanel() {
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({
@@ -82,6 +131,8 @@ function ConfigPanel() {
         ...edits,
       }
     : null
+
+  const windowMismatch = form ? computeWindowMismatch(form) : null
 
   const save = useMutation({
     mutationFn: (body: ConfigForm) =>
@@ -213,26 +264,53 @@ function ConfigPanel() {
               />
             </div>
           </div>
-          <div className="field">
-            <label>Lobby audio path</label>
-            <input
-              className="mono"
-              value={form.lobbyAudioPath}
-              onChange={(e) => update({ lobbyAudioPath: e.target.value })}
-              placeholder="/media/audio/global-pause.mp3"
-              required
-            />
-          </div>
-          <div className="field">
-            <label>Meditation audio path</label>
-            <input
-              className="mono"
-              value={form.meditationAudioPath}
-              onChange={(e) => update({ meditationAudioPath: e.target.value })}
-              placeholder="/media/audio/inner-light.mp3"
-              required
-            />
-          </div>
+          {windowMismatch && (
+            <div className="warning-banner">
+              Meditation window ({windowMismatch.meditationStart}–{windowMismatch.feedbackStart}) is{' '}
+              {windowMismatch.windowSeconds}s, but the duration field is set to{' '}
+              {windowMismatch.duration}s.{' '}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() =>
+                  update({ feedbackStart: windowMismatch.correctedFeedbackStart })
+                }
+              >
+                Set feedback start to match
+              </button>
+            </div>
+          )}
+          <MediaDropzone
+            label="Lobby audio"
+            kind="audio"
+            currentUrl={form.lobbyAudioPath || null}
+            onUpload={async (file, onProgress) => {
+              const media = await uploadMedia('audio', file, onProgress)
+              update({ lobbyAudioPath: media.path })
+            }}
+            urlInput={{
+              value: form.lobbyAudioPath,
+              onChange: (v) => update({ lobbyAudioPath: v }),
+              placeholder: '/media/audio/global-pause.mp3',
+            }}
+          />
+          <MediaDropzone
+            label="Meditation audio"
+            kind="audio"
+            currentUrl={form.meditationAudioPath || null}
+            onUpload={async (file, onProgress) => {
+              const media = await uploadMedia('audio', file, onProgress)
+              update({ meditationAudioPath: media.path })
+            }}
+            onDurationDetected={(seconds) =>
+              update({ meditationDurationSeconds: String(Math.round(seconds)) })
+            }
+            urlInput={{
+              value: form.meditationAudioPath,
+              onChange: (v) => update({ meditationAudioPath: v }),
+              placeholder: '/media/audio/inner-light.mp3',
+            }}
+          />
           <div className="form-actions">
             <button className="btn" type="submit" disabled={save.isPending}>
               Save configuration
@@ -299,7 +377,7 @@ function WelcomeMessageRow({
         ) : (
           <span className={message.isActive ? '' : 'muted'}>{message.text}</span>
         )}
-        {error && <div className="error-banner" style={{ marginTop: 8 }}>{error}</div>}
+        {error && <div className="error-banner">{error}</div>}
       </td>
       <td>
         {message.isActive ? (
@@ -529,7 +607,7 @@ function IntentionRow({
             {intention.label}
           </span>
         )}
-        {error && <div className="error-banner" style={{ marginTop: 8 }}>{error}</div>}
+        {error && <div className="error-banner">{error}</div>}
       </td>
       <td className="mono">
         {editing ? (

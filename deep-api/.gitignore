@@ -11,3 +11,7 @@ geoip/
 
 # Garden seed assets are copies of the iOS bundle art; regenerate with `npm run seed:assets`.
 media/garden/
+
+# Admin panel uploads are runtime data, not source. In production MEDIA_DIR
+# is a GCS bucket FUSE-mounted at /media (see infra/components/service.ts).
+media/uploads/
