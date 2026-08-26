@@ -131,16 +131,25 @@ struct DonateHeartsView: View {
     .accessibilityValue("\(amount) of \(ledger.balance)")
   }
 
-  /// The amounts worth one tap. The ladder steps down for a small balance, and
-  /// "All" is only offered when it isn't already one of the steps.
+  /// The amounts worth one tap. The ladder steps down for a small balance.
+  private var ladder: [Int] {
+    (ledger.balance >= 10 ? [10, 50, 100] : [1, 5]).filter { $0 <= ledger.balance }
+  }
+
+  /// "All" is only offered when it isn't already one of the steps — and the row
+  /// leaves entirely at an empty balance, where the ladder filters away and an
+  /// unguarded "All" would be a chip worth nothing, drawn in the selected
+  /// gradient because the amount already matches it.
+  @ViewBuilder
   private var quickAmounts: some View {
-    let ladder = (ledger.balance >= 10 ? [10, 50, 100] : [1, 5]).filter { $0 <= ledger.balance }
-    return HStack(spacing: 8) {
-      ForEach(ladder, id: \.self) { value in
-        chip(label: value.formatted(), value: value)
-      }
-      if !ladder.contains(ledger.balance) {
-        chip(label: "All", value: ledger.balance)
+    if ledger.balance > 0 {
+      HStack(spacing: 8) {
+        ForEach(ladder, id: \.self) { value in
+          chip(label: value.formatted(), value: value)
+        }
+        if !ladder.contains(ledger.balance) {
+          chip(label: "All", value: ledger.balance)
+        }
       }
     }
   }
@@ -207,6 +216,10 @@ struct DonateHeartsView: View {
           Text("Donated \(donated.formatted()) \(donated == 1 ? "heart" : "hearts")")
         }
         .accessibilityAddTraits(.isStaticText)
+      } else if ledger.balance == 0 {
+        // After `donated`, so giving the last heart still confirms before the
+        // sheet leaves rather than flipping straight to the empty note.
+        emptyNote
       } else if amount > 0 {
         Button(action: donate) {
           capsuleLabel {
@@ -230,8 +243,40 @@ struct DonateHeartsView: View {
       }
     }
     .animation(.exhale, value: amount > 0)
+    .animation(.exhale, value: ledger.canGive)
     .animation(.exhale, value: donated)
     .heartBurst(trigger: burst)
+  }
+
+  /// The cause card's donate capsule is live whatever the balance, so this is
+  /// where a member finds out there is nothing to send. It takes the "Pick an
+  /// amount" slot rather than a dimmed CTA for that branch's own reason: an
+  /// empty balance isn't a fault, and a greyed button would call it one.
+  private var emptyNote: some View {
+    VStack(spacing: 4) {
+      Text("No hearts to give yet")
+        .font(DeepType.sectionTitle)
+        .foregroundStyle(.deepPlum)
+      Text(earnLine)
+        .font(DeepType.caption)
+        .foregroundStyle(.driftGrey)
+    }
+    .multilineTextAlignment(.center)
+    .lineLimit(2)
+    .minimumScaleFactor(0.8)
+    .padding(.horizontal, 22)
+    .padding(.vertical, 16)
+    .frame(maxWidth: .infinity)
+    .frostedCard(cornerRadius: .chip)
+    .accessibilityElement(children: .combine)
+  }
+
+  /// "Practice earns more" holds only while the day still has hearts in it —
+  /// the ceiling closes at `HeartLedger.dailyEarnCeiling`, and promising a heart
+  /// that isn't coming is exactly what the session completion screen refuses to
+  /// do.
+  private var earnLine: String {
+    ledger.isTodayFull ? "Today is full — more tomorrow." : "Practice earns more."
   }
 
   private func capsuleLabel<Content: View>(
@@ -370,6 +415,30 @@ private struct PadKey<Label: View>: View {
       DonateHeartsView(category: CompassionLibrary.nature)
     }
     .environment(\.heartLedger, HeartLedger(balance: 7, heartsGiven: 41))
+}
+
+/// An empty balance with the day's thirty already earned — the one case where
+/// practice can't top it up until tomorrow.
+#Preview("Donate hearts — no hearts left") {
+  @Previewable @State var open = true
+  Color.clear
+    .background { AtmosphereBackground() }
+    .sheet(isPresented: $open) {
+      DonateHeartsView(category: CompassionLibrary.education)
+    }
+    .environment(\.heartLedger, .spent)
+}
+
+/// Empty too, but the day is still open, so the caption points at the next
+/// practice instead of at tomorrow.
+#Preview("Donate hearts — spent, day open") {
+  @Previewable @State var open = true
+  Color.clear
+    .background { AtmosphereBackground() }
+    .sheet(isPresented: $open) {
+      DonateHeartsView(category: CompassionLibrary.peace)
+    }
+    .environment(\.heartLedger, HeartLedger(balance: 0, heartsGiven: 40))
 }
 
 #Preview("Donate hearts — send refused") {

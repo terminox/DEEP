@@ -23,6 +23,9 @@ final class AppDependencies {
   let heartLedger: HeartLedger
   /// The garden's plant + sunlight, server-backed and persisted for offline.
   let gardenStore: GardenStore
+  /// The one day-stamp behind the continuity beat, shared by every ending so
+  /// the rhythm is noticed once a day rather than once per feature.
+  let continuityWitness: ContinuityWitness
   let pauseClock: SyncedClock
   let pauseRepository: any PauseEventRepository
   let pauseSession: GlobalPauseSession
@@ -58,6 +61,7 @@ final class AppDependencies {
     self.rewardsRemote = rewards
     self.heartLedger = ledger
     self.gardenStore = garden
+    self.continuityWitness = ContinuityWitness()
 
     let practiceStore = PracticeDefaultsStore(remote: APIPracticeRemote(client: client))
     practiceStore.awardSink = ingestAwards

@@ -83,7 +83,7 @@ struct CompassionPortfolioCard: View {
   /// What today has handed over so far. Once the day is full it stops counting
   /// and names the state — a full day is somewhere to rest, not a score to read.
   private var todayFact: some View {
-    fact(symbol: "sun.max.fill", size: 11, tint: .duskRose.opacity(0.75)) {
+    fact(symbol: "heart.fill", size: 11, tint: .duskRose.opacity(0.75)) {
       if ledger.isTodayFull {
         Text("today is full")
           .font(DeepType.caption)

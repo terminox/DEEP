@@ -17,7 +17,7 @@ struct GardenGrowthTests {
     #expect(growth.stage.name == "Oak Seedling")
     #expect(growth.nextStage?.name == "Young Oak")
     #expect(growth.isFullyGrown == false)
-    #expect(growth.pointsToEvolve == 200)
+    #expect(growth.sunlightToEvolve == 200)
     #expect(growth.evolutionProgress == 0)
   }
 
@@ -39,7 +39,7 @@ struct GardenGrowthTests {
     // The card's fraction is cumulative over the next threshold — 200/700,
     // not a reset-to-zero count.
     #expect(growth.sunlight == 200)
-    #expect(growth.pointsToEvolve == 700)
+    #expect(growth.sunlightToEvolve == 700)
     // The halo arc, though, starts this stage afresh.
     #expect(growth.evolutionProgress == 0)
   }
@@ -60,7 +60,7 @@ struct GardenGrowthTests {
     #expect(growth.stageIndex == 2)
     #expect(growth.isFullyGrown)
     #expect(growth.nextStage == nil)
-    #expect(growth.pointsToEvolve == nil)
+    #expect(growth.sunlightToEvolve == nil)
     #expect(growth.evolutionProgress == 1)
   }
 
@@ -84,7 +84,7 @@ struct GardenGrowthTests {
 
     #expect(growth.stageIndex == 0)
     #expect(growth.isFullyGrown)
-    #expect(growth.pointsToEvolve == nil)
+    #expect(growth.sunlightToEvolve == nil)
     #expect(growth.evolutionProgress == 1)
   }
 

@@ -47,3 +47,5 @@ Deep/**/.vscode/
 Deep/**/*.swp
 Deep/**/*.swo
 .gstack/
+
+resources/

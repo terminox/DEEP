@@ -11,6 +11,16 @@ final class GlobalPauseSessionController: UIViewController {
   private let session: GlobalPauseSession
   private let scene: GlobalPauseEarthScene
   private let audio: any GlobalPauseAudioPlaying
+  /// The shared stores the ending ritual reads. UIKit severs the SwiftUI
+  /// environment, so they are handed in and re-injected into the hosted
+  /// completion view by hand.
+  private let practiceStore: any PracticeStore
+  private let heartLedger: HeartLedger
+  private let gardenStore: GardenStore
+  private let continuityWitness: ContinuityWitness
+  /// The reward ritual draws the plant's mascot artwork; without the real
+  /// loader it reaches the throwaway default and falls back to a gradient.
+  private let imageLoader: any ImageLoading
   private let onClose: () -> Void
 
   /// Faded in late by the present animator, out early by the dismiss animator.
@@ -61,11 +71,21 @@ final class GlobalPauseSessionController: UIViewController {
     session: GlobalPauseSession,
     scene: GlobalPauseEarthScene,
     audio: any GlobalPauseAudioPlaying,
+    practiceStore: any PracticeStore,
+    heartLedger: HeartLedger,
+    gardenStore: GardenStore,
+    continuityWitness: ContinuityWitness,
+    imageLoader: any ImageLoading,
     onClose: @escaping () -> Void
   ) {
     self.session = session
     self.scene = scene
     self.audio = audio
+    self.practiceStore = practiceStore
+    self.heartLedger = heartLedger
+    self.gardenStore = gardenStore
+    self.continuityWitness = continuityWitness
+    self.imageLoader = imageLoader
     self.onClose = onClose
 
     // Liquid Glass on iOS 26, hand-blended frosted capsule below — the UIKit
@@ -230,6 +250,9 @@ final class GlobalPauseSessionController: UIViewController {
     guard !isTornDown else { return }
     withObservationTracking {
       _ = session.participantsByCountry
+      // Not a globe input — the overlay's continent row rides the same poll,
+      // and this loop is what rebuilds it.
+      _ = session.participantsByContinent
       _ = session.participantLocations
       _ = session.unlocatedByCountry
       // The arrival follows this one too: it aims the turn, and a corrected
@@ -331,6 +354,7 @@ final class GlobalPauseSessionController: UIViewController {
         audio: audio,
         duration: duration,
         participantCount: session.participantCount,
+        continents: ContinentPresence.row(from: session.participantsByContinent),
         revealed: isOverlayRevealed
       )
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented
@@ -471,6 +495,17 @@ final class GlobalPauseSessionController: UIViewController {
     completionTask?.cancel()
     completionTask = nil
 
+    // The books as they stand right now, before the claim moves them: the
+    // ending ritual animates from here to whatever the grants settle on, and
+    // Global Pause has no optimistic credit to read back.
+    let before = GlobalPauseRewardSnapshot(
+      garden: gardenStore.growth,
+      heartBalance: heartLedger.balance,
+      heartsEarnedToday: heartLedger.heartsEarnedToday,
+      continuityDays: practiceStore.currentStreakDays,
+      continuityWitnessedToday: continuityWitness.hasWitnessedToday
+    )
+
     // Claim tonight's attendance award as reflection begins — always; the
     // server judges eligibility, so an ineligible claim resolves to nothing.
     session.claimPauseAward()
@@ -481,8 +516,15 @@ final class GlobalPauseSessionController: UIViewController {
     leaveAlert = nil
 
     let root = AnyView(
-      GlobalPauseReflectionView(onDone: { [weak self] in self?.finishSession() })
+      GlobalPauseCompletionView(
+        before: before,
+        onFinish: { [weak self] in self?.finishSession() }
+      )
         .environment(\.globalPauseSession, session)
+        .environment(\.heartLedger, heartLedger)
+        .environment(\.gardenStore, gardenStore)
+        .environment(\.continuityWitness, continuityWitness)
+        .environment(\.imageLoader, imageLoader)
         // Same iOS 26 re-enable as the meditation overlay.
         .environment(\.isEnabled, true)
         .preferredColorScheme(.light)
@@ -632,6 +674,11 @@ final class GlobalPauseSessionController: UIViewController {
     session: .preview(live: true),
     scene: scene,
     audio: MockGlobalPauseAudioPlayer.meditating,
+    practiceStore: MockPracticeStore(),
+    heartLedger: .sample,
+    gardenStore: .sample,
+    continuityWitness: .unwitnessed,
+    imageLoader: FixtureImageLoader(),
     onClose: {}
   )
   controller.loadViewIfNeeded()

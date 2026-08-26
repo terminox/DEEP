@@ -24,15 +24,16 @@ struct DeepSessionCoordinatorView: View {
   /// The completion is credited exactly once, the moment the engine finishes —
   /// so closing from the finished screen still counts.
   @State private var didRecord = false
-  /// Whether this session actually earned a heart. A day hands over at most
-  /// `HeartLedger.dailyEarnCeiling` of them, so the completion beat has to know
-  /// before it promises one.
-  @State private var heartEarned = true
+  /// The immutable before/after truth rendered by the reward sequence.
+  @State private var rewardReceipt: RewardReceipt?
+  /// Owns the final-exhale hold so dismissal tears it down cleanly.
+  @State private var completionTask: Task<Void, Never>?
 
   @Environment(\.soundPlayer) private var soundPlayer
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.continuityWitness) private var continuityWitness
   @Environment(\.scenePhase) private var scenePhase
 
   init(session: DeepSession, onFinish: @escaping () -> Void = {}) {
@@ -56,12 +57,14 @@ struct DeepSessionCoordinatorView: View {
         )
         .transition(.softDrift)
       case .completion:
-        DeepSessionCompletionView(
-          session: session,
-          heartEarned: heartEarned,
-          onReturn: onFinish
-        )
+        if let rewardReceipt {
+          RewardRitualView(
+            receipt: rewardReceipt,
+            continuityHeadline: "You returned today",
+            onFinish: onFinish
+          )
           .transition(.softDrift)
+        }
       }
     }
     .onAppear {
@@ -74,35 +77,13 @@ struct DeepSessionCoordinatorView: View {
       UIApplication.shared.isIdleTimerDisabled = true
     }
     .onDisappear {
+      completionTask?.cancel()
       engine.cancel()
       UIApplication.shared.isIdleTimerDisabled = false
     }
     .onChange(of: engine.phase) { _, phase in
-      guard phase == .finished, !didRecord else { return }
-      didRecord = true
-      practiceStore.recordCompletion(of: session)
-      // The optimistic promise is gated by a client mirror of the server's
-      // sessions-per-day award rule — the beat must never promise a heart the
-      // practice sync won't deliver. The count includes the session just
-      // recorded, so the limit-th session still earns and the next one rests.
-      let sessionsToday = PracticeMath.completionsToday(
-        in: practiceStore.completions, calendar: .current, now: .now
-      )
-      heartEarned = sessionsToday <= RewardRules.deepSessionDailyLimit
-        && heartLedger.earn() > 0
-      // Hearts and sunlight are granted together (1♥ + 1☀), so the garden
-      // ticks on the same gate; the sync's absolute figures reconcile both.
-      if heartEarned {
-        gardenStore.creditSunlight(1)
-      }
-      // Let the final exhale settle (the orb blooms to its rest) before the
-      // hush into the completion beat — no tap required to move on. The
-      // longer crossfade absorbs part of what used to be dead time, so the
-      // finish beat stays ~2s in total.
-      Task {
-        try? await Task.sleep(for: .seconds(1.0))
-        withAnimation(.hush) { stage = .completion }
-      }
+      guard phase == .finished else { return }
+      finishSession()
     }
     // Leaving the app settles the practice into a pause; resuming stays the
     // user's own gesture. `.inactive` is deliberately ignored — banners and
@@ -110,6 +91,57 @@ struct DeepSessionCoordinatorView: View {
     .onChange(of: scenePhase) { _, phase in
       guard phase == .background else { return }
       engine.pause()
+    }
+  }
+
+  /// Banks the practice and both rewards once, then freezes the before/after
+  /// values the ending ritual will animate. The server still owns final truth;
+  /// its absolute grant quietly reconciles the live stores behind this receipt.
+  private func finishSession() {
+    guard !didRecord else { return }
+    didRecord = true
+
+    let now = Date.now
+    let gardenBefore = gardenStore.growth
+    let heartBalanceBefore = heartLedger.balance
+    let heartsEarnedTodayBefore = heartLedger.heartsEarnedToday
+    let continuityBefore = practiceStore.currentStreakDays
+    // Frozen before the ritual runs: whichever practice reaches the beat
+    // first today is the one that shows it.
+    let continuityWitnessedToday = continuityWitness.hasWitnessedToday
+
+    practiceStore.recordCompletion(of: session)
+
+    let completionsAfter = PracticeMath.completionsToday(
+      in: practiceStore.completions,
+      calendar: .current,
+      now: now
+    )
+    let isRewardEligible = completionsAfter <= RewardRules.deepSessionDailyLimit
+    let heartsAwarded = isRewardEligible ? heartLedger.earn() : 0
+    // Deep Session rewards travel as one pair. If the heart ceiling withholds
+    // this award, sunlight rests too, matching the server contract.
+    let sunlightAwarded = heartsAwarded > 0 ? gardenStore.creditSunlight(1) : 0
+
+    rewardReceipt = RewardReceipt(
+      gardenBefore: gardenBefore,
+      gardenAfter: gardenStore.growth,
+      sunlightAwarded: sunlightAwarded,
+      heartBalanceBefore: heartBalanceBefore,
+      heartBalanceAfter: heartLedger.balance,
+      heartsEarnedTodayBefore: heartsEarnedTodayBefore,
+      heartsEarnedTodayAfter: heartLedger.heartsEarnedToday,
+      heartsAwarded: heartsAwarded,
+      continuityBefore: continuityBefore,
+      continuityAfter: practiceStore.currentStreakDays,
+      continuityWitnessedToday: continuityWitnessedToday
+    )
+
+    // Let the final exhale settle before the first reward blooms in.
+    completionTask = Task {
+      try? await Task.sleep(for: .seconds(1.0))
+      guard !Task.isCancelled else { return }
+      withAnimation(.hush) { stage = .completion }
     }
   }
 }
@@ -120,4 +152,5 @@ struct DeepSessionCoordinatorView: View {
     .environment(\.practiceStore, MockPracticeStore())
     .environment(\.heartLedger, .sample)
     .environment(\.gardenStore, .sample)
+    .environment(\.continuityWitness, .unwitnessed)
 }

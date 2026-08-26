@@ -4,17 +4,21 @@ import SwiftUI
 /// then intention and mood for tonight's reflection. Fully opaque — it fades
 /// in over the meditation and covers the globe card's silent handback to its
 /// lounge seat behind the presentation.
+///
+/// It says nothing about hearts or sunlight: the reward ritual it continues
+/// into carries that news, and the first peace message can still add to it
+/// while this screen is up.
 struct GlobalPauseReflectionView: View {
-  var onDone: () -> Void
+  /// True while the ending is settling tonight's award before the ritual — the
+  /// forward tap rests rather than promising a number that hasn't landed.
+  var isPreparing = false
+  var onContinue: () -> Void
 
   @Environment(\.globalPauseSession) private var session
 
   @State private var intentionSelection: Intention.ID?
   @State private var showMoodChips = false
   @State private var moodSelection: String?
-  /// Fires the award caption's heart bloom exactly once, whether the claim
-  /// settled before this screen appeared or lands while it's up.
-  @State private var awardBurst = 0
 
   private let moods: [Intention] = [
     Intention(key: "calm", label: "Calm"),
@@ -55,9 +59,11 @@ struct GlobalPauseReflectionView: View {
       }
       .scrollIndicators(.hidden)
     }
-    .overlay(alignment: .topLeading) {
-      GlassCloseButton(action: onDone)
-        .padding(.edge)
+    .safeAreaInset(edge: .bottom) {
+      RewardContinueButton(title: "Continue", action: onContinue)
+        .disabled(isPreparing)
+        .padding(.horizontal, .edge)
+        .padding(.bottom, .rhythm)
     }
   }
 
@@ -69,38 +75,9 @@ struct GlobalPauseReflectionView: View {
       Text("Carry tonight's calm with you.")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
-
-      if let line = awardLine {
-        Text(line)
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-          .padding(.top, 4)
-          .heartBurst(trigger: awardBurst)
-          .transition(.opacity)
-      }
     }
     .padding(.horizontal, .edge)
-    .padding(.top, 76)
-    .animation(.settle, value: awardLine)
-    .onAppear {
-      if awardLine != nil { awardBurst = 1 }
-    }
-    .onChange(of: session.pauseAward) { previous, settled in
-      guard previous == nil, settled != nil, awardLine != nil else { return }
-      awardBurst += 1
-    }
-  }
-
-  /// The attendance award, said once and quietly — the actual granted figures,
-  /// e.g. "+5 hearts · +5 sunlight for pausing with the world". Nil until a
-  /// grant lands (an ineligible night simply never says anything).
-  private var awardLine: String? {
-    guard let award = session.pauseAward else { return nil }
-    var parts: [String] = []
-    if award.hearts > 0 { parts.append("+\(award.hearts) hearts") }
-    if award.sunlight > 0 { parts.append("+\(award.sunlight) sunlight") }
-    guard !parts.isEmpty else { return nil }
-    return parts.joined(separator: " · ") + " for pausing with the world"
+    .padding(.top, .rhythm)
   }
 
   @ViewBuilder
@@ -157,11 +134,11 @@ struct GlobalPauseReflectionView: View {
 }
 
 #Preview("Reflection") {
-  GlobalPauseReflectionView(onDone: {})
+  GlobalPauseReflectionView(onContinue: {})
     .environment(\.globalPauseSession, .preview())
 }
 
-#Preview("Reflection — awarded") {
-  GlobalPauseReflectionView(onDone: {})
+#Preview("Reflection — settling the award") {
+  GlobalPauseReflectionView(isPreparing: true, onContinue: {})
     .environment(\.globalPauseSession, .previewAwarded())
 }

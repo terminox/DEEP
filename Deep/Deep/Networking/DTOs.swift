@@ -249,6 +249,9 @@ struct PauseLiveDTO: Decodable {
   let serverNow: String
   let participantCount: Int
   let byCountry: [CountryCount]
+  // Continent codes ("AS", "EU", "NA"…) rather than countries. Optional:
+  // older servers omit it and the client folds `byCountry` itself.
+  let byContinent: [CountryCount]?
   // Server-clustered participant locations (≤96, privacy-rounded). Optional:
   // older servers omit both and the client keeps the country-glow path.
   let points: [Point]?

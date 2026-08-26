@@ -26,6 +26,7 @@ private struct DeepSessionRunModifier: ViewModifier {
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.continuityWitness) private var continuityWitness
   @Environment(\.imageLoader) private var imageLoader
   @Environment(\.videoCache) private var videoCache
 
@@ -38,6 +39,7 @@ private struct DeepSessionRunModifier: ViewModifier {
             .environment(\.practiceStore, practiceStore)
             .environment(\.heartLedger, heartLedger)
             .environment(\.gardenStore, gardenStore)
+            .environment(\.continuityWitness, continuityWitness)
             // The completion screen draws the plant's mascot artwork; the
             // UIKit presentation severs the environment, so without the real
             // loader it reaches the throwaway default and always falls back

@@ -7,7 +7,8 @@ struct GardenState {
   var minutesToday: Int
   var dailyGoalMinutes: Int
   /// Consecutive practice days ending today (or yesterday, before today's
-  /// session — see `PracticeMath.currentStreakDays`).
+  /// session — see `PracticeMath.currentStreakDays`). Tracked, but nothing
+  /// displays it today — the growth card shows sunlight alone.
   var streakDays: Int
 
   /// Fraction of today's goal completed, clamped to 0...1.

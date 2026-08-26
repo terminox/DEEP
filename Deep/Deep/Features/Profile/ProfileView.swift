@@ -15,6 +15,7 @@ struct ProfileView: View {
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.gardenStore) private var gardenStore
   @Environment(\.heartLedger) private var heartLedger
+  @Environment(\.continuityWitness) private var continuityWitness
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -239,6 +240,7 @@ struct ProfileView: View {
       practiceStore.reset()
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
+      continuityWitness.resetLocalState()
     }
   }
 
@@ -253,6 +255,7 @@ struct ProfileView: View {
         practiceStore.reset()
         gardenStore.resetLocalState()
         heartLedger.resetLocalState()
+        continuityWitness.resetLocalState()
       } catch {
         isDeletingAccount = false
         deleteFailed = true

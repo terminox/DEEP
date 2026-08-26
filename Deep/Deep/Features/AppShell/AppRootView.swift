@@ -76,6 +76,7 @@ struct AppRootView: View {
           practiceStore: deps.practiceStore,
           heartLedger: deps.heartLedger,
           gardenStore: deps.gardenStore,
+          continuityWitness: deps.continuityWitness,
           pauseSession: deps.pauseSession,
           pauseRepository: deps.pauseRepository,
           imageLoader: deps.imageLoader,
