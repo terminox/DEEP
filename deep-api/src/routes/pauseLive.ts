@@ -40,6 +40,7 @@ function serializePeaceMessage(message: PeaceMessage) {
     displayName: message.displayName,
     countryISO: message.countryISO,
     text: message.text,
+    intention: message.intention,
     createdAt: message.createdAt.toISOString(),
   };
 }
@@ -261,6 +262,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       .object({
         text: z.string().transform((t) => t.trim()).pipe(z.string().min(1).max(280)),
         countryISO: countryISOSchema,
+        intention: z.string().trim().min(1).max(64).optional(),
       })
       .parse(req.body);
     const now = resolveNow();
@@ -284,9 +286,20 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         displayName: user.displayName,
         countryISO: body.countryISO ?? null,
         text: body.text,
+        intention: body.intention ?? null,
         pauseDate,
       },
     });
+
+    // The tag is shown on the card AND counted in the admin's reflection stats,
+    // so one post keeps both whole — the client never sends a second request.
+    if (body.intention) {
+      await prisma.pauseReflection.upsert({
+        where: { userId_pauseDate: { userId: user.id, pauseDate } },
+        create: { userId: user.id, pauseDate, intention: body.intention },
+        update: { intention: body.intention },
+      });
+    }
 
     // First message of the night earns; the award ledger's unique on
     // (user, kind, pauseDate) turns every later one into `duplicate`.

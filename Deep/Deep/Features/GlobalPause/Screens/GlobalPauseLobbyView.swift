@@ -29,6 +29,19 @@ struct GlobalPauseLobbyView: View {
   /// loadMore from the previous feed can tell its page is stale.
   @State private var feedEpoch = 0
 
+  /// The feed as shown: whatever has been paged in, with the member's own
+  /// message from tonight seated at the head. It was written after this feed
+  /// was fetched, and the session is presented *over* this screen — which is
+  /// never removed — so there is no lifecycle moment to insert it on. Deriving
+  /// it keeps the lounge honest whenever the body runs, and the de-dupe means
+  /// a later page that catches up with it changes nothing.
+  private var feedMessages: [PeaceMessage] {
+    guard let mine = globalPauseSession.postedMessage,
+          !messages.contains(where: { $0.id == mine.id })
+    else { return messages }
+    return [mine] + messages
+  }
+
   private let heroHeight: CGFloat = 320
   private let heroOverlap: CGFloat = 80
   private let pageSize = 20
@@ -47,9 +60,10 @@ struct GlobalPauseLobbyView: View {
               .padding(.horizontal, .edge)
           }
 
-          if !messages.isEmpty {
+          if !feedMessages.isEmpty {
             PeaceMessagesSection(
-              messages: messages,
+              messages: feedMessages,
+              intentions: globalPauseSession.schedule?.intentions ?? [],
               isLoadingMore: isLoadingMore,
               onReachEnd: { Task { await loadMore() } }
             )

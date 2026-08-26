@@ -65,6 +65,11 @@ final class GlobalPauseSession {
   /// both, and it is composed after the composer has had its say.
   private(set) var messageAward: AwardGrant?
 
+  /// Tonight's peace message, kept from the moment it posts so the lounge can
+  /// seat it at the head of a feed that was fetched before it existed. Cleared
+  /// with the awards as the next visit begins.
+  private(set) var postedMessage: PeaceMessage?
+
   /// When the next meditation begins — the countdown target for the card's
   /// caption. Nil until the schedule lands.
   var nextMeditationStart: Date? {
@@ -238,6 +243,7 @@ final class GlobalPauseSession {
     pauseAwardTask = nil
     pauseAward = nil
     messageAward = nil
+    postedMessage = nil
     let country = Locale.current.region?.identifier.uppercased()
 
     // Locale-centroid fallback immediately, so the globe can turn to
@@ -363,13 +369,19 @@ final class GlobalPauseSession {
 
   // MARK: - Reflection (messages, intention & mood)
 
-  /// Posts a peace message. Returns the whole posted envelope — the composer
-  /// reads the award to phrase its sent-note ("A heart for your kindness")
-  /// when the first message of the night earned one.
+  /// Posts a peace message, tagged with the intention the member chose (the
+  /// server stores it on the message *and* upserts tonight's reflection row,
+  /// so this one call is the whole feedback phase). Returns the posted
+  /// envelope; the first message of the night carries an award.
   @discardableResult
-  func post(message text: String) async throws -> PostedPeaceMessage {
+  func post(message text: String, intention: String?) async throws -> PostedPeaceMessage {
     let country = Locale.current.region?.identifier.uppercased()
-    let posted = try await repository.postMessage(text, countryISO: country)
+    let posted = try await repository.postMessage(
+      text,
+      countryISO: country,
+      intention: intention
+    )
+    postedMessage = posted.message
     // The first message of the night earns; later ones come back bare.
     if let award = posted.award {
       messageAward = award
