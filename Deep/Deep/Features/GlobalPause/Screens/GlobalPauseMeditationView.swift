@@ -114,6 +114,7 @@ private extension View {
   }
 }
 
+#if DEBUG
 #Preview("Meditation") {
   ZStack {
     // The overlay only ever ships over the session's night sky.
@@ -152,3 +153,4 @@ private extension View {
     revealed = true
   }
 }
+#endif

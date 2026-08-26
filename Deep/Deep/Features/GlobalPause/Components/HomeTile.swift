@@ -56,6 +56,7 @@ struct HomeTile: View {
   }
 }
 
+#if DEBUG
 #Preview("Home Tile") {
   HStack(spacing: 16) {
     ForEach(Array(SoundLibrary.morning.prefix(2))) { HomeTile(collection: $0) }
@@ -65,3 +66,4 @@ struct HomeTile: View {
   .environment(\.openCollection, { _ in })
   .environment(\.soundPlayer, MockSoundPlayer.idle)
 }
+#endif

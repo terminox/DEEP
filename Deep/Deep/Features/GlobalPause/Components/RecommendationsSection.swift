@@ -25,6 +25,7 @@ struct RecommendationsSection: View {
   }
 }
 
+#if DEBUG
 #Preview("Recommendations") {
   ScrollView {
     RecommendationsSection(title: "Made for you", collections: SoundLibrary.sleep)
@@ -34,3 +35,4 @@ struct RecommendationsSection: View {
   .environment(\.openCollection, { _ in })
   .environment(\.soundPlayer, MockSoundPlayer.idle)
 }
+#endif

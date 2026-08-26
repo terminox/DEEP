@@ -65,6 +65,7 @@ struct GlobalPauseCompletionView: View {
   }
 }
 
+#if DEBUG
 #Preview("Pause ending") {
   GlobalPauseCompletionView(before: .sample)
     .environment(\.globalPauseSession, .previewAwarded())
@@ -80,3 +81,4 @@ struct GlobalPauseCompletionView: View {
     .environment(\.gardenStore, .sample)
     .environment(\.continuityWitness, .witnessed)
 }
+#endif
