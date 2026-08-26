@@ -145,6 +145,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       key,
       body.countryISO ?? null,
       isNew ? (loc ? { lat: loc.lat, lon: loc.lon } : null) : undefined,
+      isNew ? (loc?.continent ?? null) : undefined,
     );
 
     // Signed-in beats landing inside the meditation window also leave a
@@ -186,6 +187,10 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       phase: occurrence.phaseAt(now),
       participantCount: snap.total,
       byCountry: Object.entries(snap.byCountry).map(([iso, count]) => ({ iso, count })),
+      // Where the world is pausing, coarsely — what the live session names
+      // beneath the globe. Wider coverage than `byCountry`: it also holds
+      // presences the device never named a country for.
+      byContinent: Object.entries(snap.byContinent).map(([iso, count]) => ({ iso, count })),
       unlocatedByCountry: Object.entries(snap.unlocatedByCountry).map(([iso, count]) => ({
         iso,
         count,

@@ -1,17 +1,21 @@
 import SwiftUI
 
 /// The live meditation — the screen's one state — deliberately near-empty:
-/// a LIVE mark, a gentle count of company, a thin progress line. No transport
-/// — the absence of controls is how "cannot be paused" looks; the close
-/// button is the only exit.
+/// a LIVE mark, a gentle count of company, the world named beneath the globe,
+/// a thin progress line. No transport — the absence of controls is how
+/// "cannot be paused" looks; the close button is the only exit.
 ///
 /// The screen arrives empty: `revealed` stays false through the card-lift
 /// flight, then flips once the zoom has settled, cascading the elements in —
-/// pill, then count, then progress line — each with a small lift.
+/// pill, then count, then continents, then progress line — each with a small
+/// lift.
 struct GlobalPauseMeditationView: View {
   let audio: any GlobalPauseAudioPlaying
   let duration: TimeInterval
   let participantCount: Int
+  /// Where the room is, west to east. Empty before the first poll lands, and
+  /// the row simply isn't there — no placeholders, no dashes.
+  var continents: [ContinentPresence] = []
   var revealed: Bool = true
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -34,11 +38,28 @@ struct GlobalPauseMeditationView: View {
 
       Spacer(minLength: 0)
 
+      if !continents.isEmpty {
+        // Seated in the band the globe's own cradle glow already lights,
+        // clear of both the orb's edge and the progress line.
+        ContinentLights(presences: continents)
+          .padding(.horizontal, 12)
+          // Sits in the middle of the band, not against the progress line —
+          // the row belongs to the globe it names, not to the bar below it.
+          .padding(.bottom, 48)
+          .cascade(revealed, order: 2, reduceMotion: reduceMotion)
+          // The cascade only covers the row when the first poll has already
+          // landed by the time the card lift settles — the usual case, since
+          // polling starts a beat before the flight. On a slow first poll the
+          // row would otherwise arrive after the cascade and simply appear.
+          .transition(.opacity)
+      }
+
       progressLine
         .padding(.horizontal, 44)
         .padding(.bottom, 40)
-        .cascade(revealed, order: 2, reduceMotion: reduceMotion)
+        .cascade(revealed, order: 3, reduceMotion: reduceMotion)
     }
+    .animation(.bloom, value: continents.isEmpty)
     .allowsHitTesting(false)
   }
 
@@ -102,7 +123,10 @@ private extension View {
     GlobalPauseMeditationView(
       audio: MockGlobalPauseAudioPlayer.meditating,
       duration: 600,
-      participantCount: 4218
+      participantCount: 4218,
+      continents: ContinentPresence.row(
+        from: ["AS": 1842, "EU": 1106, "NA": 604, "SA": 199, "AF": 291, "OC": 176]
+      )
     )
   }
 }
@@ -117,6 +141,9 @@ private extension View {
       audio: MockGlobalPauseAudioPlayer.meditating,
       duration: 600,
       participantCount: 4218,
+      continents: ContinentPresence.row(
+        from: ["AS": 1842, "EU": 1106, "NA": 604, "SA": 199, "AF": 291, "OC": 176]
+      ),
       revealed: revealed
     )
   }

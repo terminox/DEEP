@@ -9,6 +9,8 @@ export interface GeoLocation {
   lat: number;
   lon: number;
   iso: string | null;
+  /** MaxMind's continent code ("AS", "EU", …); null when the record omits it. */
+  continent: string | null;
 }
 
 let reader: Reader<CityResponse> | null = null;
@@ -72,7 +74,12 @@ export function isPrivateIP(ip: string): boolean {
 
 export async function lookup(ip: string): Promise<GeoLocation | null> {
   if (fixedLocation) {
-    return { lat: round1(fixedLocation.lat), lon: round1(fixedLocation.lon), iso: null };
+    return {
+      lat: round1(fixedLocation.lat),
+      lon: round1(fixedLocation.lon),
+      iso: null,
+      continent: null,
+    };
   }
   if (isPrivateIP(ip)) return null;
 
@@ -86,5 +93,6 @@ export async function lookup(ip: string): Promise<GeoLocation | null> {
     lat: round1(rec.location.latitude),
     lon: round1(rec.location.longitude),
     iso: rec.country?.iso_code ?? null,
+    continent: rec.continent?.code ?? null,
   };
 }

@@ -107,3 +107,57 @@ test("heartbeat returns null location when none resolves for a join", () => {
   const join = presence.heartbeat(key, "US", null);
   assert.equal(join.location, null);
 });
+
+test("heartbeat derives a continent from the device country when the IP can't be placed", () => {
+  const key = `anon:test-${Math.random().toString(36).slice(2, 8)}`;
+  const before = presence.snapshot().byContinent.AS ?? 0;
+  presence.heartbeat(key, "JP", null, null);
+  assert.equal(presence.snapshot().byContinent.AS ?? 0, before + 1);
+  presence.leave(key);
+  assert.equal(presence.snapshot().byContinent.AS ?? 0, before, "leaving gives the seat back");
+});
+
+test("an IP-resolved continent wins over the device country", () => {
+  // A Thai phone pausing from Paris is pausing in Europe.
+  const key = `anon:test-${Math.random().toString(36).slice(2, 8)}`;
+  const before = presence.snapshot().byContinent;
+  const beforeEU = before.EU ?? 0;
+  const beforeAS = before.AS ?? 0;
+  presence.heartbeat(key, "TH", { lat: 48.9, lon: 2.4 }, "EU");
+  const after = presence.snapshot().byContinent;
+  assert.equal(after.EU ?? 0, beforeEU + 1);
+  assert.equal(after.AS ?? 0, beforeAS);
+  presence.leave(key);
+});
+
+test("a refresh beat keeps the continent resolved at join", () => {
+  const key = `anon:test-${Math.random().toString(36).slice(2, 8)}`;
+  const beforeEU = presence.snapshot().byContinent.EU ?? 0;
+  const beforeAS = presence.snapshot().byContinent.AS ?? 0;
+  presence.heartbeat(key, "TH", { lat: 48.9, lon: 2.4 }, "EU");
+  // Refresh beats skip the geo lookup entirely, so both trailing arguments
+  // are omitted — the entry must not fall back to the device's country.
+  presence.heartbeat(key, "TH");
+  const after = presence.snapshot().byContinent;
+  assert.equal(after.EU ?? 0, beforeEU + 1);
+  assert.equal(after.AS ?? 0, beforeAS);
+  presence.leave(key);
+});
+
+test("a nonsense continent code from geo falls back to the device country", () => {
+  const key = `anon:test-${Math.random().toString(36).slice(2, 8)}`;
+  const before = presence.snapshot().byContinent.SA ?? 0;
+  presence.heartbeat(key, "BR", null, "XX");
+  assert.equal(presence.snapshot().byContinent.SA ?? 0, before + 1);
+  presence.leave(key);
+});
+
+test("scatter fakes tally by continent without touching byCountry", () => {
+  const before = presence.snapshot();
+  presence.injectFake(20);
+  const after = presence.snapshot();
+  assert.deepEqual(after.byCountry, before.byCountry, "scatter fakes stay out of byCountry");
+  const sum = (tally: Record<string, number>) =>
+    Object.values(tally).reduce((total, n) => total + n, 0);
+  assert.equal(sum(after.byContinent), sum(before.byContinent) + 20);
+});

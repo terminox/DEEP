@@ -37,6 +37,10 @@ final class GlobalPauseSession {
   )
   private(set) var participantCount = 0
   private(set) var participantsByCountry: [String: Int] = [:]
+  /// Tallied by continent code — what the live session names beneath the
+  /// globe. Server-resolved, so it reaches past the countries the globe's own
+  /// table knows.
+  private(set) var participantsByContinent: [String: Int] = [:]
   /// Located participants as server-clustered lat/lon points. Empty on older
   /// servers — the globe then glows per-country from `participantsByCountry`.
   private(set) var participantLocations: [PauseLiveSnapshot.GeoPoint] = []
@@ -316,6 +320,7 @@ final class GlobalPauseSession {
     guard let snapshot = try? await repository.live() else { return }
     participantCount = snapshot.participantCount
     participantsByCountry = snapshot.byCountry
+    participantsByContinent = snapshot.byContinent
     participantLocations = snapshot.locations
     unlocatedByCountry = snapshot.unlocatedByCountry
 
@@ -411,6 +416,7 @@ extension GlobalPauseSession {
     if live { session.cardState = .live }
     session.participantCount = 4218
     session.participantsByCountry = ["TH": 1200, "JP": 640, "US": 580, "FR": 320]
+    session.participantsByContinent = ["AS": 2612, "EU": 1106, "NA": 604, "SA": 410, "AF": 291, "OC": 176]
     session.myLocation = PauseJoinPoint(lat: 13.8, lon: 100.5)  // Bangkok
     return session
   }
