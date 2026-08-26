@@ -1,7 +1,8 @@
 // Base build settings shared by every Deep environment.
 // Per-env files (Dev/Staging/Pilot/Prod) #include this and set the values
 // that differ (API_BASE_URL, APP_ENV, BUNDLE_ID_SUFFIX, APP_DISPLAY_NAME) plus
-// their debug/release optimisation profile.
+// their debug/release optimisation profile. CentralFlight sits one level further
+// out: it #includes Prod and changes only the shipped identity and signing.
 
 // ---- App identity / Info.plist ----
 // One hand-authored Info.plist (kept outside the synchronized source group)
