@@ -112,6 +112,7 @@ extension SoundCollection {
   }
 }
 
+#if DEBUG
 #Preview("Feature Card") {
   ZStack {
     AtmosphereBackground()
@@ -119,3 +120,4 @@ extension SoundCollection {
   }
   .environment(\.soundPlayer, MockSoundPlayer.idle)
 }
+#endif

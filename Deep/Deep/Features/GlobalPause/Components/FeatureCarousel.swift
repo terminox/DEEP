@@ -25,6 +25,7 @@ struct FeatureCarousel: View {
   }
 }
 
+#if DEBUG
 #Preview("Feature Carousel") {
   ScrollView {
     FeatureCarousel(title: "Popular now", collections: SoundLibrary.calm, seeAll: {})
@@ -34,3 +35,4 @@ struct FeatureCarousel: View {
   .environment(\.openCollection, { _ in })
   .environment(\.soundPlayer, MockSoundPlayer.idle)
 }
+#endif

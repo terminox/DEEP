@@ -133,6 +133,7 @@ struct GlobalPauseReflectionView: View {
   }
 }
 
+#if DEBUG
 #Preview("Reflection") {
   GlobalPauseReflectionView(onContinue: {})
     .environment(\.globalPauseSession, .preview())
@@ -142,3 +143,4 @@ struct GlobalPauseReflectionView: View {
   GlobalPauseReflectionView(isPreparing: true, onContinue: {})
     .environment(\.globalPauseSession, .previewAwarded())
 }
+#endif

@@ -247,6 +247,7 @@ final class RippleTouchTracker {
   }
 }
 
+#if DEBUG
 #Preview("Onboarding — Full flow") {
   // The host backdrop AppRootView provides in the app, so the preview stays
   // hermetic and true to what ships.
@@ -257,3 +258,4 @@ final class RippleTouchTracker {
       .environment(\.onboardingStore, MockOnboardingStore.fresh)
   }
 }
+#endif

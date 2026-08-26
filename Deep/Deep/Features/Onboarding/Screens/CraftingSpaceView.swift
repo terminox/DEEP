@@ -79,7 +79,9 @@ struct CraftingSpaceView: View {
   }
 }
 
+#if DEBUG
 #Preview("Onboarding — Crafting") {
   CraftingSpaceView()
     .environment(\.onboardingStore, MockOnboardingStore.fresh)
 }
+#endif

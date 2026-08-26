@@ -661,6 +661,7 @@ final class GlobalPauseSessionController: UIViewController {
   }
 }
 
+#if DEBUG
 #Preview("Session") {
   let scene = GlobalPauseEarthScene.preview
   let card = GlobalPauseCardView(scene: scene)
@@ -682,3 +683,4 @@ final class GlobalPauseSessionController: UIViewController {
   controller.closeButton.alpha = 1
   return controller
 }
+#endif

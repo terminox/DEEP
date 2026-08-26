@@ -281,6 +281,7 @@ struct ProfileView: View {
   }
 }
 
+#if DEBUG
 #Preview("Profile — email user, subscribed") {
   ProfileView()
     .environment(\.accountStore, MockAccountStore.emailUser)
@@ -294,3 +295,4 @@ struct ProfileView: View {
     .environment(\.onboardingStore, MockOnboardingStore.fresh)
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
 }
+#endif
