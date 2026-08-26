@@ -250,6 +250,9 @@ final class GlobalPauseSessionController: UIViewController {
     guard !isTornDown else { return }
     withObservationTracking {
       _ = session.participantsByCountry
+      // Not a globe input — the overlay's continent row rides the same poll,
+      // and this loop is what rebuilds it.
+      _ = session.participantsByContinent
       _ = session.participantLocations
       _ = session.unlocatedByCountry
       // The arrival follows this one too: it aims the turn, and a corrected
@@ -351,6 +354,7 @@ final class GlobalPauseSessionController: UIViewController {
         audio: audio,
         duration: duration,
         participantCount: session.participantCount,
+        continents: ContinentPresence.row(from: session.participantsByContinent),
         revealed: isOverlayRevealed
       )
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented

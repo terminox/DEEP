@@ -86,6 +86,7 @@ final class APIPauseEventRepository: PauseEventRepository {
         dto.byCountry.map { ($0.iso, $0.count) },
         uniquingKeysWith: { first, _ in first }
       ),
+      byContinent: continentTally(dto),
       locations: (dto.points ?? []).map {
         .init(lat: Float($0.lat), lon: Float($0.lon), count: $0.count)
       },
@@ -102,6 +103,26 @@ final class APIPauseEventRepository: PauseEventRepository {
         )
       }
     )
+  }
+
+  /// The continent tally, with a fallback for servers that predate the field:
+  /// fold `byCountry` through the globe's own country table. That table knows
+  /// only the ~67 countries whose glow was hand-tuned, so the fallback
+  /// undercounts — it exists to keep an older server readable, not to be
+  /// authoritative.
+  private func continentTally(_ dto: PauseLiveDTO) -> [String: Int] {
+    if let byContinent = dto.byContinent, !byContinent.isEmpty {
+      return Dictionary(
+        byContinent.map { ($0.iso, $0.count) },
+        uniquingKeysWith: { first, _ in first }
+      )
+    }
+    var tally: [String: Int] = [:]
+    for entry in dto.byCountry {
+      guard let country = CountryLookup.shared.country(forISO: entry.iso) else { continue }
+      tally[country.continentISO, default: 0] += entry.count
+    }
+    return tally
   }
 
   @discardableResult
@@ -296,6 +317,9 @@ final class FixturePauseEventRepository: PauseEventRepository {
       serverNow: Date(),
       participantCount: 4200 + posted.count,
       byCountry: ["TH": 1200, "JP": 640, "US": 580, "FR": 320, "BR": 410, "IN": 700],
+      // Deliberately wider than the countries above — the server sees people
+      // the device-reported country list never names.
+      byContinent: ["AS": 2612, "EU": 1106, "NA": 604, "SA": 410, "AF": 291, "OC": 176],
       // City-level clusters so every preview exercises the point-glow path.
       locations: [
         .init(lat: 13.8, lon: 100.5, count: 3),   // Bangkok

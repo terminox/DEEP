@@ -68,6 +68,10 @@ struct PauseLiveSnapshot {
   let serverNow: Date
   let participantCount: Int
   let byCountry: [String: Int]
+  /// Tallied by continent code ("AS", "EU", "NA"…) — the reading the live
+  /// session names beneath the globe. Wider than `byCountry`: it also holds
+  /// people whose device never named a country.
+  let byContinent: [String: Int]
   /// Located participants as lat/lon clusters. Empty on older servers —
   /// the globe then falls back to per-country glow from `byCountry`.
   let locations: [GeoPoint]
