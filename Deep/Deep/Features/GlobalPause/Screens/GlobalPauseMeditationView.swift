@@ -47,6 +47,11 @@ struct GlobalPauseMeditationView: View {
           // the row belongs to the globe it names, not to the bar below it.
           .padding(.bottom, 48)
           .cascade(revealed, order: 2, reduceMotion: reduceMotion)
+          // The cascade only covers the row when the first poll has already
+          // landed by the time the card lift settles — the usual case, since
+          // polling starts a beat before the flight. On a slow first poll the
+          // row would otherwise arrive after the cascade and simply appear.
+          .transition(.opacity)
       }
 
       progressLine
@@ -54,6 +59,7 @@ struct GlobalPauseMeditationView: View {
         .padding(.bottom, 40)
         .cascade(revealed, order: 3, reduceMotion: reduceMotion)
     }
+    .animation(.bloom, value: continents.isEmpty)
     .allowsHitTesting(false)
   }
 
