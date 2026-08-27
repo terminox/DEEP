@@ -15,6 +15,10 @@ struct RewardRitualView: View {
   var continuityHeadline = "You returned today"
   /// The label on the tap that ends the ritual.
   var finalButtonTitle = "Carry this calm"
+  /// Whether the ritual paints its own atmosphere. False when an owner spans a
+  /// longer ending and already holds one — two independently drifting
+  /// atmospheres crossfading against each other visibly slide.
+  var paintsBackground = true
   var onFinish: () -> Void = {}
 
   @Environment(\.continuityWitness) private var continuityWitness
@@ -24,8 +28,10 @@ struct RewardRitualView: View {
 
   var body: some View {
     ZStack {
-      Color.moonCream.ignoresSafeArea()
-      AtmosphereBackground()
+      if paintsBackground {
+        Color.moonCream.ignoresSafeArea()
+        AtmosphereBackground()
+      }
 
       switch step {
       case .garden:

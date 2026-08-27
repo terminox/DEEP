@@ -129,6 +129,7 @@ final class MainTabController: UITabBarController {
       heartLedger: heartLedger,
       gardenStore: gardenStore,
       continuityWitness: continuityWitness,
+      accountStore: accountStore,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
       imageLoader: imageLoader

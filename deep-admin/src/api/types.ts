@@ -162,6 +162,7 @@ export type AdminPeaceMessage = {
   displayName: string
   countryISO: string | null
   text: string
+  intention: string | null
   status: PeaceMessageStatus
   pauseDate: string
   createdAt: string

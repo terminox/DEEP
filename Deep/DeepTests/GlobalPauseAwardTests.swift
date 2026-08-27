@@ -109,12 +109,12 @@ struct GlobalPauseAwardTests {
     let session = makeSession(rewards: MockRewardsRemote())
     session.enterSession()
 
-    _ = try await session.post(message: "Peace to you all")
+    _ = try await session.post(message: "Peace to you all", intention: "peace")
     #expect(session.messageAward?.hearts == 1)
     #expect(session.messageAward?.sunlight == 1)
 
     // Later messages come back bare — the first award stays the night's truth.
-    _ = try await session.post(message: "And again")
+    _ = try await session.post(message: "And again", intention: nil)
     #expect(session.messageAward?.hearts == 1)
     session.leaveSession()
   }
@@ -123,7 +123,7 @@ struct GlobalPauseAwardTests {
   func nextVisitForgetsTheMessageAward() async throws {
     let session = makeSession(rewards: MockRewardsRemote())
     session.enterSession()
-    _ = try await session.post(message: "Peace to you all")
+    _ = try await session.post(message: "Peace to you all", intention: "peace")
     #expect(session.messageAward != nil)
     session.leaveSession()
 

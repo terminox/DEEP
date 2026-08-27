@@ -30,7 +30,11 @@ protocol PauseEventRepository: AnyObject {
   /// Best-effort; failures are irrelevant (the server sweeps stale presence).
   func leave(presenceID: String) async
   func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage
-  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage
+  func postMessage(
+    _ text: String,
+    countryISO: String?,
+    intention: String?
+  ) async throws -> PostedPeaceMessage
   func submitReflection(intention: String?, mood: String?) async throws
 }
 
@@ -152,11 +156,19 @@ final class APIPauseEventRepository: PauseEventRepository {
     return PeaceMessagesPage(messages: dto.messages.map(mapMessage), nextCursor: dto.nextCursor)
   }
 
-  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage {
+  func postMessage(
+    _ text: String,
+    countryISO: String?,
+    intention: String?
+  ) async throws -> PostedPeaceMessage {
     let dto: PauseMessagePostResponseDTO = try await client.request(
       "/pause/messages",
       method: "POST",
-      body: PeaceMessagePostRequestDTO(text: text, countryISO: countryISO)
+      body: PeaceMessagePostRequestDTO(
+        text: text,
+        countryISO: countryISO,
+        intention: intention
+      )
     )
     clock.sync(serverNow: date(dto.serverNow))
     return PostedPeaceMessage(
@@ -184,6 +196,7 @@ final class APIPauseEventRepository: PauseEventRepository {
       displayName: dto.displayName,
       countryISO: dto.countryISO,
       text: dto.text,
+      intention: dto.intention,
       createdAt: date(dto.createdAt)
     )
   }
@@ -204,6 +217,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Nan",
       countryISO: "TH",
       text: "Peace for every quiet heart tonight.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-3600)
     ),
     PeaceMessage(
@@ -211,6 +225,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Haruki",
       countryISO: "JP",
       text: "Breathing with you all from Kyoto.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-4200)
     ),
     PeaceMessage(
@@ -218,6 +233,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Camille",
       countryISO: "FR",
       text: "Ce soir, le monde respire ensemble.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-5000)
     ),
     PeaceMessage(
@@ -225,6 +241,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Luana",
       countryISO: "BR",
       text: "Sending warmth from São Paulo.",
+      intention: "someone-i-love",
       createdAt: Date().addingTimeInterval(-5600)
     ),
     PeaceMessage(
@@ -232,6 +249,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Amara",
       countryISO: "KE",
       text: "May stillness find whoever needs it.",
+      intention: "healing",
       createdAt: Date().addingTimeInterval(-6300)
     ),
     PeaceMessage(
@@ -239,6 +257,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Noah",
       countryISO: "US",
       text: "Grateful for this minute of quiet.",
+      intention: "gratitude",
       createdAt: Date().addingTimeInterval(-7100)
     ),
     PeaceMessage(
@@ -246,6 +265,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Mira",
       countryISO: "IN",
       text: "Shanti. Shanti. Shanti.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-8000)
     ),
     PeaceMessage(
@@ -253,6 +273,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Elin",
       countryISO: "SE",
       text: "The lake is still here too. Goodnight.",
+      intention: nil,
       createdAt: Date().addingTimeInterval(-9200)
     ),
     PeaceMessage(
@@ -260,6 +281,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Tomás",
       countryISO: "AR",
       text: "Un abrazo enorme desde Buenos Aires.",
+      intention: "someone-i-love",
       createdAt: Date().addingTimeInterval(-10500)
     ),
     PeaceMessage(
@@ -267,6 +289,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Yuki",
       countryISO: "JP",
       text: "May tomorrow be gentler than today.",
+      intention: nil,
       createdAt: Date().addingTimeInterval(-11800)
     ),
   ]
@@ -353,12 +376,17 @@ final class FixturePauseEventRepository: PauseEventRepository {
     )
   }
 
-  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage {
+  func postMessage(
+    _ text: String,
+    countryISO: String?,
+    intention: String?
+  ) async throws -> PostedPeaceMessage {
     let message = PeaceMessage(
       id: UUID().uuidString,
       displayName: "You",
       countryISO: countryISO,
       text: text,
+      intention: intention,
       createdAt: Date()
     )
     let isFirstOfTheNight = posted.isEmpty
