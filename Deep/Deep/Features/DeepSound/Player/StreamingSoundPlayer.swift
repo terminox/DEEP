@@ -11,8 +11,7 @@ import Observation
 @MainActor
 @Observable
 final class StreamingSoundPlayer: SoundPlaying {
-  private(set) var collection: SoundCollection?
-  private(set) var queue: [SoundTrack] = []
+  private(set) var queue: [SoundQueueEntry] = []
   private(set) var index: Int = 0
 
   var isPlaying: Bool = false
@@ -31,8 +30,13 @@ final class StreamingSoundPlayer: SoundPlaying {
   /// nexts never fire it.
   @ObservationIgnored private let trackFinished: (@MainActor (SoundTrack) -> Void)?
 
+  /// The collection the *current* track came from — constant while a
+  /// collection plays, changing track by track through a playlist.
+  var collection: SoundCollection? {
+    queue.indices.contains(index) ? queue[index].collection : nil
+  }
   var currentTrack: SoundTrack? {
-    queue.indices.contains(index) ? queue[index] : nil
+    queue.indices.contains(index) ? queue[index].track : nil
   }
   var hasTrack: Bool { currentTrack != nil }
   var duration: TimeInterval { currentTrack?.duration ?? 0 }
@@ -49,10 +53,9 @@ final class StreamingSoundPlayer: SoundPlaying {
 
   // MARK: - Transport
 
-  func play(_ collection: SoundCollection, at index: Int = 0) {
-    self.collection = collection
-    self.queue = collection.tracks
-    self.index = min(max(0, index), max(0, collection.tracks.count - 1))
+  func play(_ entries: [SoundQueueEntry], at index: Int) {
+    self.queue = entries
+    self.index = min(max(0, index), max(0, entries.count - 1))
     loadCurrent(autoplay: true)
   }
 

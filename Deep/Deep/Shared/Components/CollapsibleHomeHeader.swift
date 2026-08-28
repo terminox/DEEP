@@ -28,6 +28,73 @@ extension View {
   }
 }
 
+/// The same header for a screen with **no hero to collapse against**: the title
+/// simply stays, in plum, over a permanent wash of the same progressive blur.
+///
+/// Deep's hero-led tabs earn their collapse from a full-bleed video; a screen
+/// without one has nothing to roll against, and a white title would be
+/// invisible over the atmosphere. This keeps the shape those tabs establish —
+/// title top-left, accessory top-right, `.edge` inset — and drops only the
+/// motion. Applied as a `safeAreaInset`, so the scroll below it is inset
+/// correctly and content passes under the blur rather than behind a hard edge.
+extension View {
+  func pinnedHomeHeader<Trailing: View>(
+    title: String,
+    subtitle: String? = nil,
+    @ViewBuilder trailing: () -> Trailing = { EmptyView() }
+  ) -> some View {
+    safeAreaInset(edge: .top, spacing: 0) {
+      PinnedHomeHeader(title: title, subtitle: subtitle, trailing: AnyView(trailing()))
+    }
+  }
+}
+
+private struct PinnedHomeHeader: View {
+  let title: String
+  let subtitle: String?
+  let trailing: AnyView
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 12) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(DeepType.wordmark)
+          .foregroundStyle(.deepPlum)
+        if let subtitle {
+          Text(subtitle)
+            .font(DeepType.caption)
+            .foregroundStyle(.driftGrey)
+            .lineLimit(1)
+        }
+      }
+      // A Spacer would bid against this column and clip a long title.
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      trailing
+    }
+    .padding(.top, 6)
+    .padding(.bottom, 10)
+    .padding(.horizontal, .edge)
+    // Behind, not beside: the blur has no intrinsic height, so inside the
+    // stack it would grow to fill and drag the whole safe-area inset with it.
+    // As a background the title block sets the height and the blur fills it,
+    // reaching up under the status bar for the content passing beneath.
+    //
+    // The negative bottom padding is what keeps the subtitle legible. The
+    // gradient runs blurred-to-clear across whatever height it is given, so at
+    // exactly the header's height its clear end lands on the subtitle and a
+    // card edge sliding under smears straight across it. Overhanging puts the
+    // whole title block in the strong half and lets the fade finish in open
+    // space below.
+    .background {
+      VariableBlurView(maxBlurRadius: 24, direction: .blurredTopClearBottom)
+        .padding(.bottom, -36)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+    }
+  }
+}
+
 /// True while the header still floats over the dark video (accessories should
 /// use their light, over-hero treatment); false once it has settled onto the
 /// blurred bar (use the plum treatment). Lets a trailing accessory — e.g. the
@@ -206,6 +273,25 @@ private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
     title: "Deep Sound",
     subtitle: "Sound to settle into"
   ) { EmptyView() }
+}
+
+#Preview("Pinned header — no hero") {
+  ScrollView {
+    LazyVStack(spacing: 14) {
+      ForEach(0..<10, id: \.self) { _ in
+        RoundedRectangle(cornerRadius: .card, style: .continuous)
+          .fill(.white.opacity(0.6))
+          .frame(height: 80)
+      }
+    }
+    .padding(.horizontal, .edge)
+    .padding(.top, .rhythm)
+  }
+  .scrollIndicators(.hidden)
+  .background { AtmosphereBackground() }
+  .pinnedHomeHeader(title: "Playlist", subtitle: "Sounds you've saved") {
+    HeaderIconButton(systemName: "gearshape", accessibilityLabel: "Settings") {}
+  }
 }
 
 #Preview("Collapsible header — with accessory") {

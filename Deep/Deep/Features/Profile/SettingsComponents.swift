@@ -3,8 +3,9 @@ import SwiftUI
 // MARK: - Section
 
 /// A Calm-style settings group: an optional whisper of a title above a frosted
-/// card of rows, with hairline separators inset past the icon column so the
-/// lines read as part of the text block, not the card.
+/// card of rows. The card *is* the grouping — Deep separates content with
+/// whitespace and surfaces, never with rules, so there are no hairlines
+/// between the rows.
 struct SettingsSection<Content: View>: View {
   var title: String? = nil
   @ViewBuilder var content: Content
@@ -17,27 +18,11 @@ struct SettingsSection<Content: View>: View {
           .foregroundStyle(.driftGrey)
           .padding(.horizontal, 8)
       }
-      Group(subviews: content) { rows in
-        VStack(spacing: 0) {
-          ForEach(rows.indices, id: \.self) { index in
-            rows[index]
-            if index < rows.count - 1 {
-              separator
-            }
-          }
-        }
+      VStack(spacing: 0) {
+        content
       }
       .frostedCard(cornerRadius: .card)
     }
-  }
-
-  /// Inset matches a row's leading padding + icon column + gap, so separators
-  /// align with the titles.
-  private var separator: some View {
-    Rectangle()
-      .fill(Color.deepPlum.opacity(0.08))
-      .frame(height: 1)
-      .padding(.leading, 56)
   }
 }
 

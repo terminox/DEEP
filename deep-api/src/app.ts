@@ -16,6 +16,7 @@ import { practiceRoutes } from "./routes/practice.js";
 import { pauseLiveRoutes } from "./routes/pauseLive.js";
 import { gardenRoutes } from "./routes/garden.js";
 import { heartsRoutes } from "./routes/hearts.js";
+import { playlistRoutes } from "./routes/playlist.js";
 import { adminRoutes } from "./routes/admin.js";
 import { adminGardenRoutes } from "./routes/adminGarden.js";
 
@@ -74,6 +75,7 @@ export function buildApp() {
   app.register(pauseLiveRoutes);
   app.register(gardenRoutes);
   app.register(heartsRoutes);
+  app.register(playlistRoutes);
   app.register(adminRoutes);
   app.register(adminGardenRoutes);
 

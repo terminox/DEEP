@@ -5,6 +5,7 @@ import SwiftUI
 struct CollectionDetailView: View {
   @Environment(\.soundPlayer) private var player
   @Environment(\.subscriptionStore) private var subscriptionStore
+  @Environment(\.playlistStore) private var playlistStore
   let collection: SoundCollection
   var bottomInset: CGFloat
 
@@ -72,42 +73,15 @@ struct CollectionDetailView: View {
 
   private var actions: some View {
     HStack(spacing: 12) {
-      actionButton(title: "Play", systemName: "play.fill") {
+      SoundActionButton(title: "Play", systemName: "play.fill") {
         attemptPlay(at: 0)
       }
-      actionButton(title: "Shuffle", systemName: "shuffle") {
+      SoundActionButton(title: "Shuffle", systemName: "shuffle") {
         let start = Int.random(in: 0..<max(1, collection.trackCount))
         attemptPlay(at: start)
       }
     }
     .padding(.horizontal, .edge)
-  }
-
-  private func actionButton(
-    title: String,
-    systemName: String,
-    action: @escaping () -> Void
-  ) -> some View {
-    Button(action: action) {
-      HStack(spacing: 8) {
-        Image(systemName: systemName)
-          .font(.system(.subheadline, weight: .semibold))
-        Text(title)
-          .font(DeepType.body.weight(.medium))
-      }
-      .foregroundStyle(.deepPlum)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 13)
-      .background(
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .fill(.white.opacity(0.55))
-          .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-              .fill(.ultraThinMaterial)
-          )
-      )
-    }
-    .buttonStyle(.softPress)
   }
 
   private var trackList: some View {
@@ -118,14 +92,11 @@ struct CollectionDetailView: View {
           number: offset + 1,
           track: track,
           isCurrent: isCurrent(track),
-          isLocked: isLocked(track)
+          isLocked: isLocked(track),
+          isSaved: playlistStore.isSaved(track),
+          save: { playlistStore.toggle(track, from: collection) }
         ) {
           attemptPlay(at: offset)
-        }
-        if offset < collection.tracks.count - 1 {
-          Divider()
-            .overlay(Color.driftGrey.opacity(0.18))
-            .padding(.leading, 52)
         }
       }
     }
@@ -142,6 +113,11 @@ private struct TrackRow: View {
   let track: SoundTrack
   let isCurrent: Bool
   var isLocked: Bool = false
+  /// Whether this sound is already in the listener's playlist — the long-press
+  /// menu is the only place a collection offers to save one, so the row itself
+  /// stays as quiet as it was.
+  var isSaved: Bool = false
+  var save: () -> Void = {}
   let action: () -> Void
 
   var body: some View {
@@ -171,6 +147,14 @@ private struct TrackRow: View {
       .contentShape(Rectangle())
     }
     .buttonStyle(.softPress)
+    .contextMenu {
+      Button(action: save) {
+        Label(
+          isSaved ? "Remove from playlist" : "Save to playlist",
+          systemImage: isSaved ? "bookmark.slash" : "bookmark"
+        )
+      }
+    }
   }
 }
 

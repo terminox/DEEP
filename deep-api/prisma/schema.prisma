@@ -24,18 +24,18 @@ enum TrackKind {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  displayName  String
-  role         Role     @default(USER)
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String
+  displayName     String
+  role            Role     @default(USER)
   // Last-seen IANA device timezone (from the X-Device-Timezone header),
   // persisted opportunistically; the day-key fallback when the header is absent.
-  timezone     String?
+  timezone        String?
   // The plant currently receiving sunlight; lazily assigned on first award.
   selectedPlantId String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   selectedPlant Plant? @relation("SelectedPlant", fields: [selectedPlantId], references: [id], onDelete: SetNull)
 
@@ -50,6 +50,7 @@ model User {
   wallet           UserWallet?
   heartSpends      HeartSpend[]
   pauseAttendances PauseAttendance[]
+  playlists        Playlist[]
 
   @@map("users")
 }
@@ -212,20 +213,21 @@ model SoundCollection {
 }
 
 model SoundTrack {
-  id              String       @id @default(uuid())
+  id              String    @id @default(uuid())
   collectionId    String
   title           String
   durationSeconds Int
-  kind            TrackKind    @default(INSTRUMENTAL)
+  kind            TrackKind @default(INSTRUMENTAL)
   // Relative media path (e.g. /media/audio/xyz.mp3); served absolute to clients.
   audioPath       String?
-  displayOrder    Int          @default(0)
-  isPremium       Boolean      @default(false)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  displayOrder    Int       @default(0)
+  isPremium       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  collection SoundCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  lyrics     TrackLyrics[]
+  collection    SoundCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  lyrics        TrackLyrics[]
+  playlistItems PlaylistItem[]
 
   @@index([collectionId])
   @@map("sound_tracks")
@@ -246,12 +248,51 @@ model TrackLyrics {
   @@map("track_lyrics")
 }
 
+// ---- Playlists (sounds a listener kept for later) ----
+
+// A user's own list of tracks. Exactly one per user today, created lazily and
+// marked `isDefault`; everything downstream is keyed by playlist id, so a second
+// list is an addition rather than a migration. A partial unique index (added by
+// hand in the migration, since Prisma cannot express it) keeps two concurrent
+// saves from both creating the default.
+model Playlist {
+  id           String   @id @default(uuid())
+  userId       String
+  name         String
+  isDefault    Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items PlaylistItem[]
+
+  @@index([userId])
+  @@map("playlists")
+}
+
+// One kept track. `createdAt` is also the sort key - most recently kept first -
+// so there is no separate position column until hand-reordering exists.
+model PlaylistItem {
+  id         String   @id @default(uuid())
+  playlistId String
+  trackId    String
+  createdAt  DateTime @default(now())
+
+  playlist Playlist   @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track    SoundTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, trackId])
+  @@index([playlistId, createdAt])
+  @@map("playlist_items")
+}
+
 // ---- Practice-session logging ----
 
 // One completed guided-breathing session, logged as-is; the client owns
 // aggregate math (today/streaks) in the user's local calendar.
 model PracticeSession {
-  id              String   @id            // client-generated UUID → idempotent sync
+  id              String   @id // client-generated UUID → idempotent sync
   userId          String
   title           String
   durationSeconds Int

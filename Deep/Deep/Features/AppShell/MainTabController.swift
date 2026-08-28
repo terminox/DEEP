@@ -5,7 +5,7 @@ import SwiftUI
 /// `UIHostingController`. New tabs are added by appending to `viewControllers`.
 final class MainTabController: UITabBarController {
   /// Shared app-lifetime stores threaded in from `AppRootView`, injected into
-  /// the Profile tab so log-out / onboarding-reset act on the same instances
+  /// the You tab so log-out / onboarding-reset act on the same instances
   /// that drive the app's onboarding gate.
   private let onboardingStore: any OnboardingProgressStore
   private let accountStore: any AccountStore
@@ -27,6 +27,9 @@ final class MainTabController: UITabBarController {
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
   private let gardenStore: GardenStore
+  /// The saved sounds, injected into every tab: a sound can be saved from Now
+  /// Playing or from any collection, and the You tab must read the same list.
+  private let playlistStore: PlaylistStore
   /// The one day-stamp behind the continuity beat, so a Deep Session and a
   /// Global Pause on the same day share the single moment.
   private let continuityWitness: ContinuityWitness
@@ -76,6 +79,7 @@ final class MainTabController: UITabBarController {
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
+    playlistStore: PlaylistStore,
     continuityWitness: ContinuityWitness,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
@@ -90,6 +94,7 @@ final class MainTabController: UITabBarController {
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
+    self.playlistStore = playlistStore
     self.continuityWitness = continuityWitness
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
@@ -156,16 +161,15 @@ final class MainTabController: UITabBarController {
       systemImage: "heart.fill"
     )
 
-    let profile = host(
-      ProfileView()
+    let you = host(
+      YouCoordinatorView()
         .environment(\.onboardingStore, onboardingStore)
-        .environment(\.accountStore, accountStore)
-        .environment(\.subscriptionStore, subscriptionStore),
+        .environment(\.accountStore, accountStore),
       title: "You",
       systemImage: "person.fill"
     )
 
-    viewControllers = [globalPause, sounds, garden, portfolio, profile]
+    viewControllers = [globalPause, sounds, garden, portfolio, you]
   }
 
   // MARK: - Bottom accessory (mini player)
@@ -245,6 +249,7 @@ final class MainTabController: UITabBarController {
     }
     .environment(\.soundPlayer, sharedPlayer)
     .environment(\.soundContentRepository, soundRepository)
+    .environment(\.playlistStore, playlistStore)
     .environment(\.imageLoader, imageLoader)
     .preferredColorScheme(.light)
 
@@ -261,17 +266,20 @@ final class MainTabController: UITabBarController {
     title: String,
     systemImage: String
   ) -> UIViewController {
-    // Every tab gets the shared player, journal, ledger, and garden: the Deep
-    // Session flow presents itself as a full-screen cover from inside a tab's
-    // tree, pauses playback on entry, and records its completion — without
-    // these it would reach the environment's throwaway defaults and credit
-    // nobody.
+    // Every tab gets the shared player, journal, ledger, garden, and saved
+    // sounds: the Deep Session flow presents itself as a full-screen cover from
+    // inside a tab's tree, pauses playback on entry, and records its
+    // completion — without these it would reach the environment's throwaway
+    // defaults and credit nobody. `subscriptionStore` rides along for the same
+    // reason: the premium gate on a collection has to ask the real one.
     let rootView = view
       .environment(\.soundPlayer, sharedPlayer)
       .environment(\.soundContentRepository, soundRepository)
+      .environment(\.subscriptionStore, subscriptionStore)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
       .environment(\.gardenStore, gardenStore)
+      .environment(\.playlistStore, playlistStore)
       .environment(\.continuityWitness, continuityWitness)
       .environment(\.imageLoader, imageLoader)
       .environment(\.videoCache, videoCache)

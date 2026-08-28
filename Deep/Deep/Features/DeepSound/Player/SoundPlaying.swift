@@ -20,7 +20,10 @@ protocol SoundPlaying: AnyObject, Observable {
   /// 0...1 — purely visual for now.
   var volume: Double { get set }
 
-  func play(_ collection: SoundCollection, at index: Int)
+  /// Loads a queue and starts it. Each entry names the collection its track
+  /// came from, so a queue may cross collections (a playlist) or stay inside
+  /// one (a collection) without the player needing to know which it has.
+  func play(_ entries: [SoundQueueEntry], at index: Int)
   func togglePlayPause()
   func next()
   func previous()
@@ -29,9 +32,13 @@ protocol SoundPlaying: AnyObject, Observable {
 }
 
 extension SoundPlaying {
-  /// Start a collection from its first track.
-  func play(_ collection: SoundCollection) {
-    play(collection, at: 0)
+  /// Start a collection, optionally from a given track — every entry shares
+  /// the one collection, so `collection` stays put for the whole queue.
+  func play(_ collection: SoundCollection, at index: Int = 0) {
+    play(
+      collection.tracks.map { SoundQueueEntry(track: $0, collection: collection) },
+      at: index
+    )
   }
 
   /// Pause playback if something is playing; otherwise a no-op. Guided flows
