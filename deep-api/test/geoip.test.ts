@@ -46,13 +46,13 @@ test("lookup() falls back to null when the mmdb file is missing", async () => {
 test("lookup() rounds fixed-override coordinates to 1 decimal", async () => {
   setFixedLocation({ lat: 35.6895123, lon: 139.6917456 });
   const loc = await lookup("8.8.8.8");
-  assert.deepEqual(loc, { lat: 35.7, lon: 139.7, iso: null });
+  assert.deepEqual(loc, { lat: 35.7, lon: 139.7, iso: null, continent: null });
   setFixedLocation(null);
 });
 
 test("fixed override applies even to private IPs (dev override wins)", async () => {
   setFixedLocation({ lat: 1.05, lon: 2.05 });
   const loc = await lookup("10.0.0.1");
-  assert.deepEqual(loc, { lat: 1.1, lon: 2.1, iso: null });
+  assert.deepEqual(loc, { lat: 1.1, lon: 2.1, iso: null, continent: null });
   setFixedLocation(null);
 });

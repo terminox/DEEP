@@ -115,7 +115,9 @@ struct GlobalPauseHomeView: View {
   }
 }
 
+#if DEBUG
 #Preview("Global Pause Home") {
   GlobalPauseHomeView()
     .environment(\.soundPlayer, MockSoundPlayer.idle)
 }
+#endif

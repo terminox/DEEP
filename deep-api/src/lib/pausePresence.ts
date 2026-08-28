@@ -3,6 +3,7 @@
 // single-instance deployment. Scale-out would move this to Redis.
 
 import { clusterPoints } from "./geoCluster.js";
+import { continentForCountry, isContinentISO } from "./continents.js";
 import { jitteredWorldCity } from "./fakeCities.js";
 
 const HEARTBEAT_TTL_MS = 60_000;
@@ -12,6 +13,9 @@ type Location = { lat: number; lon: number };
 
 interface PresenceEntry {
   countryISO: string | null;
+  /** Where in the world this presence is, coarsely. IP-resolved when the
+   *  lookup landed, else derived from the country the device reports. */
+  continentISO: string | null;
   lastSeen: number;
   location: Location | null;
 }
@@ -43,22 +47,33 @@ export function isActive(key: string): boolean {
 
 /**
  * Records a beat. The first beat for a key (or after expiry) counts as a join.
- * `location` is only meaningful on a join: pass the geo-looked-up location (or
- * null when it couldn't be resolved) for a new key. Omit it (undefined) on a
- * refresh beat to preserve whatever location the entry already has.
+ * `location` and `geoContinentISO` are only meaningful on a join: pass the
+ * geo-looked-up values (or null when they couldn't be resolved) for a new key.
+ * Omit them (undefined) on a refresh beat to preserve what the entry already
+ * has. The continent falls back to the country the device reports, so a
+ * presence behind a private IP — every local dev device — still lands
+ * somewhere on the map.
  */
 export function heartbeat(
   key: string,
   countryISO: string | null,
   location?: Location | null,
+  geoContinentISO?: string | null,
 ): { isNewJoin: boolean; location: Location | null } {
   const now = Date.now();
   sweep(now);
-  const isNewJoin = !entries.has(key);
-  const resolvedLocation = isNewJoin
-    ? (location ?? null)
-    : (location ?? entries.get(key)!.location);
-  entries.set(key, { countryISO, lastSeen: now, location: resolvedLocation });
+  const existing = entries.get(key);
+  const isNewJoin = !existing;
+  const resolvedLocation = isNewJoin ? (location ?? null) : (location ?? existing!.location);
+  // Same shape as the location above: resolved once at join, preserved across
+  // refresh beats. The country fallback must not outrank what the join
+  // established, or a Thai phone pausing in Paris drifts back to Asia on its
+  // second beat.
+  const geoContinent = isContinentISO(geoContinentISO) ? geoContinentISO : null;
+  const continentISO = isNewJoin
+    ? (geoContinent ?? continentForCountry(countryISO))
+    : (geoContinent ?? existing!.continentISO ?? continentForCountry(countryISO));
+  entries.set(key, { countryISO, continentISO, lastSeen: now, location: resolvedLocation });
   if (isNewJoin && countryISO) {
     const join: RecentJoin = { iso: countryISO, at: now };
     if (resolvedLocation) {
@@ -84,8 +99,15 @@ export function injectFake(n: number): void {
   const now = Date.now();
   for (let i = 0; i < n; i++) {
     const key = `anon:fake-${i}-${Math.random().toString(36).slice(2, 8)}`;
-    const { lat, lon } = jitteredWorldCity();
-    entries.set(key, { countryISO: null, lastSeen: now, location: { lat, lon } });
+    const { lat, lon, iso } = jitteredWorldCity();
+    // The continent comes along but the country deliberately does not: these
+    // are points on a globe, not countries, and `byCountry` stays untouched.
+    entries.set(key, {
+      countryISO: null,
+      continentISO: continentForCountry(iso),
+      lastSeen: now,
+      location: { lat, lon },
+    });
   }
 }
 
@@ -130,6 +152,7 @@ export function startDrip(n: number, intervalMs: number): void {
 export function snapshot(): {
   total: number;
   byCountry: Record<string, number>;
+  byContinent: Record<string, number>;
   unlocatedByCountry: Record<string, number>;
   recentJoins: { iso: string; at: Date; lat?: number; lon?: number }[];
   points: { lat: number; lon: number; count: number }[];
@@ -137,10 +160,14 @@ export function snapshot(): {
   const now = Date.now();
   sweep(now);
   const byCountry: Record<string, number> = {};
+  const byContinent: Record<string, number> = {};
   const unlocatedByCountry: Record<string, number> = {};
   const locations: Location[] = [];
   for (const entry of entries.values()) {
     if (entry.location) locations.push(entry.location);
+    if (entry.continentISO) {
+      byContinent[entry.continentISO] = (byContinent[entry.continentISO] ?? 0) + 1;
+    }
     if (!entry.countryISO) continue;
     byCountry[entry.countryISO] = (byCountry[entry.countryISO] ?? 0) + 1;
     if (!entry.location) {
@@ -150,6 +177,7 @@ export function snapshot(): {
   return {
     total: entries.size,
     byCountry,
+    byContinent,
     unlocatedByCountry,
     recentJoins: recentJoins.map((j) => ({
       iso: j.iso,

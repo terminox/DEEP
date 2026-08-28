@@ -403,6 +403,10 @@ model PeaceMessage {
   displayName String
   countryISO  String?
   text        String
+  // The word the member tagged the message with, keyed to a
+  // `PauseIntentionOption`. Denormalised onto the message because it is shown
+  // on the card in the feed, where the author may since have been unlinked.
+  intention   String?
   status      PeaceMessageStatus @default(PUBLISHED)
   // Occurrence key: the Bangkok calendar date of the pause ("2026-07-23").
   pauseDate   String

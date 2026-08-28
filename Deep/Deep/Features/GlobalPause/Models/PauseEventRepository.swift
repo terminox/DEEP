@@ -30,7 +30,11 @@ protocol PauseEventRepository: AnyObject {
   /// Best-effort; failures are irrelevant (the server sweeps stale presence).
   func leave(presenceID: String) async
   func messages(limit: Int, cursor: String?) async throws -> PeaceMessagesPage
-  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage
+  func postMessage(
+    _ text: String,
+    countryISO: String?,
+    intention: String?
+  ) async throws -> PostedPeaceMessage
   func submitReflection(intention: String?, mood: String?) async throws
 }
 
@@ -86,6 +90,7 @@ final class APIPauseEventRepository: PauseEventRepository {
         dto.byCountry.map { ($0.iso, $0.count) },
         uniquingKeysWith: { first, _ in first }
       ),
+      byContinent: continentTally(dto),
       locations: (dto.points ?? []).map {
         .init(lat: Float($0.lat), lon: Float($0.lon), count: $0.count)
       },
@@ -102,6 +107,26 @@ final class APIPauseEventRepository: PauseEventRepository {
         )
       }
     )
+  }
+
+  /// The continent tally, with a fallback for servers that predate the field:
+  /// fold `byCountry` through the globe's own country table. That table knows
+  /// only the ~67 countries whose glow was hand-tuned, so the fallback
+  /// undercounts — it exists to keep an older server readable, not to be
+  /// authoritative.
+  private func continentTally(_ dto: PauseLiveDTO) -> [String: Int] {
+    if let byContinent = dto.byContinent, !byContinent.isEmpty {
+      return Dictionary(
+        byContinent.map { ($0.iso, $0.count) },
+        uniquingKeysWith: { first, _ in first }
+      )
+    }
+    var tally: [String: Int] = [:]
+    for entry in dto.byCountry {
+      guard let country = CountryLookup.shared.country(forISO: entry.iso) else { continue }
+      tally[country.continentISO, default: 0] += entry.count
+    }
+    return tally
   }
 
   @discardableResult
@@ -131,11 +156,19 @@ final class APIPauseEventRepository: PauseEventRepository {
     return PeaceMessagesPage(messages: dto.messages.map(mapMessage), nextCursor: dto.nextCursor)
   }
 
-  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage {
+  func postMessage(
+    _ text: String,
+    countryISO: String?,
+    intention: String?
+  ) async throws -> PostedPeaceMessage {
     let dto: PauseMessagePostResponseDTO = try await client.request(
       "/pause/messages",
       method: "POST",
-      body: PeaceMessagePostRequestDTO(text: text, countryISO: countryISO)
+      body: PeaceMessagePostRequestDTO(
+        text: text,
+        countryISO: countryISO,
+        intention: intention
+      )
     )
     clock.sync(serverNow: date(dto.serverNow))
     return PostedPeaceMessage(
@@ -163,6 +196,7 @@ final class APIPauseEventRepository: PauseEventRepository {
       displayName: dto.displayName,
       countryISO: dto.countryISO,
       text: dto.text,
+      intention: dto.intention,
       createdAt: date(dto.createdAt)
     )
   }
@@ -183,6 +217,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Nan",
       countryISO: "TH",
       text: "Peace for every quiet heart tonight.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-3600)
     ),
     PeaceMessage(
@@ -190,6 +225,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Haruki",
       countryISO: "JP",
       text: "Breathing with you all from Kyoto.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-4200)
     ),
     PeaceMessage(
@@ -197,6 +233,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Camille",
       countryISO: "FR",
       text: "Ce soir, le monde respire ensemble.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-5000)
     ),
     PeaceMessage(
@@ -204,6 +241,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Luana",
       countryISO: "BR",
       text: "Sending warmth from São Paulo.",
+      intention: "someone-i-love",
       createdAt: Date().addingTimeInterval(-5600)
     ),
     PeaceMessage(
@@ -211,6 +249,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Amara",
       countryISO: "KE",
       text: "May stillness find whoever needs it.",
+      intention: "healing",
       createdAt: Date().addingTimeInterval(-6300)
     ),
     PeaceMessage(
@@ -218,6 +257,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Noah",
       countryISO: "US",
       text: "Grateful for this minute of quiet.",
+      intention: "gratitude",
       createdAt: Date().addingTimeInterval(-7100)
     ),
     PeaceMessage(
@@ -225,6 +265,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Mira",
       countryISO: "IN",
       text: "Shanti. Shanti. Shanti.",
+      intention: "peace",
       createdAt: Date().addingTimeInterval(-8000)
     ),
     PeaceMessage(
@@ -232,6 +273,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Elin",
       countryISO: "SE",
       text: "The lake is still here too. Goodnight.",
+      intention: nil,
       createdAt: Date().addingTimeInterval(-9200)
     ),
     PeaceMessage(
@@ -239,6 +281,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Tomás",
       countryISO: "AR",
       text: "Un abrazo enorme desde Buenos Aires.",
+      intention: "someone-i-love",
       createdAt: Date().addingTimeInterval(-10500)
     ),
     PeaceMessage(
@@ -246,6 +289,7 @@ final class FixturePauseEventRepository: PauseEventRepository {
       displayName: "Yuki",
       countryISO: "JP",
       text: "May tomorrow be gentler than today.",
+      intention: nil,
       createdAt: Date().addingTimeInterval(-11800)
     ),
   ]
@@ -296,6 +340,9 @@ final class FixturePauseEventRepository: PauseEventRepository {
       serverNow: Date(),
       participantCount: 4200 + posted.count,
       byCountry: ["TH": 1200, "JP": 640, "US": 580, "FR": 320, "BR": 410, "IN": 700],
+      // Deliberately wider than the countries above — the server sees people
+      // the device-reported country list never names.
+      byContinent: ["AS": 2612, "EU": 1106, "NA": 604, "SA": 410, "AF": 291, "OC": 176],
       // City-level clusters so every preview exercises the point-glow path.
       locations: [
         .init(lat: 13.8, lon: 100.5, count: 3),   // Bangkok
@@ -329,12 +376,17 @@ final class FixturePauseEventRepository: PauseEventRepository {
     )
   }
 
-  func postMessage(_ text: String, countryISO: String?) async throws -> PostedPeaceMessage {
+  func postMessage(
+    _ text: String,
+    countryISO: String?,
+    intention: String?
+  ) async throws -> PostedPeaceMessage {
     let message = PeaceMessage(
       id: UUID().uuidString,
       displayName: "You",
       countryISO: countryISO,
       text: text,
+      intention: intention,
       createdAt: Date()
     )
     let isFirstOfTheNight = posted.isEmpty

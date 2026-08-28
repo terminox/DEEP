@@ -96,7 +96,9 @@ struct DeepSoundHomeView: View {
   }
 }
 
+#if DEBUG
 #Preview("Deep Sound — Home") {
   DeepSoundHomeView(bottomInset: .rhythm)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
 }
+#endif

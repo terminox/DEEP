@@ -97,6 +97,9 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
       </td>
       <td>
         {message.text}
+        {message.intention && (
+          <div className="subtitle-cell">{message.intention}</div>
+        )}
         {error && <div className="error-banner">{error}</div>}
       </td>
       <td>

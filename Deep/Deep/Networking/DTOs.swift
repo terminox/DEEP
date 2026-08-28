@@ -225,6 +225,9 @@ struct PeaceMessageDTO: Decodable {
   let displayName: String
   let countryISO: String?
   let text: String
+  // The word the message was tagged with. Absent on older servers and on
+  // messages left untagged.
+  let intention: String?
   let createdAt: String
 }
 
@@ -249,6 +252,9 @@ struct PauseLiveDTO: Decodable {
   let serverNow: String
   let participantCount: Int
   let byCountry: [CountryCount]
+  // Continent codes ("AS", "EU", "NA"…) rather than countries. Optional:
+  // older servers omit it and the client folds `byCountry` itself.
+  let byContinent: [CountryCount]?
   // Server-clustered participant locations (≤96, privacy-rounded). Optional:
   // older servers omit both and the client keeps the country-glow path.
   let points: [Point]?
@@ -290,6 +296,7 @@ struct PauseHeartbeatResponseDTO: Decodable {
 struct PeaceMessagePostRequestDTO: Encodable {
   let text: String
   let countryISO: String?
+  let intention: String?
 }
 
 struct PauseReflectionRequestDTO: Encodable {

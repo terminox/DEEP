@@ -112,6 +112,7 @@ struct DeepSessionIntroView: View {
   }
 }
 
+#if DEBUG
 #Preview("Deep session intro") {
   // Inside a stack, the way it is really reached — pushed from an entry card.
   NavigationStack {
@@ -121,3 +122,4 @@ struct DeepSessionIntroView: View {
   .environment(\.practiceStore, MockPracticeStore())
   .environment(\.heartLedger, .sample)
 }
+#endif

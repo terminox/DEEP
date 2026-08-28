@@ -63,7 +63,9 @@ struct MindTreePickerView: View {
   }
 }
 
+#if DEBUG
 #Preview("Onboarding — Mind Tree") {
   MindTreePickerView()
     .environment(\.onboardingStore, MockOnboardingStore.fresh)
 }
+#endif

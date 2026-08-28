@@ -146,6 +146,7 @@ struct DeepSessionCoordinatorView: View {
   }
 }
 
+#if DEBUG
 #Preview("Deep session practice") {
   DeepSessionCoordinatorView(session: DeepSessionLibrary.balancingBreath)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
@@ -154,3 +155,4 @@ struct DeepSessionCoordinatorView: View {
     .environment(\.gardenStore, .sample)
     .environment(\.continuityWitness, .unwitnessed)
 }
+#endif

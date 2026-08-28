@@ -37,6 +37,10 @@ final class GlobalPauseSession {
   )
   private(set) var participantCount = 0
   private(set) var participantsByCountry: [String: Int] = [:]
+  /// Tallied by continent code — what the live session names beneath the
+  /// globe. Server-resolved, so it reaches past the countries the globe's own
+  /// table knows.
+  private(set) var participantsByContinent: [String: Int] = [:]
   /// Located participants as server-clustered lat/lon points. Empty on older
   /// servers — the globe then glows per-country from `participantsByCountry`.
   private(set) var participantLocations: [PauseLiveSnapshot.GeoPoint] = []
@@ -60,6 +64,11 @@ final class GlobalPauseSession {
   /// one. Held for the same reason as `pauseAward`: the ending ritual totals
   /// both, and it is composed after the composer has had its say.
   private(set) var messageAward: AwardGrant?
+
+  /// Tonight's peace message, kept from the moment it posts so the lounge can
+  /// seat it at the head of a feed that was fetched before it existed. Cleared
+  /// with the awards as the next visit begins.
+  private(set) var postedMessage: PeaceMessage?
 
   /// When the next meditation begins — the countdown target for the card's
   /// caption. Nil until the schedule lands.
@@ -234,6 +243,7 @@ final class GlobalPauseSession {
     pauseAwardTask = nil
     pauseAward = nil
     messageAward = nil
+    postedMessage = nil
     let country = Locale.current.region?.identifier.uppercased()
 
     // Locale-centroid fallback immediately, so the globe can turn to
@@ -316,6 +326,7 @@ final class GlobalPauseSession {
     guard let snapshot = try? await repository.live() else { return }
     participantCount = snapshot.participantCount
     participantsByCountry = snapshot.byCountry
+    participantsByContinent = snapshot.byContinent
     participantLocations = snapshot.locations
     unlocatedByCountry = snapshot.unlocatedByCountry
 
@@ -358,13 +369,19 @@ final class GlobalPauseSession {
 
   // MARK: - Reflection (messages, intention & mood)
 
-  /// Posts a peace message. Returns the whole posted envelope — the composer
-  /// reads the award to phrase its sent-note ("A heart for your kindness")
-  /// when the first message of the night earned one.
+  /// Posts a peace message, tagged with the intention the member chose (the
+  /// server stores it on the message *and* upserts tonight's reflection row,
+  /// so this one call is the whole feedback phase). Returns the posted
+  /// envelope; the first message of the night carries an award.
   @discardableResult
-  func post(message text: String) async throws -> PostedPeaceMessage {
+  func post(message text: String, intention: String?) async throws -> PostedPeaceMessage {
     let country = Locale.current.region?.identifier.uppercased()
-    let posted = try await repository.postMessage(text, countryISO: country)
+    let posted = try await repository.postMessage(
+      text,
+      countryISO: country,
+      intention: intention
+    )
+    postedMessage = posted.message
     // The first message of the night earns; later ones come back bare.
     if let award = posted.award {
       messageAward = award
@@ -411,6 +428,7 @@ extension GlobalPauseSession {
     if live { session.cardState = .live }
     session.participantCount = 4218
     session.participantsByCountry = ["TH": 1200, "JP": 640, "US": 580, "FR": 320]
+    session.participantsByContinent = ["AS": 2612, "EU": 1106, "NA": 604, "SA": 410, "AF": 291, "OC": 176]
     session.myLocation = PauseJoinPoint(lat: 13.8, lon: 100.5)  // Bangkok
     return session
   }

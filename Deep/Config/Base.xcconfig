@@ -1,7 +1,8 @@
 // Base build settings shared by every Deep environment.
 // Per-env files (Dev/Staging/Pilot/Prod) #include this and set the values
 // that differ (API_BASE_URL, APP_ENV, BUNDLE_ID_SUFFIX, APP_DISPLAY_NAME) plus
-// their debug/release optimisation profile.
+// their debug/release optimisation profile. CentralFlight sits one level further
+// out: it #includes Prod and changes only the shipped identity and signing.
 
 // ---- App identity / Info.plist ----
 // One hand-authored Info.plist (kept outside the synchronized source group)
@@ -30,6 +31,9 @@ ENABLE_PREVIEWS = YES
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
 
 // ---- Assets / localization ----
+// The StoreKit config is attached by the schemes from the source tree, so it never needs to
+// be copied into the app — and a shipped build has no business carrying it.
+EXCLUDED_SOURCE_FILE_NAMES = *.storekit
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
 ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
 ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES

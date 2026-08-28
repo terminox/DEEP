@@ -18,6 +18,9 @@ final class GlobalPauseSessionController: UIViewController {
   private let heartLedger: HeartLedger
   private let gardenStore: GardenStore
   private let continuityWitness: ContinuityWitness
+  /// The reflection's composer heads its card with the member's own name, so
+  /// they see who they are posting as before they commit.
+  private let accountStore: any AccountStore
   /// The reward ritual draws the plant's mascot artwork; without the real
   /// loader it reaches the throwaway default and falls back to a gradient.
   private let imageLoader: any ImageLoading
@@ -75,6 +78,7 @@ final class GlobalPauseSessionController: UIViewController {
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
     continuityWitness: ContinuityWitness,
+    accountStore: any AccountStore,
     imageLoader: any ImageLoading,
     onClose: @escaping () -> Void
   ) {
@@ -85,6 +89,7 @@ final class GlobalPauseSessionController: UIViewController {
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
     self.continuityWitness = continuityWitness
+    self.accountStore = accountStore
     self.imageLoader = imageLoader
     self.onClose = onClose
 
@@ -250,6 +255,9 @@ final class GlobalPauseSessionController: UIViewController {
     guard !isTornDown else { return }
     withObservationTracking {
       _ = session.participantsByCountry
+      // Not a globe input — the overlay's continent row rides the same poll,
+      // and this loop is what rebuilds it.
+      _ = session.participantsByContinent
       _ = session.participantLocations
       _ = session.unlocatedByCountry
       // The arrival follows this one too: it aims the turn, and a corrected
@@ -351,6 +359,7 @@ final class GlobalPauseSessionController: UIViewController {
         audio: audio,
         duration: duration,
         participantCount: session.participantCount,
+        continents: ContinentPresence.row(from: session.participantsByContinent),
         revealed: isOverlayRevealed
       )
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented
@@ -520,6 +529,7 @@ final class GlobalPauseSessionController: UIViewController {
         .environment(\.heartLedger, heartLedger)
         .environment(\.gardenStore, gardenStore)
         .environment(\.continuityWitness, continuityWitness)
+        .environment(\.accountStore, accountStore)
         .environment(\.imageLoader, imageLoader)
         // Same iOS 26 re-enable as the meditation overlay.
         .environment(\.isEnabled, true)
@@ -542,7 +552,14 @@ final class GlobalPauseSessionController: UIViewController {
 
     closeButton.isUserInteractionEnabled = false
 
-    let animator = UIViewPropertyAnimator(duration: 1.5, curve: .easeInOut) { [weak self] in
+    // Deliberately longer than `.hush` (the card's handback happens behind
+    // it), but on the app's own exhale curve rather than UIKit's mechanical
+    // easeInOut.
+    let animator = UIViewPropertyAnimator(
+      duration: 1.5,
+      timingParameters: UICubicTimingParameters.hush
+    )
+    animator.addAnimations { [weak self] in
       host.view.alpha = 1
       self?.closeButton.alpha = 0
       // The reflection is opaque cream — the status bar goes dark with it.
@@ -661,6 +678,7 @@ final class GlobalPauseSessionController: UIViewController {
   }
 }
 
+#if DEBUG
 #Preview("Session") {
   let scene = GlobalPauseEarthScene.preview
   let card = GlobalPauseCardView(scene: scene)
@@ -674,6 +692,7 @@ final class GlobalPauseSessionController: UIViewController {
     heartLedger: .sample,
     gardenStore: .sample,
     continuityWitness: .unwitnessed,
+    accountStore: PreviewAccountStore(),
     imageLoader: FixtureImageLoader(),
     onClose: {}
   )
@@ -682,3 +701,4 @@ final class GlobalPauseSessionController: UIViewController {
   controller.closeButton.alpha = 1
   return controller
 }
+#endif
