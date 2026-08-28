@@ -21,6 +21,19 @@ export interface PauseOccurrence {
   phaseAt(now: Date): PausePhaseOrOff;
 }
 
+/** Seconds since midnight for an "HH:mm:ss" wall-clock string. */
+export function secondsOfDay(hms: string): number {
+  const [h = 0, m = 0, s = 0] = hms.split(":").map(Number);
+  return h * 3600 + m * 60 + s;
+}
+
+/** The inverse of `secondsOfDay`, wrapping past midnight — for error copy. */
+export function formatHms(totalSeconds: number): string {
+  const t = ((Math.round(totalSeconds) % 86400) + 86400) % 86400;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t / 60) % 60)}:${pad(t % 60)}`;
+}
+
 /** "YYYY-MM-DD" for `instant` in `timeZone` (en-CA gives ISO ordering). */
 export function localDate(instant: Date, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -79,19 +92,32 @@ export function occurrenceOn(
   dateKey: string,
 ): { pauseDate: string; phases: PhaseWindow[] } {
   const at = (hms: string) => zonedInstant(dateKey, hms, config.timezone);
-  const boundaries: [PausePhaseKey, string, string][] = [
-    ["lobby", config.lobbyStart, config.welcomeStart],
-    ["welcome", config.welcomeStart, config.meditationStart],
-    ["meditation", config.meditationStart, config.feedbackStart],
-    ["feedback", config.feedbackStart, config.windowEnd],
-  ];
+  const lobbyStart = at(config.lobbyStart);
+  const welcomeStart = at(config.welcomeStart);
+  const meditationStart = at(config.meditationStart);
+  const windowEnd = at(config.windowEnd);
+  // The meditation runs exactly as long as its audio: the track *is* the event,
+  // so where it ends is derived, never stored. It used to be its own wall-clock
+  // column (`feedbackStart`), and a longer track uploaded into an untouched
+  // window left the client cutting the session at the old length.
+  //
+  // Seconds are added to the *instant*, not to the wall-clock string: that is
+  // the clock the audio actually plays on, and it stays right across a DST step.
+  // Clamped at windowEnd so a misconfigured row can never invert the phases.
+  const meditationEnd = new Date(
+    Math.min(
+      meditationStart.getTime() + config.meditationDurationSeconds * 1000,
+      windowEnd.getTime(),
+    ),
+  );
   return {
     pauseDate: dateKey,
-    phases: boundaries.map(([key, start, end]) => ({
-      key,
-      startsAt: at(start),
-      endsAt: at(end),
-    })),
+    phases: [
+      { key: "lobby", startsAt: lobbyStart, endsAt: welcomeStart },
+      { key: "welcome", startsAt: welcomeStart, endsAt: meditationStart },
+      { key: "meditation", startsAt: meditationStart, endsAt: meditationEnd },
+      { key: "feedback", startsAt: meditationEnd, endsAt: windowEnd },
+    ],
   };
 }
 

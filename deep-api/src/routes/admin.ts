@@ -6,6 +6,8 @@ import { verifyPassword } from "../auth/password.js";
 import { createSession } from "../auth/sessions.js";
 import { requireRole } from "../auth/middleware.js";
 import { MEDIA_RULES, mediaRefSchema, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
+import { readAudioDurationSeconds } from "../lib/audioDuration.js";
+import { formatHms, secondsOfDay } from "../lib/pauseSchedule.js";
 import {
   serializeUser,
   serializeCategory,
@@ -309,15 +311,17 @@ export async function adminRoutes(app: FastifyInstance) {
       lobbyStart: hms,
       welcomeStart: hms,
       meditationStart: hms,
-      feedbackStart: hms,
       windowEnd: hms,
       lobbyAudioPath: mediaRefSchema,
       meditationAudioPath: mediaRefSchema,
-      meditationDurationSeconds: z.number().int().positive(),
+      // Optional because the file is the authority: the handler reads the
+      // meditation track's real length off disk. Only an absolute third-party
+      // URL, which we can't measure, still needs a number sent with it.
+      meditationDurationSeconds: z.number().int().positive().optional(),
     })
     .refine(
       (b) => {
-        const order = [b.lobbyStart, b.welcomeStart, b.meditationStart, b.feedbackStart, b.windowEnd];
+        const order = [b.lobbyStart, b.welcomeStart, b.meditationStart, b.windowEnd];
         return order.every((t, i) => i === 0 || order[i - 1]! < t);
       },
       { message: "phase times must be strictly increasing" },
@@ -334,10 +338,35 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.put("/admin/pause/config", adminOnly, async (req) => {
     const body = pauseConfigBody.parse(req.body);
+
+    // The meditation phase runs meditationStart → meditationStart + this, so
+    // the track's real length *is* the length of the event. Measured here
+    // rather than taken on trust: the browser's metadata read is a hint that
+    // quietly returns nothing for some containers, and a nights-long silent
+    // disagreement between the window and the track is what this replaces.
+    const measured = await readAudioDurationSeconds(body.meditationAudioPath);
+    const meditationDurationSeconds = measured ?? body.meditationDurationSeconds;
+    if (meditationDurationSeconds == null) {
+      throw ApiError.badRequest(
+        `Couldn't read the length of "${body.meditationAudioPath}" — send meditationDurationSeconds alongside it.`,
+        "meditation_duration_unknown",
+      );
+    }
+
+    const meditationEnd = secondsOfDay(body.meditationStart) + meditationDurationSeconds;
+    if (meditationEnd >= secondsOfDay(body.windowEnd)) {
+      throw ApiError.badRequest(
+        `A ${meditationDurationSeconds}s meditation starting ${body.meditationStart} runs to ` +
+          `${formatHms(meditationEnd)}, past the window end ${body.windowEnd} — extend the window end.`,
+        "meditation_overruns_window",
+      );
+    }
+
+    const data = { ...body, meditationDurationSeconds };
     const config = await prisma.pauseConfig.upsert({
       where: { id: 1 },
-      update: body,
-      create: { id: 1, ...body },
+      update: data,
+      create: { id: 1, ...data },
     });
     return { config };
   });

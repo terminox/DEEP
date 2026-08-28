@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_MEDIA_DIR } from "./lib/mediaFiles.js";
 
 // Load .env (Node 22 built-in) before reading process.env. Prisma loads its
 // own copy for CLI commands; this covers the app runtime.
@@ -19,7 +20,7 @@ const schema = z.object({
   // those URLs follow whatever host the client reached us on (see lib/media.ts).
   // Production must set it — that is what stops the Host header being trusted.
   PUBLIC_BASE_URL: z.string().url().optional(),
-  MEDIA_DIR: z.string().default("./media"),
+  MEDIA_DIR: z.string().default(DEFAULT_MEDIA_DIR),
   ADMIN_BOOTSTRAP_EMAIL: z.string().email().optional(),
   ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8).optional(),
   // Dev-only: enables the /dev/pause/time-travel route that shifts the Global

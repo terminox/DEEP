@@ -8,6 +8,7 @@ import { z } from "zod";
 import { env } from "../env.js";
 import { ApiError } from "./errors.js";
 import { mediaPath } from "./media.js";
+import { resolveMediaFile } from "./mediaFiles.js";
 
 export type MediaKind = "image" | "audio" | "video";
 
@@ -73,10 +74,8 @@ export async function saveUploadedMedia(
 
 /** Best-effort cleanup of a replaced/removed file — only ever under our own upload dir. */
 export async function unlinkMedia(relPath: string | null | undefined) {
-  if (!relPath || !relPath.startsWith("/media/")) return;
-  const root = path.resolve(env.MEDIA_DIR);
-  const abs = path.resolve(root, relPath.slice("/media/".length));
-  if (!abs.startsWith(root + path.sep)) return; // traversal or outside root - refuse
+  const abs = resolveMediaFile(relPath);
+  if (!abs) return;
   await fs.unlink(abs).catch(() => {});
 }
 

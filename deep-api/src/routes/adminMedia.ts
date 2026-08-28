@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireRole } from "../auth/middleware.js";
 import { mediaUrl } from "../lib/media.js";
 import { MEDIA_RULES, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
+import { readAudioDurationSeconds } from "../lib/audioDuration.js";
 
 export async function adminMediaRoutes(app: FastifyInstance) {
   const adminOnly = { preHandler: requireRole("ADMIN") };
@@ -20,6 +21,10 @@ export async function adminMediaRoutes(app: FastifyInstance) {
     const file = await requireUploadedFile(req, rule.maxBytes);
     const subdir = `uploads/${kind === "image" ? "images" : kind === "video" ? "videos" : "audio"}`;
     const relPath = await saveUploadedMedia(file, kind, subdir);
-    return { media: { path: relPath, url: mediaUrl(relPath) } };
+    // Audio comes back with its measured length so the form can show the truth
+    // straight away — the browser's own metadata read is only a hint, and for
+    // the pause config this number is how long the session runs.
+    const durationSeconds = kind === "audio" ? await readAudioDurationSeconds(relPath) : null;
+    return { media: { path: relPath, url: mediaUrl(relPath), durationSeconds } };
   });
 }
