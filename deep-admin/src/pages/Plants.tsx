@@ -12,6 +12,7 @@ import { PALETTES, type Palette, type Plant } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
+import { PendingBadge } from '../components/PendingBadge'
 
 type FormState = {
   id: string
@@ -255,7 +256,8 @@ function PlantsPage() {
                     <div className="row-actions">
                       {p.isPremium && <span className="badge badge-premium">Premium</span>}
                       {p.isDefault && <span className="badge">Default</span>}
-                      <span className="badge">{p.isActive ? 'Active' : 'Draft'}</span>
+                      <span className="badge">{p.isActive ? 'Visible' : 'Hidden'}</span>
+                      <PendingBadge pending={p.pending} />
                     </div>
                   </td>
                   <td>

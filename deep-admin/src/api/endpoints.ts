@@ -7,6 +7,7 @@ import type {
   Category,
   Collection,
   CollectionDetail,
+  DiscardResult,
   LoginResponse,
   Lyrics,
   Palette,
@@ -15,13 +16,16 @@ import type {
   PauseStats,
   PauseWelcomeMessage,
   PeaceMessageStatus,
+  PendingChange,
   Plant,
   PlantDetail,
   PlantStage,
   StageAssetKind,
+  PublishResult,
   Track,
   TrackKind,
   UploadedMedia,
+  ValidationReport,
 } from './types'
 
 // Axios sets the multipart boundary itself for a FormData body, so no
@@ -84,6 +88,7 @@ export type CategoryInput = {
   slug?: string
   title?: string
   displayOrder?: number
+  isActive?: boolean
 }
 
 export async function createCategory(
@@ -140,6 +145,7 @@ export type CollectionInput = {
   palette?: Palette
   imageUrl?: string | null
   isPremium?: boolean
+  isActive?: boolean
   displayOrder?: number
 }
 
@@ -196,6 +202,7 @@ export type TrackInput = {
   durationSeconds?: number
   kind?: TrackKind
   isPremium?: boolean
+  isActive?: boolean
   displayOrder?: number
 }
 
@@ -549,5 +556,56 @@ export async function getPauseStats(days = 7): Promise<PauseStats> {
   const { data } = await http.get<PauseStats>('/admin/pause/stats', {
     params: { days },
   })
+  return data
+}
+
+// ---- Pending changes (safe publish) ----
+//
+// Content edits stage rather than apply, so these four calls are what actually
+// move content. `refs` are the "ENTITY:id" keys carried on each PendingChange.
+
+export async function listPendingChanges(): Promise<PendingChange[]> {
+  const { data } = await http.get<{ changes: PendingChange[]; count: number }>(
+    '/admin/changes'
+  )
+  return data.changes
+}
+
+/** Cheap enough for the nav badge to refetch after every mutation. */
+export async function getPendingCount(): Promise<number> {
+  const { data } = await http.get<{ count: number }>('/admin/changes/count')
+  return data.count
+}
+
+type Selection = { refs: string[] } | { all: true }
+
+/** Dry run: blockers, warnings, and any changes pulled in as dependencies. */
+export async function validateChanges(
+  selection: Selection
+): Promise<ValidationReport> {
+  const { data } = await http.post<ValidationReport>(
+    '/admin/changes/validate',
+    selection
+  )
+  return data
+}
+
+export async function publishChanges(
+  selection: Selection
+): Promise<PublishResult> {
+  const { data } = await http.post<PublishResult>(
+    '/admin/changes/publish',
+    selection
+  )
+  return data
+}
+
+export async function discardChanges(
+  selection: Selection
+): Promise<DiscardResult> {
+  const { data } = await http.post<DiscardResult>(
+    '/admin/changes/discard',
+    selection
+  )
   return data
 }

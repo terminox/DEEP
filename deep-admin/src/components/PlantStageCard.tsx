@@ -4,6 +4,7 @@ import { deleteStageAsset, updateStage, uploadStageAsset } from '../api/endpoint
 import type { PlantStage } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { MediaDropzone } from './MediaDropzone'
+import { PendingBadge } from './PendingBadge'
 
 type Props = {
   stage: PlantStage
@@ -77,7 +78,7 @@ export function PlantStageCard({ stage, index, count, onMove, onDelete, onChange
         <div className="row-between">
           <div>
             <div className="title-cell" style={{ fontSize: 16 }}>
-              {stage.name}
+              {stage.name} <PendingBadge pending={stage.pending} />
             </div>
             <div className="subtitle-cell">{stage.sunlightRequired} sunlight to reach</div>
           </div>

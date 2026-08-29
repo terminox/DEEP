@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { clearSession } from '../auth/session'
+import { usePendingCount } from '../lib/pending'
 
 const navItems = [
   { to: '/', label: 'Dashboard', end: true },
@@ -14,6 +15,9 @@ const navItems = [
 
 function Layout() {
   const navigate = useNavigate()
+  // Shown on every page on purpose: staged work that nobody remembers to
+  // publish is the one way this feature can quietly make things worse.
+  const { data: pendingCount } = usePendingCount()
 
   const handleLogout = () => {
     clearSession()
@@ -52,6 +56,18 @@ function Layout() {
               {item.label}
             </NavLink>
           ))}
+
+          <NavLink
+            to="/changes"
+            className={({ isActive }) =>
+              `nav-link nav-link-changes${isActive ? ' nav-link-active' : ''}`
+            }
+          >
+            Pending changes
+            {pendingCount ? (
+              <span className="nav-count">{pendingCount}</span>
+            ) : null}
+          </NavLink>
         </nav>
         <button className="btn btn-ghost logout-btn" onClick={handleLogout}>
           Log out

@@ -7,6 +7,7 @@ import { apiErrorMessage } from '../api/errors'
 import { formatDuration } from '../lib/media'
 import { LyricsEditor } from './LyricsEditor'
 import { MediaDropzone } from './MediaDropzone'
+import { PendingBadge } from './PendingBadge'
 
 type Props = {
   track: Track
@@ -26,6 +27,17 @@ export function TrackCard({ track, index, count, onMove, onDelete, onChanged }: 
   const [duration, setDuration] = useState(String(track.durationSeconds))
   const [kind, setKind] = useState<TrackKind>(track.kind)
   const [isPremium, setIsPremium] = useState(track.isPremium)
+
+  // Hiding a track pulls it off the app without deleting it - and, like every
+  // other content edit here, only takes effect when published.
+  const toggleVisible = useMutation({
+    mutationFn: () => updateTrack(track.id, { isActive: !track.isActive }),
+    onSuccess: () => {
+      setError(null)
+      onChanged()
+    },
+    onError: (e) => setError(apiErrorMessage(e)),
+  })
 
   const save = useMutation({
     mutationFn: () =>
@@ -106,8 +118,12 @@ export function TrackCard({ track, index, count, onMove, onDelete, onChanged }: 
       ) : (
         <div className="row-between">
           <div>
-            <div className="title-cell" style={{ fontSize: 16 }}>
-              {track.title}
+            <div className="title-cell-row">
+              <div className="title-cell" style={{ fontSize: 16 }}>
+                {track.title}
+              </div>
+              {!track.isActive && <span className="badge">Hidden</span>}
+              <PendingBadge pending={track.pending} />
             </div>
             <div className="subtitle-cell">
               {formatDuration(track.durationSeconds)} · {track.kind}
@@ -135,6 +151,13 @@ export function TrackCard({ track, index, count, onMove, onDelete, onChanged }: 
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
               Edit
+            </button>
+            <button
+              className={`btn btn-sm ${track.isActive ? 'btn-ghost' : ''}`}
+              onClick={() => toggleVisible.mutate()}
+              disabled={toggleVisible.isPending}
+            >
+              {track.isActive ? 'Hide' : 'Show'}
             </button>
             <button className="btn btn-danger btn-sm" onClick={onDelete}>
               Delete

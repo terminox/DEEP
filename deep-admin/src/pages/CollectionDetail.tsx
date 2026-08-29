@@ -21,6 +21,8 @@ import {
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
+import { PendingBar } from '../components/PendingBar'
+import { PendingBadge } from '../components/PendingBadge'
 import { TrackCard } from '../components/TrackCard'
 import { MediaDropzone } from '../components/MediaDropzone'
 
@@ -174,8 +176,12 @@ function CollectionDetailPage() {
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <PaletteSwatch palette={data.palette} />
               {data.isPremium && <span className="badge badge-premium">Premium</span>}
+              {!data.isActive && <span className="badge">Hidden</span>}
+              <PendingBadge pending={data.pending} />
             </div>
           </div>
+
+          <PendingBar entityKey={`SOUND_COLLECTION:${data.id}`} />
 
           {edit && (
             <div className="panel">

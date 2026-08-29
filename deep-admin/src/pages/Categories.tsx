@@ -11,6 +11,7 @@ import {
 import type { Category } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
+import { PendingBadge } from '../components/PendingBadge'
 
 function CategoryRow({
   category,
@@ -49,6 +50,14 @@ function CategoryRow({
     onError: (e) => setError(apiErrorMessage(e)),
   })
 
+  // Visibility is not the publish workflow: it pulls LIVE content off the app
+  // without deleting it. Toggling it is itself a staged change.
+  const toggleVisible = useMutation({
+    mutationFn: () => updateCategory(category.id, { isActive: !category.isActive }),
+    onSuccess: invalidate,
+    onError: (e) => setError(apiErrorMessage(e)),
+  })
+
   return (
     <tr>
       <td>
@@ -59,9 +68,12 @@ function CategoryRow({
             placeholder="Title"
           />
         ) : (
-          <Link to={`/categories/${category.id}`} className="title-cell">
-            {category.title}
-          </Link>
+          <span className="title-cell-row">
+            <Link to={`/categories/${category.id}`} className="title-cell">
+              {category.title}
+            </Link>
+            <PendingBadge pending={category.pending} />
+          </span>
         )}
         {error && <div className="error-banner">{error}</div>}
       </td>
@@ -73,6 +85,13 @@ function CategoryRow({
         )}
       </td>
       <td className="muted">{category.collectionCount}</td>
+      <td>
+        {category.isActive ? (
+          <span className="badge badge-role">Visible</span>
+        ) : (
+          <span className="muted">Hidden</span>
+        )}
+      </td>
       <td>
         <div className="row-actions">
           <button
@@ -118,9 +137,26 @@ function CategoryRow({
             </button>
           )}
           <button
+            className={`btn btn-sm ${category.isActive ? 'btn-ghost' : ''}`}
+            onClick={() => toggleVisible.mutate()}
+            disabled={toggleVisible.isPending}
+            title={
+              category.isActive
+                ? 'Stage hiding this from the app'
+                : 'Stage showing this in the app'
+            }
+          >
+            {category.isActive ? 'Hide' : 'Show'}
+          </button>
+          <button
             className="btn btn-danger btn-sm"
             onClick={() => {
-              if (confirm(`Delete category "${category.title}"?`)) remove.mutate()
+              if (
+                confirm(
+                  `Stage deletion of category "${category.title}"?\n\nIt stays live in the app until you publish the change.`
+                )
+              )
+                remove.mutate()
             }}
             disabled={remove.isPending}
           >
@@ -196,6 +232,9 @@ function CategoriesPage() {
           <button className="btn" type="submit" disabled={create.isPending}>
             Add category
           </button>
+          <div className="form-hint muted">
+            New categories are staged — publish to make them visible in the app.
+          </div>
         </form>
       </div>
 
@@ -211,7 +250,8 @@ function CategoriesPage() {
                 <th>Title</th>
                 <th>Slug</th>
                 <th>Collections</th>
-                <th style={{ width: 320 }}>Actions</th>
+                <th>In app</th>
+                <th style={{ width: 400 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -226,7 +266,7 @@ function CategoriesPage() {
               ))}
               {data && data.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="empty">
+                  <td colSpan={5} className="empty">
                     No categories yet.
                   </td>
                 </tr>

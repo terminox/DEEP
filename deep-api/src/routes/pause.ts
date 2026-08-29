@@ -3,6 +3,7 @@ import type { SoundCategory, SoundCollection, SoundTrack } from "@prisma/client"
 import { prisma } from "../prisma.js";
 import { optionalAuth } from "../auth/middleware.js";
 import { serializeCategory, serializeCollection } from "../lib/serialize.js";
+import { VISIBLE_CATEGORY_TREE } from "../lib/soundQuery.js";
 
 type LoadedTrack = SoundTrack & { lyrics: { languageCode: string }[] };
 type LoadedCollection = SoundCollection & { tracks: LoadedTrack[] };
@@ -40,20 +41,11 @@ export async function pauseRoutes(app: FastifyInstance) {
   // Anonymous requests get deterministic fallbacks; a signed-in user with an
   // onboarding profile gets a personalized "Made for you".
   app.get("/pause/home", { preHandler: optionalAuth }, async (req) => {
-    const categories: LoadedCategory[] = await prisma.soundCategory.findMany({
-      orderBy: { displayOrder: "asc" },
-      include: {
-        collections: {
-          orderBy: { displayOrder: "asc" },
-          include: {
-            tracks: {
-              orderBy: { displayOrder: "asc" },
-              include: { lyrics: { select: { languageCode: true } } },
-            },
-          },
-        },
-      },
-    });
+    // Filtered in the query, not afterwards: the shelves below read
+    // categories[].collections[0] and [1] positionally, so a hidden collection
+    // removed after the fact would leave a hole in "Popular now".
+    const categories: LoadedCategory[] =
+      await prisma.soundCategory.findMany(VISIBLE_CATEGORY_TREE);
 
     const allCollections = categories.flatMap((c) => c.collections);
     const categoryBy = new Map(categories.map((c) => [c.id, c]));

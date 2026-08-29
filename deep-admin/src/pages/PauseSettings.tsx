@@ -19,6 +19,8 @@ import type { PauseIntentionOption, PauseWelcomeMessage } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { MediaDropzone } from '../components/MediaDropzone'
+import { PendingBar } from '../components/PendingBar'
+import { PendingBadge } from '../components/PendingBadge'
 
 type ConfigForm = {
   timezone: string
@@ -182,7 +184,13 @@ function ConfigPanel() {
       <div className="panel-title">Schedule &amp; audio</div>
       {error && <div className="error-banner">{apiErrorMessage(error)}</div>}
       {formError && <div className="error-banner">{formError}</div>}
-      {saved && <div className="success-banner">Configuration saved.</div>}
+      {saved && (
+        <div className="success-banner">
+          Saved as a pending change. Tonight&apos;s Global Pause is unchanged
+          until you publish it.
+        </div>
+      )}
+      <PendingBar entityKey="PAUSE_CONFIG:1" />
       {isLoading || !form ? (
         <div className="state">Loading…</div>
       ) : (
@@ -381,10 +389,11 @@ function WelcomeMessageRow({
       </td>
       <td>
         {message.isActive ? (
-          <span className="badge badge-role">Active</span>
+          <span className="badge badge-role">Visible</span>
         ) : (
-          <span className="muted">Inactive</span>
+          <span className="muted">Hidden</span>
         )}
+        <PendingBadge pending={message.pending} />
       </td>
       <td>
         <div className="row-actions">
@@ -618,10 +627,11 @@ function IntentionRow({
       </td>
       <td>
         {intention.isActive ? (
-          <span className="badge badge-role">Active</span>
+          <span className="badge badge-role">Visible</span>
         ) : (
-          <span className="muted">Inactive</span>
+          <span className="muted">Hidden</span>
         )}
+        <PendingBadge pending={intention.pending} />
       </td>
       <td>
         <div className="row-actions">
@@ -806,7 +816,8 @@ function PauseSettingsPage() {
         <div>
           <h1>Pause Settings</h1>
           <div className="page-subtitle">
-            Nightly Global Pause schedule, welcome messages and intentions
+            Nightly Global Pause schedule, welcome messages and intentions ·
+            changes here reach every user at once, so they publish explicitly
           </div>
         </div>
       </div>

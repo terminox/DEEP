@@ -13,39 +13,25 @@ import {
   serializeCollection,
   serializeLyrics,
 } from "../lib/serialize.js";
+import { VISIBLE_CATEGORY_TREE, VISIBLE_TRACKS } from "../lib/soundQuery.js";
 
 export async function soundRoutes(app: FastifyInstance) {
   // One call builds the entire Deep Sound home: ordered categories, each with
   // its ordered collections and their ordered tracks (with lyrics availability).
   // The payload is small, so the app needs no per-collection follow-up fetch.
   app.get("/sound/home", async () => {
-    const categories = await prisma.soundCategory.findMany({
-      orderBy: { displayOrder: "asc" },
-      include: {
-        collections: {
-          orderBy: { displayOrder: "asc" },
-          include: {
-            tracks: {
-              orderBy: { displayOrder: "asc" },
-              include: { lyrics: { select: { languageCode: true } } },
-            },
-          },
-        },
-      },
-    });
+    const categories = await prisma.soundCategory.findMany(VISIBLE_CATEGORY_TREE);
     return { categories: categories.map(serializeCategory) };
   });
 
   app.get("/sound/collections/:id", async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
-    const collection = await prisma.soundCollection.findUnique({
-      where: { id },
-      include: {
-        tracks: {
-          orderBy: { displayOrder: "asc" },
-          include: { lyrics: { select: { languageCode: true } } },
-        },
-      },
+    // A hidden collection - or one under a hidden category - is a 404 here, the
+    // same as one that does not exist. The app must not be able to reach content
+    // that has been pulled from the shelves.
+    const collection = await prisma.soundCollection.findFirst({
+      where: { id, isActive: true, category: { isActive: true } },
+      include: { tracks: VISIBLE_TRACKS },
     });
     if (!collection) throw ApiError.notFound("Collection not found");
     return { collection: serializeCollection(collection) };
@@ -58,7 +44,15 @@ export async function soundRoutes(app: FastifyInstance) {
       .parse(req.query);
 
     const lyrics = await prisma.trackLyrics.findMany({
-      where: { trackId: id, ...(lang ? { languageCode: lang } : {}) },
+      where: {
+        trackId: id,
+        ...(lang ? { languageCode: lang } : {}),
+        // Lyrics inherit their track's visibility, and the track its collection's.
+        track: {
+          isActive: true,
+          collection: { isActive: true, category: { isActive: true } },
+        },
+      },
     });
     return { lyrics: lyrics.map(serializeLyrics) };
   });
@@ -71,7 +65,15 @@ export async function soundRoutes(app: FastifyInstance) {
     const { trackId } = z.object({ trackId: z.string().min(1) }).parse(req.body);
     const userId = req.auth!.sub;
 
-    const track = await prisma.soundTrack.findUnique({ where: { id: trackId } });
+    // Hidden content earns nothing: same shape as garden.ts rejecting a write
+    // that names a plant the user is not allowed to select.
+    const track = await prisma.soundTrack.findFirst({
+      where: {
+        id: trackId,
+        isActive: true,
+        collection: { isActive: true, category: { isActive: true } },
+      },
+    });
     if (!track) throw ApiError.notFound("Track not found", "track_not_found");
 
     const user = await prisma.user.findUnique({
