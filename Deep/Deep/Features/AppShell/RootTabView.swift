@@ -15,6 +15,7 @@ struct RootTabView: UIViewControllerRepresentable {
   let practiceStore: any PracticeStore
   let heartLedger: HeartLedger
   let gardenStore: GardenStore
+  let playlistStore: PlaylistStore
   let continuityWitness: ContinuityWitness
   let pauseSession: GlobalPauseSession
   let pauseRepository: any PauseEventRepository
@@ -31,6 +32,7 @@ struct RootTabView: UIViewControllerRepresentable {
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       gardenStore: gardenStore,
+      playlistStore: playlistStore,
       continuityWitness: continuityWitness,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
@@ -52,6 +54,7 @@ struct RootTabView: UIViewControllerRepresentable {
     practiceStore: MockPracticeStore(),
     heartLedger: .sample,
     gardenStore: .sample,
+    playlistStore: .sample,
     continuityWitness: .unwitnessed,
     pauseSession: GlobalPauseSession(
       clock: SyncedClock(),

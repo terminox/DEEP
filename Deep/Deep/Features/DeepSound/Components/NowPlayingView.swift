@@ -117,11 +117,11 @@ struct NowPlayingView: View {
           .lineLimit(1)
       }
       Spacer()
-      Image(systemName: "ellipsis")
-        .font(.system(.body, weight: .semibold))
-        .foregroundStyle(.driftGrey)
-        .frame(width: 34, height: 34)
-        .background(Circle().fill(.white.opacity(0.4)))
+      // Saving the sound to the playlist — the screen's one utility control,
+      // in the circle this row has always drawn.
+      if let track = player.currentTrack, let collection = player.collection {
+        SaveTrackButton(track: track, collection: collection)
+      }
     }
   }
 

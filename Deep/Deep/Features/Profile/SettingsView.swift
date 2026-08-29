@@ -1,14 +1,18 @@
 import SwiftUI
 import StoreKit
 
-/// The "You" tab — identity (with the non-actionable plan chip) up top, then
-/// Calm-inspired cards of purely actionable rows: subscription (manage /
-/// restore) and account (log out / delete), closing on a quiet version footer.
+/// The system settings, pushed from the gear in the You tab's header —
+/// identity (with the non-actionable plan chip) up top, then Calm-inspired
+/// cards of purely actionable rows: subscription (manage / restore) and
+/// account (log out / delete), closing on a quiet version footer.
 ///
 /// It reads the *shared* stores (threaded down from `AppRootView` through the
 /// tab shell), so resetting onboarding here flips the gate `AppRootView`
 /// watches and crossfades back to onboarding.
-struct ProfileView: View {
+///
+/// The back button is the system's on purpose: a custom close control on a
+/// pushed screen silently costs the interactive edge-swipe pop.
+struct SettingsView: View {
   @Environment(\.accountStore) private var accountStore
   @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.subscriptionStore) private var subscriptionStore
@@ -16,6 +20,7 @@ struct ProfileView: View {
   @Environment(\.gardenStore) private var gardenStore
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.continuityWitness) private var continuityWitness
+  @Environment(\.playlistStore) private var playlistStore
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -47,6 +52,9 @@ struct ProfileView: View {
       }
       .scrollIndicators(.hidden)
     }
+    .navigationTitle("Settings")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbarBackground(.hidden, for: .navigationBar)
     .task { await subscriptionStore.loadPlans() }
     .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
     .confirmationDialog(
@@ -136,8 +144,8 @@ struct ProfileView: View {
     switch subscriptionStore.status {
     case .subscribed(let productID):
       switch productID {
-      case DeepProduct.yearly: return "DEEP Pro · Yearly"
-      case DeepProduct.monthly: return "DEEP Pro · Monthly"
+      case DeepProduct.yearly: return "DEEP Pro, yearly"
+      case DeepProduct.monthly: return "DEEP Pro, monthly"
       default: return "DEEP Pro"
       }
     case .none:
@@ -235,12 +243,13 @@ struct ProfileView: View {
       // observes — together with the now-signed-out state it crossfades back to
       // the welcome flow. The practice journal, garden, and wallet belong to
       // the account, so they leave with it — a later sign-up must never open
-      // on this user's plants or balance.
+      // on this user's plants, balance, or saved sounds.
       onboardingStore.reset()
       practiceStore.reset()
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
       continuityWitness.resetLocalState()
+      playlistStore.resetLocalState()
     }
   }
 
@@ -256,6 +265,7 @@ struct ProfileView: View {
         gardenStore.resetLocalState()
         heartLedger.resetLocalState()
         continuityWitness.resetLocalState()
+        playlistStore.resetLocalState()
       } catch {
         isDeletingAccount = false
         deleteFailed = true
@@ -282,17 +292,21 @@ struct ProfileView: View {
 }
 
 #if DEBUG
-#Preview("Profile — email user, subscribed") {
-  ProfileView()
-    .environment(\.accountStore, MockAccountStore.emailUser)
-    .environment(\.onboardingStore, MockOnboardingStore.fresh)
-    .environment(\.subscriptionStore, MockSubscriptionStore.subscribed)
+#Preview("Settings — email user, subscribed") {
+  NavigationStack {
+    SettingsView()
+      .environment(\.accountStore, MockAccountStore.emailUser)
+      .environment(\.onboardingStore, MockOnboardingStore.fresh)
+      .environment(\.subscriptionStore, MockSubscriptionStore.subscribed)
+  }
 }
 
-#Preview("Profile — apple user, free") {
-  ProfileView()
-    .environment(\.accountStore, MockAccountStore.appleUser)
-    .environment(\.onboardingStore, MockOnboardingStore.fresh)
-    .environment(\.subscriptionStore, MockSubscriptionStore.free)
+#Preview("Settings — apple user, free") {
+  NavigationStack {
+    SettingsView()
+      .environment(\.accountStore, MockAccountStore.appleUser)
+      .environment(\.onboardingStore, MockOnboardingStore.fresh)
+      .environment(\.subscriptionStore, MockSubscriptionStore.free)
+  }
 }
 #endif
