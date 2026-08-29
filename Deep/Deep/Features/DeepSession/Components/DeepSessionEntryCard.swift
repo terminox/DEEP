@@ -21,7 +21,9 @@ struct DeepSessionEntryCard: View {
           Text(session.title)
             .font(DeepType.displayTitle)
             .foregroundStyle(.deepPlum)
-          Text("\(session.durationMinutes) min · guided breathing")
+          // The practice's own line rather than a length: how long is chosen
+          // on the threshold now, so no card can promise a number for it.
+          Text(session.tagline)
             .font(DeepType.caption)
             .foregroundStyle(.driftGrey)
         }
@@ -32,7 +34,7 @@ struct DeepSessionEntryCard: View {
       .frostedCard()
     }
     .buttonStyle(.softPress)
-    .accessibilityLabel("Begin \(session.title), a \(session.durationMinutes) minute guided breathing session")
+    .accessibilityLabel("Begin \(session.title), a guided breathing session")
   }
 
   private var playCircle: some View {

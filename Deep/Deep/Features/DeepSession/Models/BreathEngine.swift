@@ -54,6 +54,17 @@ final class BreathEngine {
   /// The full length of the phase we're currently in.
   var currentPhaseDuration: TimeInterval { duration(of: phase) }
 
+  /// Seconds of practice still ahead — what remains of this phase, the rest of
+  /// this round, and every round after it. Read live, like `remainingInPhase`,
+  /// so a caller re-reads it whenever something else moves them.
+  var remainingInSession: TimeInterval {
+    guard phase != .finished else { return 0 }
+    let inThisPhase = remainingInPhase ?? duration(of: phase)
+    let restOfRound = phase == .inhale ? session.exhale : 0
+    let roundsAhead = TimeInterval(max(0, session.cycles - cycle))
+    return inThisPhase + restOfRound + roundsAhead * session.cycleDuration
+  }
+
   /// Internal (not just `togglePaused`'s half) so the coordinator can settle
   /// the practice when the app leaves the foreground.
   func pause() {
