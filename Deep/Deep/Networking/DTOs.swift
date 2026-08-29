@@ -411,3 +411,40 @@ struct PauseAwardResponseDTO: Decodable {
   let plant: PlantProgressDTO?
   let serverNow: String?
 }
+
+// MARK: - Playlists
+
+/// One saved sound. The origin `collection` arrives without its tracks — a row
+/// needs its artwork and its name, nothing more.
+struct PlaylistItemDTO: Decodable {
+  let id: String
+  let savedAt: String
+  let track: TrackDTO
+  let collection: CollectionDTO
+}
+
+struct PlaylistDTO: Decodable {
+  let id: String
+  let name: String
+  let isDefault: Bool
+  let trackCount: Int
+  let updatedAt: String
+  let items: [PlaylistItemDTO]?
+}
+
+/// `GET /me/playlists` — every playlist with its items, in one call.
+struct PlaylistsResponseDTO: Decodable {
+  let playlists: [PlaylistDTO]
+}
+
+/// What saving and removing a sound both answer with: the whole playlist,
+/// so the client reconciles against server truth rather than guessing.
+struct PlaylistResponseDTO: Decodable {
+  let playlist: PlaylistDTO
+}
+
+// MARK: - Request bodies (playlists)
+
+struct SaveTrackRequestDTO: Encodable {
+  let trackId: String
+}

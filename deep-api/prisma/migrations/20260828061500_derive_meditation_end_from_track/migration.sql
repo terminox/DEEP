@@ -1,0 +1,15 @@
+-- The meditation phase used to end at "feedbackStart", a wall-clock string
+-- edited by hand and entirely unrelated to the track it was cut for. Uploading
+-- a 10-minute meditation left the window at the previous track's 2m12s, and the
+-- client ends the session on the window (GlobalPauseSessionController's
+-- observeLiveCompletion), so the new track was cut off every night.
+--
+-- The end is now derived: meditationStart + meditationDurationSeconds, which is
+-- itself measured off the audio file on save. Nothing left to keep in sync, so
+-- the column goes. No backfill is needed - src/lib/pauseSchedule.ts stopped
+-- reading it, which is what repairs an already-drifted row.
+--
+-- Deploy order matters: this must run AFTER the new revision is serving. The
+-- previous revision still selects this column, and the service runs at
+-- maxInstances 1.
+ALTER TABLE "pause_config" DROP COLUMN "feedbackStart";

@@ -9,22 +9,19 @@ import Observation
 /// its own. Use the static fixtures (`idle`, `playing`) for the common cases.
 @Observable
 final class MockSoundPlayer: SoundPlaying {
-  var collection: SoundCollection?
-  var queue: [SoundTrack]
+  var queue: [SoundQueueEntry]
   var index: Int
   var isPlaying: Bool
   var elapsed: TimeInterval
   var volume: Double
 
   init(
-    collection: SoundCollection? = nil,
-    queue: [SoundTrack] = [],
+    queue: [SoundQueueEntry] = [],
     index: Int = 0,
     isPlaying: Bool = false,
     elapsed: TimeInterval = 0,
     volume: Double = 0.6
   ) {
-    self.collection = collection
     self.queue = queue
     self.index = index
     self.isPlaying = isPlaying
@@ -32,8 +29,11 @@ final class MockSoundPlayer: SoundPlaying {
     self.volume = volume
   }
 
+  var collection: SoundCollection? {
+    queue.indices.contains(index) ? queue[index].collection : nil
+  }
   var currentTrack: SoundTrack? {
-    queue.indices.contains(index) ? queue[index] : nil
+    queue.indices.contains(index) ? queue[index].track : nil
   }
   var hasTrack: Bool { currentTrack != nil }
   var duration: TimeInterval { currentTrack?.duration ?? 0 }
@@ -42,10 +42,9 @@ final class MockSoundPlayer: SoundPlaying {
     return min(1, max(0, elapsed / duration))
   }
 
-  func play(_ collection: SoundCollection, at index: Int = 0) {
-    self.collection = collection
-    self.queue = collection.tracks
-    self.index = min(max(0, index), max(0, collection.tracks.count - 1))
+  func play(_ entries: [SoundQueueEntry], at index: Int) {
+    self.queue = entries
+    self.index = min(max(0, index), max(0, entries.count - 1))
     elapsed = 0
     isPlaying = true
   }

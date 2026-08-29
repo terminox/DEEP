@@ -27,3 +27,14 @@ export const VISIBLE_CATEGORY_TREE = {
   orderBy: { displayOrder: "asc" },
   include: { collections: VISIBLE_COLLECTIONS },
 } as const;
+
+/**
+ * A single track the app is allowed to reach: visible itself, and under a
+ * visible collection and category. Deleting is not the only way content leaves
+ * the shelves, so everything that resolves a track by id - direct fetch, the
+ * completion award, a saved playlist row - filters through this.
+ */
+export const VISIBLE_TRACK = {
+  isActive: true,
+  collection: { isActive: true, category: { isActive: true } },
+} as const;

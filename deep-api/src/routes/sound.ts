@@ -13,7 +13,7 @@ import {
   serializeCollection,
   serializeLyrics,
 } from "../lib/serialize.js";
-import { VISIBLE_CATEGORY_TREE, VISIBLE_TRACKS } from "../lib/soundQuery.js";
+import { VISIBLE_CATEGORY_TREE, VISIBLE_TRACK, VISIBLE_TRACKS } from "../lib/soundQuery.js";
 
 export async function soundRoutes(app: FastifyInstance) {
   // One call builds the entire Deep Sound home: ordered categories, each with
@@ -48,10 +48,7 @@ export async function soundRoutes(app: FastifyInstance) {
         trackId: id,
         ...(lang ? { languageCode: lang } : {}),
         // Lyrics inherit their track's visibility, and the track its collection's.
-        track: {
-          isActive: true,
-          collection: { isActive: true, category: { isActive: true } },
-        },
+        track: VISIBLE_TRACK,
       },
     });
     return { lyrics: lyrics.map(serializeLyrics) };
@@ -68,11 +65,7 @@ export async function soundRoutes(app: FastifyInstance) {
     // Hidden content earns nothing: same shape as garden.ts rejecting a write
     // that names a plant the user is not allowed to select.
     const track = await prisma.soundTrack.findFirst({
-      where: {
-        id: trackId,
-        isActive: true,
-        collection: { isActive: true, category: { isActive: true } },
-      },
+      where: { id: trackId, ...VISIBLE_TRACK },
     });
     if (!track) throw ApiError.notFound("Track not found", "track_not_found");
 

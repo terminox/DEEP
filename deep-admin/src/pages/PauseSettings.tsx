@@ -27,7 +27,6 @@ type ConfigForm = {
   lobbyStart: string
   welcomeStart: string
   meditationStart: string
-  feedbackStart: string
   windowEnd: string
   lobbyAudioPath: string
   meditationAudioPath: string
@@ -36,13 +35,17 @@ type ConfigForm = {
 
 const TIME_RE = /^\d{2}:\d{2}:\d{2}$/
 
-// Mirrors the server rule: valid HH:mm:ss values, strictly increasing.
+// A /media/... path is a file the server can measure; anything else is an
+// external URL whose length only the admin can supply.
+const isUploadedFile = (path: string) => path.startsWith('/media/')
+
+// Mirrors the server rules: valid HH:mm:ss values, strictly increasing, and a
+// meditation that finishes before the window closes.
 function validateConfig(form: ConfigForm): string | null {
   const phases: [string, string][] = [
     ['Lobby start', form.lobbyStart],
     ['Welcome start', form.welcomeStart],
     ['Meditation start', form.meditationStart],
-    ['Feedback start', form.feedbackStart],
     ['Window end', form.windowEnd],
   ]
   for (const [label, value] of phases) {
@@ -55,6 +58,12 @@ function validateConfig(form: ConfigForm): string | null {
   const duration = Number(form.meditationDurationSeconds)
   if (!Number.isInteger(duration) || duration <= 0) {
     return 'Meditation duration must be a positive whole number of seconds'
+  }
+  const end = timeToSeconds(form.meditationStart)! + duration
+  if (end >= timeToSeconds(form.windowEnd)!) {
+    return `A ${duration}s meditation starting ${form.meditationStart} runs to ${secondsToTime(
+      end
+    )}, past the window end ${form.windowEnd} — extend the window end.`
   }
   return null
 }
@@ -76,33 +85,23 @@ function secondsToTime(totalSeconds: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`
 }
 
-type WindowMismatch = {
-  meditationStart: string
-  feedbackStart: string
-  windowSeconds: number
-  duration: number
-  correctedFeedbackStart: string
+// "10:00", "2:12" - the track's length as a listener would say it.
+function formatLength(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-// The meditation phase runs meditationStart -> feedbackStart; that span
-// should equal meditationDurationSeconds, or a mid-window join seeks past
-// end-of-file. Non-blocking - a different cut of the window may be
-// intentional, so this only informs, it never validates.
-function computeWindowMismatch(form: ConfigForm): WindowMismatch | null {
+// The meditation phase runs meditationStart -> meditationStart + the track's
+// length, and the feedback phase takes the rest of the window. Both are derived
+// here exactly as the server derives them, so the admin can see what a new
+// track did to the night rather than having to keep an end time in sync with it.
+function describeWindow(form: ConfigForm): { meditation: string; feedback: string } | null {
   const start = timeToSeconds(form.meditationStart)
-  const end = timeToSeconds(form.feedbackStart)
   const duration = Number(form.meditationDurationSeconds)
-  if (start == null || end == null || !Number.isInteger(duration) || duration <= 0) {
-    return null
-  }
-  const windowSeconds = end - start
-  if (windowSeconds === duration) return null
+  if (start == null || !Number.isInteger(duration) || duration <= 0) return null
+  const end = secondsToTime(start + duration)
   return {
-    meditationStart: form.meditationStart,
-    feedbackStart: form.feedbackStart,
-    windowSeconds,
-    duration,
-    correctedFeedbackStart: secondsToTime(start + duration),
+    meditation: `${form.meditationStart} – ${end} (${formatLength(duration)})`,
+    feedback: `${end} – ${form.windowEnd}`,
   }
 }
 
@@ -125,7 +124,6 @@ function ConfigPanel() {
         lobbyStart: data.lobbyStart,
         welcomeStart: data.welcomeStart,
         meditationStart: data.meditationStart,
-        feedbackStart: data.feedbackStart,
         windowEnd: data.windowEnd,
         lobbyAudioPath: data.lobbyAudioPath,
         meditationAudioPath: data.meditationAudioPath,
@@ -134,7 +132,7 @@ function ConfigPanel() {
       }
     : null
 
-  const windowMismatch = form ? computeWindowMismatch(form) : null
+  const phaseWindow = form ? describeWindow(form) : null
 
   const save = useMutation({
     mutationFn: (body: ConfigForm) =>
@@ -143,7 +141,6 @@ function ConfigPanel() {
         lobbyStart: body.lobbyStart,
         welcomeStart: body.welcomeStart,
         meditationStart: body.meditationStart,
-        feedbackStart: body.feedbackStart,
         windowEnd: body.windowEnd,
         lobbyAudioPath: body.lobbyAudioPath,
         meditationAudioPath: body.meditationAudioPath,
@@ -214,8 +211,14 @@ function ConfigPanel() {
                 onChange={(e) =>
                   update({ meditationDurationSeconds: e.target.value })
                 }
+                readOnly={isUploadedFile(form.meditationAudioPath)}
                 required
               />
+              <div className="field-hint">
+                {isUploadedFile(form.meditationAudioPath)
+                  ? 'Read from the meditation audio file. Upload a new track to change it.'
+                  : "This audio is an external URL, so its length can't be measured — set it here."}
+              </div>
             </div>
           </div>
           <div className="form-row">
@@ -249,18 +252,6 @@ function ConfigPanel() {
                 required
               />
             </div>
-          </div>
-          <div className="form-row">
-            <div className="field">
-              <label>Feedback start</label>
-              <input
-                className="mono"
-                value={form.feedbackStart}
-                onChange={(e) => update({ feedbackStart: e.target.value })}
-                placeholder="20:50:00"
-                required
-              />
-            </div>
             <div className="field">
               <label>Window end</label>
               <input
@@ -272,22 +263,6 @@ function ConfigPanel() {
               />
             </div>
           </div>
-          {windowMismatch && (
-            <div className="warning-banner">
-              Meditation window ({windowMismatch.meditationStart}–{windowMismatch.feedbackStart}) is{' '}
-              {windowMismatch.windowSeconds}s, but the duration field is set to{' '}
-              {windowMismatch.duration}s.{' '}
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() =>
-                  update({ feedbackStart: windowMismatch.correctedFeedbackStart })
-                }
-              >
-                Set feedback start to match
-              </button>
-            </div>
-          )}
           <MediaDropzone
             label="Lobby audio"
             kind="audio"
@@ -308,17 +283,34 @@ function ConfigPanel() {
             currentUrl={form.meditationAudioPath || null}
             onUpload={async (file, onProgress) => {
               const media = await uploadMedia('audio', file, onProgress)
-              update({ meditationAudioPath: media.path })
+              // The server measured it as it stored it, so the derived window
+              // below updates the moment the file lands — no typing, and no
+              // browser guess that quietly returns nothing for some containers.
+              update({
+                meditationAudioPath: media.path,
+                ...(media.durationSeconds != null
+                  ? { meditationDurationSeconds: String(media.durationSeconds) }
+                  : {}),
+              })
             }}
-            onDurationDetected={(seconds) =>
-              update({ meditationDurationSeconds: String(Math.round(seconds)) })
-            }
             urlInput={{
               value: form.meditationAudioPath,
               onChange: (v) => update({ meditationAudioPath: v }),
               placeholder: '/media/audio/inner-light.mp3',
             }}
           />
+          {/* Sits under the meditation audio on purpose: this is where the
+              night's shape changes, so the consequence of dropping a track is
+              read here rather than in a banner further up the form. */}
+          {phaseWindow && (
+            <div className="field-hint">
+              <strong>Meditation</strong> <span className="mono">{phaseWindow.meditation}</span>
+              {' · '}
+              <strong>Feedback</strong> <span className="mono">{phaseWindow.feedback}</span>
+              <br />
+              The meditation ends when its track does — there is nothing to set.
+            </div>
+          )}
           <div className="form-actions">
             <button className="btn" type="submit" disabled={save.isPending}>
               Save configuration

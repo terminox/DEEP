@@ -262,7 +262,6 @@ async function main() {
       lobbyStart: "22:00:00",
       welcomeStart: "21:00:00", // out of order
       meditationStart: "21:10:00",
-      feedbackStart: "21:20:00",
       windowEnd: "21:30:00",
       lobbyAudioPath: "/media/audio/global-pause.mp3",
       meditationAudioPath: "/media/audio/global-pause.mp3",
@@ -271,6 +270,27 @@ async function main() {
   });
   assert.equal(badTimes.statusCode, 400, "out-of-order phases still rejected");
   pass("6. out-of-order phase times are refused at save");
+
+  // The meditation ends where its track does, so the window has to have room
+  // for it. global-pause.mp3 is 132s; this window leaves 60.
+  const overrun = await app.inject({
+    method: "PUT",
+    url: "/admin/pause/config",
+    headers: auth(),
+    payload: {
+      timezone: "Asia/Bangkok",
+      lobbyStart: "19:00:00",
+      welcomeStart: "19:09:50",
+      meditationStart: "19:10:00",
+      windowEnd: "19:11:00",
+      lobbyAudioPath: "/media/audio/global-pause.mp3",
+      meditationAudioPath: "/media/audio/global-pause.mp3",
+    },
+  });
+  assert.equal(overrun.statusCode, 400, "a track longer than the window is refused");
+  assert.match(JSON.parse(overrun.body).error?.code ?? "", /meditation_overruns_window/);
+  assert.equal(await prisma.contentDraft.count(), 0, "and nothing was staged");
+  pass("6a. a meditation that overruns the window is refused, and stages nothing");
 
   await app.inject({
     method: "PUT",
@@ -281,7 +301,6 @@ async function main() {
       lobbyStart: "19:00:00",
       welcomeStart: "19:09:50",
       meditationStart: "19:10:00",
-      feedbackStart: "19:12:12",
       windowEnd: "19:30:00",
       lobbyAudioPath: "/media/audio/global-pause.mp3",
       meditationAudioPath: "/media/audio/global-pause.mp3",
@@ -394,6 +413,92 @@ async function main() {
   });
   assert.equal(await prisma.contentDraft.count(), 0, "child draft discarded with its parent");
   pass("9. discarding a staged parent discards its staged children");
+
+  // ---- 10. A saved sound follows the same visibility rule as the shelves ----
+  // Playlists arrived in a separate branch, so this is the seam between the two:
+  // hiding content has to reach the sounds a listener already kept, or a saved
+  // row would keep offering a track that /sound/collections/:id and the
+  // completion award both refuse.
+  const keptCat = await prisma.soundCategory.create({
+    data: { slug: "kept", title: "Kept", displayOrder: 1 },
+  });
+  const keptCol = await prisma.soundCollection.create({
+    data: {
+      categoryId: keptCat.id,
+      title: "Kept collection",
+      subtitle: "For the playlist check",
+      palette: "tide",
+      displayOrder: 0,
+    },
+  });
+  const keptTrack = await prisma.soundTrack.create({
+    data: {
+      collectionId: keptCol.id,
+      title: "Kept sound",
+      durationSeconds: 120,
+      audioPath: "/media/audio/global-pause.mp3",
+      displayOrder: 0,
+    },
+  });
+
+  const memberLogin = await json(
+    await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "member@deep.test", password: "password123" },
+    }),
+  );
+  const member = { authorization: `Bearer ${memberLogin.accessToken}` };
+
+  const lists = await json(
+    await app.inject({ method: "GET", url: "/me/playlists", headers: member }),
+  );
+  const listId = lists.playlists[0].id;
+  const saved = await json(
+    await app.inject({
+      method: "POST",
+      url: `/me/playlists/${listId}/items`,
+      headers: member,
+      payload: { trackId: keptTrack.id },
+    }),
+  );
+  assert.equal(saved.playlist.items.length, 1, "a visible sound can be kept");
+
+  await app.inject({
+    method: "PATCH",
+    url: `/admin/collections/${keptCol.id}`,
+    headers: auth(),
+    payload: { isActive: false },
+  });
+  const whileStaged = await json(
+    await app.inject({ method: "GET", url: "/me/playlists", headers: member }),
+  );
+  assert.equal(whileStaged.playlists[0].items.length, 1, "still kept while only staged");
+
+  await app.inject({
+    method: "POST",
+    url: "/admin/changes/publish",
+    headers: auth(),
+    payload: { all: true },
+  });
+  const afterHide = await json(
+    await app.inject({ method: "GET", url: "/me/playlists", headers: member }),
+  );
+  assert.equal(afterHide.playlists[0].items.length, 0, "hidden sound leaves the playlist");
+  assert.equal(
+    await prisma.playlistItem.count({ where: { trackId: keptTrack.id } }),
+    1,
+    "the kept row survives, so unhiding brings the sound back",
+  );
+
+  const reSave = await app.inject({
+    method: "POST",
+    url: `/me/playlists/${listId}/items`,
+    headers: member,
+    payload: { trackId: keptTrack.id },
+  });
+  assert.equal(reSave.statusCode, 404, "a hidden sound cannot be kept");
+  pass("10. hiding content reaches saved playlists, without deleting what was kept");
 
   console.log("\nAll end-to-end checks passed.");
   await app.close();

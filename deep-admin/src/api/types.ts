@@ -202,10 +202,11 @@ export type PauseConfig = Pending & {
   lobbyStart: string
   welcomeStart: string
   meditationStart: string
-  feedbackStart: string
   windowEnd: string
   lobbyAudioPath: string
   meditationAudioPath: string
+  // Measured off meditationAudioPath by the server. The meditation phase runs
+  // meditationStart -> meditationStart + this, so there is no separate end time.
   meditationDurationSeconds: number
   updatedAt: string
 }
@@ -273,4 +274,5 @@ export type ApiError = {
 export type UploadedMedia = {
   path: string // relative /media/... path to store on the row
   url: string // absolute URL, for immediate preview
+  durationSeconds: number | null // audio only; measured server-side, null if unreadable
 }

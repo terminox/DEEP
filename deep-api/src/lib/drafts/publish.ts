@@ -16,7 +16,13 @@ import {
   type Db,
   type DraftRef,
 } from "./registry.js";
-import { PHASE_ORDER_MESSAGE, phaseTimesIncreasing, type PhaseTimes } from "./validators.js";
+import {
+  PHASE_ORDER_MESSAGE,
+  meditationOverrun,
+  phaseTimesIncreasing,
+  type MeditationWindow,
+  type PhaseTimes,
+} from "./validators.js";
 
 export interface FieldDiff {
   field: string;
@@ -370,6 +376,10 @@ async function validateEntity(
     if (!phaseTimesIncreasing(merged as unknown as PhaseTimes)) {
       blockers.push(PHASE_ORDER_MESSAGE);
     }
+    // The meditation ends where its track does, so a schedule staged against a
+    // shorter window than the track needs would silently truncate the session.
+    const overrun = meditationOverrun(merged as unknown as MeditationWindow);
+    if (overrun) blockers.push(overrun);
     warnings.push(
       "Publishing the Global Pause schedule changes tonight's event for every user.",
     );

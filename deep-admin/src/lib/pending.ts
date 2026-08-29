@@ -73,7 +73,6 @@ const FIELD_LABELS: Record<string, string> = {
   lobbyStart: 'Lobby start',
   welcomeStart: 'Welcome start',
   meditationStart: 'Meditation start',
-  feedbackStart: 'Feedback start',
   windowEnd: 'Window end',
 }
 

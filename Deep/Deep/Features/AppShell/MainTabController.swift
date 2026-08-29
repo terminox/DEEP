@@ -5,7 +5,7 @@ import SwiftUI
 /// `UIHostingController`. New tabs are added by appending to `viewControllers`.
 final class MainTabController: UITabBarController {
   /// Shared app-lifetime stores threaded in from `AppRootView`, injected into
-  /// the Profile tab so log-out / onboarding-reset act on the same instances
+  /// the You tab so log-out / onboarding-reset act on the same instances
   /// that drive the app's onboarding gate.
   private let onboardingStore: any OnboardingProgressStore
   private let accountStore: any AccountStore
@@ -27,6 +27,9 @@ final class MainTabController: UITabBarController {
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
   private let gardenStore: GardenStore
+  /// The saved sounds, injected into every tab: a sound can be saved from Now
+  /// Playing or from any collection, and the You tab must read the same list.
+  private let playlistStore: PlaylistStore
   /// The one day-stamp behind the continuity beat, so a Deep Session and a
   /// Global Pause on the same day share the single moment.
   private let continuityWitness: ContinuityWitness
@@ -60,6 +63,13 @@ final class MainTabController: UITabBarController {
     let iconOnly: UIImage
   }
 
+  /// The tab order, so a cross-tab jump names its destination instead of
+  /// counting positions in `configureChildren()`'s array literal. Keep the
+  /// cases in step with that array.
+  private enum Tab: Int {
+    case home, sounds, garden, compassion, you
+  }
+
   private var composedItems: [ComposedTabItem] = []
   private var isTabBarMinimized = false
   /// True only while `setTabItemsIconOnly(_:)` reasserts `selectedIndex` for
@@ -76,6 +86,7 @@ final class MainTabController: UITabBarController {
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
+    playlistStore: PlaylistStore,
     continuityWitness: ContinuityWitness,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
@@ -90,6 +101,7 @@ final class MainTabController: UITabBarController {
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
+    self.playlistStore = playlistStore
     self.continuityWitness = continuityWitness
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
@@ -156,16 +168,15 @@ final class MainTabController: UITabBarController {
       systemImage: "heart.fill"
     )
 
-    let profile = host(
-      ProfileView()
+    let you = host(
+      YouCoordinatorView()
         .environment(\.onboardingStore, onboardingStore)
-        .environment(\.accountStore, accountStore)
-        .environment(\.subscriptionStore, subscriptionStore),
+        .environment(\.accountStore, accountStore),
       title: "You",
       systemImage: "person.fill"
     )
 
-    viewControllers = [globalPause, sounds, garden, portfolio, profile]
+    viewControllers = [globalPause, sounds, garden, portfolio, you]
   }
 
   // MARK: - Bottom accessory (mini player)
@@ -245,6 +256,7 @@ final class MainTabController: UITabBarController {
     }
     .environment(\.soundPlayer, sharedPlayer)
     .environment(\.soundContentRepository, soundRepository)
+    .environment(\.playlistStore, playlistStore)
     .environment(\.imageLoader, imageLoader)
     .preferredColorScheme(.light)
 
@@ -261,17 +273,29 @@ final class MainTabController: UITabBarController {
     title: String,
     systemImage: String
   ) -> UIViewController {
-    // Every tab gets the shared player, journal, ledger, and garden: the Deep
-    // Session flow presents itself as a full-screen cover from inside a tab's
-    // tree, pauses playback on entry, and records its completion — without
-    // these it would reach the environment's throwaway defaults and credit
-    // nobody.
+    // Every tab gets the shared player, journal, ledger, garden, and saved
+    // sounds: the Deep Session flow presents itself as a full-screen cover from
+    // inside a tab's tree, pauses playback on entry, and records its
+    // completion — without these it would reach the environment's throwaway
+    // defaults and credit nobody. `subscriptionStore` rides along for the same
+    // reason: the premium gate on a collection has to ask the real one.
+    //
+    // `openDeepSound` rides along too: it is the only navigation action that
+    // crosses tabs, so the shell owns it where a coordinator owns the rest, and
+    // this is the single funnel every SwiftUI tab passes through. Weakly held —
+    // the closure lives in the rootView, which the hosting controller holds,
+    // which this controller holds.
     let rootView = view
+      .environment(\.openDeepSound) { [weak self] in
+        self?.selectedIndex = Tab.sounds.rawValue
+      }
       .environment(\.soundPlayer, sharedPlayer)
       .environment(\.soundContentRepository, soundRepository)
+      .environment(\.subscriptionStore, subscriptionStore)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
       .environment(\.gardenStore, gardenStore)
+      .environment(\.playlistStore, playlistStore)
       .environment(\.continuityWitness, continuityWitness)
       .environment(\.imageLoader, imageLoader)
       .environment(\.videoCache, videoCache)

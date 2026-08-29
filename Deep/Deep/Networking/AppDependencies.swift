@@ -23,6 +23,8 @@ final class AppDependencies {
   let heartLedger: HeartLedger
   /// The garden's plant + sunlight, server-backed and persisted for offline.
   let gardenStore: GardenStore
+  /// The sounds this listener saved, server-backed and persisted for offline.
+  let playlistStore: PlaylistStore
   /// The one day-stamp behind the continuity beat, shared by every ending so
   /// the rhythm is noticed once a day rather than once per feature.
   let continuityWitness: ContinuityWitness
@@ -62,6 +64,7 @@ final class AppDependencies {
     self.heartLedger = ledger
     self.gardenStore = garden
     self.continuityWitness = ContinuityWitness()
+    self.playlistStore = PlaylistStore(remote: APIPlaylistRemote(client: client))
 
     let practiceStore = PracticeDefaultsStore(remote: APIPracticeRemote(client: client))
     practiceStore.awardSink = ingestAwards

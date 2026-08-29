@@ -12,6 +12,8 @@ import type {
   Plant,
   PlantStage,
   HeartSpend,
+  Playlist,
+  PlaylistItem,
 } from "@prisma/client";
 import { mediaUrl } from "./media.js";
 import { deriveStageIndex } from "./awardRules.js";
@@ -89,6 +91,39 @@ export function serializeLyrics(l: TrackLyrics) {
     trackId: l.trackId,
     languageCode: l.languageCode,
     content: l.content,
+  };
+}
+
+// ---- Playlists ----
+
+// The origin collection rides along without its tracks: a kept-track row needs
+// the artwork and the name of where the sound came from, nothing more.
+type PlaylistItemWithTrack = PlaylistItem & {
+  track: SoundTrack & {
+    collection: SoundCollection;
+    lyrics?: { languageCode: string }[];
+  };
+};
+
+export function serializePlaylistItem(i: PlaylistItemWithTrack) {
+  return {
+    id: i.id,
+    savedAt: i.createdAt.toISOString(),
+    track: serializeTrack(i.track),
+    collection: serializeCollection(i.track.collection),
+  };
+}
+
+export function serializePlaylist(
+  p: Playlist & { items?: PlaylistItemWithTrack[] },
+) {
+  return {
+    id: p.id,
+    name: p.name,
+    isDefault: p.isDefault,
+    trackCount: p.items?.length ?? 0,
+    updatedAt: p.updatedAt.toISOString(),
+    items: p.items ? p.items.map(serializePlaylistItem) : undefined,
   };
 }
 

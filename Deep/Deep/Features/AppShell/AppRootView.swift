@@ -76,6 +76,7 @@ struct AppRootView: View {
           practiceStore: deps.practiceStore,
           heartLedger: deps.heartLedger,
           gardenStore: deps.gardenStore,
+          playlistStore: deps.playlistStore,
           continuityWitness: deps.continuityWitness,
           pauseSession: deps.pauseSession,
           pauseRepository: deps.pauseRepository,
@@ -104,18 +105,21 @@ struct AppRootView: View {
     .environment(\.practiceStore, deps.practiceStore)
     .environment(\.heartLedger, deps.heartLedger)
     .environment(\.gardenStore, deps.gardenStore)
+    .environment(\.playlistStore, deps.playlistStore)
     .environment(\.imageLoader, deps.imageLoader)
     .environment(\.videoCache, deps.videoCache)
     .task { await bootstrap() }
     // Returning to the foreground retries the practice journal's offline
     // queue, picks up sessions recorded on other installs, and re-pulls the
-    // garden (plant + sunlight + wallet) from the server.
+    // garden (plant + sunlight + wallet) and the saved sounds from the server.
     .onChange(of: scenePhase) { _, phase in
       guard phase == .active, didRestore, deps.accountStore.isSignedIn else { return }
       Task {
         async let garden: Void = deps.gardenStore.refresh()
+        async let playlist: Void = deps.playlistStore.refresh()
         await deps.practiceStore.refresh()
         await garden
+        await playlist
       }
     }
     // An in-app sign-in or sign-up completing (flow → main) pulls the fresh
@@ -129,8 +133,10 @@ struct AppRootView: View {
       guard old == .flow, new == .main else { return }
       Task {
         async let garden: Void = deps.gardenStore.refresh()
+        async let playlist: Void = deps.playlistStore.refresh()
         await deps.practiceStore.refresh()
         await garden
+        await playlist
       }
     }
   }
@@ -146,6 +152,7 @@ struct AppRootView: View {
       // also hydrates the heart ledger (the wallet rides the same response).
       async let refreshed: Void = deps.practiceStore.refresh()
       async let gardenRefreshed: Void = deps.gardenStore.refresh()
+      async let playlistRefreshed: Void = deps.playlistStore.refresh()
       if let profile = try? await deps.onboardingRemote.fetchProfile() {
         deps.onboardingStore.hydrate(
           quizAnswers: profile.quizAnswers,
@@ -155,6 +162,7 @@ struct AppRootView: View {
       }
       await refreshed
       await gardenRefreshed
+      await playlistRefreshed
     }
     _ = await floor
     // The staged send-off: text exhales in place, the destination surfaces

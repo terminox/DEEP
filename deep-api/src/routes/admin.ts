@@ -23,6 +23,7 @@ import { verifyPassword } from "../auth/password.js";
 import { createSession } from "../auth/sessions.js";
 import { requireRole } from "../auth/middleware.js";
 import { MEDIA_RULES, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
+import { readAudioDurationSeconds } from "../lib/audioDuration.js";
 import {
   serializeUser,
   serializeCategory,
@@ -55,7 +56,11 @@ import {
   publish,
   validate,
 } from "../lib/drafts/publish.js";
-import { PHASE_ORDER_MESSAGE, phaseTimesIncreasing } from "../lib/drafts/validators.js";
+import {
+  PHASE_ORDER_MESSAGE,
+  meditationOverrun,
+  phaseTimesIncreasing,
+} from "../lib/drafts/validators.js";
 
 const adminOnly = { preHandler: requireRole("ADMIN") };
 
@@ -383,7 +388,31 @@ export async function adminRoutes(app: FastifyInstance) {
     if (!phaseTimesIncreasing(body)) {
       throw ApiError.badRequest(PHASE_ORDER_MESSAGE, "invalid_phase_times");
     }
-    const staged = await stageSingleton<PauseConfig>("PAUSE_CONFIG", body, actor(req));
+
+    // The meditation phase runs meditationStart → meditationStart + this, so
+    // the track's real length *is* the length of the event. Measured here
+    // rather than taken on trust: the browser's metadata read is a hint that
+    // quietly returns nothing for some containers, and a nights-long silent
+    // disagreement between the window and the track is what this replaces.
+    const measured = await readAudioDurationSeconds(body.meditationAudioPath);
+    const meditationDurationSeconds = measured ?? body.meditationDurationSeconds;
+    if (meditationDurationSeconds == null) {
+      throw ApiError.badRequest(
+        `Couldn't read the length of "${body.meditationAudioPath}" — send meditationDurationSeconds alongside it.`,
+        "meditation_duration_unknown",
+      );
+    }
+
+    const overrun = meditationOverrun({ ...body, meditationDurationSeconds });
+    if (overrun) throw ApiError.badRequest(overrun, "meditation_overruns_window");
+
+    // The measured length is what gets staged, so publishing applies the number
+    // the file actually holds rather than whatever the form last showed.
+    const staged = await stageSingleton<PauseConfig>(
+      "PAUSE_CONFIG",
+      { ...body, meditationDurationSeconds },
+      actor(req),
+    );
     return { config: withPending(staged.row, staged.pending) };
   });
 

@@ -375,6 +375,26 @@ tr:last-child td {
   color: var(--text-soft);
 }
 
+/* Quiet explanatory text under a control, or under a group of them. */
+.field-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.field-hint .mono {
+  color: var(--text);
+}
+
+/* Server-owned values stay legible but clearly not yours to type in. Repeats
+   the :not() chain above so it outranks that rule's white background. */
+input[readonly]:not([type='checkbox']):not([type='radio']):not([type='file']) {
+  background: var(--border);
+  border-color: var(--border);
+  color: var(--text-soft);
+  cursor: default;
+}
+
 /* Style every text-like input. Using an attribute-specific selector
    (input[type='text']) misses bare <input> elements that have no explicit
    type, which is why some fields looked unstyled. */
@@ -659,6 +679,13 @@ td > .error-banner:last-child,
 td > .success-banner:last-child,
 td > .warning-banner:last-child {
   margin-bottom: 0;
+}
+
+/* ...but it does need separating from the cell content above it. */
+td > .error-banner,
+td > .success-banner,
+td > .warning-banner {
+  margin-top: var(--space-2);
 }
 
 .empty {
