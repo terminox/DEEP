@@ -63,6 +63,13 @@ final class MainTabController: UITabBarController {
     let iconOnly: UIImage
   }
 
+  /// The tab order, so a cross-tab jump names its destination instead of
+  /// counting positions in `configureChildren()`'s array literal. Keep the
+  /// cases in step with that array.
+  private enum Tab: Int {
+    case home, sounds, garden, compassion, you
+  }
+
   private var composedItems: [ComposedTabItem] = []
   private var isTabBarMinimized = false
   /// True only while `setTabItemsIconOnly(_:)` reasserts `selectedIndex` for
@@ -272,7 +279,16 @@ final class MainTabController: UITabBarController {
     // completion — without these it would reach the environment's throwaway
     // defaults and credit nobody. `subscriptionStore` rides along for the same
     // reason: the premium gate on a collection has to ask the real one.
+    //
+    // `openDeepSound` rides along too: it is the only navigation action that
+    // crosses tabs, so the shell owns it where a coordinator owns the rest, and
+    // this is the single funnel every SwiftUI tab passes through. Weakly held —
+    // the closure lives in the rootView, which the hosting controller holds,
+    // which this controller holds.
     let rootView = view
+      .environment(\.openDeepSound) { [weak self] in
+        self?.selectedIndex = Tab.sounds.rawValue
+      }
       .environment(\.soundPlayer, sharedPlayer)
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.subscriptionStore, subscriptionStore)

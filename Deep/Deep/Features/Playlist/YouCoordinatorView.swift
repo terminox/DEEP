@@ -4,8 +4,8 @@ import SwiftUI
 /// It owns navigation (playlist → settings) and nothing else.
 ///
 /// Per the project's SwiftUI rules a coordinator keeps styling to a minimum:
-/// the atmosphere and the hero live in `PlaylistView`, the leaf, so they render
-/// behind its content rather than behind the `NavigationStack`.
+/// the atmosphere lives in `PlaylistView`, the leaf, so it renders behind that
+/// screen's content rather than behind the `NavigationStack`.
 struct YouCoordinatorView: View {
   @State private var path = NavigationPath()
 

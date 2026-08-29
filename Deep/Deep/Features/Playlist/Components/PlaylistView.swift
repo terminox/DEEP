@@ -19,6 +19,7 @@ struct PlaylistView: View {
   @Environment(\.soundPlayer) private var player
   @Environment(\.subscriptionStore) private var subscriptionStore
   @Environment(\.openSettings) private var openSettings
+  @Environment(\.openDeepSound) private var openDeepSound
 
   @State private var showPremiumGate = false
 
@@ -37,6 +38,10 @@ struct PlaylistView: View {
     }
     .scrollIndicators(.hidden)
     .scrollBounceBehavior(.always)
+    // The header is a bar, so a card reaching it gets the system's edge effect.
+    // Named rather than left to `.automatic`: `.hard` draws the separator line
+    // this design language rules out.
+    .scrollEdgeEffectStyle(.soft, for: .top)
     .background { AtmosphereBackground() }
     // Before the header inset, so the pull cue measures the true safe-area top
     // and parks where it does on every other tab.
@@ -97,23 +102,45 @@ struct PlaylistView: View {
     .padding(.horizontal, .edge)
   }
 
-  /// Genuine emptiness reads as an invitation, not a fault — one gentle line,
-  /// never a dimmed button.
+  /// Genuine emptiness reads as an invitation, not a fault — and never as a
+  /// dimmed button.
+  ///
+  /// No panel around the words. A full-width frosted pill carries the weight of
+  /// *content* on the one screen whose whole message is that there is none, and
+  /// parked under the header it reads as a banner. The lines sit bare on the
+  /// atmosphere with room above them instead, so the only surface left on screen
+  /// is the way out — the same frosted chip the failure branch below already
+  /// wears, hugging its text rather than stretching like `SoundActionButton`.
   private var invitation: some View {
-    VStack(spacing: 6) {
-      Text("Nothing saved yet")
-        .font(DeepType.sectionTitle)
-        .foregroundStyle(.deepPlum)
-      Text("Save a sound while it's playing and it'll be waiting here.")
-        .font(DeepType.caption)
-        .foregroundStyle(.driftGrey)
-        .multilineTextAlignment(.center)
+    VStack(spacing: 18) {
+      VStack(spacing: 6) {
+        Text("Nothing saved yet")
+          .font(DeepType.sectionTitle)
+          .foregroundStyle(.deepPlum)
+        Text("Save a sound while it's playing and it'll be waiting here.")
+          .font(DeepType.caption)
+          .foregroundStyle(.driftGrey)
+          .multilineTextAlignment(.center)
+          // Held short of the full width: run edge to edge and one grey line
+          // reads as a banner rather than a note.
+          .frame(maxWidth: 260)
+      }
+
+      Button(action: openDeepSound) {
+        Text("Explore Deep Sound")
+          .font(DeepType.body.weight(.medium))
+          .foregroundStyle(.deepPlum)
+          .padding(.horizontal, 22)
+          .padding(.vertical, 12)
+          .frostedCard(cornerRadius: .chip)
+      }
+      .buttonStyle(.softPress)
     }
     .frame(maxWidth: .infinity)
-    .padding(.vertical, 28)
-    .padding(.horizontal, 24)
-    .frostedCard(cornerRadius: .chip)
     .padding(.horizontal, .edge)
+    // Air, so this lands as a note in an empty room rather than a headline
+    // pinned to the top. Stacks on the body's own `.rhythm`.
+    .padding(.top, 72)
   }
 
   private var failure: some View {

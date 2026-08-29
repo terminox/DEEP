@@ -29,21 +29,29 @@ extension View {
 }
 
 /// The same header for a screen with **no hero to collapse against**: the title
-/// simply stays, in plum, over a permanent wash of the same progressive blur.
+/// simply stays, in plum, on nothing at all.
 ///
 /// Deep's hero-led tabs earn their collapse from a full-bleed video; a screen
 /// without one has nothing to roll against, and a white title would be
 /// invisible over the atmosphere. This keeps the shape those tabs establish —
-/// title top-left, accessory top-right, `.edge` inset — and drops only the
-/// motion. Applied as a `safeAreaInset`, so the scroll below it is inset
-/// correctly and content passes under the blur rather than behind a hard edge.
+/// title top-left, accessory top-right, `.edge` inset — and drops the motion.
+///
+/// It also drops their progressive blur, deliberately. That wash is a device for
+/// white text over dark footage; this title is already plum on a pale atmosphere,
+/// so a permanent blur here has nothing to blur but the background itself and
+/// reads as a seam blend across a joint that doesn't exist. Applied as a
+/// `safeAreaBar` rather than a `safeAreaInset`: both inset the scroll the same
+/// way, but only a bar gets the system's scroll edge effect — which is absent
+/// until a card actually reaches the title, so an empty screen stays clean.
+/// Callers pick the style; `.soft` is the one this app wants (`.hard` draws the
+/// separator line the design language rules out).
 extension View {
   func pinnedHomeHeader<Trailing: View>(
     title: String,
     subtitle: String? = nil,
     @ViewBuilder trailing: () -> Trailing = { EmptyView() }
   ) -> some View {
-    safeAreaInset(edge: .top, spacing: 0) {
+    safeAreaBar(edge: .top, spacing: 0) {
       PinnedHomeHeader(title: title, subtitle: subtitle, trailing: AnyView(trailing()))
     }
   }
@@ -75,23 +83,11 @@ private struct PinnedHomeHeader: View {
     .padding(.top, 6)
     .padding(.bottom, 10)
     .padding(.horizontal, .edge)
-    // Behind, not beside: the blur has no intrinsic height, so inside the
-    // stack it would grow to fill and drag the whole safe-area inset with it.
-    // As a background the title block sets the height and the blur fills it,
-    // reaching up under the status bar for the content passing beneath.
-    //
-    // The negative bottom padding is what keeps the subtitle legible. The
-    // gradient runs blurred-to-clear across whatever height it is given, so at
-    // exactly the header's height its clear end lands on the subtitle and a
-    // card edge sliding under smears straight across it. Overhanging puts the
-    // whole title block in the strong half and lets the fade finish in open
-    // space below.
-    .background {
-      VariableBlurView(maxBlurRadius: 24, direction: .blurredTopClearBottom)
-        .padding(.bottom, -36)
-        .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(false)
-    }
+    // No background of any kind. The title block sets the bar's height and the
+    // screen's own atmosphere shows through it; the status-bar strip above is
+    // painted by that same atmosphere, which ignores the safe area. What a card
+    // sliding underneath meets is the system's scroll edge effect, not a layer
+    // of ours.
   }
 }
 
@@ -275,6 +271,9 @@ private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
   ) { EmptyView() }
 }
 
+/// Enough rows to scroll, so the canvas shows both halves of the contract: a
+/// bare top at rest, and the system's soft edge only once a card reaches the
+/// title.
 #Preview("Pinned header — no hero") {
   ScrollView {
     LazyVStack(spacing: 14) {
@@ -288,6 +287,7 @@ private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
     .padding(.top, .rhythm)
   }
   .scrollIndicators(.hidden)
+  .scrollEdgeEffectStyle(.soft, for: .top)
   .background { AtmosphereBackground() }
   .pinnedHomeHeader(title: "Playlist", subtitle: "Sounds you've saved") {
     HeaderIconButton(systemName: "gearshape", accessibilityLabel: "Settings") {}
