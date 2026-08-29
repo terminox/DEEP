@@ -1,14 +1,13 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { env } from "../env.js";
 import { ApiError } from "../lib/errors.js";
 import { verifyPassword } from "../auth/password.js";
 import { createSession } from "../auth/sessions.js";
 import { requireRole } from "../auth/middleware.js";
+import { MEDIA_RULES, mediaRefSchema, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
+import { readAudioDurationSeconds } from "../lib/audioDuration.js";
+import { formatHms, secondsOfDay } from "../lib/pauseSchedule.js";
 import {
   serializeUser,
   serializeCategory,
@@ -147,7 +146,7 @@ export async function adminRoutes(app: FastifyInstance) {
     title: z.string().trim().min(1),
     subtitle: z.string().trim().min(1),
     palette: paletteEnum,
-    imageUrl: z.string().url().nullable().optional(),
+    imageUrl: mediaRefSchema.nullable().optional(),
     isPremium: z.boolean().optional(),
     displayOrder: z.number().int().optional(),
   });
@@ -251,19 +250,14 @@ export async function adminRoutes(app: FastifyInstance) {
     const track = await prisma.soundTrack.findUnique({ where: { id } });
     if (!track) throw ApiError.notFound("Track not found");
 
-    const file = await req.file();
-    if (!file) throw ApiError.badRequest("No file uploaded");
-
-    const ext = path.extname(file.filename) || ".mp3";
-    const name = `${crypto.randomUUID()}${ext}`;
-    const audioDir = path.join(env.MEDIA_DIR, "audio");
-    await fs.mkdir(audioDir, { recursive: true });
-    await fs.writeFile(path.join(audioDir, name), await file.toBuffer());
-
-    const updated = await prisma.soundTrack.update({
-      where: { id },
-      data: { audioPath: `/media/audio/${name}` },
-    });
+    const file = await requireUploadedFile(req, MEDIA_RULES.audio.maxBytes);
+    const relPath = await saveUploadedMedia(file, "audio", "audio");
+    // No unlink of the replaced file, deliberately: prisma/seed.ts assigns audio
+    // round-robin from three shared files, so many tracks point at the same path -
+    // and /media/audio/global-pause.mp3 is also PauseConfig's default. Deleting on
+    // replace would silence other tracks and the nightly Global Pause. The garden
+    // routes can unlink safely because their old paths are per-row uuid files.
+    const updated = await prisma.soundTrack.update({ where: { id }, data: { audioPath: relPath } });
     return { track: serializeTrack(updated) };
   });
 
@@ -317,15 +311,17 @@ export async function adminRoutes(app: FastifyInstance) {
       lobbyStart: hms,
       welcomeStart: hms,
       meditationStart: hms,
-      feedbackStart: hms,
       windowEnd: hms,
-      lobbyAudioPath: z.string().trim().min(1),
-      meditationAudioPath: z.string().trim().min(1),
-      meditationDurationSeconds: z.number().int().positive(),
+      lobbyAudioPath: mediaRefSchema,
+      meditationAudioPath: mediaRefSchema,
+      // Optional because the file is the authority: the handler reads the
+      // meditation track's real length off disk. Only an absolute third-party
+      // URL, which we can't measure, still needs a number sent with it.
+      meditationDurationSeconds: z.number().int().positive().optional(),
     })
     .refine(
       (b) => {
-        const order = [b.lobbyStart, b.welcomeStart, b.meditationStart, b.feedbackStart, b.windowEnd];
+        const order = [b.lobbyStart, b.welcomeStart, b.meditationStart, b.windowEnd];
         return order.every((t, i) => i === 0 || order[i - 1]! < t);
       },
       { message: "phase times must be strictly increasing" },
@@ -342,10 +338,35 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.put("/admin/pause/config", adminOnly, async (req) => {
     const body = pauseConfigBody.parse(req.body);
+
+    // The meditation phase runs meditationStart → meditationStart + this, so
+    // the track's real length *is* the length of the event. Measured here
+    // rather than taken on trust: the browser's metadata read is a hint that
+    // quietly returns nothing for some containers, and a nights-long silent
+    // disagreement between the window and the track is what this replaces.
+    const measured = await readAudioDurationSeconds(body.meditationAudioPath);
+    const meditationDurationSeconds = measured ?? body.meditationDurationSeconds;
+    if (meditationDurationSeconds == null) {
+      throw ApiError.badRequest(
+        `Couldn't read the length of "${body.meditationAudioPath}" — send meditationDurationSeconds alongside it.`,
+        "meditation_duration_unknown",
+      );
+    }
+
+    const meditationEnd = secondsOfDay(body.meditationStart) + meditationDurationSeconds;
+    if (meditationEnd >= secondsOfDay(body.windowEnd)) {
+      throw ApiError.badRequest(
+        `A ${meditationDurationSeconds}s meditation starting ${body.meditationStart} runs to ` +
+          `${formatHms(meditationEnd)}, past the window end ${body.windowEnd} — extend the window end.`,
+        "meditation_overruns_window",
+      );
+    }
+
+    const data = { ...body, meditationDurationSeconds };
     const config = await prisma.pauseConfig.upsert({
       where: { id: 1 },
-      update: body,
-      create: { id: 1, ...body },
+      update: data,
+      create: { id: 1, ...data },
     });
     return { config };
   });

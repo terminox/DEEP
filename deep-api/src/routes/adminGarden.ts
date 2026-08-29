@@ -1,17 +1,18 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import crypto from "node:crypto";
-import fs from "node:fs/promises";
-import { createWriteStream } from "node:fs";
-import { pipeline } from "node:stream/promises";
-import path from "node:path";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { env } from "../env.js";
 import { ApiError } from "../lib/errors.js";
 import { requireRole } from "../auth/middleware.js";
 import { validateThresholds } from "../lib/awardRules.js";
 import { serializePlant, serializePlantStage, serializePlantWithStages } from "../lib/serialize.js";
+import {
+  MEDIA_RULES,
+  mediaRefSchema,
+  requireUploadedFile,
+  saveUploadedMedia,
+  unlinkMedia,
+} from "../lib/upload.js";
 
 // Admin CRUD for the Plant catalog: plants + their ordered growth stages,
 // plus the media uploads (picker image, per-stage mascot/mascotBg/heroVideo).
@@ -33,16 +34,6 @@ const paletteEnum = z.enum([
   "dawn",
 ]);
 
-// Plant/collection imageUrl used to be z.string().url(), but admin uploads
-// hand back relative /media/... paths, not absolute URLs. Accept either.
-const mediaPathSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .refine((v) => /^https?:\/\//i.test(v) || v.startsWith("/media/"), {
-    message: "must be an absolute http(s) URL or a /media/ path",
-  });
-
 const plantCreateBody = z.object({
   id: z
     .string()
@@ -50,7 +41,7 @@ const plantCreateBody = z.object({
   name: z.string().trim().min(1),
   tagline: z.string().trim().min(1),
   palette: paletteEnum,
-  imageUrl: mediaPathSchema.nullable().optional(),
+  imageUrl: mediaRefSchema.nullable().optional(),
   isPremium: z.boolean().optional(),
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
@@ -77,66 +68,6 @@ const STAGE_ASSET_COLUMN: Record<StageAssetKind, "mascotPath" | "mascotBgPath" |
   mascotBg: "mascotBgPath",
   heroVideo: "heroVideoPath",
 };
-
-const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
-const VIDEO_EXTENSIONS = new Set([".mp4", ".mov"]);
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
-
-type UploadedFile = NonNullable<Awaited<ReturnType<FastifyRequest["file"]>>>;
-
-/**
- * Pulls one uploaded file off the request with a per-call size limit.
- * `throwFileSizeLimit: false` keeps busboy from aborting the request on an
- * oversized file — it just truncates the stream and flags `.truncated`, which
- * `saveUploadedMedia` below checks once the write is done so we can clean up
- * the partial file and return our own `file_too_large` error.
- */
-async function requireUploadedFile(req: FastifyRequest, limitBytes: number): Promise<UploadedFile> {
-  const file = await req.file({
-    limits: { fileSize: limitBytes },
-    throwFileSizeLimit: false,
-  });
-  if (!file) throw ApiError.badRequest("No file uploaded");
-  return file;
-}
-
-/**
- * Streams an uploaded file to media/garden/{images|videos}/<uuid>.<ext>,
- * enforcing an extension allowlist and the caller's size limit. Returns the
- * relative /media/garden/... path to store on the row.
- */
-async function saveUploadedMedia(
-  file: UploadedFile,
-  mediaKind: "images" | "videos",
-): Promise<string> {
-  const ext = path.extname(file.filename).toLowerCase();
-  const allowed = mediaKind === "images" ? IMAGE_EXTENSIONS : VIDEO_EXTENSIONS;
-  if (!allowed.has(ext)) {
-    throw ApiError.badRequest(`Unsupported file type "${ext || "none"}"`, "unsupported_file_type");
-  }
-
-  const dir = path.join(env.MEDIA_DIR, "garden", mediaKind);
-  await fs.mkdir(dir, { recursive: true });
-  const name = `${crypto.randomUUID()}${ext}`;
-  const dest = path.join(dir, name);
-
-  await pipeline(file.file, createWriteStream(dest));
-
-  if (file.file.truncated) {
-    await fs.unlink(dest).catch(() => {});
-    throw ApiError.badRequest("File too large", "file_too_large");
-  }
-
-  return `/media/garden/${mediaKind}/${name}`;
-}
-
-/** Best-effort cleanup of a replaced/removed file — only ever under our own upload dir. */
-async function unlinkGardenMedia(relPath: string | null | undefined) {
-  if (!relPath || !relPath.startsWith("/media/garden/")) return;
-  const abs = path.join(env.MEDIA_DIR, relPath.slice("/media/".length));
-  await fs.unlink(abs).catch(() => {});
-}
 
 export async function adminGardenRoutes(app: FastifyInstance) {
   // ---- Plants ----
@@ -224,11 +155,11 @@ export async function adminGardenRoutes(app: FastifyInstance) {
 
     // Best-effort: the plant's own art plus every stage's assets are now
     // orphaned on disk. Never blocks the response.
-    await unlinkGardenMedia(existing.imageUrl);
+    await unlinkMedia(existing.imageUrl);
     for (const stage of existing.stages) {
-      await unlinkGardenMedia(stage.mascotPath);
-      await unlinkGardenMedia(stage.mascotBgPath);
-      await unlinkGardenMedia(stage.heroVideoPath);
+      await unlinkMedia(stage.mascotPath);
+      await unlinkMedia(stage.mascotBgPath);
+      await unlinkMedia(stage.heroVideoPath);
     }
 
     return { ok: true };
@@ -248,11 +179,11 @@ export async function adminGardenRoutes(app: FastifyInstance) {
     const plant = await prisma.plant.findUnique({ where: { id } });
     if (!plant) throw ApiError.notFound("Plant not found");
 
-    const file = await requireUploadedFile(req, MAX_IMAGE_BYTES);
-    const relPath = await saveUploadedMedia(file, "images");
+    const file = await requireUploadedFile(req, MEDIA_RULES.image.maxBytes);
+    const relPath = await saveUploadedMedia(file, "image", "garden/images");
 
     const updated = await prisma.plant.update({ where: { id }, data: { imageUrl: relPath } });
-    await unlinkGardenMedia(plant.imageUrl);
+    await unlinkMedia(plant.imageUrl);
     return { plant: serializePlant(updated) };
   });
 
@@ -326,9 +257,9 @@ export async function adminGardenRoutes(app: FastifyInstance) {
       }
     });
 
-    await unlinkGardenMedia(existing.mascotPath);
-    await unlinkGardenMedia(existing.mascotBgPath);
-    await unlinkGardenMedia(existing.heroVideoPath);
+    await unlinkMedia(existing.mascotPath);
+    await unlinkMedia(existing.mascotBgPath);
+    await unlinkMedia(existing.heroVideoPath);
 
     return { ok: true };
   });
@@ -362,8 +293,12 @@ export async function adminGardenRoutes(app: FastifyInstance) {
     if (!stage) throw ApiError.notFound("Stage not found");
 
     const isVideo = kind === "heroVideo";
-    const file = await requireUploadedFile(req, isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES);
-    const relPath = await saveUploadedMedia(file, isVideo ? "videos" : "images");
+    const file = await requireUploadedFile(req, isVideo ? MEDIA_RULES.video.maxBytes : MEDIA_RULES.image.maxBytes);
+    const relPath = await saveUploadedMedia(
+      file,
+      isVideo ? "video" : "image",
+      isVideo ? "garden/videos" : "garden/images",
+    );
 
     const column = STAGE_ASSET_COLUMN[kind];
     const oldPath = stage[column];
@@ -371,7 +306,7 @@ export async function adminGardenRoutes(app: FastifyInstance) {
       where: { id },
       data: { [column]: relPath },
     });
-    await unlinkGardenMedia(oldPath);
+    await unlinkMedia(oldPath);
 
     return { stage: serializePlantStage(updated) };
   });
@@ -389,7 +324,7 @@ export async function adminGardenRoutes(app: FastifyInstance) {
       where: { id },
       data: { [column]: null },
     });
-    await unlinkGardenMedia(oldPath);
+    await unlinkMedia(oldPath);
 
     return { stage: serializePlantStage(updated) };
   });

@@ -15,7 +15,7 @@ import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
 import { PlantStageCard } from '../components/PlantStageCard'
-import { AssetUpload } from '../components/AssetUpload'
+import { MediaDropzone } from '../components/MediaDropzone'
 
 function PlantDetailPage() {
   const { id = '' } = useParams()
@@ -232,7 +232,6 @@ function PlantDetailPage() {
                       id="editPlantPremium"
                       type="checkbox"
                       checked={edit.isPremium}
-                      style={{ width: 'auto' }}
                       onChange={(e) => setEdit({ ...edit, isPremium: e.target.checked })}
                     />
                     <label htmlFor="editPlantPremium">Premium</label>
@@ -242,7 +241,6 @@ function PlantDetailPage() {
                       id="editPlantDefault"
                       type="checkbox"
                       checked={edit.isDefault}
-                      style={{ width: 'auto' }}
                       onChange={(e) => setEdit({ ...edit, isDefault: e.target.checked })}
                     />
                     <label htmlFor="editPlantDefault">Default</label>
@@ -253,7 +251,6 @@ function PlantDetailPage() {
                     id="editPlantActive"
                     type="checkbox"
                     checked={edit.isActive}
-                    style={{ width: 'auto' }}
                     onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })}
                   />
                   <label htmlFor="editPlantActive">Active</label>
@@ -266,13 +263,12 @@ function PlantDetailPage() {
               </form>
 
               <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                <AssetUpload
+                <MediaDropzone
                   label="Picker image"
-                  accept="image/png,image/jpeg,image/webp"
+                  kind="image"
                   currentUrl={data.imageUrl}
-                  preview="image"
-                  onUpload={async (file) => {
-                    await uploadPlantImage(id, file)
+                  onUpload={async (file, onProgress) => {
+                    await uploadPlantImage(id, file, onProgress)
                     invalidateAll()
                   }}
                 />
@@ -309,9 +305,7 @@ function PlantDetailPage() {
             </form>
           </div>
 
-          <div className="row-between" style={{ marginBottom: 12 }}>
-            <h2 style={{ fontSize: 18 }}>Stages ({data.stages.length})</h2>
-          </div>
+          <h2 className="section-title">Stages ({data.stages.length})</h2>
 
           {stageListError && <div className="error-banner">{stageListError}</div>}
 

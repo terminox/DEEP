@@ -18,6 +18,7 @@ import { gardenRoutes } from "./routes/garden.js";
 import { heartsRoutes } from "./routes/hearts.js";
 import { adminRoutes } from "./routes/admin.js";
 import { adminGardenRoutes } from "./routes/adminGarden.js";
+import { adminMediaRoutes } from "./routes/adminMedia.js";
 
 export function buildApp() {
   const app = Fastify({ logger: true, trustProxy: true });
@@ -41,6 +42,9 @@ export function buildApp() {
   fs.mkdirSync(path.join(mediaRoot, "audio"), { recursive: true });
   fs.mkdirSync(path.join(mediaRoot, "garden", "images"), { recursive: true });
   fs.mkdirSync(path.join(mediaRoot, "garden", "videos"), { recursive: true });
+  fs.mkdirSync(path.join(mediaRoot, "uploads", "images"), { recursive: true });
+  fs.mkdirSync(path.join(mediaRoot, "uploads", "audio"), { recursive: true });
+  fs.mkdirSync(path.join(mediaRoot, "uploads", "videos"), { recursive: true });
   // maxAge lets clients reuse media for a week; ETags stay on, so stable-but-
   // mutable seed filenames still revalidate cheaply after expiry (no immutable).
   app.register(fastifyStatic, { root: mediaRoot, prefix: "/media/", maxAge: "7d" });
@@ -76,6 +80,7 @@ export function buildApp() {
   app.register(heartsRoutes);
   app.register(adminRoutes);
   app.register(adminGardenRoutes);
+  app.register(adminMediaRoutes);
 
   return app;
 }

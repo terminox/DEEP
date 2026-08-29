@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { deleteStageAsset, updateStage, uploadStageAsset } from '../api/endpoints'
 import type { PlantStage } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
-import { AssetUpload } from './AssetUpload'
+import { MediaDropzone } from './MediaDropzone'
 
 type Props = {
   stage: PlantStage
@@ -114,13 +114,12 @@ export function PlantStageCard({ stage, index, count, onMove, onDelete, onChange
             Assets
           </div>
           <div className="form-row">
-            <AssetUpload
+            <MediaDropzone
               label="Mascot — no background"
-              accept="image/png,image/jpeg,image/webp"
+              kind="image"
               currentUrl={stage.mascotUrl}
-              preview="image"
-              onUpload={async (file) => {
-                await uploadStageAsset(stage.id, 'mascot', file)
+              onUpload={async (file, onProgress) => {
+                await uploadStageAsset(stage.id, 'mascot', file, onProgress)
                 onChanged()
               }}
               onClear={async () => {
@@ -128,13 +127,12 @@ export function PlantStageCard({ stage, index, count, onMove, onDelete, onChange
                 onChanged()
               }}
             />
-            <AssetUpload
+            <MediaDropzone
               label="Mascot — with background (optional)"
-              accept="image/png,image/jpeg,image/webp"
+              kind="image"
               currentUrl={stage.mascotBgUrl}
-              preview="image"
-              onUpload={async (file) => {
-                await uploadStageAsset(stage.id, 'mascotBg', file)
+              onUpload={async (file, onProgress) => {
+                await uploadStageAsset(stage.id, 'mascotBg', file, onProgress)
                 onChanged()
               }}
               onClear={async () => {
@@ -143,13 +141,12 @@ export function PlantStageCard({ stage, index, count, onMove, onDelete, onChange
               }}
             />
           </div>
-          <AssetUpload
+          <MediaDropzone
             label="Hero video"
-            accept="video/mp4,video/quicktime"
+            kind="video"
             currentUrl={stage.heroVideoUrl}
-            preview="video"
-            onUpload={async (file) => {
-              await uploadStageAsset(stage.id, 'heroVideo', file)
+            onUpload={async (file, onProgress) => {
+              await uploadStageAsset(stage.id, 'heroVideo', file, onProgress)
               onChanged()
             }}
             onClear={async () => {

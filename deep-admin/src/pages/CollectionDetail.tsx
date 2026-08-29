@@ -8,6 +8,8 @@ import {
   listCategories,
   reorderTracks,
   updateCollection,
+  uploadMedia,
+  uploadTrackAudio,
 } from '../api/endpoints'
 import {
   PALETTES,
@@ -20,6 +22,7 @@ import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
 import { TrackCard } from '../components/TrackCard'
+import { MediaDropzone } from '../components/MediaDropzone'
 
 function CollectionDetailPage() {
   const { id = '' } = useParams()
@@ -40,6 +43,7 @@ function CollectionDetailPage() {
   const [duration, setDuration] = useState('60')
   const [kind, setKind] = useState<TrackKind>('INSTRUMENTAL')
   const [isPremium, setIsPremium] = useState(false)
+  const [pendingAudio, setPendingAudio] = useState<File | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   // ---- Collection edit form (populated once the collection loads) ----
@@ -91,20 +95,38 @@ function CollectionDetailPage() {
   })
 
   const create = useMutation({
-    mutationFn: () =>
-      createTrack({
+    mutationFn: async () => {
+      const track = await createTrack({
         collectionId: id,
         title,
         durationSeconds: Number(duration),
         kind,
         isPremium,
-      }),
-    onSuccess: () => {
+      })
+      // The row exists from here on, so a failed audio attach must not surface
+      // as a failed create — retrying the whole mutation would add a second,
+      // duplicate track. Report it instead and let the admin retry the upload
+      // from the track's own Audio field.
+      if (pendingAudio) {
+        try {
+          await uploadTrackAudio(track.id, pendingAudio)
+        } catch (e) {
+          return { audioError: apiErrorMessage(e) }
+        }
+      }
+      return { audioError: null }
+    },
+    onSuccess: ({ audioError }) => {
       setTitle('')
       setDuration('60')
       setKind('INSTRUMENTAL')
       setIsPremium(false)
-      setFormError(null)
+      setPendingAudio(null)
+      setFormError(
+        audioError
+          ? `Track created, but the audio upload failed: ${audioError} — attach it from the track's Audio field below.`
+          : null,
+      )
       invalidate()
     },
     onError: (e) => setFormError(apiErrorMessage(e)),
@@ -212,21 +234,26 @@ function CollectionDetailPage() {
                     required
                   />
                 </div>
-                <div className="field">
-                  <label>Cover image URL</label>
-                  <input
-                    type="url"
-                    value={edit.imageUrl}
-                    onChange={(e) => setEdit({ ...edit, imageUrl: e.target.value })}
-                    placeholder="https://…"
-                  />
-                </div>
+                <MediaDropzone
+                  label="Cover image"
+                  kind="image"
+                  currentUrl={edit.imageUrl || null}
+                  onUpload={async (file, onProgress) => {
+                    const media = await uploadMedia('image', file, onProgress)
+                    setEdit((f) => (f ? { ...f, imageUrl: media.path } : f))
+                  }}
+                  onClear={() => setEdit((f) => (f ? { ...f, imageUrl: '' } : f))}
+                  urlInput={{
+                    value: edit.imageUrl,
+                    onChange: (v) => setEdit((f) => (f ? { ...f, imageUrl: v } : f)),
+                    placeholder: 'https://…',
+                  }}
+                />
                 <div className="field checkbox-field">
                   <input
                     id="editColPremium"
                     type="checkbox"
                     checked={edit.isPremium}
-                    style={{ width: 'auto' }}
                     onChange={(e) => setEdit({ ...edit, isPremium: e.target.checked })}
                   />
                   <label htmlFor="editColPremium">Premium</label>
@@ -276,12 +303,23 @@ function CollectionDetailPage() {
                     id="trackPremium"
                     type="checkbox"
                     checked={isPremium}
-                    style={{ width: 'auto' }}
                     onChange={(e) => setIsPremium(e.target.checked)}
                   />
                   <label htmlFor="trackPremium">Premium</label>
                 </div>
               </div>
+              <MediaDropzone
+                label="Audio"
+                kind="audio"
+                currentUrl={null}
+                onUpload={async (file) => setPendingAudio(file)}
+                onDurationDetected={(seconds) => setDuration(String(Math.round(seconds)))}
+                hint={
+                  pendingAudio
+                    ? `Selected: ${pendingAudio.name} — uploads once the track is created`
+                    : undefined
+                }
+              />
               <div className="form-actions">
                 <button className="btn" type="submit" disabled={create.isPending}>
                   Add track
@@ -290,8 +328,8 @@ function CollectionDetailPage() {
             </form>
           </div>
 
-          <div className="row-between" style={{ marginBottom: 12 }}>
-            <h2 style={{ fontSize: 18 }}>Tracks ({data.tracks.length})</h2>
+          <div className="section-header">
+            <h2 className="section-title">Tracks ({data.tracks.length})</h2>
           </div>
 
           {data.tracks.length === 0 ? (

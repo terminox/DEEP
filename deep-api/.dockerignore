@@ -7,3 +7,4 @@ scripts
 geoip
 docker-compose.yml
 *.md
+media/uploads

@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { PrismaClient, type TrackKind } from "@prisma/client";
+import { readAudioDurationSeconds } from "../src/lib/audioDuration.js";
 
 const prisma = new PrismaClient();
 
@@ -571,13 +572,18 @@ async function main() {
   // Global Pause: singleton config, welcome copy, intentions (mirroring the
   // iOS Intention.samples), and a night's worth of sample peace messages so
   // the off-hours lobby feed isn't empty on first run.
-  // Explicit so a re-seed converges: the meditation phase window and duration
-  // must match the real length of the meditation asset (global-pause.mp3,
-  // 132 s), or a mid-window join seeks the client's player past EOF → silence.
+  //
+  // The duration is measured, never typed: it is how long the meditation phase
+  // runs, and a literal here would quietly stamp the seeded track's length over
+  // whatever an admin has since uploaded on any re-seed.
+  const meditationAudioPath = "/media/audio/global-pause.mp3";
+  const measured = await readAudioDurationSeconds(meditationAudioPath);
+  if (measured == null) {
+    throw new Error(`Couldn't read the length of ${meditationAudioPath} — is media/audio/ present?`);
+  }
   const pauseConfig = {
-    feedbackStart: "20:42:12",
-    meditationAudioPath: "/media/audio/global-pause.mp3",
-    meditationDurationSeconds: 132,
+    meditationAudioPath,
+    meditationDurationSeconds: measured,
   };
   await prisma.pauseConfig.upsert({
     where: { id: 1 },

@@ -63,7 +63,7 @@ function CategoryRow({
             {category.title}
           </Link>
         )}
-        {error && <div className="error-banner" style={{ marginTop: 8 }}>{error}</div>}
+        {error && <div className="error-banner">{error}</div>}
       </td>
       <td className="mono">
         {editing ? (
