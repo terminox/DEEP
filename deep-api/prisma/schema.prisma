@@ -51,6 +51,7 @@ model User {
   heartSpends      HeartSpend[]
   pauseAttendances PauseAttendance[]
   playlists        Playlist[]
+  contentDrafts    ContentDraft[]
 
   @@map("users")
 }
@@ -134,8 +135,9 @@ model Plant {
   isPremium    Boolean  @default(false)
   // Shown in onboarding (multiple allowed).
   isDefault    Boolean  @default(false)
-  // Publish switch so half-built plants never leak into the picker.
-  isActive     Boolean  @default(false)
+  // Visible in the picker. Half-built plants no longer leak in because an
+  // unpublished plant has no row at all - see ContentDraft.
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -186,6 +188,9 @@ model SoundCategory {
   slug         String            @unique
   title        String
   displayOrder Int               @default(0)
+  // Visible in the app. Publishing is what makes new content live; this is the
+  // separate lever for pulling live content down without deleting it.
+  isActive     Boolean           @default(true)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   collections  SoundCollection[]
@@ -202,6 +207,8 @@ model SoundCollection {
   imageUrl     String?
   displayOrder Int      @default(0)
   isPremium    Boolean  @default(false)
+  // See SoundCategory.isActive.
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -220,10 +227,12 @@ model SoundTrack {
   kind            TrackKind @default(INSTRUMENTAL)
   // Relative media path (e.g. /media/audio/xyz.mp3); served absolute to clients.
   audioPath       String?
-  displayOrder    Int       @default(0)
-  isPremium       Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  displayOrder    Int             @default(0)
+  isPremium       Boolean         @default(false)
+  // See SoundCategory.isActive.
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   collection    SoundCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   lyrics        TrackLyrics[]
@@ -492,4 +501,59 @@ model PauseAttendance {
 
   @@unique([userId, pauseDate])
   @@map("pause_attendances")
+}
+
+// ---- Safe publish: staged content changes ----
+//
+// Admin content writes are recorded here instead of being applied. Live tables
+// stay untouched until an admin explicitly publishes, so nothing an admin types
+// reaches the app by accident. The admin panel reads live rows overlaid with
+// these drafts; the app reads the live tables and needs no filter, because
+// unpublished content has no live row at all.
+
+enum DraftOp {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum DraftEntity {
+  SOUND_CATEGORY
+  SOUND_COLLECTION
+  SOUND_TRACK
+  TRACK_LYRICS
+  PLANT
+  PLANT_STAGE
+  PAUSE_CONFIG
+  PAUSE_WELCOME_MESSAGE
+  PAUSE_INTENTION
+}
+
+// One row per staged entity: repeat edits coalesce into the same row by merging
+// `patch`, so the review screen shows "this record changed", not a keystroke log.
+model ContentDraft {
+  id          String      @id @default(uuid())
+  entity      DraftEntity
+  // Live row id for UPDATE/DELETE; a pre-minted id for CREATE, so children can
+  // reference a parent that does not exist yet.
+  entityId    String
+  op          DraftOp
+  // Partial column patch. Null for DELETE.
+  patch       Json?
+  // The live row's updatedAt when the draft was first staged. Publish refuses if
+  // the row moved underneath, rather than silently clobbering.
+  baseVersion DateTime?
+  // Denormalised so the review screen renders without joining nine tables.
+  label       String
+  // "<entity>:<id>" of the parent, for grouping in the UI and publish ordering.
+  parentKey   String?
+  authorId    String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([entity, entityId])
+  @@index([parentKey])
+  @@map("content_drafts")
 }

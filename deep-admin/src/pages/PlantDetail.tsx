@@ -14,6 +14,8 @@ import { PALETTES, type Palette, type PlantDetail } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
+import { PendingBar } from '../components/PendingBar'
+import { PendingBadge } from '../components/PendingBadge'
 import { PlantStageCard } from '../components/PlantStageCard'
 import { MediaDropzone } from '../components/MediaDropzone'
 
@@ -169,9 +171,12 @@ function PlantDetailPage() {
               <PaletteSwatch palette={data.palette} />
               {data.isPremium && <span className="badge badge-premium">Premium</span>}
               {data.isDefault && <span className="badge">Default</span>}
-              <span className="badge">{data.isActive ? 'Active' : 'Draft'}</span>
+              <span className="badge">{data.isActive ? 'Visible' : 'Hidden'}</span>
+              <PendingBadge pending={data.pending} />
             </div>
           </div>
+
+          <PendingBar entityKey={`PLANT:${data.id}`} />
 
           {data.isDefault && data.isPremium && (
             <div className="warning-banner">
@@ -181,7 +186,7 @@ function PlantDetailPage() {
           )}
           {noActiveDefaults && (
             <div className="warning-banner">
-              Onboarding will show no plants — no active, non-premium plant is marked Default.
+              Onboarding will show no plants — no visible, non-premium plant is marked Default.
             </div>
           )}
 

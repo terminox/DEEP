@@ -12,6 +12,7 @@ import PlantDetailPage from './pages/PlantDetail'
 import UsersPage from './pages/Users'
 import PauseSettingsPage from './pages/PauseSettings'
 import PeaceMessagesPage from './pages/PeaceMessages'
+import PendingChangesPage from './pages/PendingChanges'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           }
         >
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/changes" element={<PendingChangesPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/categories/:id" element={<CategoryDetailPage />} />
           <Route path="/collections" element={<CollectionsPage />} />

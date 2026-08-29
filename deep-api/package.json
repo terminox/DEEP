@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Deep backend — auth, onboarding, and Deep Sound content.",
+  "description": "Deep backend \u2014 auth, onboarding, and Deep Sound content.",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test 'test/**/*.test.ts'",
     "geoip:update": "bash scripts/geoip-update.sh",
-    "seed:assets": "bash scripts/copy-garden-assets.sh"
+    "seed:assets": "bash scripts/copy-garden-assets.sh",
+    "verify:safe-publish": "node --import tsx scripts/verifySafePublish.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

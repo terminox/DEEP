@@ -5,6 +5,7 @@ import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireAuth } from "../auth/middleware.js";
 import { serializePlaylist } from "../lib/serialize.js";
+import { VISIBLE_TRACK } from "../lib/soundQuery.js";
 
 // Playlists: the tracks a listener kept for later.
 //
@@ -22,6 +23,12 @@ const DEFAULT_PLAYLIST_NAME = "Playlist";
  */
 const playlistInclude = {
   items: {
+    // Content pulled off the shelves disappears from the playlist too, rather
+    // than staying playable through a saved row - /sound/collections/:id and
+    // the completion award both 404 it, so a row that survived here would only
+    // offer a sound that refuses to credit anyone. The item is filtered, not
+    // deleted: making the collection visible again brings it back.
+    where: { track: VISIBLE_TRACK },
     orderBy: { createdAt: "desc" },
     include: { track: { include: { collection: true } } },
   },
@@ -101,8 +108,8 @@ export async function playlistRoutes(app: FastifyInstance) {
 
     await ownedPlaylist(id, userId);
 
-    const track = await prisma.soundTrack.findUnique({
-      where: { id: trackId },
+    const track = await prisma.soundTrack.findFirst({
+      where: { id: trackId, ...VISIBLE_TRACK },
       select: { id: true },
     });
     if (!track) throw ApiError.notFound("Track not found", "track_not_found");

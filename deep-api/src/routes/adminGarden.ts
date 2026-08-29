@@ -1,25 +1,36 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import type { Plant, PlantStage } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireRole } from "../auth/middleware.js";
-import { validateThresholds } from "../lib/awardRules.js";
 import { serializePlant, serializePlantStage, serializePlantWithStages } from "../lib/serialize.js";
-import {
-  MEDIA_RULES,
-  mediaRefSchema,
-  requireUploadedFile,
-  saveUploadedMedia,
-  unlinkMedia,
-} from "../lib/upload.js";
+import { MEDIA_RULES, mediaRefSchema, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
+import { resolveMany, resolveOne, withPending } from "../lib/drafts/overlay.js";
+import { stageCreate, stageDelete, stageReorder, stageUpdate } from "../lib/drafts/stage.js";
 
 // Admin CRUD for the Plant catalog: plants + their ordered growth stages,
 // plus the media uploads (picker image, per-stage mascot/mascotBg/heroVideo).
 // Mirrors admin.ts's conventions (adminOnly preHandler, zod bodies, {thing}
-// envelopes, reorder transactions) — kept in its own file per the plan.
+// envelopes) — and, like admin.ts, every write here is staged rather than
+// applied. See lib/drafts.
+//
+// Two behaviours changed when staging landed, both forced by it:
+//
+// 1. Nothing unlinks replaced media any more. A staged path swap leaves the
+//    live row pointing at the old file, so deleting it on upload would break
+//    live content immediately - the exact accident this feature exists to
+//    prevent. Orphaned files are now a separate sweep, not this file's job.
+// 2. Stage thresholds are validated at publish, not on every keystroke. Staging
+//    means you can add a stage and renumber the ladder as two edits without the
+//    intermediate state being rejected; the review screen blocks publishing an
+//    invalid ladder.
 
 const adminOnly = { preHandler: requireRole("ADMIN") };
+
+function actor(req: FastifyRequest): string {
+  return req.auth!.sub;
+}
 
 // Duplicated from admin.ts's paletteEnum on purpose: plants and sound
 // collections are unrelated catalogs that happen to share a palette
@@ -69,218 +80,133 @@ const STAGE_ASSET_COLUMN: Record<StageAssetKind, "mascotPath" | "mascotBgPath" |
   heroVideo: "heroVideoPath",
 };
 
+const idParam = z.object({ id: z.string() });
+
+async function resolvedStages() {
+  return resolveMany<PlantStage>("PLANT_STAGE", await prisma.plantStage.findMany());
+}
+
 export async function adminGardenRoutes(app: FastifyInstance) {
   // ---- Plants ----
   app.get("/admin/plants", adminOnly, async () => {
-    const plants = await prisma.plant.findMany({
-      orderBy: { displayOrder: "asc" },
-      include: { _count: { select: { stages: true } } },
-    });
+    const plants = await resolveMany<Plant>("PLANT", await prisma.plant.findMany());
+    const stages = await resolvedStages();
     return {
-      plants: plants.map((p) => ({ ...serializePlant(p), stageCount: p._count.stages })),
+      plants: plants.map((p) =>
+        withPending(
+          {
+            ...serializePlant(p.row),
+            stageCount: stages.filter((s) => s.row.plantId === p.row.id).length,
+          },
+          p.pending,
+        ),
+      ),
     };
   });
 
   app.get("/admin/plants/:id", adminOnly, async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
-    const plant = await prisma.plant.findUnique({
-      where: { id },
-      include: { stages: { orderBy: { displayOrder: "asc" } } },
-    });
+    const { id } = idParam.parse(req.params);
+    const plant = await resolveOne<Plant>("PLANT", id);
     if (!plant) throw ApiError.notFound("Plant not found");
-    return { plant: serializePlantWithStages(plant) };
+
+    const stages = (await resolvedStages()).filter((s) => s.row.plantId === id);
+    return {
+      plant: withPending(
+        {
+          ...serializePlantWithStages({ ...plant.row, stages: stages.map((s) => s.row) }),
+          stages: stages.map((s) => withPending(serializePlantStage(s.row), s.pending)),
+        },
+        plant.pending,
+      ),
+    };
   });
 
   app.post("/admin/plants", adminOnly, async (req) => {
     const body = plantCreateBody.parse(req.body);
-    let created;
-    try {
-      created = await prisma.plant.create({
-        data: {
-          id: body.id,
-          name: body.name,
-          tagline: body.tagline,
-          palette: body.palette,
-          imageUrl: body.imageUrl ?? null,
-          isPremium: body.isPremium ?? false,
-          isDefault: body.isDefault ?? false,
-          isActive: body.isActive ?? false,
-          displayOrder: body.displayOrder ?? 0,
-        },
-      });
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-        throw ApiError.conflict("A plant with this id already exists", "plant_id_taken");
-      }
-      throw e;
-    }
-    return { plant: serializePlantWithStages({ ...created, stages: [] }) };
+    // stageCreate rejects an id already taken by a live row or another draft.
+    const staged = await stageCreate<Plant>("PLANT", body, actor(req));
+    return {
+      plant: withPending(
+        serializePlantWithStages({ ...staged.row, stages: [] }),
+        staged.pending,
+      ),
+    };
   });
 
   app.patch("/admin/plants/:id", adminOnly, async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { id } = idParam.parse(req.params);
     const body = plantUpdateBody.parse(req.body);
-    const existing = await prisma.plant.findUnique({ where: { id } });
-    if (!existing) throw ApiError.notFound("Plant not found");
-
-    const updated = await prisma.plant.update({
-      where: { id },
-      data: {
-        ...body,
-        imageUrl: body.imageUrl === undefined ? undefined : body.imageUrl,
-      },
-      include: { stages: { orderBy: { displayOrder: "asc" } } },
-    });
-    return { plant: serializePlantWithStages(updated) };
+    const staged = await stageUpdate<Plant>("PLANT", id, body, actor(req));
+    const stages = (await resolvedStages()).filter((s) => s.row.plantId === id);
+    return {
+      plant: withPending(
+        serializePlantWithStages({ ...staged.row, stages: stages.map((s) => s.row) }),
+        staged.pending,
+      ),
+    };
   });
 
   app.delete("/admin/plants/:id", adminOnly, async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
-    const existing = await prisma.plant.findUnique({
-      where: { id },
-      include: { stages: true },
-    });
-    if (!existing) throw ApiError.notFound("Plant not found");
+    const { id } = idParam.parse(req.params);
+    // Checked now as well as at publish: staging a deletion that can never be
+    // published would just sit in the review screen as an unclearable blocker.
+    const inUse = await prisma.userPlantProgress.count({ where: { plantId: id } });
+    if (inUse > 0) throw ApiError.conflict("Plant has user progress", "plant_in_use");
 
-    try {
-      // selectedPlantId is onDelete: SetNull, so users pointed at this plant
-      // fall back to the lazy-default-assignment path automatically.
-      await prisma.plant.delete({ where: { id } });
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
-        throw ApiError.conflict("Plant has user progress", "plant_in_use");
-      }
-      throw e;
-    }
-
-    // Best-effort: the plant's own art plus every stage's assets are now
-    // orphaned on disk. Never blocks the response.
-    await unlinkMedia(existing.imageUrl);
-    for (const stage of existing.stages) {
-      await unlinkMedia(stage.mascotPath);
-      await unlinkMedia(stage.mascotBgPath);
-      await unlinkMedia(stage.heroVideoPath);
-    }
-
+    await stageDelete("PLANT", id, actor(req));
     return { ok: true };
   });
 
   app.post("/admin/plants/reorder", adminOnly, async (req) => {
     const { ids } = z.object({ ids: z.array(z.string()) }).parse(req.body);
-    await prisma.$transaction(
-      ids.map((id, i) => prisma.plant.update({ where: { id }, data: { displayOrder: i } })),
-    );
+    await stageReorder("PLANT", ids, actor(req));
     return { ok: true };
   });
 
-  // Plant picker card art.
+  // Plant picker card art. Bytes land now; the row only points at them on publish.
   app.post("/admin/plants/:id/image", adminOnly, async (req: FastifyRequest) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
-    const plant = await prisma.plant.findUnique({ where: { id } });
+    const { id } = idParam.parse(req.params);
+    const plant = await resolveOne<Plant>("PLANT", id);
     if (!plant) throw ApiError.notFound("Plant not found");
 
     const file = await requireUploadedFile(req, MEDIA_RULES.image.maxBytes);
     const relPath = await saveUploadedMedia(file, "image", "garden/images");
 
-    const updated = await prisma.plant.update({ where: { id }, data: { imageUrl: relPath } });
-    await unlinkMedia(plant.imageUrl);
-    return { plant: serializePlant(updated) };
+    const staged = await stageUpdate<Plant>("PLANT", id, { imageUrl: relPath }, actor(req));
+    return { plant: withPending(serializePlant(staged.row), staged.pending) };
   });
 
   // ---- Stages ----
-  // Every mutation below re-validates the plant's full ordered threshold
-  // ladder inside the same transaction; an invalid result rolls the whole
-  // thing back and surfaces as 400 invalid_thresholds.
-
   app.post("/admin/plants/:id/stages", adminOnly, async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { id } = idParam.parse(req.params);
     const body = stageCreateBody.parse(req.body);
-    const plant = await prisma.plant.findUnique({ where: { id } });
+    const plant = await resolveOne<Plant>("PLANT", id);
     if (!plant) throw ApiError.notFound("Plant not found");
 
-    const stage = await prisma.$transaction(async (tx) => {
-      const created = await tx.plantStage.create({
-        data: {
-          plantId: id,
-          name: body.name,
-          sunlightRequired: body.sunlightRequired,
-          displayOrder: body.displayOrder ?? 0,
-        },
-      });
-      const ladder = await tx.plantStage.findMany({ where: { plantId: id } });
-      if (!validateThresholds(ladder)) {
-        throw ApiError.badRequest(
-          "Stage thresholds must start at 0 and strictly increase",
-          "invalid_thresholds",
-        );
-      }
-      return created;
-    });
-
-    return { stage: serializePlantStage(stage) };
+    const staged = await stageCreate<PlantStage>(
+      "PLANT_STAGE",
+      { plantId: id, ...body },
+      actor(req),
+    );
+    return { stage: withPending(serializePlantStage(staged.row), staged.pending) };
   });
 
   app.patch("/admin/plant-stages/:id", adminOnly, async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { id } = idParam.parse(req.params);
     const body = stageUpdateBody.parse(req.body);
-    const existing = await prisma.plantStage.findUnique({ where: { id } });
-    if (!existing) throw ApiError.notFound("Stage not found");
-
-    const stage = await prisma.$transaction(async (tx) => {
-      const updated = await tx.plantStage.update({ where: { id }, data: body });
-      const ladder = await tx.plantStage.findMany({ where: { plantId: existing.plantId } });
-      if (!validateThresholds(ladder)) {
-        throw ApiError.badRequest(
-          "Stage thresholds must start at 0 and strictly increase",
-          "invalid_thresholds",
-        );
-      }
-      return updated;
-    });
-
-    return { stage: serializePlantStage(stage) };
+    const staged = await stageUpdate<PlantStage>("PLANT_STAGE", id, body, actor(req));
+    return { stage: withPending(serializePlantStage(staged.row), staged.pending) };
   });
 
   app.delete("/admin/plant-stages/:id", adminOnly, async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
-    const existing = await prisma.plantStage.findUnique({ where: { id } });
-    if (!existing) throw ApiError.notFound("Stage not found");
-
-    await prisma.$transaction(async (tx) => {
-      await tx.plantStage.delete({ where: { id } });
-      const ladder = await tx.plantStage.findMany({ where: { plantId: existing.plantId } });
-      if (!validateThresholds(ladder)) {
-        throw ApiError.badRequest(
-          "Stage thresholds must start at 0 and strictly increase",
-          "invalid_thresholds",
-        );
-      }
-    });
-
-    await unlinkMedia(existing.mascotPath);
-    await unlinkMedia(existing.mascotBgPath);
-    await unlinkMedia(existing.heroVideoPath);
-
+    const { id } = idParam.parse(req.params);
+    await stageDelete("PLANT_STAGE", id, actor(req));
     return { ok: true };
   });
 
   app.post("/admin/plants/:id/stages/reorder", adminOnly, async (req) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
     const { ids } = z.object({ ids: z.array(z.string()) }).parse(req.body);
-
-    await prisma.$transaction(async (tx) => {
-      await Promise.all(
-        ids.map((stageId, i) => tx.plantStage.update({ where: { id: stageId }, data: { displayOrder: i } })),
-      );
-      const ladder = await tx.plantStage.findMany({ where: { plantId: id } });
-      if (!validateThresholds(ladder)) {
-        throw ApiError.badRequest(
-          "Stage thresholds must start at 0 and strictly increase",
-          "invalid_thresholds",
-        );
-      }
-    });
-
+    await stageReorder("PLANT_STAGE", ids, actor(req));
     return { ok: true };
   });
 
@@ -289,43 +215,42 @@ export async function adminGardenRoutes(app: FastifyInstance) {
     const { id, kind } = z
       .object({ id: z.string(), kind: stageAssetKind })
       .parse(req.params);
-    const stage = await prisma.plantStage.findUnique({ where: { id } });
+    const stage = await resolveOne<PlantStage>("PLANT_STAGE", id);
     if (!stage) throw ApiError.notFound("Stage not found");
 
     const isVideo = kind === "heroVideo";
-    const file = await requireUploadedFile(req, isVideo ? MEDIA_RULES.video.maxBytes : MEDIA_RULES.image.maxBytes);
+    const file = await requireUploadedFile(
+      req,
+      isVideo ? MEDIA_RULES.video.maxBytes : MEDIA_RULES.image.maxBytes,
+    );
     const relPath = await saveUploadedMedia(
       file,
       isVideo ? "video" : "image",
       isVideo ? "garden/videos" : "garden/images",
     );
 
-    const column = STAGE_ASSET_COLUMN[kind];
-    const oldPath = stage[column];
-    const updated = await prisma.plantStage.update({
-      where: { id },
-      data: { [column]: relPath },
-    });
-    await unlinkMedia(oldPath);
-
-    return { stage: serializePlantStage(updated) };
+    const staged = await stageUpdate<PlantStage>(
+      "PLANT_STAGE",
+      id,
+      { [STAGE_ASSET_COLUMN[kind]]: relPath },
+      actor(req),
+    );
+    return { stage: withPending(serializePlantStage(staged.row), staged.pending) };
   });
 
   app.delete("/admin/plant-stages/:id/assets/:kind", adminOnly, async (req) => {
     const { id, kind } = z
       .object({ id: z.string(), kind: stageAssetKind })
       .parse(req.params);
-    const stage = await prisma.plantStage.findUnique({ where: { id } });
+    const stage = await resolveOne<PlantStage>("PLANT_STAGE", id);
     if (!stage) throw ApiError.notFound("Stage not found");
 
-    const column = STAGE_ASSET_COLUMN[kind];
-    const oldPath = stage[column];
-    const updated = await prisma.plantStage.update({
-      where: { id },
-      data: { [column]: null },
-    });
-    await unlinkMedia(oldPath);
-
-    return { stage: serializePlantStage(updated) };
+    const staged = await stageUpdate<PlantStage>(
+      "PLANT_STAGE",
+      id,
+      { [STAGE_ASSET_COLUMN[kind]]: null },
+      actor(req),
+    );
+    return { stage: withPending(serializePlantStage(staged.row), staged.pending) };
   });
 }

@@ -586,6 +586,18 @@ textarea {
   color: var(--lavender-strong);
 }
 
+/* Staged-change badges. Amber = waiting to be published, red = waiting to be
+   deleted; both mean "the app is not showing this yet". */
+.badge-pending {
+  background: #fbf1d8;
+  color: #9a7a1f;
+}
+
+.badge-deleting {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .palette-swatch {
   display: inline-flex;
   align-items: center;
@@ -829,4 +841,156 @@ audio {
   .page-area {
     padding: var(--space-4) var(--space-3) var(--space-6);
   }
+}
+
+/* ---------- Safe publish ---------- */
+
+/* The nav count is the one always-on reminder that work is staged. */
+.nav-link-changes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.nav-count {
+  min-width: 22px;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: #fbf1d8;
+  color: #9a7a1f;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.nav-link-active .nav-count {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--lavender-strong);
+}
+
+/* Per-record publish strip, sitting under a page header. */
+.pending-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pending-bar-text {
+  flex: 1;
+  min-width: 240px;
+}
+
+.pending-bar-text a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.pending-bar-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pending-bar-error {
+  flex-basis: 100%;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.selection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* One staged change in the review screen. */
+.change-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.change-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.change-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.change-noun {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.change-label {
+  font-size: 15px;
+}
+
+.change-meta {
+  font-size: 12px;
+}
+
+/* before → after, aligned so a column of edits scans vertically. */
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.diff-table td {
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  vertical-align: top;
+}
+
+.diff-field {
+  width: 30%;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.diff-before {
+  width: 30%;
+  color: var(--text-soft);
+  text-decoration: line-through;
+}
+
+.diff-arrow {
+  width: 20px;
+  color: var(--text-soft);
+}
+
+.diff-after {
+  width: 30%;
+  font-weight: 600;
+}
+
+/* A title that sits beside a staged-change badge. */
+.title-cell-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Sits under a form's submit row to say the save will be staged. */
+.form-hint {
+  flex-basis: 100%;
+  font-size: 13px;
 }

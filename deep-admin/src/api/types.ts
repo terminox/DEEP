@@ -1,5 +1,77 @@
 export type Role = 'ADMIN' | 'USER'
 
+// ---- Safe publish ----
+//
+// Every content row the admin edits can carry a staged change. `pending` is
+// null when the row matches what the app is serving, and otherwise says how it
+// differs. Publishing is what moves content; `isActive` is the separate lever
+// for hiding LIVE content without deleting it.
+
+export type DraftOp = 'CREATE' | 'UPDATE' | 'DELETE'
+
+export type PendingMarker = {
+  op: DraftOp
+  changedFields: string[]
+  stagedAt: string
+}
+
+export type Pending = { pending: PendingMarker | null }
+
+export type ChangeArea = 'sound' | 'garden' | 'pause'
+
+export const CHANGE_AREA_LABELS: Record<ChangeArea, string> = {
+  sound: 'Deep Sound',
+  garden: 'Mind Garden',
+  pause: 'Global Pause',
+}
+
+export type FieldDiff = {
+  field: string
+  before: unknown
+  after: unknown
+}
+
+export type CascadeImpact = {
+  noun: string
+  count: number
+}
+
+export type PendingChange = {
+  key: string
+  entity: string
+  entityId: string
+  noun: string
+  area: ChangeArea
+  op: DraftOp
+  label: string
+  parentKey: string | null
+  parentLabel: string | null
+  stagedAt: string
+  authorName: string
+  fields: FieldDiff[]
+  cascade: CascadeImpact[]
+}
+
+export type ValidationReport = {
+  resolved: string[]
+  /** Pulled in automatically because a selected change depends on them. */
+  addedByDependency: string[]
+  blockers: string[]
+  warnings: string[]
+}
+
+export type PublishResult = {
+  published: number
+  refs: string[]
+  warnings: string[]
+}
+
+export type DiscardResult = {
+  discarded: number
+  refs: string[]
+}
+
+
 export type Palette =
   | 'tide'
   | 'dusk'
@@ -31,15 +103,16 @@ export type AdminUser = {
   createdAt: string
 }
 
-export type Category = {
+export type Category = Pending & {
   id: string
   slug: string
   title: string
   displayOrder: number
+  isActive: boolean
   collectionCount: number
 }
 
-export type Collection = {
+export type Collection = Pending & {
   id: string
   categoryId: string
   title: string
@@ -47,22 +120,24 @@ export type Collection = {
   palette: Palette
   imageUrl: string | null
   isPremium: boolean
+  isActive: boolean
   displayOrder: number
   trackCount: number
 }
 
-export type Track = {
+export type Track = Pending & {
   id: string
   title: string
   durationSeconds: number
   kind: TrackKind
   audioUrl: string | null
   isPremium: boolean
+  isActive: boolean
   displayOrder: number
   lyricsLanguages: string[]
 }
 
-export type CollectionDetail = {
+export type CollectionDetail = Pending & {
   id: string
   categoryId: string
   title: string
@@ -70,11 +145,12 @@ export type CollectionDetail = {
   palette: Palette
   imageUrl: string | null
   isPremium: boolean
+  isActive: boolean
   displayOrder: number
   tracks: Track[]
 }
 
-export type Lyrics = {
+export type Lyrics = Pending & {
   id: string
   trackId: string
   languageCode: string
@@ -83,7 +159,7 @@ export type Lyrics = {
 
 export type StageAssetKind = 'mascot' | 'mascotBg' | 'heroVideo'
 
-export type Plant = {
+export type Plant = Pending & {
   id: string
   name: string
   tagline: string
@@ -96,7 +172,7 @@ export type Plant = {
   stageCount?: number
 }
 
-export type PlantStage = {
+export type PlantStage = Pending & {
   id: string
   plantId: string
   name: string
@@ -107,7 +183,7 @@ export type PlantStage = {
   heroVideoUrl: string | null
 }
 
-export type PlantDetail = {
+export type PlantDetail = Pending & {
   id: string
   name: string
   tagline: string
@@ -120,7 +196,7 @@ export type PlantDetail = {
   stages: PlantStage[]
 }
 
-export type PauseConfig = {
+export type PauseConfig = Pending & {
   id: number
   timezone: string
   lobbyStart: string
@@ -135,14 +211,14 @@ export type PauseConfig = {
   updatedAt: string
 }
 
-export type PauseWelcomeMessage = {
+export type PauseWelcomeMessage = Pending & {
   id: string
   text: string
   displayOrder: number
   isActive: boolean
 }
 
-export type PauseIntentionOption = {
+export type PauseIntentionOption = Pending & {
   id: string
   key: string
   label: string

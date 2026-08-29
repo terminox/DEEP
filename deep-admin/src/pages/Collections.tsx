@@ -14,6 +14,7 @@ import { PALETTES, type Collection, type Palette } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { PaletteSwatch } from '../components/PaletteSwatch'
+import { PendingBadge } from '../components/PendingBadge'
 import { MediaDropzone } from '../components/MediaDropzone'
 
 type FormState = {
@@ -279,6 +280,8 @@ function CollectionsPage() {
               {(collections.data ?? []).map((c, i) => (
                 <tr key={c.id}>
                   <td>
+                    <PendingBadge pending={c.pending} />
+                    {!c.isActive && <span className="badge">Hidden</span>}
                     <Link to={`/collections/${c.id}`} className="title-cell">
                       {c.title}
                     </Link>
