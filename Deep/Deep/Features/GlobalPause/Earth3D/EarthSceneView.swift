@@ -223,6 +223,7 @@ final class EarthSceneView: UIView {
   }
 }
 
+#if DEBUG
 #Preview("Earth scene — active world") {
   let scene = GlobalPauseEarthScene.preview
   let view = EarthSceneView(glow: scene.glow, interaction: scene.interaction, ripples: scene.ripples)
@@ -230,3 +231,4 @@ final class EarthSceneView: UIView {
   view.backgroundColor = .moonCream
   return view
 }
+#endif

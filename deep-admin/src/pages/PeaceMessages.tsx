@@ -97,7 +97,10 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
       </td>
       <td>
         {message.text}
-        {error && <div className="error-banner">{error}</div>}
+        {message.intention && (
+          <div className="subtitle-cell">{message.intention}</div>
+        )}
+        {error && <div className="error-banner" style={{ marginTop: 8 }}>{error}</div>}
       </td>
       <td>
         {message.status === 'PUBLISHED' ? (

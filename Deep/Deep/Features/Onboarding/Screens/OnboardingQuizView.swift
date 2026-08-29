@@ -71,7 +71,9 @@ struct OnboardingQuizView: View {
   }
 }
 
+#if DEBUG
 #Preview("Onboarding — Quiz") {
   OnboardingQuizView(index: 0)
     .environment(\.onboardingStore, MockOnboardingStore.fresh)
 }
+#endif

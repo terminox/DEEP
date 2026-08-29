@@ -174,6 +174,7 @@ private struct TrackRow: View {
   }
 }
 
+#if DEBUG
 #Preview("Collection Detail") {
   NavigationStack {
     CollectionDetailView(
@@ -183,3 +184,4 @@ private struct TrackRow: View {
     .environment(\.soundPlayer, MockSoundPlayer.idle)
   }
 }
+#endif

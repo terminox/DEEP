@@ -50,6 +50,7 @@ extension EnvironmentValues {
   @Entry var openCollection: (SoundCollection) -> Void = { _ in }
 }
 
+#if DEBUG
 #Preview("Deep Sound — Home") {
   DeepSoundCoordinatorView(player: MockSoundPlayer.idle)
 }
@@ -57,3 +58,4 @@ extension EnvironmentValues {
 #Preview("Deep Sound — Now Playing") {
   DeepSoundCoordinatorView(player: MockSoundPlayer.playing)
 }
+#endif

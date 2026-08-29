@@ -25,20 +25,30 @@ struct GlobalPauseCompletionView: View {
 
   var body: some View {
     ZStack {
+      // One atmosphere for the whole ending. Held here rather than inside each
+      // half so the reflection → ritual crossfade never dissolves two
+      // independently drifting copies of it into each other. `veils: false`
+      // for the same family of reason: `SoftDriftTransition` clips
+      // `AtmosphereBackground`'s blurred orbs into hard discs if it rasterizes
+      // them under an animated blur.
+      Color.moonCream.ignoresSafeArea()
+      AtmosphereBackground()
+
       if let receipt {
         RewardRitualView(
           receipt: receipt,
           // A pause night adds no practice day, so the beat witnesses the run
           // rather than crediting today.
           continuityHeadline: "Your rhythm continues",
+          paintsBackground: false,
           onFinish: onFinish
         )
-        .transition(.softDrift)
+        .transition(.softDrift(veils: false))
       } else {
         GlobalPauseReflectionView(isPreparing: isPreparing) {
           Task { await showRewards() }
         }
-        .transition(.softDrift)
+        .transition(.softDrift(veils: false))
       }
     }
   }
@@ -65,6 +75,7 @@ struct GlobalPauseCompletionView: View {
   }
 }
 
+#if DEBUG
 #Preview("Pause ending") {
   GlobalPauseCompletionView(before: .sample)
     .environment(\.globalPauseSession, .previewAwarded())
@@ -80,3 +91,4 @@ struct GlobalPauseCompletionView: View {
     .environment(\.gardenStore, .sample)
     .environment(\.continuityWitness, .witnessed)
 }
+#endif

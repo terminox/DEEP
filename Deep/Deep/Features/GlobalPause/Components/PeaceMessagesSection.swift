@@ -6,6 +6,9 @@ import SwiftUI
 /// card scrolls into view.
 struct PeaceMessagesSection: View {
   let messages: [PeaceMessage]
+  /// Tonight's intention options, used to read a message's tag back as the
+  /// label the member chose. Empty falls back to the humanised key.
+  var intentions: [Intention] = []
   var isLoadingMore = false
   var onReachEnd: () -> Void = {}
 
@@ -15,7 +18,7 @@ struct PeaceMessagesSection: View {
 
       LazyVStack(alignment: .leading, spacing: 12) {
         ForEach(messages) { message in
-          PeaceMessageCard(message: message)
+          PeaceMessageCard(message: message, intentions: intentions)
             .onAppear {
               if message.id == messages.last?.id { onReachEnd() }
             }
@@ -33,24 +36,20 @@ struct PeaceMessagesSection: View {
   }
 }
 
-/// One message: author, quote, and how long ago it was posted.
+/// One message: who and where from, the quote, when it was left, and the word
+/// it was tagged with. Shares its chrome with `PeaceMessageComposerCard`, so
+/// what a member writes into is exactly what the world reads back.
 private struct PeaceMessageCard: View {
   let message: PeaceMessage
+  let intentions: [Intention]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      HStack(alignment: .center, spacing: 8) {
-        PeaceMessageAvatar(
-          tint: Self.tint(for: message.id),
-          initial: message.displayName.first.map(String.init) ?? "?"
-        )
-        .frame(width: 32, height: 32)
-
-        Text(message.displayName)
-          .font(DeepType.body.weight(.medium))
-          .foregroundStyle(.deepPlum)
-          .lineLimit(1)
-      }
+      PeaceMessageIdentity(
+        name: message.displayName,
+        place: message.countryName,
+        tintSeed: message.id
+      )
 
       Text("\u{201C}\(message.text)\u{201D}")
         .font(DeepType.caption)
@@ -59,61 +58,40 @@ private struct PeaceMessageCard: View {
         .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .leading)
 
-      Text(message.createdAt, format: .relative(presentation: .named))
-        .font(DeepType.micro)
-        .foregroundStyle(.driftGrey)
+      HStack(alignment: .center, spacing: 8) {
+        Text(message.createdAt, format: .relative(presentation: .named))
+          .font(DeepType.micro)
+          .foregroundStyle(.driftGrey)
+          // Not a Spacer — see `PeaceMessageIdentity`.
+          .frame(maxWidth: .infinity, alignment: .leading)
+
+        if let tag = message.intentionLabel(in: intentions) {
+          DeepTagLabel(label: tag)
+        }
+      }
     }
-    .padding(14)
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .frostedCard(cornerRadius: 20)
+    .peaceMessageCard()
     .accessibilityElement(children: .combine)
-    .accessibilityLabel(
-      "\(message.displayName) says: \(message.text), "
-      + "\(message.createdAt.formatted(.relative(presentation: .named)))"
-    )
+    .accessibilityLabel(accessibilityLabel)
   }
 
-  /// Hashes the id into one of four tints so a message keeps its colour
-  /// across refreshes.
-  private static func tint(for id: String) -> Color {
-    let tints: [Color] = [.lavenderMist, .blushPowder, .skyWash, .peachCloud]
-    let index = abs(id.utf8.reduce(0) { ($0 &* 31) &+ Int($1) }) % tints.count
-    return tints[index]
-  }
-}
-
-/// A radial-gradient avatar with a serif italic initial.
-private struct PeaceMessageAvatar: View {
-  let tint: Color
-  let initial: String
-
-  var body: some View {
-    ZStack {
-      Circle()
-        .fill(
-          RadialGradient(
-            colors: [.white.opacity(0.95), tint.opacity(0.85)],
-            center: .topLeading,
-            startRadius: 1,
-            endRadius: 24
-          )
-        )
-      Text(initial)
-        .font(.system(.subheadline, design: .serif, weight: .light))
-        .italic()
-        .foregroundStyle(Color.deepPlum.opacity(0.85))
-    }
-    .overlay(
-      Circle().stroke(.white.opacity(0.7), lineWidth: 0.6)
-    )
-    .shadow(color: tint.opacity(0.4), radius: 6, x: 0, y: 3)
+  private var accessibilityLabel: String {
+    var parts = [message.displayName]
+    if !message.countryName.isEmpty { parts.append("from \(message.countryName)") }
+    parts.append("says: \(message.text)")
+    parts.append(message.createdAt.formatted(.relative(presentation: .named)))
+    if let tag = message.intentionLabel(in: intentions) { parts.append("tagged \(tag)") }
+    return parts.joined(separator: ", ")
   }
 }
 
 #Preview("Peace Messages") {
   ScrollView {
-    PeaceMessagesSection(messages: FixturePauseEventRepository.sampleMessages)
-      .padding(.vertical, 24)
+    PeaceMessagesSection(
+      messages: FixturePauseEventRepository.sampleMessages,
+      intentions: Intention.samples
+    )
+    .padding(.vertical, 24)
   }
   .background { AtmosphereBackground() }
 }
@@ -122,6 +100,7 @@ private struct PeaceMessageAvatar: View {
   ScrollView {
     PeaceMessagesSection(
       messages: FixturePauseEventRepository.sampleMessages,
+      intentions: Intention.samples,
       isLoadingMore: true
     )
     .padding(.vertical, 24)

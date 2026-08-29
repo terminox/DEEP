@@ -148,7 +148,7 @@ struct GardenRewardView: View {
     guard let next = growth.nextStage,
           let goal = growth.sunlightToEvolve
     else {
-      return "\(displayedSunlight.formatted()) sunlight · fully grown"
+      return "\(displayedSunlight.formatted()) sunlight, fully grown"
     }
     return "\(displayedSunlight.formatted()) of \(goal.formatted()) to \(next.name)"
   }

@@ -18,6 +18,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private let heartLedger: HeartLedger
   private let gardenStore: GardenStore
   private let continuityWitness: ContinuityWitness
+  private let accountStore: any AccountStore
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
   private let imageLoader: any ImageLoading
@@ -53,6 +54,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
     continuityWitness: ContinuityWitness,
+    accountStore: any AccountStore,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
     imageLoader: any ImageLoading
@@ -63,6 +65,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
     self.continuityWitness = continuityWitness
+    self.accountStore = accountStore
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
@@ -134,6 +137,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.heartLedger, heartLedger)
       .environment(\.gardenStore, gardenStore)
       .environment(\.continuityWitness, continuityWitness)
+      .environment(\.accountStore, accountStore)
       .environment(\.globalPauseSession, pauseSession)
       .environment(\.pauseEventRepository, pauseRepository)
       .environment(\.imageLoader, imageLoader)
@@ -200,6 +204,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         .environment(\.heartLedger, heartLedger)
         .environment(\.gardenStore, gardenStore)
         .environment(\.continuityWitness, continuityWitness)
+        .environment(\.accountStore, accountStore)
     )
   }
 
@@ -262,6 +267,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       heartLedger: heartLedger,
       gardenStore: gardenStore,
       continuityWitness: continuityWitness,
+      accountStore: accountStore,
       imageLoader: imageLoader
     ) { [weak self, weak presenter] in
       presenter?.dismiss(animated: true)
