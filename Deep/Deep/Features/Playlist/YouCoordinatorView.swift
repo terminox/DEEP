@@ -40,6 +40,7 @@ extension EnvironmentValues {
   @Entry var openSettings: () -> Void = {}
 }
 
+#if DEBUG
 #Preview("You — saved sounds") {
   YouCoordinatorView()
     .environment(\.playlistStore, .sample)
@@ -57,3 +58,4 @@ extension EnvironmentValues {
     .environment(\.onboardingStore, MockOnboardingStore.fresh)
     .environment(\.subscriptionStore, MockSubscriptionStore.subscribed)
 }
+#endif

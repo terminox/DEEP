@@ -191,6 +191,7 @@ struct PlaylistView: View {
   }
 }
 
+#if DEBUG
 #Preview("Playlist — saved sounds") {
   PlaylistView(bottomInset: .rhythm)
     .environment(\.playlistStore, .sample)
@@ -214,3 +215,4 @@ struct PlaylistView: View {
     .environment(\.playlistStore, .failed)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
 }
+#endif
