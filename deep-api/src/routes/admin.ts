@@ -406,11 +406,23 @@ export async function adminRoutes(app: FastifyInstance) {
     const overrun = meditationOverrun({ ...body, meditationDurationSeconds });
     if (overrun) throw ApiError.badRequest(overrun, "meditation_overruns_window");
 
-    // The measured length is what gets staged, so publishing applies the number
-    // the file actually holds rather than whatever the form last showed.
+    // Fuku's lounge set runs lobbyStart → lobbyStart + this, and the lounge and
+    // the home card that opens it both light their ON AIR badge off it. Measured
+    // for the same reason as the meditation's: a typed number outlives the file.
+    const measuredLobby = await readAudioDurationSeconds(body.lobbyAudioPath);
+    const lobbyDurationSeconds = measuredLobby ?? body.lobbyDurationSeconds;
+    if (lobbyDurationSeconds == null) {
+      throw ApiError.badRequest(
+        `Couldn't read the length of "${body.lobbyAudioPath}" — send lobbyDurationSeconds alongside it.`,
+        "lobby_duration_unknown",
+      );
+    }
+
+    // The measured lengths are what get staged, so publishing applies the numbers
+    // the files actually hold rather than whatever the form last showed.
     const staged = await stageSingleton<PauseConfig>(
       "PAUSE_CONFIG",
-      { ...body, meditationDurationSeconds },
+      { ...body, lobbyDurationSeconds, meditationDurationSeconds },
       actor(req),
     );
     return { config: withPending(staged.row, staged.pending) };

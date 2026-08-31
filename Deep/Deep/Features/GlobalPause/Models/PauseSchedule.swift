@@ -19,6 +19,10 @@ struct PauseSchedule: Equatable {
   let timezone: String
   let phases: [PausePhaseWindow]
   let lobbyAudioURL: URL?
+  /// How long DJ Fuku's lounge set runs, measured server-side off
+  /// `lobbyAudioURL`. Zero on a server too old to send it, which reads as
+  /// "no set tonight" rather than a broadcast of unknown length.
+  let lobbyDuration: TimeInterval
   let meditationAudioURL: URL?
   let meditationDuration: TimeInterval
   let welcomeMessages: [String]
