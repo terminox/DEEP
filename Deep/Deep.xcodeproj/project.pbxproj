@@ -23,8 +23,8 @@
 		DEE9CF0000000000000000B2 /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
 		DEE9CF0000000000000000B3 /* Pilot.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Pilot.xcconfig; sourceTree = "<group>"; };
 		DEE9CF0000000000000000B4 /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
-		DEE9CF0000000000000000B6 /* CentralFlight.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = CentralFlight.xcconfig; sourceTree = "<group>"; };
 		DEE9CF0000000000000000B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		DEE9CF0000000000000000B6 /* CentralFlight.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = CentralFlight.xcconfig; sourceTree = "<group>"; };
 		DEE9CF0000000000000001A1 /* DeepTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DeepTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 

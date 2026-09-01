@@ -128,18 +128,6 @@ struct DeepSessionIntroView: View {
     // gesture callback, which carries no transaction of its own, and a
     // spring keeps up with a finger where a long curve would pile up.
     .animation(.settle, value: minutes)
-    // The warmth a chosen numeral sits on elsewhere in the app, re-centred
-    // under this one and carried in the session's lavender.
-    .background {
-      RadialGradient(
-        colors: [Color.lavenderMist.opacity(0.32), Color.lavenderMist.opacity(0)],
-        center: .center,
-        startRadius: 8,
-        endRadius: 190
-      )
-      .frame(width: 380, height: 260)
-      .allowsHitTesting(false)
-    }
     // The slider below speaks for both: it announces this value and is the
     // thing that can change it.
     .accessibilityHidden(true)
