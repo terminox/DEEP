@@ -435,7 +435,7 @@ function WelcomeMessageRow({
             onClick={() => toggleActive.mutate()}
             disabled={toggleActive.isPending}
           >
-            {message.isActive ? 'Deactivate' : 'Activate'}
+            {message.isActive ? 'Hide' : 'Show'}
           </button>
           <button
             className="btn btn-danger btn-sm"
@@ -674,7 +674,7 @@ function IntentionRow({
             onClick={() => toggleActive.mutate()}
             disabled={toggleActive.isPending}
           >
-            {intention.isActive ? 'Deactivate' : 'Activate'}
+            {intention.isActive ? 'Hide' : 'Show'}
           </button>
           <button
             className="btn btn-danger btn-sm"
@@ -806,10 +806,10 @@ function PauseSettingsPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Pause Settings</h1>
+          <h1>Schedule</h1>
           <div className="page-subtitle">
-            Nightly Global Pause schedule, welcome messages and intentions ·
-            changes here reach every user at once, so they publish explicitly
+            Nightly Global Pause schedule, welcome messages and intentions.
+            Changes here reach every user at once, so they publish explicitly.
           </div>
         </div>
       </div>

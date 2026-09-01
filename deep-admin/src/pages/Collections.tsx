@@ -145,7 +145,9 @@ function CollectionsPage() {
       <div className="page-header">
         <div>
           <h1>Collections</h1>
-          <div className="page-subtitle">Sound collections grouped by category</div>
+          <div className="page-subtitle">
+            Deep Sound collections, grouped by category
+          </div>
         </div>
       </div>
 

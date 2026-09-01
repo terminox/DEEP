@@ -258,7 +258,7 @@ function PlantDetailPage() {
                     checked={edit.isActive}
                     onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })}
                   />
-                  <label htmlFor="editPlantActive">Active</label>
+                  <label htmlFor="editPlantActive">Visible</label>
                 </div>
                 <div className="form-actions">
                   <button className="btn" type="submit" disabled={savePlant.isPending}>

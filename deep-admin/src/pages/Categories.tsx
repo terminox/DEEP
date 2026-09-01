@@ -213,7 +213,9 @@ function CategoriesPage() {
       <div className="page-header">
         <div>
           <h1>Categories</h1>
-          <div className="page-subtitle">Top-level groupings shown in the app</div>
+          <div className="page-subtitle">
+            Deep Sound shelves, and the Explore grid on Home
+          </div>
         </div>
       </div>
 
@@ -250,7 +252,7 @@ function CategoriesPage() {
                 <th>Title</th>
                 <th>Slug</th>
                 <th>Collections</th>
-                <th>In app</th>
+                <th>Visible</th>
                 <th style={{ width: 400 }}>Actions</th>
               </tr>
             </thead>

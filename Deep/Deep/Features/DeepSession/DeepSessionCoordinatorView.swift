@@ -34,6 +34,7 @@ struct DeepSessionCoordinatorView: View {
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.gardenStore) private var gardenStore
   @Environment(\.continuityWitness) private var continuityWitness
+  @Environment(\.chimePlayer) private var chimePlayer
   @Environment(\.scenePhase) private var scenePhase
 
   init(session: DeepSession, onFinish: @escaping () -> Void = {}) {
@@ -61,7 +62,7 @@ struct DeepSessionCoordinatorView: View {
           RewardRitualView(
             receipt: rewardReceipt,
             continuityHeadline: "You returned today",
-            onFinish: onFinish
+            onFinish: closeRitual
           )
           .transition(.softDrift)
         }
@@ -73,6 +74,9 @@ struct DeepSessionCoordinatorView: View {
       // the track only stops here. It stays loaded, so the mini player is
       // waiting on return.
       soundPlayer.pause()
+      // Warmed a whole practice ahead of the strike, so the bell that ends it
+      // isn't the thing loading the file mid-transition.
+      chimePlayer.prepare()
       // A breath practice is hands-off; don't let the screen sleep mid-round.
       UIApplication.shared.isIdleTimerDisabled = true
     }
@@ -92,6 +96,16 @@ struct DeepSessionCoordinatorView: View {
       guard phase == .background else { return }
       engine.pause()
     }
+  }
+
+  /// The bell that closes the practice, struck as the session releases its
+  /// member back to the app. Leaving early stays silent — every other way out
+  /// runs straight to `onFinish` — because the bell marks a practice carried
+  /// through, not an exit. It rings from the threshold underneath, which the
+  /// presentation is only laid over, so the dismissal doesn't cut it short.
+  private func closeRitual() {
+    chimePlayer.ring()
+    onFinish()
   }
 
   /// Banks the practice and both rewards once, then freezes the before/after
@@ -154,5 +168,6 @@ struct DeepSessionCoordinatorView: View {
     .environment(\.heartLedger, .sample)
     .environment(\.gardenStore, .sample)
     .environment(\.continuityWitness, .unwitnessed)
+    .environment(\.chimePlayer, SilentChime())
 }
 #endif

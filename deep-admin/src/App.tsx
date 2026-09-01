@@ -36,7 +36,7 @@ function App() {
           <Route path="/plants" element={<PlantsPage />} />
           <Route path="/plants/:id" element={<PlantDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
-          <Route path="/pause-settings" element={<PauseSettingsPage />} />
+          <Route path="/pause" element={<PauseSettingsPage />} />
           <Route path="/peace-messages" element={<PeaceMessagesPage />} />
         </Route>
 

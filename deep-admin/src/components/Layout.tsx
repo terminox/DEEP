@@ -2,16 +2,46 @@ import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { clearSession } from '../auth/session'
 import { usePendingCount } from '../lib/pending'
+import { CHANGE_AREA_LABELS } from '../api/types'
 
-const navItems = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/categories', label: 'Categories', end: false },
-  { to: '/collections', label: 'Collections', end: false },
-  { to: '/plants', label: 'Plants', end: false },
-  { to: '/users', label: 'Users', end: false },
-  { to: '/pause-settings', label: 'Pause Settings', end: false },
-  { to: '/peace-messages', label: 'Peace Messages', end: false },
+type NavItem = { to: string; label: string; end?: boolean; spaced?: boolean }
+
+type NavEntry =
+  | ({ kind: 'link' } & NavItem)
+  | { kind: 'group'; title: string; items: NavItem[] }
+
+// The sidebar is organised the way the app is, and takes the feature names
+// from the same map the pending-changes screen groups by, so the two can never
+// drift apart. Mind Garden is a whole feature with a single screen, so it
+// stands on its own rather than as a heading wrapping one child.
+const navEntries: NavEntry[] = [
+  { kind: 'link', to: '/', label: 'Dashboard', end: true },
+  {
+    kind: 'group',
+    title: CHANGE_AREA_LABELS.sound,
+    items: [
+      { to: '/categories', label: 'Categories' },
+      { to: '/collections', label: 'Collections' },
+    ],
+  },
+  { kind: 'link', to: '/plants', label: CHANGE_AREA_LABELS.garden, spaced: true },
+  {
+    kind: 'group',
+    title: CHANGE_AREA_LABELS.pause,
+    items: [
+      { to: '/pause', label: 'Schedule' },
+      { to: '/peace-messages', label: 'Peace messages' },
+    ],
+  },
+  { kind: 'link', to: '/users', label: 'Users', spaced: true },
 ]
+
+function linkClass(item: NavItem) {
+  return ({ isActive }: { isActive: boolean }) =>
+    `nav-link${item.spaced ? ' nav-link-spaced' : ''}${
+      isActive ? ' nav-link-active' : ''
+    }`
+}
 
 function Layout() {
   const navigate = useNavigate()
@@ -44,18 +74,27 @@ function Layout() {
           Deep Admin
         </div>
         <nav className="nav-links">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `nav-link${isActive ? ' nav-link-active' : ''}`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {navEntries.map((entry) =>
+            entry.kind === 'group' ? (
+              <div className="nav-group" key={entry.title}>
+                <div className="nav-group-title">{entry.title}</div>
+                {entry.items.map((item) => (
+                  <NavLink key={item.to} to={item.to} className={linkClass(item)}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            ) : (
+              <NavLink
+                key={entry.to}
+                to={entry.to}
+                end={entry.end}
+                className={linkClass(entry)}
+              >
+                {entry.label}
+              </NavLink>
+            ),
+          )}
 
           <NavLink
             to="/changes"

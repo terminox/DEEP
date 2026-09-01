@@ -129,8 +129,10 @@ function PlantsPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Plants</h1>
-          <div className="page-subtitle">Growth catalog shown in the Mind Garden</div>
+          <h1>Mind Garden</h1>
+          <div className="page-subtitle">
+            Plants and the growth stages they pass through
+          </div>
         </div>
       </div>
 
@@ -207,7 +209,7 @@ function PlantsPage() {
               checked={form.isActive}
               onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
             />
-            <label htmlFor="plantActive">Active</label>
+            <label htmlFor="plantActive">Visible</label>
           </div>
           <div className="form-actions">
             <button className="btn" type="submit" disabled={save.isPending}>

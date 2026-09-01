@@ -52,7 +52,7 @@ export function refsUnder(changes: PendingChange[], key: string): string[] {
 /** Human wording for a field name, so diffs don't read like column names. */
 const FIELD_LABELS: Record<string, string> = {
   displayOrder: 'Order',
-  isActive: 'Visible in app',
+  isActive: 'Visible',
   isPremium: 'Premium',
   isDefault: 'Onboarding default',
   categoryId: 'Category',

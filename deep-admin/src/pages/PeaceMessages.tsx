@@ -145,7 +145,7 @@ function PeaceMessagesPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Peace Messages</h1>
+          <h1>Peace messages</h1>
           <div className="page-subtitle">
             Moderate messages shared during the Global Pause feedback phase
           </div>

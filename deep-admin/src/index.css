@@ -161,6 +161,29 @@ h3 {
   gap: var(--space-1);
 }
 
+/* The sidebar is grouped by app feature. Spacing alone separates the groups —
+   no rules, no dividers. */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-5);
+}
+
+.nav-group-title {
+  padding: 0 var(--space-3) var(--space-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+/* A top-level entry that opens a section of its own. */
+.nav-link-spaced {
+  margin-top: var(--space-5);
+}
+
 .nav-link {
   display: block;
   padding: var(--space-3);
@@ -820,6 +843,18 @@ audio {
   .nav-links {
     flex-direction: row;
     gap: var(--space-2);
+  }
+
+  .nav-group {
+    display: contents;
+  }
+
+  .nav-group-title {
+    display: none;
+  }
+
+  .nav-link-spaced {
+    margin-top: 0;
   }
 
   .nav-link {

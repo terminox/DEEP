@@ -30,6 +30,12 @@ private struct DeepSessionRunModifier: ViewModifier {
   @Environment(\.imageLoader) private var imageLoader
   @Environment(\.videoCache) private var videoCache
 
+  /// Owned out here, not by the practice: the bell is struck *as* the session
+  /// dismisses, so a chime living inside the presentation would be torn down
+  /// mid-ring. This modifier rides the pushed threshold the practice is shown
+  /// over, which outlasts it, so the bell rings on across the hush transition.
+  @State private var chime = ChimePlayer()
+
   func body(content: Content) -> some View {
     content
       .background {
@@ -40,6 +46,7 @@ private struct DeepSessionRunModifier: ViewModifier {
             .environment(\.heartLedger, heartLedger)
             .environment(\.gardenStore, gardenStore)
             .environment(\.continuityWitness, continuityWitness)
+            .environment(\.chimePlayer, chime)
             // The completion screen draws the plant's mascot artwork; the
             // UIKit presentation severs the environment, so without the real
             // loader it reaches the throwaway default and always falls back

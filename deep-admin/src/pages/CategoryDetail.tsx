@@ -142,8 +142,9 @@ function CategoryDetailPage() {
         <div>
           <h1>{category?.title ?? 'Category'}</h1>
           <div className="page-subtitle">
-            {category ? `${category.collectionCount} collections · ` : ''}
-            Collections in this category
+            {category
+              ? `${category.collectionCount} collections in this category`
+              : 'Collections in this category'}
           </div>
         </div>
       </div>
