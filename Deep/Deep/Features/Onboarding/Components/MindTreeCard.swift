@@ -13,7 +13,7 @@ struct MindTreeCard: View {
     Button(action: action) {
       VStack(spacing: 10) {
         ArtworkImage(url: tree.imageURL, colors: tree.palette.colors, cornerRadius: .tile)
-          .aspectRatio(1.2, contentMode: .fit)
+          .aspectRatio(0.8, contentMode: .fit)
 
         VStack(spacing: 2) {
           Text(tree.name)
