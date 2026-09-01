@@ -45,7 +45,7 @@ The experience is three surfaces:
 
 ### Deep Session
 
-The guided breath at the centre of the app. One session is six rounds of four seconds in and six seconds out — about a minute. The long exhale is deliberate: that ratio is the physiological sigh that settles the nervous system.
+The guided breath at the centre of the app. One session is rounds of four seconds in and six seconds out, run for as long as you set it on the threshold before you begin — anywhere from one minute to ten. The long exhale is deliberate: that ratio is the physiological sigh that settles the nervous system.
 
 An orb swells and softens with your breath, a cue reads *breathe in* / *breathe out*, and the round count sits quietly beneath. You can pause and take your time. It ends on *"You're here now"* — never a score.
 

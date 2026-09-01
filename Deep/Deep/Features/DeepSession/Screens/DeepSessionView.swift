@@ -277,8 +277,19 @@ struct DeepSessionView: View {
     switch engine.phase {
     case .finished: "Session complete"
     case _ where engine.isPaused: "Take your time"
-    default: "Round \(engine.cycle) of \(engine.session.cycles)"
+    default: remainingLine
     }
+  }
+
+  /// How much practice is still ahead, coarse on purpose — a ten-minute session
+  /// counted in rounds reads as a tally to get through. Recomputed at each turn
+  /// of the breath (the engine's phase is observed) rather than on a clock, so
+  /// nothing new ticks on a screen meant to be watched with the eyes half shut.
+  private var remainingLine: String {
+    let left = engine.remainingInSession
+    if left < 30 { return "Almost there" }
+    if left < 90 { return "About a minute left" }
+    return "About \(Int((left / 60).rounded())) min left"
   }
 
   /// Speaks the visual cue, so VoiceOver users breathe with the session too.
