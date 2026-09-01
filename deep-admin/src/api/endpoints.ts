@@ -418,8 +418,9 @@ export type PauseConfigInput = {
   windowEnd: string
   lobbyAudioPath: string
   meditationAudioPath: string
-  // Only used when meditationAudioPath is an external URL the server can't
+  // Each is only used when its path is an external URL the server can't
   // measure; for an uploaded /media/... file the measured length wins.
+  lobbyDurationSeconds: number
   meditationDurationSeconds: number
 }
 

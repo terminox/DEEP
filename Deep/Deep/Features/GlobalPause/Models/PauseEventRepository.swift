@@ -73,6 +73,7 @@ final class APIPauseEventRepository: PauseEventRepository {
         }
       },
       lobbyAudioURL: dto.lobbyAudioUrl.flatMap(URL.init(string:)),
+      lobbyDuration: TimeInterval(dto.lobbyDurationSeconds ?? 0),
       meditationAudioURL: dto.meditationAudioUrl.flatMap(URL.init(string:)),
       meditationDuration: TimeInterval(dto.meditationDurationSeconds),
       welcomeMessages: dto.welcomeMessages,
@@ -294,7 +295,14 @@ final class FixturePauseEventRepository: PauseEventRepository {
     ),
   ]
 
-  static func tonightSchedule(now: Date = Date()) -> PauseSchedule {
+  /// `lobbyAudioURL` is nil by default so nothing tries to fetch a track it has
+  /// no business fetching; on-air previews pass a placeholder, which the mock
+  /// radio player only ever looks at, never loads.
+  static func tonightSchedule(
+    now: Date = Date(),
+    lobbyAudioURL: URL? = nil,
+    lobbyDuration: TimeInterval = 262
+  ) -> PauseSchedule {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone(identifier: "Asia/Bangkok") ?? .current
 
@@ -319,7 +327,8 @@ final class FixturePauseEventRepository: PauseEventRepository {
         PausePhaseWindow(key: .meditation, startsAt: meditation, endsAt: feedback),
         PausePhaseWindow(key: .feedback, startsAt: feedback, endsAt: end),
       ],
-      lobbyAudioURL: nil,
+      lobbyAudioURL: lobbyAudioURL,
+      lobbyDuration: lobbyDuration,
       meditationAudioURL: nil,
       meditationDuration: 600,
       welcomeMessages: [

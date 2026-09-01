@@ -19,10 +19,15 @@ export const mediaBucket = new gcp.storage.Bucket(
   { provider, dependsOn: apis }
 );
 
-// The three committed tracks the Prisma seed references (prisma/seed.ts checks
-// they exist and stores `/media/audio/<file>` paths). Declared here so they
-// land in the bucket on the first `pulumi up`, before the seed ever runs.
-const SEED_TRACKS = ["global-pause.mp3", "inner-light.mp3", "ivory.mp3"];
+// The committed tracks the Prisma seed references (prisma/seed.ts checks they
+// exist and stores `/media/audio/<file>` paths). Declared here so they land in
+// the bucket on the first `pulumi up`, before the seed ever runs.
+const SEED_TRACKS = [
+  "global-pause.mp3",
+  "global-pause-lobby.mp3",
+  "inner-light.mp3",
+  "ivory.mp3",
+];
 
 export const seedTracks = SEED_TRACKS.map(
   (file) =>

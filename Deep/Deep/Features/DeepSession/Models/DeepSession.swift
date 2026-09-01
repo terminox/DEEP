@@ -38,17 +38,44 @@ struct DeepSession: Identifiable, Hashable {
   /// Whole-session length.
   var duration: TimeInterval { cycleDuration * TimeInterval(cycles) }
 
-  /// Rounded-up whole minutes, for card captions ("1 min").
+  /// Rounded-up whole minutes — the unit a session's length is chosen and
+  /// credited in. Exact for any session built by `lasting(minutes:)`.
   var durationMinutes: Int { max(1, Int((duration / 60).rounded(.up))) }
+}
+
+/// The lengths a Deep Session can be set to, in whole minutes.
+enum DeepSessionLength {
+  static let range = 1...10
+  /// What a first visit opens on — the one-minute practice the app shipped
+  /// with. Every visit after that opens on whatever was last chosen.
+  static let opening = range.lowerBound
+}
+
+extension DeepSession {
+  /// A copy of this practice stretched to `minutes`, in however many rounds its
+  /// own pattern needs to fill that length. The id rides along: it is the same
+  /// practice, only longer — and a fresh id on every render would churn the
+  /// presenter that carries it into the run.
+  func lasting(minutes: Int) -> DeepSession {
+    DeepSession(
+      id: id,
+      title: title,
+      tagline: tagline,
+      inhale: inhale,
+      exhale: exhale,
+      cycles: max(1, Int((TimeInterval(minutes) * 60 / cycleDuration).rounded()))
+    )
+  }
 }
 
 /// The built-in sessions the app can offer. Static content for now; a remote
 /// catalog can replace this without touching call sites.
 enum DeepSessionLibrary {
-  /// The daily practice: six slow rounds of 4s in / 6s out — about a minute.
+  /// The daily practice: slow rounds of 4s in / 6s out, run for as long as the
+  /// threshold's slider is set to. The stored `cycles` is the shortest offer.
   static let balancingBreath = DeepSession(
     title: "Balancing breath",
-    tagline: "A minute of slow breathing to settle back into now",
+    tagline: "Slow breathing to settle back into now",
     cycles: 6
   )
 }

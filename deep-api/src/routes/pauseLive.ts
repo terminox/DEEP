@@ -126,6 +126,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         endsAt: p.endsAt.toISOString(),
       })),
       lobbyAudioUrl: mediaUrl(config.lobbyAudioPath),
+      lobbyDurationSeconds: config.lobbyDurationSeconds,
       meditationAudioUrl: mediaUrl(config.meditationAudioPath),
       meditationDurationSeconds: config.meditationDurationSeconds,
       welcomeMessages: welcomeMessages.map((m) => m.text),
@@ -402,7 +403,9 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const COUNTDOWN_LEAD_MS = 15 * 60 * 1000;
 
     app.post("/dev/pause/time-travel", async (req) => {
-      const { mode } = z.object({ mode: z.enum(["live", "countdown", "off"]) }).parse(req.body);
+      const { mode } = z
+        .object({ mode: z.enum(["live", "countdown", "lobby", "off"]) })
+        .parse(req.body);
       if (mode === "off") {
         setLiveWindow(null);
         return { mode, serverNow: new Date().toISOString() };
@@ -410,7 +413,12 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       const config = await loadConfig();
       const occurrence = resolveOccurrence(config, new Date());
       const meditation = occurrence.phases.find((p) => p.key === "meditation")!;
-      if (mode === "countdown") {
+      if (mode === "lobby") {
+        // Fuku's set runs from the top of the lobby phase, so looping the phase
+        // itself replays the whole broadcast — intro, handoff, music, sign-off —
+        // without dragging the countdown arc along behind it.
+        setLiveWindow(occurrence.phases.find((p) => p.key === "lobby")!);
+      } else if (mode === "countdown") {
         setLiveWindow({
           startsAt: new Date(meditation.startsAt.getTime() - COUNTDOWN_LEAD_MS),
           endsAt: meditation.endsAt,

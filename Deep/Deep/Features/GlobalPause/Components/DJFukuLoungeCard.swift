@@ -7,9 +7,15 @@ import SwiftUI
 ///
 /// Under Reduce Transparency the blur strip is dropped and the scrim deepens
 /// so the white text keeps its contrast without any live blur.
+///
+/// The ON AIR badge burns only while Fuku's nightly set actually runs, off the
+/// same `isFukuOnAir` the lounge follows — so the card is how you find out the
+/// room has gone live, and it can never advertise a broadcast the lounge is not
+/// playing.
 struct DJFukuLoungeCard: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
   @Environment(\.openFukuLounge) private var openFukuLounge
+  @Environment(\.globalPauseSession) private var globalPauseSession
 
   private let cardHeight: CGFloat = 220
 
@@ -36,13 +42,21 @@ struct DJFukuLoungeCard: View {
         .padding(18)
       }
       .overlay(alignment: .topTrailing) {
-        OnAirPill()
-          .padding(18)
+        if globalPauseSession.isFukuOnAir {
+          OnAirPill()
+            .padding(18)
+            .transition(.opacity)
+        }
       }
+      .animation(.exhale, value: globalPauseSession.isFukuOnAir)
     }
     .buttonStyle(.softPress)
     .shadow(color: Color.lavenderMist.opacity(0.28), radius: 22, x: 0, y: 12)
-    .accessibilityLabel("Fuku's Lounge, on air — lo-fi while the world gathers to pause")
+    .accessibilityLabel(
+      globalPauseSession.isFukuOnAir
+        ? "Fuku's Lounge, on air — lo-fi while the world gathers to pause"
+        : "Fuku's Lounge — lo-fi while the world gathers to pause"
+    )
   }
 
   private var artwork: some View {
@@ -98,6 +112,17 @@ struct DJFukuLoungeCard: View {
       .padding(.edge)
   }
 }
+
+#if DEBUG
+#Preview("On air") {
+  ZStack {
+    AtmosphereBackground()
+    DJFukuLoungeCard()
+      .padding(.edge)
+  }
+  .environment(\.globalPauseSession, GlobalPauseSession.previewOnAir())
+}
+#endif
 
 #Preview("Accessibility type") {
   ZStack {

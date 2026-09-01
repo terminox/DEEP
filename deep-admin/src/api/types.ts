@@ -204,6 +204,9 @@ export type PauseConfig = Pending & {
   meditationStart: string
   windowEnd: string
   lobbyAudioPath: string
+  // Measured off lobbyAudioPath by the server. DJ Fuku's nightly set runs
+  // lobbyStart -> lobbyStart + this, and the app's ON AIR badge follows it.
+  lobbyDurationSeconds: number
   meditationAudioPath: string
   // Measured off meditationAudioPath by the server. The meditation phase runs
   // meditationStart -> meditationStart + this, so there is no separate end time.

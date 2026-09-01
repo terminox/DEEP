@@ -82,6 +82,40 @@ struct BreathEngineTests {
     engine.cancel()
   }
 
+  /// The shipped 4s / 6s pattern, whose lengths are exactly representable —
+  /// the 50ms timing fixture's are not, so equality on it would be a coin toss.
+  private static func minuteSession() -> DeepSession {
+    DeepSession(title: "Test", tagline: "", inhale: 4, exhale: 6, cycles: 6)
+  }
+
+  @Test
+  func remainingInSessionStartsAtTheWholeLength() {
+    let session = Self.minuteSession()
+    let engine = BreathEngine(session: session)
+    #expect(engine.remainingInSession == session.duration)
+  }
+
+  @Test
+  func remainingInSessionFallsAsRoundsPass() async {
+    let engine = BreathEngine(session: Self.fixtureSession())
+    let atStart = engine.remainingInSession
+    engine.begin()
+
+    await waitUntil(timeout: 2) { engine.cycle == 2 }
+    #expect(engine.remainingInSession < atStart)
+    engine.cancel()
+  }
+
+  @Test
+  func remainingInSessionIsNothingOnceFinished() async {
+    let engine = BreathEngine(session: Self.fixtureSession())
+    engine.begin()
+
+    await waitUntil(timeout: 2) { engine.phase == .finished }
+    #expect(engine.remainingInSession == 0)
+    engine.cancel()
+  }
+
   /// Polls `condition` on a short interval until it's true or `timeout`
   /// elapses (in seconds), so timing assertions don't race the real clock.
   private func waitUntil(

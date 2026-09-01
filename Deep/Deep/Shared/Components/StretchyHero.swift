@@ -13,6 +13,17 @@ struct StretchyHero: View {
   enum Media {
     /// Bundled looping video (name without extension), muted, Reduce-Motion aware.
     case video(resource: String)
+    /// A bundled clip that plays through once — with its own sound unless
+    /// muted — and calls `onEnded` when it finishes, so the hero can hand off
+    /// to whatever comes next. `startAt` joins it part-way through. Used by a
+    /// hero that announces something at a particular moment rather than sitting
+    /// there being atmosphere (see `GlobalPauseLobbyView`).
+    ///
+    /// Deliberately keeps playing under Reduce Motion, unlike `.video`: a
+    /// paused `AVPlayer` is a silent one, and this case exists precisely for
+    /// clips whose sound is the point. It is one short, self-terminating clip,
+    /// not the sustained loop that setting is there to still.
+    case oneShotVideo(resource: String, startAt: TimeInterval, isMuted: Bool, onEnded: () -> Void)
     /// Asset-catalog still, filled edge to edge.
     case image(name: String)
     /// Server-hosted looping video: the poster paints first, footage
@@ -79,6 +90,8 @@ struct StretchyHero: View {
     switch media {
     case .video(let resource):
       LoopingVideoView(resource: resource, isAnimating: !reduceMotion)
+    case .oneShotVideo(let resource, let startAt, let isMuted, let onEnded):
+      OneShotVideoView(resource: resource, startAt: startAt, isMuted: isMuted, onEnded: onEnded)
     case .image(let name):
       Image(name)
         .resizable()
