@@ -108,6 +108,42 @@ else
   warn "Set a real JWT_SECRET in deep-api/.env before doing anything that matters."
 fi
 
+# ---- 2b. Backend: share runtime media across git worktrees ----
+# The database is shared by every checkout, but MEDIA_DIR resolves ./media
+# against whichever one launched the API. Artwork uploaded through the admin
+# therefore lands only in the checkout that served the upload, and every other
+# one 404s on the rows pointing at it - Mind Trees and sound artwork silently
+# degrade to bare gradients. media/garden/ and media/uploads/ are gitignored
+# runtime data, so symlink them to the main checkout and every worktree serves
+# the same files. media/audio/ is NOT linked: some of it is committed source.
+main_root="$(dirname "$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)")"
+
+link_shared_media() {
+  local name="$1"
+  local target="$main_root/deep-api/media/$name"
+  local link="$ROOT/deep-api/media/$name"
+  mkdir -p "$target"
+  if [ -L "$link" ]; then
+    ln -sfn "$target" "$link"
+    ok "media/$name -> main checkout"
+  elif [ -d "$link" ] && [ -n "$(ls -A "$link" 2>/dev/null)" ]; then
+    warn "deep-api/media/$name already holds files; leaving it alone. Move them"
+    warn "into $target and delete the directory to share them."
+  else
+    rmdir "$link" 2>/dev/null || true
+    ln -sfn "$target" "$link"
+    ok "media/$name -> main checkout"
+  fi
+}
+
+if [ "$main_root" = "$ROOT" ]; then
+  ok "Media lives in this checkout (deep-api/media)"
+else
+  mkdir -p "$ROOT/deep-api/media"
+  link_shared_media garden
+  link_shared_media uploads
+fi
+
 # ---- 3. Tell the developer where things stand ----
 printf '\n%sDev build will talk to%s  %s\n' "$bold" "$reset" "$base_url"
 
