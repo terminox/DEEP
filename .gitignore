@@ -48,5 +48,18 @@ Deep/**/*.swp
 Deep/**/*.swo
 .gstack/
 
-resources/
+# Anchored to the repo root on purpose. Unanchored, and with core.ignorecase
+# true as it is on macOS, this also swallowed every feature's `Resources/`
+# folder — so a bundled clip could only be added with `git add -f`, which is
+# how the four already in the tree got there.
+/resources/
 handover/
+
+# DJ Fuku masters: ~70 MB of 11 Mbps HEVC and the two unmixed lounge stems.
+# What ships is derived from them and committed —
+# Deep/Deep/Features/GlobalPause/Resources/fuku_*.mp4 and
+# deep-api/media/audio/global-pause-lobby.mp3 — and the exact ffmpeg
+# invocations that produce each are recorded in the PR that added them, so the
+# masters can stay out of a history that never forgets.
+references/fuku/
+references/global-pause-lobby/

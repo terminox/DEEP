@@ -410,6 +410,11 @@ enum PeaceMessageStatus {
 // off meditationAudioPath itself (see lib/audioDuration.ts). One number, read
 // from the file — a hand-set end time silently outlived the track it was cut
 // for, and every client ended the session at the old length.
+//
+// lobbyDurationSeconds is measured the same way, off lobbyAudioPath. It is how
+// long Fuku's nightly set runs from lobbyStart, and the client needs it in two
+// places at once — the lounge and the home card that opens it — so that both
+// light their ON AIR badge over exactly the same minutes.
 model PauseConfig {
   id                        Int      @id @default(1)
   timezone                  String   @default("Asia/Bangkok")
@@ -417,7 +422,8 @@ model PauseConfig {
   welcomeStart              String   @default("20:39:50")
   meditationStart           String   @default("20:40:00")
   windowEnd                 String   @default("21:00:00")
-  lobbyAudioPath            String   @default("/media/audio/global-pause.mp3")
+  lobbyAudioPath            String   @default("/media/audio/global-pause-lobby.mp3")
+  lobbyDurationSeconds      Int      @default(262)
   meditationAudioPath       String   @default("/media/audio/global-pause.mp3")
   meditationDurationSeconds Int      @default(132)
   updatedAt                 DateTime @updatedAt

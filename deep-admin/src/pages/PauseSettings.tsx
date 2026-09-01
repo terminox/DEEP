@@ -29,6 +29,7 @@ type ConfigForm = {
   meditationStart: string
   windowEnd: string
   lobbyAudioPath: string
+  lobbyDurationSeconds: string
   meditationAudioPath: string
   meditationDurationSeconds: string
 }
@@ -54,6 +55,10 @@ function validateConfig(form: ConfigForm): string | null {
   const order = phases.map(([, value]) => value)
   if (!order.every((t, i) => i === 0 || order[i - 1] < t)) {
     return 'Phase times must be strictly increasing'
+  }
+  const lobbyDuration = Number(form.lobbyDurationSeconds)
+  if (!Number.isInteger(lobbyDuration) || lobbyDuration <= 0) {
+    return "Lounge set duration must be a positive whole number of seconds"
   }
   const duration = Number(form.meditationDurationSeconds)
   if (!Number.isInteger(duration) || duration <= 0) {
@@ -105,6 +110,25 @@ function describeWindow(form: ConfigForm): { meditation: string; feedback: strin
   }
 }
 
+// Where DJ Fuku's nightly set lands inside the lobby phase. The app plays a
+// short bundled intro clip first, so the music starts a beat after lobbyStart
+// and this end time is a few seconds early — close enough to answer the only
+// question worth asking here, which is whether the track fits before the
+// welcome. `overruns` says it doesn't: the app cuts the set off at the welcome
+// rather than letting it play over the countdown.
+function describeSet(form: ConfigForm): { window: string; overruns: boolean } | null {
+  const start = timeToSeconds(form.lobbyStart)
+  const welcome = timeToSeconds(form.welcomeStart)
+  const duration = Number(form.lobbyDurationSeconds)
+  if (start == null || welcome == null) return null
+  if (!Number.isInteger(duration) || duration <= 0) return null
+  const end = start + duration
+  return {
+    window: `${form.lobbyStart} – ${secondsToTime(end)} (${formatLength(duration)})`,
+    overruns: end >= welcome,
+  }
+}
+
 function ConfigPanel() {
   const qc = useQueryClient()
   const { data, isLoading, error } = useQuery({
@@ -126,6 +150,7 @@ function ConfigPanel() {
         meditationStart: data.meditationStart,
         windowEnd: data.windowEnd,
         lobbyAudioPath: data.lobbyAudioPath,
+        lobbyDurationSeconds: String(data.lobbyDurationSeconds),
         meditationAudioPath: data.meditationAudioPath,
         meditationDurationSeconds: String(data.meditationDurationSeconds),
         ...edits,
@@ -133,6 +158,7 @@ function ConfigPanel() {
     : null
 
   const phaseWindow = form ? describeWindow(form) : null
+  const setWindow = form ? describeSet(form) : null
 
   const save = useMutation({
     mutationFn: (body: ConfigForm) =>
@@ -143,6 +169,7 @@ function ConfigPanel() {
         meditationStart: body.meditationStart,
         windowEnd: body.windowEnd,
         lobbyAudioPath: body.lobbyAudioPath,
+        lobbyDurationSeconds: Number(body.lobbyDurationSeconds),
         meditationAudioPath: body.meditationAudioPath,
         meditationDurationSeconds: Number(body.meditationDurationSeconds),
       }),
@@ -201,6 +228,22 @@ function ConfigPanel() {
                 placeholder="Asia/Bangkok"
                 required
               />
+            </div>
+            <div className="field">
+              <label>Lounge set duration (seconds)</label>
+              <input
+                type="number"
+                min={1}
+                value={form.lobbyDurationSeconds}
+                onChange={(e) => update({ lobbyDurationSeconds: e.target.value })}
+                readOnly={isUploadedFile(form.lobbyAudioPath)}
+                required
+              />
+              <div className="field-hint">
+                {isUploadedFile(form.lobbyAudioPath)
+                  ? 'Read from the lobby audio file. Upload a new track to change it.'
+                  : "This audio is an external URL, so its length can't be measured — set it here."}
+              </div>
             </div>
             <div className="field">
               <label>Meditation duration (seconds)</label>
@@ -269,14 +312,32 @@ function ConfigPanel() {
             currentUrl={form.lobbyAudioPath || null}
             onUpload={async (file, onProgress) => {
               const media = await uploadMedia('audio', file, onProgress)
-              update({ lobbyAudioPath: media.path })
+              // Measured server-side as it was stored, exactly like the
+              // meditation track below: how long Fuku stays on air is the
+              // length of the file, not a number anyone types.
+              update({
+                lobbyAudioPath: media.path,
+                ...(media.durationSeconds != null
+                  ? { lobbyDurationSeconds: String(media.durationSeconds) }
+                  : {}),
+              })
             }}
             urlInput={{
               value: form.lobbyAudioPath,
               onChange: (v) => update({ lobbyAudioPath: v }),
-              placeholder: '/media/audio/global-pause.mp3',
+              placeholder: '/media/audio/global-pause-lobby.mp3',
             }}
           />
+          {setWindow && (
+            <div className="field-hint">
+              <strong>Fuku&apos;s set</strong>{' '}
+              <span className="mono">{setWindow.window}</span>
+              <br />
+              {setWindow.overruns
+                ? `This track runs past the welcome at ${form.welcomeStart}, so the app cuts the set off there. Shorten it, or start the lobby earlier.`
+                : 'The lounge goes on air at the lobby start and its ON AIR badge goes dark when the track ends.'}
+            </div>
+          )}
           <MediaDropzone
             label="Meditation audio"
             kind="audio"

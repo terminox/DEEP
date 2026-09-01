@@ -214,6 +214,8 @@ struct PauseScheduleDTO: Decodable {
   let timezone: String
   let phases: [Phase]
   let lobbyAudioUrl: String?
+  // Absent on servers from before Fuku's lounge set had a length of its own.
+  let lobbyDurationSeconds: Int?
   let meditationAudioUrl: String?
   let meditationDurationSeconds: Int
   let welcomeMessages: [String]

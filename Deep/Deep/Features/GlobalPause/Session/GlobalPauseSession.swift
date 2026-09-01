@@ -28,6 +28,11 @@ final class GlobalPauseSession {
   /// True exactly while the nightly meditation window is open — the one state
   /// the live session has. The boundary timer flips it at the window edges.
   private(set) var isMeditationLive = false
+  /// True exactly while DJ Fuku's lounge set is playing. Stored and flipped by
+  /// the same boundary timer as `cardState`, so the lounge and the home card
+  /// that opens it light their ON AIR badge over identically the same minutes —
+  /// and a screen that is merely sitting there gets the change without polling.
+  private(set) var isFukuOnAir = false
   /// What the card shows right now. Stored rather than computed on purpose:
   /// nothing observable changes at the countdown threshold, so a computed
   /// property would never wake the chrome's observation loop — the boundary
@@ -84,6 +89,19 @@ final class GlobalPauseSession {
 
   var meditationDuration: TimeInterval { schedule?.meditationDuration ?? 0 }
 
+  /// Tonight's lounge set, once the schedule has landed and the intro clip has
+  /// been measured. Nil when there is nothing to broadcast.
+  var loungeBroadcast: LoungeBroadcast? {
+    schedule?.loungeBroadcast(introDuration: introDuration)
+  }
+
+  /// Seconds into the lounge track at the synced clock's now — the offset a
+  /// latecomer joins on, and what the radio re-seeks to after an interruption.
+  var loungeElapsed: TimeInterval {
+    guard case .music(let offset)? = loungeBroadcast?.stage(at: clock.now) else { return 0 }
+    return offset
+  }
+
   /// How long before the meditation the card flips to its countdown — a
   /// client presentation choice, deliberately not server config. The dev
   /// time-travel route mirrors this value (`COUNTDOWN_LEAD_MS` in
@@ -97,6 +115,11 @@ final class GlobalPauseSession {
   /// Where settled awards (attendance claim, first peace message) are handed —
   /// `AppDependencies` points this at the shared ingest closure.
   @ObservationIgnored private let awardSink: (@MainActor (AwardGrant) -> Void)?
+  /// The bundled intro clip's length, read off the file once (see
+  /// `FukuClip.introDuration()`). Zero until it lands, which only makes the
+  /// first moments of a very early visit treat the set as intro-less.
+  @ObservationIgnored private var introDuration: TimeInterval = 0
+  @ObservationIgnored private var hasMeasuredIntro = false
   @ObservationIgnored private var pauseAwardTask: Task<Void, Never>?
   @ObservationIgnored private var boundaryTask: Task<Void, Never>?
   @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
@@ -153,7 +176,17 @@ final class GlobalPauseSession {
   /// Fetches the schedule and starts tracking window boundaries. Safe to call
   /// again (e.g. on foreground) — it simply re-resolves.
   func start() async {
+    await measureIntroIfNeeded()
     await refreshSchedule()
+  }
+
+  /// Reads the bundled intro clip's length once per launch. It decides where
+  /// the set hands off from Fuku's voice to the music, and therefore when the
+  /// whole broadcast ends — so it is read from the file rather than typed.
+  private func measureIntroIfNeeded() async {
+    guard !hasMeasuredIntro else { return }
+    hasMeasuredIntro = true
+    introDuration = await FukuClip.introDuration()
   }
 
   private func refreshSchedule() async {
@@ -170,11 +203,13 @@ final class GlobalPauseSession {
   private func recomputeState() {
     guard let schedule, let window = schedule.window(for: .meditation) else {
       isMeditationLive = false
+      setFukuOnAir(false)
       setCardState(.off(scheduleLine: "Breathe with the world, together"))
       return
     }
     let now = clock.now
     isMeditationLive = now >= window.startsAt && now < window.endsAt
+    setFukuOnAir(loungeBroadcast?.isOnAir(at: now) ?? false)
     let target = schedule.nextMeditationStart(after: now)
     if isMeditationLive {
       setCardState(.live)
@@ -192,16 +227,29 @@ final class GlobalPauseSession {
     if cardState != new { cardState = new }
   }
 
-  /// The next instant the card's state can change: the next phase boundary, or
-  /// the countdown start (meditation − lead), whichever comes first. Nil keeps
-  /// the 60 s retry-refetch path below (no schedule, or window over — after
-  /// which the fresh schedule supplies tomorrow's countdown start again).
+  /// Guarded for the same reason as `setCardState`: the live poll recomputes
+  /// every few seconds, and an unchanged assignment would still wake every
+  /// badge observing it.
+  private func setFukuOnAir(_ new: Bool) {
+    if isFukuOnAir != new { isFukuOnAir = new }
+  }
+
+  /// The next instant anything on screen can change: the next phase boundary,
+  /// the countdown start (meditation − lead), or the moment Fuku's set signs
+  /// off — whichever comes first. Nil keeps the 60 s retry-refetch path below
+  /// (no schedule, or window over — after which the fresh schedule supplies
+  /// tomorrow's countdown start again).
   private func nextStateBoundary(after now: Date) -> Date? {
     guard let schedule, let phaseBoundary = schedule.nextBoundary(after: now) else { return nil }
+    var candidates = [phaseBoundary]
     let countdownStart = schedule.nextMeditationStart(after: now)
       .addingTimeInterval(-Self.countdownLead)
-    guard countdownStart > now else { return phaseBoundary }
-    return min(phaseBoundary, countdownStart)
+    if countdownStart > now { candidates.append(countdownStart) }
+    // The set ends partway through the lobby phase, so its end is not a phase
+    // boundary of its own — without it the ON AIR badge would stay lit through
+    // the quiet run-up to the welcome.
+    if let setEnd = loungeBroadcast?.endsAt, setEnd > now { candidates.append(setEnd) }
+    return candidates.min()
   }
 
   /// One sleeping task per upcoming boundary; re-armed after every firing and
@@ -437,6 +485,18 @@ extension GlobalPauseSession {
   static func preview(cardState: GlobalPauseCardState) -> GlobalPauseSession {
     let session = preview(live: cardState == .live)
     session.cardState = cardState
+    return session
+  }
+
+  /// A fixture session with DJ Fuku's set on air — for the lounge and the card
+  /// that opens it. The schedule carries a placeholder track URL that only the
+  /// mock radio player ever sees, so nothing is fetched.
+  static func previewOnAir() -> GlobalPauseSession {
+    let session = preview()
+    session.schedule = FixturePauseEventRepository.tonightSchedule(
+      lobbyAudioURL: URL(string: "fixture://lounge-set")
+    )
+    session.isFukuOnAir = true
     return session
   }
 
