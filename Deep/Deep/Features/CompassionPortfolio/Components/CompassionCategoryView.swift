@@ -73,12 +73,12 @@ struct CompassionCategoryView: View {
     [
       ImpactStat(
         label: "Hearts pooled",
-        value: live.heartsShared.formatted(.number.notation(.compactName)),
+        value: live.heartsShared.formatted(.number.notation(.compactName).locale(.app)),
         symbol: "heart.fill"
       ),
       ImpactStat(
         label: "People reached",
-        value: live.peopleReached.formatted(.number.notation(.compactName)),
+        value: live.peopleReached.formatted(.number.notation(.compactName).locale(.app)),
         symbol: "person.2.fill"
       ),
       ImpactStat(

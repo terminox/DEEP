@@ -59,6 +59,7 @@ private struct RippleRevealEffect: ViewModifier, Animatable {
   }
 }
 
+#if DEBUG
 #Preview("Ripple reveal") {
   @Previewable @State var replay = 0
 
@@ -90,3 +91,4 @@ private struct RippleRevealEffect: ViewModifier, Animatable {
     }
   }
 }
+#endif

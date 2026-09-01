@@ -9,10 +9,12 @@ import SwiftUI
 struct YouCoordinatorView: View {
   @State private var path = NavigationPath()
 
-  /// The one destination this tab pushes. An enum rather than a bare value so
-  /// a second settings-adjacent screen has somewhere obvious to go.
+  /// The destinations this tab pushes — settings, and the two preference
+  /// screens it opens onto.
   private enum Route: Hashable {
     case settings
+    case language
+    case dailyReminder
   }
 
   var body: some View {
@@ -24,10 +26,16 @@ struct YouCoordinatorView: View {
           switch route {
           case .settings:
             SettingsView()
+          case .language:
+            LanguageView()
+          case .dailyReminder:
+            DailyReminderView()
           }
         }
     }
     .environment(\.openSettings, { path.append(Route.settings) })
+    .environment(\.openLanguage, { path.append(Route.language) })
+    .environment(\.openDailyReminder, { path.append(Route.dailyReminder) })
     .preferredColorScheme(.light)
   }
 }
@@ -38,6 +46,13 @@ extension EnvironmentValues {
   /// plain `Button`, so all routing flows through the one `NavigationPath`.
   /// The default is a no-op that keeps previews hermetic.
   @Entry var openSettings: () -> Void = {}
+
+  /// Pushes the language picker. Injected by the You coordinator; Settings
+  /// calls it from a plain `Button` so routing stays in the one path.
+  @Entry var openLanguage: () -> Void = {}
+
+  /// Pushes the daily reminder screen, on the same terms.
+  @Entry var openDailyReminder: () -> Void = {}
 }
 
 #if DEBUG

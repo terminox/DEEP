@@ -6,6 +6,7 @@ import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireAuth, optionalAuth } from "../auth/middleware.js";
 import { mediaUrl } from "../lib/media.js";
+import { translate } from "../lib/translations.js";
 import {
   resolveOccurrence,
   occurrenceOn,
@@ -129,8 +130,14 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       lobbyDurationSeconds: config.lobbyDurationSeconds,
       meditationAudioUrl: mediaUrl(config.meditationAudioPath),
       meditationDurationSeconds: config.meditationDurationSeconds,
-      welcomeMessages: welcomeMessages.map((m) => m.text),
-      intentions: intentions.map((i) => ({ key: i.key, label: i.label })),
+      welcomeMessages: welcomeMessages.map((m) =>
+        translate("PAUSE_WELCOME_MESSAGE", m.id, "text", m.text),
+      ),
+      // `key` is the wire identity reflections submit; only `label` is copy.
+      intentions: intentions.map((i) => ({
+        key: i.key,
+        label: translate("PAUSE_INTENTION", i.id, "label", i.label),
+      })),
     };
   });
 

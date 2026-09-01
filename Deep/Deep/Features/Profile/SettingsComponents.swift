@@ -37,9 +37,14 @@ struct SettingsRow: View {
     case chevron
     case value(String)
     case progress
+    /// A settled choice, for rows that are options rather than actions — the
+    /// language picker's list. Nothing else marks a row as *chosen*.
+    case check
   }
 
-  let icon: String
+  /// Optional because a screen whose rows are all one kind of choice reads
+  /// cleaner without a symbol column repeating itself down the card.
+  var icon: String? = nil
   let title: String
   var accessory: Accessory = .none
   var role: ButtonRole? = nil
@@ -59,10 +64,12 @@ struct SettingsRow: View {
 
   private var label: some View {
     HStack(spacing: 14) {
-      Image(systemName: icon)
-        .font(DeepType.body)
-        .foregroundStyle((tint ?? .deepPlum).opacity(0.7))
-        .frame(width: 24, height: 24)
+      if let icon {
+        Image(systemName: icon)
+          .font(DeepType.body)
+          .foregroundStyle((tint ?? .deepPlum).opacity(0.7))
+          .frame(width: 24, height: 24)
+      }
       Text(title)
         .font(DeepType.body)
         .foregroundStyle(tint ?? .deepPlum)
@@ -92,6 +99,10 @@ struct SettingsRow: View {
       ProgressView()
         .controlSize(.small)
         .tint(.driftGrey)
+    case .check:
+      Image(systemName: "checkmark")
+        .font(DeepType.body)
+        .foregroundStyle(.deepPlum)
     }
   }
 }

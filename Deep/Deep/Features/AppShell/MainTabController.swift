@@ -33,6 +33,8 @@ final class MainTabController: UITabBarController {
   /// The one day-stamp behind the continuity beat, so a Deep Session and a
   /// Global Pause on the same day share the single moment.
   private let continuityWitness: ContinuityWitness
+  private let languageStore: LanguageStore
+  private let reminderStore: ReminderStore
 
   /// The app-long Global Pause engine + backend, handed to the Global Pause
   /// coordinator (phases in the lobby; the caption/schedule now surfaces on
@@ -88,6 +90,8 @@ final class MainTabController: UITabBarController {
     gardenStore: GardenStore,
     playlistStore: PlaylistStore,
     continuityWitness: ContinuityWitness,
+    languageStore: LanguageStore,
+    reminderStore: ReminderStore,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
     imageLoader: any ImageLoading,
@@ -103,6 +107,8 @@ final class MainTabController: UITabBarController {
     self.gardenStore = gardenStore
     self.playlistStore = playlistStore
     self.continuityWitness = continuityWitness
+    self.languageStore = languageStore
+    self.reminderStore = reminderStore
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
@@ -146,25 +152,25 @@ final class MainTabController: UITabBarController {
       pauseRepository: pauseRepository,
       imageLoader: imageLoader
     )
-    globalPause.tabBarItem = tabItem(title: "Home", systemImage: "globe.americas.fill")
+    globalPause.tabBarItem = tabItem(title: String(localized: "Home", bundle: .app, locale: .app), systemImage: "globe.americas.fill")
 
     // While a track is loaded, the shared player surfaces globally as the tab
     // bar's bottom accessory — see `observeHasTrack()`.
     let sounds = host(
       DeepSoundCoordinatorView(player: sharedPlayer),
-      title: "Sounds",
+      title: String(localized: "Sounds", bundle: .app, locale: .app),
       systemImage: "waveform"
     )
 
     let garden = host(
       MindGardenCoordinatorView(),
-      title: "Garden",
+      title: String(localized: "Garden", bundle: .app, locale: .app),
       systemImage: "leaf.fill"
     )
 
     let portfolio = host(
       CompassionPortfolioCoordinatorView(),
-      title: "Compassion",
+      title: String(localized: "Compassion", bundle: .app, locale: .app),
       systemImage: "heart.fill"
     )
 
@@ -172,7 +178,7 @@ final class MainTabController: UITabBarController {
       YouCoordinatorView()
         .environment(\.onboardingStore, onboardingStore)
         .environment(\.accountStore, accountStore),
-      title: "You",
+      title: String(localized: "You", bundle: .app, locale: .app),
       systemImage: "person.fill"
     )
 
@@ -297,6 +303,13 @@ final class MainTabController: UITabBarController {
       .environment(\.gardenStore, gardenStore)
       .environment(\.playlistStore, playlistStore)
       .environment(\.continuityWitness, continuityWitness)
+      // The SwiftUI environment does not survive the UIKit boundary, so the
+      // locale `AppRootView` set never reaches a hosted tab. Re-apply it here
+      // or every screen inside the shell silently resolves its copy against
+      // the device language instead of the picked one.
+      .environment(\.locale, languageStore.locale)
+      .environment(\.languageStore, languageStore)
+      .environment(\.reminderStore, reminderStore)
       .environment(\.imageLoader, imageLoader)
       .environment(\.videoCache, videoCache)
     let controller = UIHostingController(rootView: rootView)

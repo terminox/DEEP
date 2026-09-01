@@ -235,7 +235,7 @@ struct DeepSessionView: View {
     Group {
       if let count = countdown {
         VStack(spacing: 8) {
-          Text("\(count)")
+          Text(verbatim: "\(count)")
             .font(DeepType.bigNumber)
             .monospacedDigit()
             .foregroundStyle(.deepPlum)

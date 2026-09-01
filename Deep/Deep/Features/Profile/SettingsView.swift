@@ -21,6 +21,10 @@ struct SettingsView: View {
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.continuityWitness) private var continuityWitness
   @Environment(\.playlistStore) private var playlistStore
+  @Environment(\.languageStore) private var languageStore
+  @Environment(\.reminderStore) private var reminderStore
+  @Environment(\.openLanguage) private var openLanguage
+  @Environment(\.openDailyReminder) private var openDailyReminder
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -42,6 +46,7 @@ struct SettingsView: View {
       ScrollView {
         VStack(spacing: .rhythm) {
           identityHeader
+          preferencesSection
           membershipSection
           accountSection
           footer
@@ -161,6 +166,36 @@ struct SettingsView: View {
     return letters.isEmpty ? "·" : String(letters).uppercased()
   }
 
+  // MARK: - Preferences
+
+  /// How Deep behaves for this member on this phone — as opposed to what their
+  /// account is. Both rows push their own screen: a language list and a
+  /// permission-bearing toggle are each too much to sit inline.
+  private var preferencesSection: some View {
+    SettingsSection(title: "Preferences") {
+      SettingsRow(
+        icon: "globe",
+        title: "Language",
+        accessory: .value(languageStore.selection.endonym),
+        action: openLanguage
+      )
+      SettingsRow(
+        icon: "bell",
+        title: "Daily reminder",
+        accessory: reminderStore.reminder.isEnabled ? .value(reminderTimeLabel) : .chevron,
+        action: openDailyReminder
+      )
+    }
+  }
+
+  /// The reminder's time in the member's own clock convention — 24-hour in
+  /// Thai, am/pm in US English — via the app locale rather than the device's.
+  private var reminderTimeLabel: String {
+    reminderStore.reminder
+      .pickerDate()
+      .formatted(.dateTime.hour().minute().locale(.app))
+  }
+
   // MARK: - Membership
 
   private var membershipSection: some View {
@@ -250,6 +285,10 @@ struct SettingsView: View {
       heartLedger.resetLocalState()
       continuityWitness.resetLocalState()
       playlistStore.resetLocalState()
+      // The nudge is about practice, and practice leaves with the account —
+      // so the queue goes too. The *language* stays: what you read in
+      // belongs to the phone, not to whoever is signed into it.
+      await reminderStore.disable()
     }
   }
 
@@ -266,6 +305,10 @@ struct SettingsView: View {
         heartLedger.resetLocalState()
         continuityWitness.resetLocalState()
         playlistStore.resetLocalState()
+        // The nudge is about practice, and practice leaves with the account —
+        // so the queue goes too. The *language* stays: what you read in
+        // belongs to the phone, not to whoever is signed into it.
+        await reminderStore.disable()
       } catch {
         isDeletingAccount = false
         deleteFailed = true

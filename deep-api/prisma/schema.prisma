@@ -563,3 +563,48 @@ model ContentDraft {
   @@index([parentKey])
   @@map("content_drafts")
 }
+
+// ---- Localization ----------------------------------------------------------
+
+// The entities whose copy a member reads. Deliberately its own enum rather than
+// a reuse of `DraftEntity`: that one describes what an admin can *edit*, which
+// is not the same set — `PAUSE_CONFIG` carries no text at all, and
+// `TRACK_LYRICS` is already multilingual through its own `languageCode`.
+enum TranslatableEntity {
+  SOUND_CATEGORY
+  SOUND_COLLECTION
+  SOUND_TRACK
+  QUIZ_QUESTION
+  QUIZ_OPTION
+  PLANT
+  PLANT_STAGE
+  PAUSE_WELCOME_MESSAGE
+  PAUSE_INTENTION
+}
+
+// One row per (record, language): the translated columns as a small field bag,
+// so a new translatable column never needs a migration.
+//
+// Generic rather than sibling `titleTh` columns, because the shape then holds
+// for a third language without touching the schema again. The English columns
+// stay the source of truth: a missing translation falls back to them rather
+// than rendering empty.
+model ContentTranslation {
+  id           String             @id @default(uuid())
+  entity       TranslatableEntity
+  // The live row's id. Not a foreign key — the target is one of nine tables, so
+  // integrity is kept on the publish path rather than by the database.
+  entityId     String
+  // BCP-47, lowercased. "th" today; kept as text rather than an enum so that
+  // adding a language is data, not a migration.
+  languageCode String
+  // { "title": "…", "subtitle": "…" } — only the fields that have a translation.
+  fields       Json
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@unique([entity, entityId, languageCode])
+  // The read path loads one whole language at a time; this is the index for it.
+  @@index([languageCode])
+  @@map("content_translations")
+}

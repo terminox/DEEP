@@ -73,9 +73,19 @@ extension DeepSession {
 enum DeepSessionLibrary {
   /// The daily practice: slow rounds of 4s in / 6s out, run for as long as the
   /// threshold's slider is set to. The stored `cycles` is the shortest offer.
-  static let balancingBreath = DeepSession(
-    title: "Balancing breath",
-    tagline: "Slow breathing to settle back into now",
-    cycles: 6
-  )
+  ///
+  /// Computed rather than stored: a `static let` resolves its copy once per
+  /// process, so picking a language would leave this session named in whichever
+  /// one the app happened to launch in.
+  static var balancingBreath: DeepSession {
+    DeepSession(
+      title: String(localized: "Balancing breath", bundle: .app, locale: .app),
+      tagline: String(
+        localized: "Slow breathing to settle back into now",
+        bundle: .app,
+        locale: .app
+      ),
+      cycles: 6
+    )
+  }
 }

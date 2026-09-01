@@ -78,6 +78,8 @@ struct AppRootView: View {
           gardenStore: deps.gardenStore,
           playlistStore: deps.playlistStore,
           continuityWitness: deps.continuityWitness,
+          languageStore: deps.languageStore,
+          reminderStore: deps.reminderStore,
           pauseSession: deps.pauseSession,
           pauseRepository: deps.pauseRepository,
           imageLoader: deps.imageLoader,
@@ -97,6 +99,19 @@ struct AppRootView: View {
       }
     }
     .animation(.hush, value: phase)
+    // Re-key the whole tree on the language choice. SwiftUI caches resolved
+    // copy per view identity, so a picked language only reaches every screen
+    // if those identities are replaced. The stores live on `deps`, above this
+    // `.id`, so nothing stateful — audio, the pause session, the ledger — is
+    // torn down by the swap; only the views that render the copy are.
+    .id(deps.languageStore.selection)
+    // Every localized `Text` in the tree resolves its String Catalog entry
+    // through this locale, so the in-app picker reaches screens that know
+    // nothing about it. Copy resolved outside a view body reads the ambient
+    // twin, `Locale.app` / `Bundle.app`.
+    .environment(\.locale, deps.languageStore.locale)
+    .environment(\.languageStore, deps.languageStore)
+    .environment(\.reminderStore, deps.reminderStore)
     .environment(\.accountStore, deps.accountStore)
     .environment(\.onboardingStore, deps.onboardingStore)
     .environment(\.onboardingRemote, deps.onboardingRemote)
@@ -113,13 +128,24 @@ struct AppRootView: View {
     // queue, picks up sessions recorded on other installs, and re-pulls the
     // garden (plant + sunlight + wallet) and the saved sounds from the server.
     .onChange(of: scenePhase) { _, phase in
-      guard phase == .active, didRestore, deps.accountStore.isSignedIn else { return }
+      guard phase == .active, didRestore else { return }
+      // The reminder queue is a rolling eight-week window of individually
+      // dated requests, so coming forward is what rolls it on. It also
+      // re-reads the permission (which can be switched off in iOS Settings
+      // while the app sleeps) and drops today's nudge if the day's practice
+      // has since been done. Outside the signed-in guard: a queue left
+      // pointing at yesterday should be corrected either way.
+      Task { await rescheduleReminder() }
+      guard deps.accountStore.isSignedIn else { return }
       Task {
         async let garden: Void = deps.gardenStore.refresh()
         async let playlist: Void = deps.playlistStore.refresh()
         await deps.practiceStore.refresh()
         await garden
         await playlist
+        // Practice may have arrived from another install, settling whether
+        // today's goal is met — so the window is rebuilt on the fresh answer.
+        await rescheduleReminder()
       }
     }
     // An in-app sign-in or sign-up completing (flow → main) pulls the fresh
@@ -139,6 +165,15 @@ struct AppRootView: View {
         await playlist
       }
     }
+  }
+
+  /// Rebuilds the reminder window against today's practice. The store owns the
+  /// rules; the shell only supplies the one fact the store deliberately
+  /// doesn't know — whether today's goal is already met.
+  private func rescheduleReminder() async {
+    await deps.reminderStore.reschedule(
+      goalMetToday: deps.practiceStore.minutesToday >= deps.practiceStore.dailyGoalMinutes
+    )
   }
 
   private func bootstrap() async {

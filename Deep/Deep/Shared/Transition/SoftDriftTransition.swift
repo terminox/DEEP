@@ -81,6 +81,7 @@ private struct SoftDriftEffect: ViewModifier {
   }
 }
 
+#if DEBUG
 #Preview("Soft drift") {
   @Previewable @State var showsFirst = true
   @Previewable @State var direction = SoftDriftTransition.Direction.forward
@@ -123,3 +124,4 @@ private struct SoftDriftEffect: ViewModifier {
     }
   }
 }
+#endif
