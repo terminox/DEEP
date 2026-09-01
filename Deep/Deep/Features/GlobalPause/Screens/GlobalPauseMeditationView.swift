@@ -26,13 +26,19 @@ struct GlobalPauseMeditationView: View {
         liveCapsule
           .cascade(revealed, order: 0, reduceMotion: reduceMotion)
 
-        Text("\(participantCount.formatted()) people are pausing with you")
-          .font(DeepType.caption)
-          // moonCream, not driftGrey — the caption sits on the night sky,
-          // anchored to the same cream its stars are drawn from.
-          .foregroundStyle(.moonCream.opacity(0.75))
-          .contentTransition(.numericText())
-          .cascade(revealed, order: 1, reduceMotion: reduceMotion)
+        // Before the first poll the count is 0 and there is nothing true to
+        // say, so the line simply isn't there — the same silence the
+        // continents row keeps below.
+        if participantCount > 0 {
+          Text(companyLine)
+            .font(DeepType.caption)
+            // moonCream, not driftGrey — the caption sits on the night sky,
+            // anchored to the same cream its stars are drawn from.
+            .foregroundStyle(.moonCream.opacity(0.75))
+            .contentTransition(.numericText())
+            .cascade(revealed, order: 1, reduceMotion: reduceMotion)
+            .transition(.opacity)
+        }
       }
       .padding(.top, 68)
 
@@ -60,7 +66,20 @@ struct GlobalPauseMeditationView: View {
         .cascade(revealed, order: 3, reduceMotion: reduceMotion)
     }
     .animation(.bloom, value: continents.isEmpty)
+    // Compared as a flag, not a raw count, so ordinary churn during the
+    // session doesn't re-bloom the whole block.
+    .animation(.bloom, value: participantCount == 0)
     .allowsHitTesting(false)
+  }
+
+  /// One line, two shapes. Each count gets a whole sentence rather than a
+  /// spliced "person is" / "people are" fragment — a fragment is a second
+  /// format argument no translation could reorder, and it would rewrite the
+  /// existing plural key for the sake of one word.
+  private var companyLine: LocalizedStringKey {
+    participantCount == 1
+      ? "1 person is pausing with you"
+      : "\(participantCount.formatted()) people are pausing with you"
   }
 
   private var liveCapsule: some View {
@@ -127,6 +146,18 @@ private extension View {
       continents: ContinentPresence.row(
         from: ["AS": 1842, "EU": 1106, "NA": 604, "SA": 199, "AF": 291, "OC": 176]
       )
+    )
+  }
+}
+
+#Preview("Alone") {
+  ZStack {
+    NightSkyBackground(tuning: NightSkyTuning())
+      .ignoresSafeArea()
+    GlobalPauseMeditationView(
+      audio: MockGlobalPauseAudioPlayer.meditating,
+      duration: 600,
+      participantCount: 1
     )
   }
 }
