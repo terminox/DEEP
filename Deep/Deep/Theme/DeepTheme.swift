@@ -30,6 +30,11 @@ private enum DeepPalette {
   /// Destructive accent — a rose dimmed to dusk, red enough to warn without
   /// breaking the pastel register. For irreversible actions (delete account).
   static let duskRose     = DeepColorToken(red: 0.761, green: 0.369, blue: 0.431) // #C25E6E
+  /// The logo's violet brought into the pastel register — the wordmark's ink
+  /// indigo lifted out of the dark and dimmed to dusk. Sits below the palette's
+  /// lightness floor on purpose: it has to hold the wordmark against sunrise
+  /// footage, where `lavenderMist` washes out.
+  static let irisDusk     = DeepColorToken(red: 0.604, green: 0.550, blue: 0.809) // #9A8CCE
 }
 
 // MARK: - SwiftUI colours
@@ -48,6 +53,7 @@ extension ShapeStyle where Self == Color {
   static var deepPlum: Color { DeepPalette.deepPlum.color }
   static var driftGrey: Color { DeepPalette.driftGrey.color }
   static var duskRose: Color { DeepPalette.duskRose.color }
+  static var irisDusk: Color { DeepPalette.irisDusk.color }
 }
 
 // MARK: - UIKit colours
@@ -63,6 +69,7 @@ extension UIColor {
   static var deepPlum: UIColor { DeepPalette.deepPlum.uiColor }
   static var driftGrey: UIColor { DeepPalette.driftGrey.uiColor }
   static var duskRose: UIColor { DeepPalette.duskRose.uiColor }
+  static var irisDusk: UIColor { DeepPalette.irisDusk.uiColor }
 }
 
 // MARK: - Motion

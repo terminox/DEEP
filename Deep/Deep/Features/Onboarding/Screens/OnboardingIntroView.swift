@@ -25,6 +25,11 @@ struct OnboardingIntroView: View {
     return false
   }
 
+  /// Increase Contrast flattens the veils to solid moon cream, which is also
+  /// the mark's own colour — so the mark trades its cream bloom for a solid
+  /// tint rather than disappearing into the backdrop.
+  private var increasedContrast: Bool { contrast == .increased }
+
   var body: some View {
     ZStack {
       // The still mode renders inside the ripple's `layerEffect`; a driftless
@@ -38,12 +43,20 @@ struct OnboardingIntroView: View {
       veils
 
       VStack(spacing: .rhythm) {
-        Image("OnboardingLogo")
+        DeepLogoMark(
+          size: 80,
+          tint: increasedContrast ? .irisDusk : .moonCream,
+          isGlowing: !increasedContrast
+        )
+
+        Image("OnboardingLogoText")
+          .renderingMode(.template)
           .resizable()
           .scaledToFit()
+          .foregroundStyle(.irisDusk)
           .frame(maxWidth: 300)
           .accessibilityAddTraits(.isHeader)
-          .accessibilityLabel("DEEP — your peaceful space")
+          .accessibilityLabel("DEEP — peace begins within")
           .shadow(color: .moonCream.opacity(0.8), radius: 12)
 
         Spacer(minLength: 0)
@@ -66,7 +79,9 @@ struct OnboardingIntroView: View {
         }
       }
       .padding(.horizontal, .edge)
-      .padding(.bottom, .rhythm)
+      // The mark's halo needs room off the status bar — without it the ring
+      // sits against the Dynamic Island.
+      .padding(.vertical, .rhythm)
       .frame(maxWidth: .infinity)
     }
   }
@@ -101,10 +116,9 @@ struct OnboardingIntroView: View {
   /// footage: a light wash over the sky behind the logo, and a near-solid
   /// scrim under the actions. Both go solid when Increase Contrast is on.
   private var veils: some View {
-    let increased = contrast == .increased
-    return VStack(spacing: 0) {
+    VStack(spacing: 0) {
       LinearGradient(
-        colors: [Color.moonCream.opacity(increased ? 1 : 0.55), .clear],
+        colors: [Color.moonCream.opacity(increasedContrast ? 1 : 0.55), .clear],
         startPoint: .top,
         endPoint: .bottom
       )
@@ -116,7 +130,7 @@ struct OnboardingIntroView: View {
       LinearGradient(
         stops: [
           .init(color: .clear, location: 0),
-          .init(color: Color.moonCream.opacity(increased ? 1 : 0.85), location: 0.55),
+          .init(color: Color.moonCream.opacity(increasedContrast ? 1 : 0.85), location: 0.55),
           .init(color: .moonCream, location: 1),
         ],
         startPoint: .top,
