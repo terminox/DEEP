@@ -12,14 +12,22 @@ struct CreateAccountView: View {
       AtmosphereBackground()
 
       VStack(alignment: .center, spacing: .rhythm) {
-        Image("OnboardingLogo")
+        DeepLogoMark(
+          size: 80,
+          tint: .moonCream,
+          isGlowing: true
+        )
+
+        Image("OnboardingLogoText")
+          .renderingMode(.template)
           .resizable()
           .scaledToFit()
+          .foregroundStyle(.irisDusk)
           .frame(maxWidth: 300)
           .accessibilityAddTraits(.isHeader)
-          .accessibilityLabel("DEEP — your peaceful space")
+          .accessibilityLabel("DEEP — peace begins within")
           .shadow(color: .moonCream.opacity(0.8), radius: 12)
-        
+
         Spacer()
         
         Text("Create an account to save your progress")
@@ -53,6 +61,7 @@ struct CreateAccountView: View {
         }
       }
       .padding(.horizontal, .edge)
+      .padding(.top, .rhythm)
       .padding(.bottom, .rhythm)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
