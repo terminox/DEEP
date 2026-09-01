@@ -19,24 +19,30 @@ final class LanguageStore {
 
   init(defaults: UserDefaults = .standard) {
     self.defaults = defaults
+    // Nothing stored means nobody has chosen, which is the common case and the
+    // one the device already answers.
     selection = defaults.string(forKey: AppLanguage.defaultsKey)
-      .flatMap(AppLanguage.init(rawValue:)) ?? .system
+      .flatMap(AppLanguage.init(rawValue:)) ?? .deviceMatched
   }
 
   /// The locale this choice resolves to — the value the view tree is handed as
   /// `\.locale`, and the twin of the ambient `Locale.app`.
   var locale: Locale {
-    guard let identifier = selection.localeIdentifier else { return .autoupdatingCurrent }
-    return Locale(identifier: identifier)
+    Locale(identifier: selection.localeIdentifier)
   }
 
   /// Adopts a language. Everything downstream keys off `selection`: the view
   /// tree rebuilds, and anything that baked copy in at write time — pending
   /// reminder notifications above all — has to be rebuilt by its own owner.
+  ///
+  /// The write happens even when the language is already the one being read,
+  /// because until this runs the language is only *matching* the device. Picking
+  /// it pins it, so a member who later switches their phone to another language
+  /// keeps reading Deep in the one they chose.
   func select(_ language: AppLanguage) {
+    defaults.set(language.rawValue, forKey: AppLanguage.defaultsKey)
     guard language != selection else { return }
     selection = language
-    defaults.set(language.rawValue, forKey: AppLanguage.defaultsKey)
   }
 }
 
@@ -50,9 +56,9 @@ extension LanguageStore {
     return LanguageStore(defaults: defaults)
   }
 
-  /// Following the device — the state almost every preview wants.
+  /// English — the state almost every preview wants.
   static var preview: LanguageStore {
-    fixture(.system, suite: "deep.language.preview")
+    fixture(.english, suite: "deep.language.preview")
   }
 
   /// Pinned to Thai, for previewing a screen's Thai layout.

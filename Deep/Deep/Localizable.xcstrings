@@ -1556,16 +1556,6 @@
         }
       }
     },
-    "Match my device": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ตามอุปกรณ์"
-          }
-        }
-      }
-    },
     "Maybe later": {
       "localizations": {
         "th": {
