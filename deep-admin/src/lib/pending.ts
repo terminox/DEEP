@@ -68,6 +68,7 @@ const FIELD_LABELS: Record<string, string> = {
   sunlightRequired: 'Sunlight required',
   durationSeconds: 'Duration',
   meditationDurationSeconds: 'Meditation length',
+  lobbyDurationSeconds: "Lounge set length",
   lobbyAudioPath: 'Lobby audio',
   meditationAudioPath: 'Meditation audio',
   lobbyStart: 'Lobby start',

@@ -15,7 +15,7 @@ PRODUCT_BUNDLE_IDENTIFIER = com.kanekohouse.centralflight
 MARKETING_VERSION = 1.0.0
 // Unix epoch seconds, stamped by scripts/archive-central-flight.sh — always ahead of the
 // last upload, never repeats.
-CURRENT_PROJECT_VERSION = 1788010839
+CURRENT_PROJECT_VERSION = 1788242750
 
 // ---- Signing ----
 // Manual signing requires a profile Xcode does not manage, so this one was minted through

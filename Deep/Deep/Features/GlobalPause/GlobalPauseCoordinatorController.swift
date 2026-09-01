@@ -27,6 +27,10 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
   /// The session audio, alive only while the experience is presented.
   private var sessionAudio: GlobalPauseAudioPlayer?
+  /// Fuku's radio, owned here rather than by the lounge so the meditation can
+  /// silence it on its way in — a pushed screen is still on the stack while a
+  /// session is presented over it, so its own teardown never runs.
+  private let loungeRadio = LoungeRadioPlayer()
 
   /// The single shared card — lounge hero and session content in one instance.
   private lazy var card: GlobalPauseCardView = {
@@ -189,6 +193,8 @@ final class GlobalPauseCoordinatorController: UIViewController {
       GlobalPauseLobbyView(card: card)
         .environment(\.globalPauseSession, pauseSession)
         .environment(\.pauseEventRepository, pauseRepository)
+        .environment(\.loungeRadio, loungeRadio)
+        .environment(\.soundPlayer, player)
     )
   }
 
@@ -256,6 +262,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
     // Session precedent). A fresh engine per presentation keeps teardown
     // trivially complete.
     player.pause()
+    // Fuku hands the room over: the lounge may still be on the stack underneath
+    // this presentation, and its set must not play under the meditation.
+    loungeRadio.stop()
     let audio = GlobalPauseAudioPlayer()
     sessionAudio = audio
 

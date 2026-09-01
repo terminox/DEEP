@@ -1,6 +1,71 @@
 import SwiftUI
 
 struct AtmosphereBackground: View {
+  /// One ambient orb's spec. Hoisted out of `body` because the OS launch screen
+  /// ships this same atmosphere as flat stills — a launch screen runs no code —
+  /// and those stills have to land on the resting offsets pixel-for-pixel, or
+  /// the hand-off from the launch screen into SwiftUI shows a jump. One
+  /// declaration, two consumers: this view and `LaunchAtmosphereExportTests`.
+  struct Orb {
+    let color: Color
+    let size: CGFloat
+    let blur: CGFloat
+    /// Where the orb sits at rest — the app's first frame, and so the launch
+    /// screen's.
+    let rest: CGSize
+    /// The far end of the ambient drift.
+    let drifted: CGSize
+
+    /// The orb's artwork, without its placement or blur.
+    var artwork: some View {
+      Circle()
+        .fill(color.opacity(0.55))
+        .frame(width: size, height: size)
+    }
+
+    /// The resting orb, blurred and centred on a canvas wide enough that the
+    /// gaussian tail is never clipped — what the launch screen ships as a still.
+    var still: some View {
+      artwork
+        .blur(radius: blur)
+        .frame(width: canvas, height: canvas)
+    }
+
+    /// The still's canvas. Eight blur radii of margin puts the edge well beyond
+    /// the gaussian's ~3σ tail, so no light is cut off.
+    var canvas: CGFloat { size + 8 * blur }
+  }
+
+  /// Back to front — the array's order is the ZStack's z-order.
+  static let orbs: [Orb] = [
+    Orb(
+      color: .lavenderMist, size: 220, blur: 60,
+      rest: CGSize(width: -120, height: -240), drifted: CGSize(width: -90, height: -260)
+    ),
+    Orb(
+      color: .blushPowder, size: 180, blur: 70,
+      rest: CGSize(width: 110, height: -210), drifted: CGSize(width: 130, height: -180)
+    ),
+    Orb(
+      color: .skyWash, size: 160, blur: 60,
+      rest: CGSize(width: -100, height: 300), drifted: CGSize(width: -120, height: 320)
+    )
+  ]
+
+  /// The sky wash. Its lower stops are translucent by design — the atmosphere is
+  /// always composited over `.moonCream` (see `AppRootView`), so anything that
+  /// flattens this gradient has to lay it over moonCream first.
+  static let sky = LinearGradient(
+    colors: [
+      .moonCream,
+      Color.softLilac.opacity(0.55),
+      Color.blushPowder.opacity(0.45),
+      Color.peachCloud.opacity(0.30)
+    ],
+    startPoint: .top,
+    endPoint: .bottom
+  )
+
   /// Set false where the atmosphere must hold still — e.g. inside the ripple
   /// overlay's freeze-frame, where an animating subtree would force the layer
   /// effect to re-rasterize the blurred orbs every frame. May change while on
@@ -12,29 +77,15 @@ struct AtmosphereBackground: View {
 
   var body: some View {
     ZStack {
-      LinearGradient(
-        colors: [
-          .moonCream,
-          Color.softLilac.opacity(0.55),
-          Color.blushPowder.opacity(0.45),
-          Color.peachCloud.opacity(0.30)
-        ],
-        startPoint: .top,
-        endPoint: .bottom
-      )
+      Self.sky
 
       // Ambient floating orbs.
-      orb(color: .lavenderMist, size: 220)
-        .offset(x: drift ? -90 : -120, y: drift ? -260 : -240)
-        .blur(radius: 60)
-
-      orb(color: .blushPowder, size: 180)
-        .offset(x: drift ? 130 : 110, y: drift ? -180 : -210)
-        .blur(radius: 70)
-
-      orb(color: .skyWash, size: 160)
-        .offset(x: drift ? -120 : -100, y: drift ? 320 : 300)
-        .blur(radius: 60)
+      ForEach(Array(Self.orbs.enumerated()), id: \.offset) { _, orb in
+        let offset = drift ? orb.drifted : orb.rest
+        orb.artwork
+          .offset(x: offset.width, y: offset.height)
+          .blur(radius: orb.blur)
+      }
     }
     .ignoresSafeArea()
     .onAppear { updateDrift() }
@@ -52,12 +103,6 @@ struct AtmosphereBackground: View {
     } else {
       withAnimation(.easeInOut(duration: 2)) { drift = false }
     }
-  }
-
-  private func orb(color: Color, size: CGFloat) -> some View {
-    Circle()
-      .fill(color.opacity(0.55))
-      .frame(width: size, height: size)
   }
 }
 

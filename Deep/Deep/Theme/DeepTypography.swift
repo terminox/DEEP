@@ -18,15 +18,25 @@ private struct DeepTypeToken {
   /// Fixed-width digits, for text that ticks (countdowns) — a proportional
   /// "1" is narrower than a "4", so a live timer would jitter sideways.
   var monospacedDigits: Bool = false
+  /// An explicit point size, for the one style the scale can't reach: a numeral
+  /// a whole screen is about stands far above `.largeTitle`. It is still
+  /// anchored — `UIFontMetrics` scales it against `uiStyle` — so Dynamic Type
+  /// moves it like every other token here.
+  var fixedSize: CGFloat? = nil
 
   var font: Font {
+    // A sized token has no text-style twin to project from, so it comes back
+    // through the UIKit metrics that scale it.
+    if fixedSize != nil { return Font(uiFont as CTFont) }
     var base = Font.system(style, design: design, weight: weight)
     if monospacedDigits { base = base.monospacedDigit() }
     return italic ? base.italic() : base
   }
 
   var uiFont: UIFont {
-    var descriptor = UIFont.preferredFont(forTextStyle: uiStyle).fontDescriptor
+    var descriptor = fixedSize
+      .map { UIFont.systemFont(ofSize: $0, weight: uiWeight).fontDescriptor }
+      ?? UIFont.preferredFont(forTextStyle: uiStyle).fontDescriptor
     if let designed = descriptor.withDesign(uiDesign) {
       descriptor = designed
     }
@@ -46,7 +56,10 @@ private struct DeepTypeToken {
       ])
     }
     // Size 0 keeps the text style's Dynamic Type size.
-    return UIFont(descriptor: descriptor, size: 0)
+    let font = UIFont(descriptor: descriptor, size: fixedSize ?? 0)
+    // An explicit size doesn't grow on its own; the style's metrics move it.
+    guard fixedSize != nil else { return font }
+    return UIFontMetrics(forTextStyle: uiStyle).scaledFont(for: font)
   }
 }
 
@@ -117,6 +130,16 @@ private enum DeepTypePalette {
     design: .rounded, uiDesign: .rounded,
     weight: .medium, uiWeight: .medium
   )
+  /// The one numeral a whole screen is about — the Deep Session length being
+  /// chosen. The scale's largest rung; mono digits so the roll between values
+  /// never shifts the numeral sideways.
+  static let heroNumber = DeepTypeToken(
+    style: .largeTitle, uiStyle: .largeTitle,
+    design: .rounded, uiDesign: .rounded,
+    weight: .light, uiWeight: .light,
+    monospacedDigits: true,
+    fixedSize: 96
+  )
   /// Serif italic reveal — the tapped-country name over the globe.
   static let revealTitle = DeepTypeToken(
     style: .title3, uiStyle: .title3,
@@ -139,6 +162,7 @@ enum DeepType {
   static let counter: Font = DeepTypePalette.counter.font
   static let countdown: Font = DeepTypePalette.countdown.font
   static let bigNumber: Font = DeepTypePalette.bigNumber.font
+  static let heroNumber: Font = DeepTypePalette.heroNumber.font
   static let revealTitle: Font = DeepTypePalette.revealTitle.font
 }
 

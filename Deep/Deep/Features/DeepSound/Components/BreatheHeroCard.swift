@@ -44,7 +44,7 @@ struct BreatheHeroCard: View {
             Text("Breathe")
               .font(DeepType.displayTitle)
               .foregroundStyle(.white)
-            Text("\(Int(session.inhale))s in · \(Int(session.exhale))s out · \(session.durationMinutes) min")
+            Text("\(Int(session.inhale))s in · \(Int(session.exhale))s out")
               .font(DeepType.caption)
               .foregroundStyle(.white.opacity(0.85))
           }
@@ -56,7 +56,7 @@ struct BreatheHeroCard: View {
     }
     .buttonStyle(.softPress)
     .shadow(color: Color.lavenderMist.opacity(0.28), radius: 22, x: 0, y: 12)
-    .accessibilityLabel("Breathe, a \(session.durationMinutes) minute guided breathing session")
+    .accessibilityLabel("Breathe, a guided breathing session")
   }
 
   /// Reads like the collection cards' play button, but the whole card already

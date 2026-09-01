@@ -132,9 +132,10 @@ export const pauseConfigBody = z.object({
   lobbyAudioPath: mediaRefSchema,
   meditationAudioPath: mediaRefSchema,
   // Optional because the file is the authority: PUT /admin/pause/config reads
-  // the meditation track's real length off disk and stages that. Only an
-  // absolute third-party URL, which we can't measure, needs a number sent with
-  // it. The column carries a default, so a create is complete without one.
+  // each track's real length off disk and stages that. Only an absolute
+  // third-party URL, which we can't measure, needs a number sent with it. Both
+  // columns carry a default, so a create is complete without either.
+  lobbyDurationSeconds: z.number().int().positive().optional(),
   meditationDurationSeconds: z.number().int().positive().optional(),
 });
 

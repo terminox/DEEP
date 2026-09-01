@@ -424,8 +424,15 @@ const PLANTS: SeedPlant[] = [
 
 async function main() {
   const mediaAudioDir = path.resolve("media/audio");
-  for (const t of REAL_TRACKS) {
-    const file = path.join(mediaAudioDir, path.basename(t.file));
+  // The round-robin track files, plus the lounge set — which no SoundTrack
+  // points at, so it would otherwise only be missed further down, at the
+  // PauseConfig upsert.
+  const REQUIRED_AUDIO = [
+    ...REAL_TRACKS.map((t) => path.basename(t.file)),
+    "global-pause-lobby.mp3",
+  ];
+  for (const name of REQUIRED_AUDIO) {
+    const file = path.join(mediaAudioDir, name);
     if (!fs.existsSync(file)) {
       throw new Error(`Missing real audio file: ${file} — copy the reference mp3s into media/audio/ first.`);
     }
@@ -573,15 +580,23 @@ async function main() {
   // iOS Intention.samples), and a night's worth of sample peace messages so
   // the off-hours lobby feed isn't empty on first run.
   //
-  // The duration is measured, never typed: it is how long the meditation phase
-  // runs, and a literal here would quietly stamp the seeded track's length over
-  // whatever an admin has since uploaded on any re-seed.
+  // Both durations are measured, never typed: they are how long the meditation
+  // phase and Fuku's lounge set run, and a literal here would quietly stamp the
+  // seeded track's length over whatever an admin has since uploaded on any
+  // re-seed.
   const meditationAudioPath = "/media/audio/global-pause.mp3";
   const measured = await readAudioDurationSeconds(meditationAudioPath);
   if (measured == null) {
     throw new Error(`Couldn't read the length of ${meditationAudioPath} — is media/audio/ present?`);
   }
+  const lobbyAudioPath = "/media/audio/global-pause-lobby.mp3";
+  const measuredLobby = await readAudioDurationSeconds(lobbyAudioPath);
+  if (measuredLobby == null) {
+    throw new Error(`Couldn't read the length of ${lobbyAudioPath} — is media/audio/ present?`);
+  }
   const pauseConfig = {
+    lobbyAudioPath,
+    lobbyDurationSeconds: measuredLobby,
     meditationAudioPath,
     meditationDurationSeconds: measured,
   };
