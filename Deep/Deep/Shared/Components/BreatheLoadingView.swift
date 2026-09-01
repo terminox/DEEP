@@ -75,6 +75,7 @@ private enum Breath {
   static let rest: Double = 0.55
 }
 
+#if DEBUG
 #Preview("Breathe loading") {
   BreatheLoadingView()
 }
@@ -108,3 +109,4 @@ private enum Breath {
     }
   }
 }
+#endif

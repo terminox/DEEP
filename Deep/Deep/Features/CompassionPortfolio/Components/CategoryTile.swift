@@ -112,7 +112,7 @@ struct CategoryTile: View {
   private var facts: some View {
     VStack(alignment: .leading, spacing: 6) {
       fact(symbol: "heart.fill", tint: .blushPowder) {
-        Text("\(live.heartsShared.formatted(.number.notation(.compactName))) hearts")
+        Text("\(live.heartsShared.formatted(.number.notation(.compactName).locale(.app))) hearts")
           .contentTransition(.numericText(value: Double(live.heartsShared)))
       }
       fact(symbol: "chart.pie.fill", tint: .lavenderMist) {

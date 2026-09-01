@@ -29,17 +29,17 @@ struct SunlightFact<Label: View>: View {
     VStack(alignment: .leading, spacing: 14) {
       // The growth card's reading: how far the next form is.
       SunlightFact {
-        Text("240")
+        Text(verbatim: "240")
           .font(DeepType.caption.weight(.semibold))
           .foregroundStyle(GardenColor.sunbeam)
-          + Text("/700 to Mature Oak")
+          + Text(verbatim: "/700 to Mature Oak")
             .font(DeepType.caption)
             .foregroundStyle(.driftGrey)
       }
 
       // The picker's reading: what this plant has banked, full stop.
       SunlightFact {
-        Text("480")
+        Text(verbatim: "480")
           .font(DeepType.caption.weight(.semibold))
           .foregroundStyle(GardenColor.sunbeam)
           .monospacedDigit()

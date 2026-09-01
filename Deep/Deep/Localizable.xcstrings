@@ -1,0 +1,2966 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "": {
+      "shouldTranslate": false
+    },
+    " given": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " ที่มอบไป"
+          }
+        }
+      }
+    },
+    " of %lld today": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " จาก %lld วันนี้"
+          }
+        }
+      }
+    },
+    "%@ hearts": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ หัวใจ"
+          }
+        }
+      }
+    },
+    "%@ left": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เหลือ %@"
+          }
+        }
+      }
+    },
+    "%@ people are pausing with you": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ คนกำลังหยุดพักไปพร้อมกับคุณ"
+          }
+        }
+      }
+    },
+    "%@ people reached across %lld causes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ people reached across %2$lld causes"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่งถึงผู้คน %1$@ คน ใน %2$lld ด้าน"
+          }
+        }
+      }
+    },
+    "%@ to give": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ พร้อมมอบ"
+          }
+        }
+      }
+    },
+    "%@, %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, %2$@"
+          }
+        }
+      },
+      "shouldTranslate": false
+    },
+    "%@, %@, %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, %2$@, %3$@"
+          }
+        }
+      },
+      "shouldTranslate": false
+    },
+    "%@, %@, %lld sunlight": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, %2$@, %3$lld sunlight"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@, แสงแดด %3$lld"
+          }
+        }
+      }
+    },
+    "%@, %lld tracks": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, %2$lld tracks"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$lld เพลง"
+          }
+        }
+      }
+    },
+    "%@, from %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, from %2$@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ จาก %2$@"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "shouldTranslate": false
+    },
+    "%lld hearts": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld หัวใจ"
+          }
+        }
+      }
+    },
+    "%lld hearts left": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เหลือ %lld หัวใจ"
+          }
+        }
+      }
+    },
+    "%lld minutes": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld นาที"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld จาก %2$lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld min": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld min"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld จาก %2$lld นาที"
+          }
+        }
+      }
+    },
+    "%lld percent": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld เปอร์เซ็นต์"
+          }
+        }
+      }
+    },
+    "%lld percent funded": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ระดมทุนแล้ว %lld เปอร์เซ็นต์"
+          }
+        }
+      }
+    },
+    "%lld tracks · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld tracks · %2$@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld เพลง · %2$@"
+          }
+        }
+      }
+    },
+    "%lld%% funded": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ระดมทุนแล้ว %lld%%"
+          }
+        }
+      }
+    },
+    "%llds in · %llds out": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$llds in · %2$llds out"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้า %1$lld วิ · ออก %2$lld วิ"
+          }
+        }
+      }
+    },
+    "%llds in · %llds out · %lld rounds": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$llds in · %2$llds out · %3$lld rounds"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้า %1$lld วิ · ออก %2$lld วิ · %3$lld รอบ"
+          }
+        }
+      }
+    },
+    "-%@": {
+      "shouldTranslate": false
+    },
+    "/%@ to %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "/%1$@ to %2$@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/%1$@ ถึง %2$@"
+          }
+        }
+      }
+    },
+    "12,000 saplings planted": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปลูกกล้าไม้ 12,000 ต้น"
+          }
+        }
+      }
+    },
+    "18 new scholarships awarded": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มอบทุนการศึกษาใหม่ 18 ทุน"
+          }
+        }
+      }
+    },
+    "320 villagers received check-ups and medicine over three days in the hills.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชาวบ้าน 320 คนได้รับการตรวจสุขภาพและยาตลอดสามวันบนดอย"
+          }
+        }
+      }
+    },
+    "5,000 meals shared this month": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แบ่งปันอาหาร 5,000 มื้อในเดือนนี้"
+          }
+        }
+      }
+    },
+    "A few soft minutes": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่กี่นาทีอันอ่อนโยน"
+          }
+        }
+      }
+    },
+    "A full day": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เต็มหนึ่งวัน"
+          }
+        }
+      }
+    },
+    "A little calm, tended daily, becomes shade.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความสงบเล็ก ๆ ที่ดูแลทุกวัน จะกลายเป็นร่มเงา"
+          }
+        }
+      }
+    },
+    "A pause is waiting": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช่วงหยุดพักรออยู่"
+          }
+        }
+      }
+    },
+    "A premium sound": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียงสำหรับสมาชิกพรีเมียม"
+          }
+        }
+      }
+    },
+    "A quiet moment, if you'd like one.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช่วงเวลาเงียบสงบ หากคุณต้องการ"
+          }
+        }
+      }
+    },
+    "A quiet nudge, once a day": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียงเตือนเบา ๆ วันละครั้ง"
+          }
+        }
+      }
+    },
+    "A roof and a fresh start for those in crisis.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่ซุกหัวนอนและการเริ่มต้นใหม่สำหรับผู้ประสบวิกฤต"
+          }
+        }
+      }
+    },
+    "A worldwide pause held together, once each season.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช่วงหยุดพักทั่วโลกพร้อมกัน ฤดูกาลละหนึ่งครั้ง"
+          }
+        }
+      }
+    },
+    "Access to counselling and mental wellness.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเข้าถึงการปรึกษาและสุขภาวะทางใจ"
+          }
+        }
+      }
+    },
+    "Adds this sound to your playlist": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพิ่มเสียงนี้ลงในเพลย์ลิสต์"
+          }
+        }
+      }
+    },
+    "All %lld hearts": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั้งหมด %lld หัวใจ"
+          }
+        }
+      }
+    },
+    "All given away": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มอบไปหมดแล้ว"
+          }
+        }
+      }
+    },
+    "Already have an account? ": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มีบัญชีอยู่แล้ว? "
+          }
+        }
+      }
+    },
+    "At least 8 characters": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อย่างน้อย 8 ตัวอักษร"
+          }
+        }
+      }
+    },
+    "Ayutthaya": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อยุธยา"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ย้อนกลับ"
+          }
+        }
+      }
+    },
+    "Balancing breath": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลมหายใจสมดุล"
+          }
+        }
+      }
+    },
+    "Begin": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่ม"
+          }
+        }
+      }
+    },
+    "Begin %@, %lld minutes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Begin %1$@, %2$lld minutes"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่ม %1$@ %2$lld นาที"
+          }
+        }
+      }
+    },
+    "Begin %@, a guided breathing session": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่ม %@ การฝึกหายใจแบบมีผู้นำ"
+          }
+        }
+      }
+    },
+    "Books and resources for children in need.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หนังสือและสื่อการเรียนสำหรับเด็กที่ขาดแคลน"
+          }
+        }
+      }
+    },
+    "Breathe": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หายใจ"
+          }
+        }
+      }
+    },
+    "Breathe and listen": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หายใจและฟัง"
+          }
+        }
+      }
+    },
+    "Breathe, a guided breathing session": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หายใจ การฝึกหายใจแบบมีผู้นำ"
+          }
+        }
+      }
+    },
+    "Bringing healthcare to remote communities by road.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำการรักษาไปสู่ชุมชนห่างไกลด้วยรถ"
+          }
+        }
+      }
+    },
+    "Building resilient neighbourhoods through shared care and local hands.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สร้างชุมชนที่เข้มแข็งด้วยการดูแลร่วมกันและมือของคนในพื้นที่"
+          }
+        }
+      }
+    },
+    "COMPASSION": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความเมตตา"
+          }
+        }
+      }
+    },
+    "Calmer minds, a kinder world": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ใจที่สงบขึ้น โลกที่อ่อนโยนขึ้น"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยกเลิก"
+          }
+        }
+      }
+    },
+    "Candlelit gatherings carrying a shared intention for calm.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การรวมตัวจุดเทียน ด้วยความตั้งใจร่วมกันเพื่อความสงบ"
+          }
+        }
+      }
+    },
+    "Care for Elders": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดูแลผู้สูงวัย"
+          }
+        }
+      }
+    },
+    "Caring for health and well-being": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดูแลสุขภาพและความเป็นอยู่"
+          }
+        }
+      }
+    },
+    "Change": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปลี่ยน"
+          }
+        }
+      }
+    },
+    "Change plant": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปลี่ยนต้นไม้"
+          }
+        }
+      }
+    },
+    "Chiang Mai": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เชียงใหม่"
+          }
+        }
+      }
+    },
+    "Children's Heart Surgery": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ผ่าตัดหัวใจเด็ก"
+          }
+        }
+      }
+    },
+    "Choose your Mind Tree": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกต้นไม้แห่งใจของคุณ"
+          }
+        }
+      }
+    },
+    "Choose your plant": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกต้นไม้ของคุณ"
+          }
+        }
+      }
+    },
+    "Clean Water Streams": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สายน้ำสะอาด"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิด"
+          }
+        }
+      }
+    },
+    "Closes the session and returns to the app": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดเซสชันและกลับสู่แอป"
+          }
+        }
+      }
+    },
+    "Coming soon": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เร็ว ๆ นี้"
+          }
+        }
+      }
+    },
+    "Community": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชุมชน"
+          }
+        }
+      }
+    },
+    "Companionship and support for those living alone.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพื่อนคู่คิดและการดูแลสำหรับผู้ที่อยู่ลำพัง"
+          }
+        }
+      }
+    },
+    "Compassion": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความเมตตา"
+          }
+        }
+      }
+    },
+    "Conserving forests and wildlife so wild places endure for those who follow.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อนุรักษ์ผืนป่าและสัตว์ป่า เพื่อให้ธรรมชาติคงอยู่ถึงคนรุ่นหลัง"
+          }
+        }
+      }
+    },
+    "Couldn't reach the App Store. Please try again in a moment.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เชื่อมต่อ App Store ไม่ได้ ลองอีกครั้งในอีกสักครู่"
+          }
+        }
+      }
+    },
+    "Country": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประเทศ"
+          }
+        }
+      }
+    },
+    "Create an account to save your progress": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สร้างบัญชีเพื่อเก็บความคืบหน้าไว้"
+          }
+        }
+      }
+    },
+    "Create your space": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สร้างพื้นที่ของคุณ"
+          }
+        }
+      }
+    },
+    "Cultivating creativity, calm and focus through art.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บ่มเพาะความคิดสร้างสรรค์ ความสงบ และสมาธิผ่านงานศิลปะ"
+          }
+        }
+      }
+    },
+    "DEEP SESSION": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เซสชัน DEEP"
+          }
+        }
+      }
+    },
+    "DEEP — peace begins within": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEEP — ความสงบเริ่มจากภายใน"
+          }
+        }
+      }
+    },
+    "DEEP — your peaceful space": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEEP — พื้นที่สงบของคุณ"
+          }
+        }
+      }
+    },
+    "DJ Fuku's Lounge": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลานจ์ของ DJ Fuku"
+          }
+        }
+      }
+    },
+    "Daily reminder": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเตือนประจำวัน"
+          }
+        }
+      }
+    },
+    "Deep Sound": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deep Sound"
+          }
+        }
+      }
+    },
+    "Deep reads in this language everywhere, including the reminders it sends you.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deep จะใช้ภาษานี้ทุกที่ รวมถึงข้อความเตือนที่ส่งถึงคุณ"
+          }
+        }
+      }
+    },
+    "Deep will send one gentle note at the time you choose. No streak to defend, nothing to catch up on.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deep จะส่งข้อความเบา ๆ หนึ่งครั้งในเวลาที่คุณเลือก ไม่มีสถิติให้รักษา ไม่มีอะไรให้ตามให้ทัน"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบ"
+          }
+        }
+      }
+    },
+    "Delete your account?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลบบัญชีของคุณ?"
+          }
+        }
+      }
+    },
+    "Donate %@ %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Donate %1$@ %2$@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บริจาค %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Donate %lld hearts to %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Donate %1$lld hearts to %2$@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บริจาค %1$lld หัวใจให้ %2$@"
+          }
+        }
+      }
+    },
+    "Donate hearts": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บริจาคหัวใจ"
+          }
+        }
+      }
+    },
+    "Donate hearts to %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บริจาคหัวใจให้ %@"
+          }
+        }
+      }
+    },
+    "Donated %@ %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Donated %1$@ %2$@"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บริจาคแล้ว %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "Each return is enough": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การกลับมาแต่ละครั้งก็เพียงพอแล้ว"
+          }
+        }
+      }
+    },
+    "Education": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การศึกษา"
+          }
+        }
+      }
+    },
+    "Empowering minds, building tomorrow": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสริมพลังความคิด สร้างวันพรุ่งนี้"
+          }
+        }
+      }
+    },
+    "Every breath waters it.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทุกลมหายใจคือการรดน้ำ"
+          }
+        }
+      }
+    },
+    "Every breath waters your garden.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทุกลมหายใจรดน้ำสวนของคุณ"
+          }
+        }
+      }
+    },
+    "Every oak was once a quiet seed.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ต้นโอ๊กทุกต้นเคยเป็นเมล็ดที่เงียบงัน"
+          }
+        }
+      }
+    },
+    "Explore %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สำรวจ %@"
+          }
+        }
+      }
+    },
+    "Explore Deep Sound": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สำรวจ Deep Sound"
+          }
+        }
+      }
+    },
+    "Fuku's Lounge": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลานจ์ของ Fuku"
+          }
+        }
+      }
+    },
+    "Fuku's Lounge — lo-fi while the world gathers to pause": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลานจ์ของ Fuku — เพลง Lo-Fi ระหว่างที่ทั้งโลกรวมตัวกันเพื่อหยุดพัก"
+          }
+        }
+      }
+    },
+    "Fuku's Lounge, on air — lo-fi while the world gathers to pause": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลานจ์ของ Fuku กำลังออกอากาศ — เพลง Lo-Fi ระหว่างที่ทั้งโลกรวมตัวกันเพื่อหยุดพัก"
+          }
+        }
+      }
+    },
+    "Fully grown": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เติบโตเต็มที่"
+          }
+        }
+      }
+    },
+    "Funding life-changing treatment for children.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สนับสนุนการรักษาที่เปลี่ยนชีวิตเด็ก"
+          }
+        }
+      }
+    },
+    "Garden": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวน"
+          }
+        }
+      }
+    },
+    "Global": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั่วโลก"
+          }
+        }
+      }
+    },
+    "Global Meditation Day": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันสมาธิโลก"
+          }
+        }
+      }
+    },
+    "Good afternoon": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวัสดีตอนบ่าย"
+          }
+        }
+      }
+    },
+    "Good evening": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวัสดีตอนเย็น"
+          }
+        }
+      }
+    },
+    "Good morning": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวัสดีตอนเช้า"
+          }
+        }
+      }
+    },
+    "Gratitude": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความกตัญญู"
+          }
+        }
+      }
+    },
+    "Grow %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปลูก %@"
+          }
+        }
+      }
+    },
+    "Grow at the pace of breath.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เติบโตตามจังหวะลมหายใจ"
+          }
+        }
+      }
+    },
+    "Growing %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังปลูก %@"
+          }
+        }
+      }
+    },
+    "Healing": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การเยียวยา"
+          }
+        }
+      }
+    },
+    "Healthcare": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สุขภาพ"
+          }
+        }
+      }
+    },
+    "Hearts pooled": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หัวใจที่รวมกัน"
+          }
+        }
+      }
+    },
+    "Hearts to donate": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หัวใจที่จะบริจาค"
+          }
+        }
+      }
+    },
+    "Hide password": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ซ่อนรหัสผ่าน"
+          }
+        }
+      }
+    },
+    "Hold to clear": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กดค้างเพื่อล้าง"
+          }
+        }
+      }
+    },
+    "Home": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หน้าแรก"
+          }
+        }
+      }
+    },
+    "Inspiring wisdom, mindfulness and compassionate learning for every child.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จุดประกายปัญญา สติ และการเรียนรู้ด้วยความเมตตาให้เด็กทุกคน"
+          }
+        }
+      }
+    },
+    "Interactive globe showing where people are pausing": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลูกโลกแบบโต้ตอบ แสดงตำแหน่งที่ผู้คนกำลังหยุดพัก"
+          }
+        }
+      }
+    },
+    "Keep %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เก็บ %@"
+          }
+        }
+      }
+    },
+    "Keep breathing": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หายใจต่อไป"
+          }
+        }
+      }
+    },
+    "Kindness carried forward": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความเมตตาที่ส่งต่อ"
+          }
+        }
+      }
+    },
+    "LIVE · Worldwide": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สด · ทั่วโลก"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ภาษา"
+          }
+        }
+      }
+    },
+    "Learning for Life": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เรียนรู้ตลอดชีวิต"
+          }
+        }
+      }
+    },
+    "Leave": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออก"
+          }
+        }
+      }
+    },
+    "Leave your session?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกจากเซสชัน?"
+          }
+        }
+      }
+    },
+    "Light of Peace": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสงแห่งสันติ"
+          }
+        }
+      }
+    },
+    "Listen to live music and pause with the world": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฟังดนตรีสดและหยุดพักไปพร้อมกับโลกใบนี้"
+          }
+        }
+      }
+    },
+    "Live meditation in progress": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การทำสมาธิสดกำลังดำเนินอยู่"
+          }
+        }
+      }
+    },
+    "Loading": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังโหลด"
+          }
+        }
+      }
+    },
+    "Log in": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้าสู่ระบบ"
+          }
+        }
+      }
+    },
+    "Log out": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกจากระบบ"
+          }
+        }
+      }
+    },
+    "Log out of DEEP?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกจากระบบ DEEP?"
+          }
+        }
+      }
+    },
+    "MIN": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นาที"
+          }
+        }
+      }
+    },
+    "MIND GARDEN": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวนแห่งใจ"
+          }
+        }
+      }
+    },
+    "MY HEARTS": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หัวใจของฉัน"
+          }
+        }
+      }
+    },
+    "Mae Hong Son": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แม่ฮ่องสอน"
+          }
+        }
+      }
+    },
+    "Match my device": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตามอุปกรณ์"
+          }
+        }
+      }
+    },
+    "Maybe later": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไว้ทีหลัง"
+          }
+        }
+      }
+    },
+    "Meditation %lld percent through": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทำสมาธิไปแล้ว %lld เปอร์เซ็นต์"
+          }
+        }
+      }
+    },
+    "Mental Health Care": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การดูแลสุขภาพใจ"
+          }
+        }
+      }
+    },
+    "Mind Garden": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวนแห่งใจ"
+          }
+        }
+      }
+    },
+    "Mindful Art for Kids": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ศิลปะเจริญสติสำหรับเด็ก"
+          }
+        }
+      }
+    },
+    "Mobile Clinic": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลินิกเคลื่อนที่"
+          }
+        }
+      }
+    },
+    "Mobile clinic reached Mae Hong Son": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คลินิกเคลื่อนที่ไปถึงแม่ฮ่องสอน"
+          }
+        }
+      }
+    },
+    "Mutes Fuku's set": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปิดเสียงเซ็ตของ Fuku"
+          }
+        }
+      }
+    },
+    "My hearts": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หัวใจของฉัน"
+          }
+        }
+      }
+    },
+    "Nationwide": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทั่วประเทศ"
+          }
+        }
+      }
+    },
+    "Nature": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ธรรมชาติ"
+          }
+        }
+      }
+    },
+    "Neighbourhood kitchens kept families fed through the flood season.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ครัวชุมชนดูแลอาหารให้ครอบครัวตลอดฤดูน้ำหลาก"
+          }
+        }
+      }
+    },
+    "No hearts left": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีหัวใจเหลือแล้ว"
+          }
+        }
+      }
+    },
+    "No hearts to give yet": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่มีหัวใจให้มอบ"
+          }
+        }
+      }
+    },
+    "No hearts yet": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่มีหัวใจ"
+          }
+        }
+      }
+    },
+    "No lyrics for this one — just let it wash over you.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพลงนี้ไม่มีเนื้อร้อง — ปล่อยให้มันโอบคุณไว้"
+          }
+        }
+      }
+    },
+    "Nothing saved yet": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่มีอะไรถูกบันทึก"
+          }
+        }
+      }
+    },
+    "Nothing to catch up on. Just a breath.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีอะไรให้ตามให้ทัน แค่ลมหายใจ"
+          }
+        }
+      }
+    },
+    "Notifications are switched off for Deep, so the reminder can't reach you. You can turn them back on in iOS Settings.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การแจ้งเตือนของ Deep ถูกปิดอยู่ ข้อความเตือนจึงส่งถึงคุณไม่ได้ เปิดใหม่ได้ในการตั้งค่า iOS"
+          }
+        }
+      }
+    },
+    "Now playing %@. Tap to open the player.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังเล่น %@ แตะเพื่อเปิดเครื่องเล่น"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตกลง"
+          }
+        }
+      }
+    },
+    "ON AIR": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สด"
+          }
+        }
+      }
+    },
+    "On air": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกอากาศ"
+          }
+        }
+      }
+    },
+    "On air, muted": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ออกอากาศ ปิดเสียงอยู่"
+          }
+        }
+      }
+    },
+    "On days you've already practised, the reminder stays quiet.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ในวันที่คุณฝึกแล้ว ข้อความเตือนจะเงียบไว้"
+          }
+        }
+      }
+    },
+    "One Buddhist": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันบุดดิสต์"
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดการตั้งค่า"
+          }
+        }
+      }
+    },
+    "Opens the next Global Pause": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิด Global Pause ครั้งถัดไป"
+          }
+        }
+      }
+    },
+    "Other": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อื่น ๆ"
+          }
+        }
+      }
+    },
+    "PARTNER ORGANISATION": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "องค์กรพันธมิตร"
+          }
+        }
+      }
+    },
+    "PEACE MESSAGE": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อความแห่งสันติ"
+          }
+        }
+      }
+    },
+    "Participants": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ผู้ร่วม"
+          }
+        }
+      }
+    },
+    "Pause": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หยุดชั่วคราว"
+          }
+        }
+      }
+    },
+    "Peace": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความสงบ"
+          }
+        }
+      }
+    },
+    "Peace & Well-being": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สันติภาพและความเป็นอยู่ที่ดี"
+          }
+        }
+      }
+    },
+    "Peace Circle": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วงสันติ"
+          }
+        }
+      }
+    },
+    "Pick an amount": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เลือกจำนวน"
+          }
+        }
+      }
+    },
+    "Pick up right where you left off.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่มต่อจากที่คุณค้างไว้"
+          }
+        }
+      }
+    },
+    "Play %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เล่น %@"
+          }
+        }
+      }
+    },
+    "Playlist": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพลย์ลิสต์"
+          }
+        }
+      }
+    },
+    "Practice earns more": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฝึกฝนเพื่อรับเพิ่ม"
+          }
+        }
+      }
+    },
+    "Progress": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความคืบหน้า"
+          }
+        }
+      }
+    },
+    "Protecting nature for future generations": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปกป้องธรรมชาติเพื่อคนรุ่นต่อไป"
+          }
+        }
+      }
+    },
+    "Protecting watersheds that villages depend on.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปกป้องต้นน้ำที่หมู่บ้านพึ่งพา"
+          }
+        }
+      }
+    },
+    "Ramathibodi Foundation": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มูลนิธิรามาธิบดี"
+          }
+        }
+      }
+    },
+    "Refresh": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีเฟรช"
+          }
+        }
+      }
+    },
+    "Refreshing": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังรีเฟรช"
+          }
+        }
+      }
+    },
+    "Remove from playlist": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำออกจากเพลย์ลิสต์"
+          }
+        }
+      }
+    },
+    "Removes this sound from your playlist": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำเสียงนี้ออกจากเพลย์ลิสต์"
+          }
+        }
+      }
+    },
+    "Replanting native canopy across cleared land.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ปลูกไม้พื้นถิ่นคืนบนผืนดินที่ถูกแผ้วถาง"
+          }
+        }
+      }
+    },
+    "Reset all": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รีเซ็ตทั้งหมด"
+          }
+        }
+      }
+    },
+    "Restore the Forest": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฟื้นผืนป่า"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เล่นต่อ"
+          }
+        }
+      }
+    },
+    "Safe Shelter": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่พักพิงปลอดภัย"
+          }
+        }
+      }
+    },
+    "Safe habitat for species on the edge.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ถิ่นอาศัยปลอดภัยสำหรับสัตว์ที่ใกล้สูญพันธุ์"
+          }
+        }
+      }
+    },
+    "Sample world": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โลกตัวอย่าง"
+          }
+        }
+      }
+    },
+    "Save a sound while it's playing and it'll be waiting here.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บันทึกเสียงระหว่างที่กำลังเล่น แล้วมันจะรออยู่ตรงนี้"
+          }
+        }
+      }
+    },
+    "Save to playlist": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บันทึกลงเพลย์ลิสต์"
+          }
+        }
+      }
+    },
+    "Saved to playlist": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "บันทึกลงเพลย์ลิสต์แล้ว"
+          }
+        }
+      }
+    },
+    "Scholarship Program": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "โครงการทุนการศึกษา"
+          }
+        }
+      }
+    },
+    "See all": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดูทั้งหมด"
+          }
+        }
+      }
+    },
+    "See all %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดู %@ ทั้งหมด"
+          }
+        }
+      }
+    },
+    "Send a heart": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่งหัวใจ"
+          }
+        }
+      }
+    },
+    "Send a heart to %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่งหัวใจให้ %@"
+          }
+        }
+      }
+    },
+    "Session length": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความยาวเซสชัน"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การตั้งค่า"
+          }
+        }
+      }
+    },
+    "Settling in": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ตั้งลมหายใจ"
+          }
+        }
+      }
+    },
+    "Seub Nakhasathien Foundation": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มูลนิธิสืบนาคะเสถียร"
+          }
+        }
+      }
+    },
+    "Shared Meals": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มื้ออาหารร่วมกัน"
+          }
+        }
+      }
+    },
+    "Show password": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงรหัสผ่าน"
+          }
+        }
+      }
+    },
+    "Shows the next part of your session rewards": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสดงรางวัลส่วนถัดไปของเซสชัน"
+          }
+        }
+      }
+    },
+    "Signed in with Apple": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เข้าสู่ระบบด้วย Apple"
+          }
+        }
+      }
+    },
+    "Slow breathing to settle back into now": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หายใจช้า ๆ เพื่อกลับมาอยู่กับปัจจุบัน"
+          }
+        }
+      }
+    },
+    "Small local circles learning to listen and reconcile.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วงเล็ก ๆ ในท้องถิ่น ที่เรียนรู้การรับฟังและคืนดี"
+          }
+        }
+      }
+    },
+    "Small moments grow tall.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ช่วงเวลาเล็ก ๆ เติบโตได้สูงใหญ่"
+          }
+        }
+      }
+    },
+    "So your practice stays with you.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เพื่อให้การฝึกของคุณอยู่กับคุณต่อไป"
+          }
+        }
+      }
+    },
+    "Someone I love": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คนที่ฉันรัก"
+          }
+        }
+      }
+    },
+    "Something went wrong": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มีบางอย่างผิดพลาด"
+          }
+        }
+      }
+    },
+    "Somewhere to rest": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ที่พักใจ"
+          }
+        }
+      }
+    },
+    "Sounds": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียง"
+          }
+        }
+      }
+    },
+    "Sounds you've saved": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียงที่คุณบันทึกไว้"
+          }
+        }
+      }
+    },
+    "Stay": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อยู่ต่อ"
+          }
+        }
+      }
+    },
+    "Still here": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังอยู่ตรงนี้"
+          }
+        }
+      }
+    },
+    "Stillness is how roots deepen.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ความนิ่งคือสิ่งที่ทำให้รากหยั่งลึก"
+          }
+        }
+      }
+    },
+    "Stronger communities, brighter futures": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ชุมชนที่เข้มแข็ง อนาคตที่สดใส"
+          }
+        }
+      }
+    },
+    "Students from rural provinces begin their first university term.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นักเรียนจากต่างจังหวัดเริ่มภาคเรียนแรกในมหาวิทยาลัย"
+          }
+        }
+      }
+    },
+    "Sunlight stays with every plant — switch back any time and it grows on from where it left off.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "แสงแดดยังอยู่กับต้นไม้ทุกต้น — มันจะเติบโตต่อจากจุดเดิมเมื่อคุณกลับมา"
+          }
+        }
+      }
+    },
+    "Supporting bright students to reach their dreams.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สนับสนุนนักเรียนที่มีความสามารถให้ไปถึงความฝัน"
+          }
+        }
+      }
+    },
+    "Supporting healthcare access and medical care for those who need it most.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สนับสนุนการเข้าถึงการรักษาและการดูแลทางการแพทย์สำหรับผู้ที่ต้องการมากที่สุด"
+          }
+        }
+      }
+    },
+    "Switches your garden to this plant": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปลี่ยนสวนของคุณเป็นต้นไม้นี้"
+          }
+        }
+      }
+    },
+    "THE COMMUNITY POOL": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กองรวมของชุมชน"
+          }
+        }
+      }
+    },
+    "TODAY’S PRACTICE": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การฝึกวันนี้"
+          }
+        }
+      }
+    },
+    "Take a breath with the world today": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หายใจไปพร้อมกับโลกในวันนี้"
+          }
+        }
+      }
+    },
+    "Take a deep breath.": {
+      "extractionState": "manual",
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "หายใจเข้าลึก ๆ"
+          }
+        }
+      }
+    },
+    "Tend to your calm": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดูแลความสงบของคุณ"
+          }
+        }
+      }
+    },
+    "Tend your garden": {
+      "extractionState": "manual",
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ดูแลสวนของคุณ"
+          }
+        }
+      }
+    },
+    "Thailand": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประเทศไทย"
+          }
+        }
+      }
+    },
+    "Thank you for pausing": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ขอบคุณที่หยุดพัก"
+          }
+        }
+      }
+    },
+    "This one is part of DEEP Premium. It'll be here whenever you're ready.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียงนี้เป็นส่วนหนึ่งของ DEEP Premium มันจะอยู่ตรงนี้เมื่อคุณพร้อม"
+          }
+        }
+      }
+    },
+    "Time to breathe": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ถึงเวลาหายใจ"
+          }
+        }
+      }
+    },
+    "Today asks only a few soft minutes.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันนี้ขอเพียงไม่กี่นาทีอันอ่อนโยน"
+          }
+        }
+      }
+    },
+    "Together Foundation": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มูลนิธิทูเกทเธอร์"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Turn practice into giving": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปลี่ยนการฝึกให้เป็นการให้"
+          }
+        }
+      }
+    },
+    "Unmutes Fuku's set": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดเสียงเซ็ตของ Fuku"
+          }
+        }
+      }
+    },
+    "V-Peace Foundation": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "มูลนิธิวี-พีซ"
+          }
+        }
+      }
+    },
+    "Visit %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไปที่ %@"
+          }
+        }
+      }
+    },
+    "Volunteers nurturing compassion and global understanding through mindful practice.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อาสาสมัครที่บ่มเพาะความเมตตาและความเข้าใจระหว่างกันผ่านการฝึกสติ"
+          }
+        }
+      }
+    },
+    "Volunteers restored 40 rai of native canopy ahead of the rains.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อาสาสมัครฟื้นผืนป่าพื้นถิ่น 40 ไร่ ก่อนฤดูฝน"
+          }
+        }
+      }
+    },
+    "Warm food for families through hard seasons.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อาหารอุ่น ๆ สำหรับครอบครัวในช่วงเวลายากลำบาก"
+          }
+        }
+      }
+    },
+    "We couldn't delete your account. Please try again in a moment.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เราลบบัญชีของคุณไม่ได้ ลองอีกครั้งในอีกสักครู่"
+          }
+        }
+      }
+    },
+    "We couldn't gather the sounds just now.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เรารวบรวมเสียงไม่ได้ในตอนนี้"
+          }
+        }
+      }
+    },
+    "We couldn't gather today's content just now.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เรารวบรวมเนื้อหาของวันนี้ไม่ได้ในตอนนี้"
+          }
+        }
+      }
+    },
+    "We couldn't reach your playlist just now.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เราเข้าถึงเพลย์ลิสต์ของคุณไม่ได้ในตอนนี้"
+          }
+        }
+      }
+    },
+    "We're shaping your space": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เรากำลังจัดพื้นที่ของคุณ"
+          }
+        }
+      }
+    },
+    "Welcome back": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยินดีต้อนรับกลับมา"
+          }
+        }
+      }
+    },
+    "What did tonight hold for you?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คืนนี้มีอะไรอยู่ในใจคุณ"
+          }
+        }
+      }
+    },
+    "What were you holding?": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณกำลังโอบสิ่งใดไว้"
+          }
+        }
+      }
+    },
+    "Whenever you're ready": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เมื่อคุณพร้อม"
+          }
+        }
+      }
+    },
+    "Wildlife Refuge": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เขตพักพิงสัตว์ป่า"
+          }
+        }
+      }
+    },
+    "YOUR PART": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ส่วนของคุณ"
+          }
+        }
+      }
+    },
+    "YOUR RHYTHM": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จังหวะของคุณ"
+          }
+        }
+      }
+    },
+    "You": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฉัน"
+          }
+        }
+      }
+    },
+    "You can change it anytime.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปลี่ยนได้ทุกเมื่อ"
+          }
+        }
+      }
+    },
+    "You don't have to rush a tree.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ต้องเร่งต้นไม้"
+          }
+        }
+      }
+    },
+    "You don’t have to rush a tree.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่ต้องเร่งต้นไม้"
+          }
+        }
+      }
+    },
+    "You'll start fresh from the welcome flow. What you've shared stays safe.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณจะเริ่มใหม่จากหน้าต้อนรับ สิ่งที่คุณแบ่งปันไว้ยังปลอดภัย"
+          }
+        }
+      }
+    },
+    "Your breath will be here whenever you’re ready to return.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ลมหายใจของคุณจะอยู่ตรงนี้ เมื่อคุณพร้อมกลับมา"
+          }
+        }
+      }
+    },
+    "Your garden is catching up": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวนของคุณกำลังตามให้ทัน"
+          }
+        }
+      }
+    },
+    "Your garden is here whenever you are.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวนของคุณอยู่ตรงนี้เสมอ"
+          }
+        }
+      }
+    },
+    "Your garden is open": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สวนของคุณเปิดอยู่"
+          }
+        }
+      }
+    },
+    "Your practice is safely remembered": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การฝึกของคุณถูกจดจำไว้อย่างปลอดภัย"
+          }
+        }
+      }
+    },
+    "day of returning": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันแห่งการกลับมา"
+          }
+        }
+      }
+    },
+    "days of returning": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันแห่งการกลับมา"
+          }
+        }
+      }
+    },
+    "done": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสร็จแล้ว"
+          }
+        }
+      }
+    },
+    "in progress": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังดำเนินอยู่"
+          }
+        }
+      }
+    },
+    "of %@ hearts you hold": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จาก %@ หัวใจที่คุณมี"
+          }
+        }
+      }
+    },
+    "of giving": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ของการให้"
+          }
+        }
+      }
+    },
+    "today is full": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันนี้เต็มแล้ว"
+          }
+        }
+      }
+    },
+    "“%@”": {
+      "shouldTranslate": false
+    }
+  },
+  "version": "1.0"
+}

@@ -92,6 +92,7 @@ extension Array where Element == RingSegment {
   }
 }
 
+#if DEBUG
 #Preview("Allocation halo") {
   ZStack {
     AtmosphereBackground()
@@ -99,7 +100,7 @@ extension Array where Element == RingSegment {
       ZStack {
         CompassionRing(segments: .allocation(of: CompassionLibrary.categories), lineWidth: 14)
         VStack(spacing: 2) {
-          Text("73K")
+          Text(verbatim: "73K")
             .font(DeepType.counter)
             .foregroundStyle(.deepPlum)
           Text("POOLED")
@@ -117,7 +118,7 @@ extension Array where Element == RingSegment {
           lineWidth: 5,
           gap: 0
         )
-        Text("62%")
+        Text(verbatim: "62%")
           .font(DeepType.micro)
           .foregroundStyle(.deepPlum)
       }
@@ -126,3 +127,4 @@ extension Array where Element == RingSegment {
     .padding(.edge)
   }
 }
+#endif

@@ -123,7 +123,7 @@ private struct TrackRow: View {
   var body: some View {
     Button(action: action) {
       HStack(spacing: 16) {
-        Text("\(number)")
+        Text(verbatim: "\(number)")
           .font(DeepType.body)
           .monospacedDigit()
           .foregroundStyle(.driftGrey)

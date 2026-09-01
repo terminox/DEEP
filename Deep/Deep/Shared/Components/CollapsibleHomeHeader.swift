@@ -14,8 +14,8 @@ import SwiftUI
 /// than insetting the scroll — keeping the full-bleed hero intact.
 extension View {
   func collapsibleHomeHeader<Trailing: View>(
-    title: String,
-    subtitle: String? = nil,
+    title: LocalizedStringKey,
+    subtitle: LocalizedStringKey? = nil,
     @ViewBuilder trailing: () -> Trailing = { EmptyView() }
   ) -> some View {
     modifier(
@@ -47,8 +47,8 @@ extension View {
 /// separator line the design language rules out).
 extension View {
   func pinnedHomeHeader<Trailing: View>(
-    title: String,
-    subtitle: String? = nil,
+    title: LocalizedStringKey,
+    subtitle: LocalizedStringKey? = nil,
     @ViewBuilder trailing: () -> Trailing = { EmptyView() }
   ) -> some View {
     safeAreaBar(edge: .top, spacing: 0) {
@@ -58,8 +58,8 @@ extension View {
 }
 
 private struct PinnedHomeHeader: View {
-  let title: String
-  let subtitle: String?
+  let title: LocalizedStringKey
+  let subtitle: LocalizedStringKey?
   let trailing: AnyView
 
   var body: some View {
@@ -101,8 +101,8 @@ extension EnvironmentValues {
 }
 
 private struct CollapsibleHomeHeaderModifier: ViewModifier {
-  let title: String
-  let subtitle: String?
+  let title: LocalizedStringKey
+  let subtitle: LocalizedStringKey?
   let trailing: AnyView
 
   /// Upward scroll distance, normalised so 0 is the resting top.
@@ -238,8 +238,8 @@ private func smoothstep(_ edge0: CGFloat, _ edge1: CGFloat, _ x: CGFloat) -> CGF
 /// A hermetic skeleton matching the home-screen shape so the canvas exercises
 /// both the expanded and collapsed states by scrolling.
 private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
-  var title: String
-  var subtitle: String
+  var title: LocalizedStringKey
+  var subtitle: LocalizedStringKey
   @ViewBuilder var trailing: () -> Trailing
 
   var body: some View {
@@ -264,16 +264,19 @@ private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
   }
 }
 
+#if DEBUG
 #Preview("Collapsible header — over hero") {
   CollapsibleHomeHeaderPreview(
     title: "Deep Sound",
     subtitle: "Sound to settle into"
   ) { EmptyView() }
 }
+#endif
 
 /// Enough rows to scroll, so the canvas shows both halves of the contract: a
 /// bare top at rest, and the system's soft edge only once a card reaches the
 /// title.
+#if DEBUG
 #Preview("Pinned header — no hero") {
   ScrollView {
     LazyVStack(spacing: 14) {
@@ -302,3 +305,4 @@ private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
     HeartBalanceChip(balance: 2_450, overDarkHero: true)
   }
 }
+#endif

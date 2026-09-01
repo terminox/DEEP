@@ -95,7 +95,7 @@ struct FeatureCard: View {
           .font(DeepType.body.weight(.medium))
           .foregroundStyle(.deepPlum)
           .lineLimit(1)
-        Text("\(collection.kindLabel) · \(collection.subtitle)")
+        Text(verbatim: "\(collection.kindLabel) · \(collection.subtitle)")
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
           .lineLimit(1)

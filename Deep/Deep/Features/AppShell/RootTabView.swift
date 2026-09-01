@@ -17,6 +17,8 @@ struct RootTabView: UIViewControllerRepresentable {
   let gardenStore: GardenStore
   let playlistStore: PlaylistStore
   let continuityWitness: ContinuityWitness
+  let languageStore: LanguageStore
+  let reminderStore: ReminderStore
   let pauseSession: GlobalPauseSession
   let pauseRepository: any PauseEventRepository
   let imageLoader: any ImageLoading
@@ -34,6 +36,8 @@ struct RootTabView: UIViewControllerRepresentable {
       gardenStore: gardenStore,
       playlistStore: playlistStore,
       continuityWitness: continuityWitness,
+      languageStore: languageStore,
+      reminderStore: reminderStore,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
       imageLoader: imageLoader,
@@ -56,6 +60,8 @@ struct RootTabView: UIViewControllerRepresentable {
     gardenStore: .sample,
     playlistStore: .sample,
     continuityWitness: .unwitnessed,
+    languageStore: .preview,
+    reminderStore: .previewOff,
     pauseSession: GlobalPauseSession(
       clock: SyncedClock(),
       repository: FixturePauseEventRepository()

@@ -26,7 +26,7 @@ struct CommunityPoolCard: View {
 
       legend
 
-      Text("\(peopleReached.formatted(.number.notation(.compactName))) people reached across \(categories.count) causes")
+      Text("\(peopleReached.formatted(.number.notation(.compactName).locale(.app))) people reached across \(categories.count) causes")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
         .multilineTextAlignment(.center)
@@ -46,7 +46,7 @@ struct CommunityPoolCard: View {
         Image(systemName: "heart.fill")
           .font(.system(size: 14, weight: .semibold))
           .foregroundStyle(.blushPowder)
-        Text(pooled.formatted(.number.notation(.compactName)))
+        Text(pooled.formatted(.number.notation(.compactName).locale(.app)))
           .font(DeepType.counter)
           .foregroundStyle(.deepPlum)
           .monospacedDigit()

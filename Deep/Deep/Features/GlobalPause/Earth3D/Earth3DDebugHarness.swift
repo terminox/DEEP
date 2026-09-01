@@ -52,7 +52,7 @@ struct Earth3DDebugHarness: View {
         Text("Participants")
           .font(DeepType.micro).tracking(1.2).foregroundStyle(.driftGrey)
         Spacer()
-        Text("\(Int(slider))")
+        Text(verbatim: "\(Int(slider))")
           .font(DeepType.counter)
           .foregroundStyle(.deepPlum)
       }

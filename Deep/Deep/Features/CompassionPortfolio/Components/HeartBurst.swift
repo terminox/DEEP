@@ -52,6 +52,7 @@ extension View {
   }
 }
 
+#if DEBUG
 #Preview("Heart burst") {
   @Previewable @State var count = 0
   Button("Send") { count += 1 }
@@ -59,3 +60,4 @@ extension View {
     .heartBurst(trigger: count)
     .background(.moonCream)
 }
+#endif

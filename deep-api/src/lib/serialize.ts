@@ -16,6 +16,7 @@ import type {
   PlaylistItem,
 } from "@prisma/client";
 import { mediaUrl } from "./media.js";
+import { translate } from "./translations.js";
 import { deriveStageIndex } from "./awardRules.js";
 import type { AwardOutcome, WalletSummary } from "./awards.js";
 
@@ -34,7 +35,7 @@ export function serializeTrack(
 ) {
   return {
     id: t.id,
-    title: t.title,
+    title: translate("SOUND_TRACK", t.id, "title", t.title),
     durationSeconds: t.durationSeconds,
     kind: t.kind, // INSTRUMENTAL | GUIDED
     audioUrl: mediaUrl(t.audioPath),
@@ -53,8 +54,8 @@ export function serializeCollection(
   return {
     id: c.id,
     categoryId: c.categoryId,
-    title: c.title,
-    subtitle: c.subtitle,
+    title: translate("SOUND_COLLECTION", c.id, "title", c.title),
+    subtitle: translate("SOUND_COLLECTION", c.id, "subtitle", c.subtitle),
     palette: c.palette,
     imageUrl: mediaUrl(c.imageUrl),
     isPremium: c.isPremium,
@@ -76,7 +77,7 @@ export function serializeCategory(
   return {
     id: cat.id,
     slug: cat.slug,
-    title: cat.title,
+    title: translate("SOUND_CATEGORY", cat.id, "title", cat.title),
     displayOrder: cat.displayOrder,
     collectionCount: cat._count?.collections,
     collections: cat.collections
@@ -134,21 +135,21 @@ export function serializeOnboardingConfig(
   return {
     questions: questions.map((q) => ({
       id: q.id,
-      prompt: q.prompt,
+      prompt: translate("QUIZ_QUESTION", q.id, "prompt", q.prompt),
       options: q.options
         .slice()
         .sort((a, b) => a.displayOrder - b.displayOrder)
         .map((o) => ({
           id: o.key,
-          title: o.title,
-          subtitle: o.subtitle,
+          title: translate("QUIZ_OPTION", o.id, "title", o.title),
+          subtitle: translate("QUIZ_OPTION", o.id, "subtitle", o.subtitle),
           palette: o.palette,
         })),
     })),
     mindTrees: trees.map((t) => ({
       id: t.id,
-      name: t.name,
-      tagline: t.tagline,
+      name: translate("PLANT", t.id, "name", t.name),
+      tagline: translate("PLANT", t.id, "tagline", t.tagline),
       imageUrl: mediaUrl(t.imageUrl),
       palette: t.palette,
     })),
@@ -160,8 +161,8 @@ export function serializeOnboardingConfig(
 export function serializePlant(p: Plant) {
   return {
     id: p.id,
-    name: p.name,
-    tagline: p.tagline,
+    name: translate("PLANT", p.id, "name", p.name),
+    tagline: translate("PLANT", p.id, "tagline", p.tagline),
     imageUrl: mediaUrl(p.imageUrl),
     palette: p.palette,
     displayOrder: p.displayOrder,
@@ -175,7 +176,7 @@ export function serializePlantStage(s: PlantStage) {
   return {
     id: s.id,
     plantId: s.plantId,
-    name: s.name,
+    name: translate("PLANT_STAGE", s.id, "name", s.name),
     displayOrder: s.displayOrder,
     sunlightRequired: s.sunlightRequired,
     mascotUrl: mediaUrl(s.mascotPath),

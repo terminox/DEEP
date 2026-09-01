@@ -9,6 +9,13 @@ final class AppDependencies {
   let config: AppConfig
   let apiClient: APIClient
 
+  /// The language every screen and every scheduled notification reads in.
+  /// Device state rather than account state, so it outlives a log out.
+  let languageStore: LanguageStore
+  /// The daily nudge's settings and the system queue behind it. Local to this
+  /// phone — nothing about it reaches the server.
+  let reminderStore: ReminderStore
+
   let accountStore: any AccountStore
   let onboardingStore: any OnboardingProgressStore
   let onboardingRemote: any OnboardingRemote
@@ -41,6 +48,8 @@ final class AppDependencies {
     let client = APIClient(baseURL: config.apiBaseURL, tokens: KeychainTokenStore())
     self.config = config
     self.apiClient = client
+    self.languageStore = LanguageStore()
+    self.reminderStore = ReminderStore()
     self.accountStore = APIAccountStore(client: client)
     self.onboardingStore = OnboardingProgressDefaultsStore()
     self.onboardingRemote = APIOnboardingRemote(client: client)

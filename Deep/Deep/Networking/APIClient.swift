@@ -102,6 +102,10 @@ final class APIClient {
     // The user's day boundary travels with every request: award day-keys and
     // "earned today" figures follow the device timezone server-side.
     req.setValue(TimeZone.current.identifier, forHTTPHeaderField: "X-Device-Timezone")
+    // The language travels too, so server-authored copy — track and collection
+    // titles, plant names, the pause's welcome lines — arrives in the language
+    // the member picked in-app rather than the one their phone is set to.
+    req.setValue(AppLanguage.current.acceptLanguageHeader, forHTTPHeaderField: "Accept-Language")
     if let bodyData {
       req.httpBody = bodyData
       req.setValue(contentType, forHTTPHeaderField: "Content-Type")

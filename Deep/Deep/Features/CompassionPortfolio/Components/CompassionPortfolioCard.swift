@@ -60,8 +60,16 @@ struct CompassionPortfolioCard: View {
   /// The balance as the card's name. A spent balance is told as what it means —
   /// everything went to a cause — rather than as a zero.
   private var headline: String {
-    if ledger.canGive { return "\(ledger.balance.formatted()) to give" }
-    return ledger.heartsGiven > 0 ? "All given away" : "No hearts yet"
+    if ledger.canGive {
+      return String(
+        localized: "\(ledger.balance.formatted(.number.locale(.app))) to give",
+        bundle: .app,
+        locale: .app
+      )
+    }
+    return ledger.heartsGiven > 0
+      ? String(localized: "All given away", bundle: .app, locale: .app)
+      : String(localized: "No hearts yet", bundle: .app, locale: .app)
   }
 
   /// The lifetime figure — hearts that have left for a cause.

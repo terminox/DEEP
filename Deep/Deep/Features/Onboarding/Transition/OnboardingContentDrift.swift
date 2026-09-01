@@ -25,6 +25,7 @@ extension View {
   }
 }
 
+#if DEBUG
 #Preview("Content drift") {
   @Previewable @State var showsFirst = true
 
@@ -62,3 +63,4 @@ extension View {
     .padding(.edge)
   }
 }
+#endif

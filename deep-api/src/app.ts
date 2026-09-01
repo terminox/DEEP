@@ -8,6 +8,8 @@ import { ZodError } from "zod";
 import { env } from "./env.js";
 import { ApiError } from "./lib/errors.js";
 import { requestBaseUrl } from "./lib/media.js";
+import { negotiateLanguage, requestLanguage } from "./lib/requestLanguage.js";
+import { primeTranslations } from "./lib/translations.js";
 import { authRoutes } from "./routes/auth.js";
 import { onboardingRoutes } from "./routes/onboarding.js";
 import { soundRoutes } from "./routes/sound.js";
@@ -36,6 +38,17 @@ export function buildApp() {
   app.addHook("onRequest", (req, _reply, done) => {
     const host = req.headers.host ?? req.hostname;
     requestBaseUrl.run(`${req.protocol}://${host}`, done);
+  });
+
+  // Resolve the request's language the same way, then warm the translation
+  // cache before any route runs — `serialize.ts` is synchronous, so the copy
+  // has to be in memory by the time it projects a row. Serving English is
+  // always a valid outcome, so this never fails a request.
+  app.addHook("onRequest", (req, _reply, done) => {
+    const language = negotiateLanguage(req.headers["accept-language"]);
+    requestLanguage.run(language, () => {
+      primeTranslations().finally(done);
+    });
   });
 
   // Serve uploaded/seeded media at /media (progressive HTTP; AVPlayer-friendly).
