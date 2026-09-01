@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "LaunchAtmosphereGradient.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

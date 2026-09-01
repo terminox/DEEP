@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The atmosphere, frozen. A launch screen runs no code, so this is
+  `AtmosphereBackground` rebuilt out of flat stills: the sky wash stretched edge
+  to edge, and the three orbs at their resting offsets. The stills are rendered
+  from the view itself by `LaunchAtmosphereExportTests` — never hand-drawn — and
+  every offset here is one of its `Orb.rest` values, so the hand-off into
+  SwiftUI's first frame is seamless.
+
+  The orbs carry fixed point sizes and centre offsets rather than scaling with
+  the screen, exactly as `.frame()` + `.offset()` do in the live view. A single
+  flattened full-screen image would shrink them ~15% on the smallest iPhone and
+  visibly jump at hand-off.
+
+  No colour is set anywhere in here: the opaque gradient covers the root view, so
+  the palette still lives only in `DeepTheme`, baked into the stills at export.
+-->
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22505" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="Lch-Vc-Rot">
+    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22504"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--Launch Screen-->
+        <scene sceneID="Lch-Sc-Ene">
+            <objects>
+                <viewController id="Lch-Vc-Rot" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Rot-Vw-Atm">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchAtmosphereGradient" translatesAutoresizingMaskIntoConstraints="NO" id="Sky-Wsh-Grd" userLabel="Sky wash">
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                            </imageView>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchOrbLavender" translatesAutoresizingMaskIntoConstraints="NO" id="Orb-Lav-Mst" userLabel="Orb — lavenderMist">
+                                <rect key="frame" x="-273.5" y="-164" width="700" height="700"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="700" id="Orb-Lav-Wid"/>
+                                    <constraint firstAttribute="height" constant="700" id="Orb-Lav-Hgt"/>
+                                </constraints>
+                            </imageView>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchOrbBlush" translatesAutoresizingMaskIntoConstraints="NO" id="Orb-Bls-Pwd" userLabel="Orb — blushPowder">
+                                <rect key="frame" x="-63.5" y="-154" width="740" height="740"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="740" id="Orb-Bls-Wid"/>
+                                    <constraint firstAttribute="height" constant="740" id="Orb-Bls-Hgt"/>
+                                </constraints>
+                            </imageView>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="LaunchOrbSky" translatesAutoresizingMaskIntoConstraints="NO" id="Orb-Sky-Wsh" userLabel="Orb — skyWash">
+                                <rect key="frame" x="-223.5" y="406" width="640" height="640"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="640" id="Orb-Sky-Wid"/>
+                                    <constraint firstAttribute="height" constant="640" id="Orb-Sky-Hgt"/>
+                                </constraints>
+                            </imageView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="Saf-Ar-Gde"/>
+                        <constraints>
+                            <constraint firstItem="Sky-Wsh-Grd" firstAttribute="top" secondItem="Rot-Vw-Atm" secondAttribute="top" id="Sky-Cn-Top"/>
+                            <constraint firstItem="Sky-Wsh-Grd" firstAttribute="leading" secondItem="Rot-Vw-Atm" secondAttribute="leading" id="Sky-Cn-Led"/>
+                            <constraint firstItem="Rot-Vw-Atm" firstAttribute="trailing" secondItem="Sky-Wsh-Grd" secondAttribute="trailing" id="Sky-Cn-Trl"/>
+                            <constraint firstItem="Rot-Vw-Atm" firstAttribute="bottom" secondItem="Sky-Wsh-Grd" secondAttribute="bottom" id="Sky-Cn-Bot"/>
+                            <constraint firstItem="Orb-Lav-Mst" firstAttribute="centerX" secondItem="Rot-Vw-Atm" secondAttribute="centerX" constant="-120" id="Orb-Lav-CtX"/>
+                            <constraint firstItem="Orb-Lav-Mst" firstAttribute="centerY" secondItem="Rot-Vw-Atm" secondAttribute="centerY" constant="-240" id="Orb-Lav-CtY"/>
+                            <constraint firstItem="Orb-Bls-Pwd" firstAttribute="centerX" secondItem="Rot-Vw-Atm" secondAttribute="centerX" constant="110" id="Orb-Bls-CtX"/>
+                            <constraint firstItem="Orb-Bls-Pwd" firstAttribute="centerY" secondItem="Rot-Vw-Atm" secondAttribute="centerY" constant="-210" id="Orb-Bls-CtY"/>
+                            <constraint firstItem="Orb-Sky-Wsh" firstAttribute="centerX" secondItem="Rot-Vw-Atm" secondAttribute="centerX" constant="-100" id="Orb-Sky-CtX"/>
+                            <constraint firstItem="Orb-Sky-Wsh" firstAttribute="centerY" secondItem="Rot-Vw-Atm" secondAttribute="centerY" constant="300" id="Orb-Sky-CtY"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Lch-Fr-Rsp" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="53" y="375"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="LaunchAtmosphereGradient" width="4" height="2000"/>
+        <image name="LaunchOrbBlush" width="740" height="740"/>
+        <image name="LaunchOrbLavender" width="700" height="700"/>
+        <image name="LaunchOrbSky" width="640" height="640"/>
+    </resources>
+</document>
