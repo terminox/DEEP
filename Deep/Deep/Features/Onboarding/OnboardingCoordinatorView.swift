@@ -7,6 +7,11 @@ import SwiftUI
 /// never move, while each screen's content block adds its own gentle
 /// `.onboardingContentDrift()`, following the routing direction injected via
 /// `onboardingNavDirection`.
+/// The flow's content — quiz questions and Mind Trees — is server-driven, so
+/// the coordinator also owns fetching it and the state that fetch is in. The
+/// welcome screen's CTA waits on that state and offers a retry when it fails;
+/// nothing falls back to bundled content.
+///
 /// Persistent chrome — a frosted back button and, on the quiz / Mind Tree
 /// steps, the progress bar — floats above the transitioning content, so only
 /// the screen beneath it changes. Leaf screens navigate
@@ -31,10 +36,16 @@ struct OnboardingCoordinatorView: View {
 
   /// The route stack; empty means the welcome screen is showing.
   @State private var routes: [OnboardingRoute] = []
-  /// Server-driven questions + mind trees; starts as the bundled fixtures and
-  /// is replaced once the backend copy loads. Screens read it via the
-  /// `onboardingConfig` environment value.
-  @State private var config: OnboardingConfig = .fixture
+  /// Where the fetch of the server-driven questions + mind trees has got to.
+  /// Screens read the loaded config via the `onboardingConfig` environment
+  /// value; there is deliberately no bundled fallback — see `OnboardingConfig`.
+  @State private var configLoad: ConfigLoad = .loading
+  /// Bumped to re-run the fetch; drives the `.task(id:)` below.
+  @State private var configAttempt = 0
+  /// A config-dependent route asked for before the config arrived. Only the
+  /// post-login resume can get here — every other caller is gated on the
+  /// config — and it is replayed the moment the fetch succeeds.
+  @State private var pendingRoute: OnboardingRoute?
   /// Present while the welcome freeze-frame ripples away over the just-shown
   /// destination; nil the rest of the time.
   @State private var ripple: RippleContext?
@@ -55,7 +66,35 @@ struct OnboardingCoordinatorView: View {
     let origin: CGPoint
   }
 
+  private enum ConfigLoad: Equatable {
+    case loading
+    case loaded(OnboardingConfig)
+    case failed
+  }
+
   private var currentRoute: OnboardingRoute? { routes.last }
+
+  /// The fetched config, or `.empty` until it lands. Never the fixture: a
+  /// silent fixture fallback made an unreachable backend look like a working
+  /// one, since the bundled trees share the real ones' ids, names and taglines
+  /// and differ only in their artwork.
+  private var config: OnboardingConfig {
+    if case .loaded(let config) = configLoad { return config }
+    return .empty
+  }
+
+  private var isConfigLoaded: Bool {
+    if case .loaded = configLoad { return true }
+    return false
+  }
+
+  private var introConfigState: OnboardingIntroView.ConfigState {
+    switch configLoad {
+    case .loading: return .loading
+    case .loaded: return .ready
+    case .failed: return .failed
+    }
+  }
 
   /// Chrome shows on every routed screen except the crafting loader, which is
   /// committing the gathered answers and can't be backed out of.
@@ -127,11 +166,8 @@ struct OnboardingCoordinatorView: View {
     .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
       touchTracker.bounds = $0
     }
-    .task {
-      // Best-effort: fall back to the bundled fixtures if the fetch fails.
-      if let fetched = try? await remote.fetchConfig() {
-        config = fetched
-      }
+    .task(id: configAttempt) {
+      await loadConfig()
     }
     .task {
       // Compile the ripple shader while the welcome screen idles. The first
@@ -147,10 +183,54 @@ struct OnboardingCoordinatorView: View {
     }
   }
 
+  /// Waits between attempts so a cold backend still lands. Production Cloud
+  /// Run scales to zero (`infra/config.ts` keeps `minInstances` at 0), and its
+  /// first request after an idle spell routinely outlasts `APIClient`'s
+  /// deliberately short 10 s request timeout. A single silent attempt used to
+  /// leave onboarding showing bundled sample trees for the rest of the run.
+  private static let configRetryDelays: [Duration] = [.zero, .seconds(1), .seconds(3)]
+
+  /// Fetches the server-driven config, retrying before giving up. The welcome
+  /// screen's CTA follows the resulting state, so a failure is visible and
+  /// recoverable instead of being papered over with bundled content.
+  private func loadConfig() async {
+    configLoad = .loading
+    for delay in Self.configRetryDelays {
+      if delay > .zero {
+        guard (try? await Task.sleep(for: delay)) != nil else { return }
+      }
+      if let fetched = try? await remote.fetchConfig() {
+        configLoad = .loaded(fetched)
+        if let pendingRoute {
+          self.pendingRoute = nil
+          advance(to: pendingRoute)
+        }
+        return
+      }
+      // `try?` swallows cancellation too — don't spend the remaining attempts
+      // on a view that has gone away.
+      if Task.isCancelled { return }
+    }
+    configLoad = .failed
+  }
+
+  /// Re-runs `loadConfig()` by invalidating the `.task(id:)`.
+  private func retryConfig() {
+    configAttempt += 1
+  }
+
   /// Routes every leaf-screen advance. Off the welcome screen it's a calm
   /// hush; off it, the destination is swapped in without animation beneath a
   /// rippling freeze-frame of the welcome screen.
   private func advance(to route: OnboardingRoute) {
+    // The quiz is pure server content, and `OnboardingQuizView` reads its
+    // question by index. Hold the route until the config lands rather than
+    // pushing an empty flow.
+    if case .quiz = route, !isConfigLoaded {
+      pendingRoute = route
+      if configLoad == .failed { retryConfig() }
+      return
+    }
     guard routes.isEmpty, !reduceMotion, ripple == nil, !isRipplePending else {
       guard route != currentRoute else { return }
       navDirection = .forward
@@ -208,7 +288,11 @@ struct OnboardingCoordinatorView: View {
   private func screen(for route: OnboardingRoute?) -> some View {
     switch route {
     case nil:
-      OnboardingIntroView(videoMode: .live(frameGrabber: videoFrameGrabber))
+      OnboardingIntroView(
+        videoMode: .live(frameGrabber: videoFrameGrabber),
+        configState: introConfigState,
+        onRetry: retryConfig
+      )
     case .quiz(let index):
       routed(OnboardingQuizView(index: index))
     case .mindTree:

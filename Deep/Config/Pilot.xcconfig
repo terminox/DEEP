@@ -2,9 +2,18 @@
 
 // ---- Environment ----
 APP_ENV = pilot
-API_BASE_URL = https:/$()/pilot-api.deep.app
 BUNDLE_ID_SUFFIX = .pilot
 APP_DISPLAY_NAME = DEEP Pilot
+
+// ---- API ----
+// staging-api.deep.app / pilot-api.deep.app were never stood up — neither
+// hostname resolves, so builds pointed at them could not reach a backend at
+// all. Until each environment gets its own deployment they share production's
+// Cloud Run service (and therefore its database). APP_ENV stays `pilot` so the
+// app still knows which build it is: AppConfig maps it through
+// `AppEnvironment(rawValue:) ?? .dev`, and overriding it here would silently
+// downgrade the build — see CentralFlight.xcconfig.
+API_BASE_URL = https:/$()/deep-api-157102552469.asia-southeast1.run.app
 
 // ---- Release build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym

@@ -1,12 +1,12 @@
 import Foundation
 
 /// One of the Mind Trees a person can pick at the end of onboarding — a small
-/// living emblem of how they'd like to grow. Purely presentational for now:
-/// the choice is not persisted yet (the Mind Garden wiring comes later).
+/// living emblem of how they'd like to grow. At runtime these are the
+/// admin-managed plants served by `GET /onboarding/config`, and the pick seeds
+/// the Mind Garden's selection.
 ///
-/// `imageURL` points at placeholder photography for the moment; `palette`
-/// keeps the on-brand gradient underneath while the image loads, when it
-/// fails, or offline.
+/// `imageURL` is the plant's picker artwork; `palette` keeps the on-brand
+/// gradient underneath while the image loads, when it fails, or offline.
 struct MindTree: Identifiable, Hashable {
   let id: String
   let name: String
@@ -16,7 +16,10 @@ struct MindTree: Identifiable, Hashable {
 }
 
 extension MindTree {
-  /// The four trees on offer, in display order.
+  /// Bundled sample trees, for previews and `MockOnboardingRemote` only. These
+  /// are never shown in the app: they share the real plants' ids, names and
+  /// taglines, so falling back to them would disguise an unreachable backend
+  /// as a working one. See `OnboardingConfig`.
   static let all: [MindTree] = [
     MindTree(
       id: "oak",

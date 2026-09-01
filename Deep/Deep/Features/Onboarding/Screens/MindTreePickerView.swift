@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The flow's third and final choice: pick a Mind Tree. The selection is
-/// purely visual for now — nothing is persisted; the Mind Garden wiring comes
-/// later — so the screen keeps its choice in local state and simply moves on.
+/// The flow's third and final choice: pick a Mind Tree. The trees come from
+/// the server-driven `onboardingConfig` — they are the published, non-premium
+/// default plants of the admin-managed catalog — and the pick is recorded as
+/// it's made, seeding the Mind Garden's selection when onboarding is saved.
 struct MindTreePickerView: View {
   @Environment(\.onboardingStore) private var store
   @Environment(\.onboardingConfig) private var config
@@ -67,5 +68,6 @@ struct MindTreePickerView: View {
 #Preview("Onboarding — Mind Tree") {
   MindTreePickerView()
     .environment(\.onboardingStore, MockOnboardingStore.fresh)
+    .environment(\.onboardingConfig, .fixture)
 }
 #endif

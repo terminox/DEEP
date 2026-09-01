@@ -14,7 +14,20 @@ struct OnboardingIntroView: View {
     case still(frame: UIImage?)
   }
 
+  /// Where the server-driven onboarding config has got to. The whole flow is
+  /// server-driven from its very first question, so "Begin" stays dimmed until
+  /// the config lands and turns into a retry if the fetch gives up — the screen
+  /// never pretends to be ready over content that isn't there.
+  enum ConfigState {
+    case loading
+    case ready
+    case failed
+  }
+
   var videoMode: VideoMode = .live()
+  var configState: ConfigState = .ready
+  /// Re-runs the config fetch, from the `.failed` CTA.
+  var onRetry: () -> Void = {}
 
   @Environment(\.onboardingAdvance) private var advance
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -62,8 +75,17 @@ struct OnboardingIntroView: View {
         Spacer(minLength: 0)
 
         VStack(spacing: 14) {
-          OnboardingPrimaryButton(title: "Begin") {
-            advance(.quiz(index: 0))
+          if configState == .failed {
+            Text("We couldn't reach Deep just now.")
+              .font(DeepType.caption)
+              .foregroundStyle(.driftGrey)
+              .multilineTextAlignment(.center)
+
+            OnboardingPrimaryButton(title: "Try again", action: onRetry)
+          } else {
+            OnboardingPrimaryButton(title: "Begin", isEnabled: configState == .ready) {
+              advance(.quiz(index: 0))
+            }
           }
 
           Button {
@@ -77,6 +99,7 @@ struct OnboardingIntroView: View {
           }
           .buttonStyle(.plain)
         }
+        .animation(.exhale, value: configState)
       }
       .padding(.horizontal, .edge)
       // The mark's halo needs room off the status bar — without it the ring
@@ -145,4 +168,12 @@ struct OnboardingIntroView: View {
 
 #Preview("Onboarding — Welcome") {
   OnboardingIntroView()
+}
+
+#Preview("Onboarding — Welcome, config loading") {
+  OnboardingIntroView(configState: .loading)
+}
+
+#Preview("Onboarding — Welcome, config failed") {
+  OnboardingIntroView(configState: .failed, onRetry: {})
 }

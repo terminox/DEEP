@@ -10,9 +10,12 @@ media/audio/*.mp3
 *.log
 geoip/
 
-# Garden seed assets are copies of the iOS bundle art; regenerate with `npm run seed:assets`.
-media/garden/
+# Garden seed assets are copies of references/oak/; regenerate with `npm run seed:assets`.
+# No trailing slash: in a git worktree this is a symlink to the main checkout
+# (scripts/dev-setup.sh), and a `dir/` pattern only ever matches a real directory.
+media/garden
 
 # Admin panel uploads are runtime data, not source. In production MEDIA_DIR
 # is a GCS bucket FUSE-mounted at /media (see infra/components/service.ts).
-media/uploads/
+# Slashless for the same worktree-symlink reason as media/garden above.
+media/uploads

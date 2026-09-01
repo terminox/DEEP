@@ -13,6 +13,12 @@ npm run dev                     # http://localhost:8080
 
 `dev-setup.sh` is idempotent — re-run it any time.
 
+In a git worktree it also symlinks `deep-api/media/garden` and
+`deep-api/media/uploads` to the main checkout. The database is shared by every
+checkout, so without that link a worktree's API 404s on every row uploaded
+through the admin, and Mind Trees and sound artwork fall back to bare gradients.
+`media/audio/` is left alone — some of it is committed source.
+
 ## Running on a real iPhone
 
 There is nothing to type. `dev-setup.sh` writes `Deep/Config/Local.xcconfig`
@@ -78,6 +84,8 @@ in the error message, instead of installing an app whose every request times out
 | Every request times out on device | Local Network permission was denied. Settings ▸ DEEP Dev ▸ Local Network. |
 | `.local` will not resolve | Guest/corporate Wi-Fi often blocks mDNS. Re-run with `--host <the Mac's IP>`. |
 | App loads, but audio and artwork 404 | `PUBLIC_BASE_URL` is set in `deep-api/.env` — likely a `.env` predating this setup. `./scripts/dev-setup.sh --fix-env`, then restart the API. |
+| Artwork 404s only when the API runs from a worktree | `deep-api/media/garden` is a real directory instead of a symlink to the main checkout. `./scripts/dev-setup.sh`, then restart the API. |
+| Onboarding offers "Try again" instead of Mind Trees | `GET /onboarding/config` failed three times. The API is down, or the Dev host is unreachable — check `curl $(…)/health`. The flow never falls back to bundled trees. |
 | Device build fails to sign | The Dev bundle id is `io.appbeyond.freelance.Deep.dev` and needs its own profile with Sign In with Apple. Build once from the Xcode UI, which auto-creates it; CLI `xcodebuild` cannot. |
 | `npm run dev` exits immediately | No `deep-api/.env`. Run `./scripts/dev-setup.sh`. |
 | Server starts but every DB call fails | Postgres is not up — `npm run db:up`. |
