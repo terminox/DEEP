@@ -8,9 +8,12 @@ struct DailyReminder: Codable, Equatable, Sendable {
   var hour: Int
   var minute: Int
 
-  /// Off, at 21:00. The hour is deliberate: the nightly Global Pause runs at
-  /// 20:40 Bangkok, and a nudge landing on top of it would be asking someone
-  /// to practise while they already are.
+  /// Off, at 21:00 — the quiet end of an ordinary evening.
+  ///
+  /// It makes no attempt to dodge a Global Pause. There can be several a day,
+  /// at times an admin moves, written on Bangkok's clock; this nudge runs on
+  /// the member's own. No default hour could dodge them, and for anyone outside
+  /// Asia this one never did.
   static let initial = DailyReminder(isEnabled: false, hour: 21, minute: 0)
 }
 

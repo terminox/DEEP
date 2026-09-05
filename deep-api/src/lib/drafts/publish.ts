@@ -16,13 +16,7 @@ import {
   type Db,
   type DraftRef,
 } from "./registry.js";
-import {
-  PHASE_ORDER_MESSAGE,
-  meditationOverrun,
-  phaseTimesIncreasing,
-  type MeditationWindow,
-  type PhaseTimes,
-} from "./validators.js";
+import { scheduleProblems, type PhaseTimes } from "./validators.js";
 
 export interface FieldDiff {
   field: string;
@@ -336,6 +330,7 @@ export async function validate(
   }
 
   await validateUniqueness(chosen, index, blockers, db);
+  await validatePauseSchedule(chosen, index, blockers, warnings, db);
 
   return {
     resolved: [...resolved],
@@ -372,16 +367,13 @@ async function validateEntity(
     }
   }
 
-  if (draft.entity === "PAUSE_CONFIG" && draft.op !== "DELETE") {
-    if (!phaseTimesIncreasing(merged as unknown as PhaseTimes)) {
-      blockers.push(PHASE_ORDER_MESSAGE);
-    }
-    // The meditation ends where its track does, so a schedule staged against a
-    // shorter window than the track needs would silently truncate the session.
-    const overrun = meditationOverrun(merged as unknown as MeditationWindow);
-    if (overrun) blockers.push(overrun);
+  // The schedule's own rules are checked once for the whole selection, in
+  // validatePauseSchedule: none of them can be judged from one record, because
+  // the meditation's length lives on the config while the windows live on the
+  // sessions.
+  if ((draft.entity === "PAUSE_CONFIG" || draft.entity === "PAUSE_SLOT") && draft.op !== "DELETE") {
     warnings.push(
-      "Publishing the Global Pause schedule changes tonight's event for every user.",
+      "Publishing this changes today's Global Pause for every user.",
     );
   }
 
@@ -444,6 +436,67 @@ async function effectiveStages(
     displayOrder: Number(r.displayOrder ?? 0),
     sunlightRequired: Number(r.sunlightRequired ?? 0),
   }));
+}
+
+/**
+ * The Global Pause schedule as it will stand once the chosen drafts are applied.
+ *
+ * Every schedule rule is a rule about the *set*: sessions must not overlap each
+ * other, at least one must survive, and each one's window must be long enough
+ * for a meditation track whose length lives on the config rather than on the
+ * session. So this runs once per publish rather than once per draft, over live
+ * rows overlaid with the chosen drafts only — which is deliberately a different
+ * set from the one the admin screen validates (that one overlays *every* staged
+ * draft, because that is what the admin is looking at).
+ */
+async function validatePauseSchedule(
+  chosen: ContentDraft[],
+  index: LiveIndex,
+  blockers: string[],
+  warnings: string[],
+  db: Db,
+): Promise<void> {
+  const touchesSchedule = chosen.some(
+    (d) => d.entity === "PAUSE_SLOT" || d.entity === "PAUSE_CONFIG",
+  );
+  if (!touchesSchedule) return;
+
+  const p = db as typeof prisma;
+
+  const live = await p.pauseSlot.findMany();
+  const rows = new Map<string, AnyRow>(live.map((slot) => [slot.id, slot as AnyRow]));
+  for (const draft of chosen) {
+    if (draft.entity !== "PAUSE_SLOT") continue;
+    if (draft.op === "DELETE") {
+      rows.delete(draft.entityId);
+      continue;
+    }
+    rows.set(
+      draft.entityId,
+      draft.op === "CREATE"
+        ? rowFromCreate("PAUSE_SLOT", draft)
+        : {
+            ...(liveRow(index, "PAUSE_SLOT", draft.entityId) ?? {}),
+            ...((draft.patch as AnyRow | null) ?? {}),
+          },
+    );
+  }
+
+  // The track's length comes from the config as the same publish will leave it:
+  // a longer meditation staged alongside the sessions has to be judged against
+  // the windows it will actually play in.
+  const liveConfig = await p.pauseConfig.findUnique({ where: { id: 1 } });
+  const configDraft = chosen.find((d) => d.entity === "PAUSE_CONFIG" && d.op !== "DELETE");
+  const merged = {
+    ...(liveConfig ?? {}),
+    ...(((configDraft?.patch as AnyRow | null) ?? {}) as AnyRow),
+  };
+  const duration = Number(merged.meditationDurationSeconds ?? 0);
+  if (!Number.isFinite(duration) || duration <= 0) return;
+
+  const problems = scheduleProblems([...rows.values()] as unknown as PhaseTimes[], duration);
+  blockers.push(...problems.blockers);
+  warnings.push(...problems.warnings);
 }
 
 /** Unique columns must not collide with live rows or with each other. */

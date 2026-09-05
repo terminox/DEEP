@@ -9,12 +9,15 @@ import { mediaUrl } from "../lib/media.js";
 import { translate } from "../lib/translations.js";
 import {
   resolveOccurrence,
-  occurrenceOn,
+  occurrencesOn,
+  upcomingOccurrences,
+  meditationWindow,
   resolveNow,
   setLiveWindow,
   localDate,
 } from "../lib/pauseSchedule.js";
-import { attendanceCovers } from "../lib/awardRules.js";
+import { loadPauseConfig, loadPauseSchedule } from "../lib/pauseSlots.js";
+import { coveredOccurrence } from "../lib/awardRules.js";
 import { grantAward } from "../lib/awards.js";
 import { requestTimezone, rememberTimezone, userDayKey } from "../lib/clientDay.js";
 import { rewardSnapshot } from "../lib/rewardPayload.js";
@@ -27,7 +30,7 @@ import { env } from "../env.js";
 // (The similarly-named pause.ts serves the tab's *content feed*; this file is
 // the nightly event's mechanics.)
 
-const MESSAGES_PER_NIGHT = 3;
+const MESSAGES_PER_DAY = 3;
 const LIVE_MESSAGE_COUNT = 10;
 
 const countryISOSchema = z
@@ -65,33 +68,33 @@ function decodeMessageCursor(cursor: string): { createdAt: Date; id: string } {
   return { createdAt, id };
 }
 
-/** The singleton config row, created from schema defaults on first touch. */
-async function loadConfig() {
-  return prisma.pauseConfig.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { id: 1 },
-  });
-}
-
 /**
- * Durable "was present" record behind the attendance award: first beat of the
- * night creates the row, later beats increment `beats` and widen
+ * Durable "was present" record behind the attendance award: the first beat of
+ * an occurrence creates the row, later beats increment `beats` and widen
  * [firstSeenAt, lastSeenAt] — never narrowing, so the dev time-travel loop
  * wrapping to the window start can't shrink an attendance already recorded.
  *
+ * Keyed per occurrence, not per day: a day can hold several meditations, and a
+ * span widened across two of them would read as full coverage of a window the
+ * member never sat through. See the model comment on PauseAttendance.
+ *
  * One atomic upsert rather than read-then-write: two heartbeats racing on
- * the same (userId, pauseDate) could otherwise both read the same "existing"
- * row and one write could clobber the other's lastSeenAt backwards. Postgres
- * resolves the conflict itself, using GREATEST/LEAST against the row as it
- * stands at write time, so the result is correct under concurrency without a
- * lock.
+ * the same (userId, pauseDate, slotId) could otherwise both read the same
+ * "existing" row and one write could clobber the other's lastSeenAt backwards.
+ * Postgres resolves the conflict itself, using GREATEST/LEAST against the row
+ * as it stands at write time, so the result is correct under concurrency
+ * without a lock.
  */
-async function recordAttendance(userId: string, pauseDate: string, now: Date) {
+async function recordAttendance(
+  userId: string,
+  pauseDate: string,
+  slotId: string,
+  now: Date,
+) {
   await prisma.$executeRaw`
-    INSERT INTO "pause_attendances" ("id", "userId", "pauseDate", "firstSeenAt", "lastSeenAt", "beats")
-    VALUES (${crypto.randomUUID()}, ${userId}, ${pauseDate}, ${now}, ${now}, 1)
-    ON CONFLICT ("userId", "pauseDate") DO UPDATE SET
+    INSERT INTO "pause_attendances" ("id", "userId", "pauseDate", "slotId", "firstSeenAt", "lastSeenAt", "beats")
+    VALUES (${crypto.randomUUID()}, ${userId}, ${pauseDate}, ${slotId}, ${now}, ${now}, 1)
+    ON CONFLICT ("userId", "pauseDate", "slotId") DO UPDATE SET
       "lastSeenAt" = GREATEST("pause_attendances"."lastSeenAt", EXCLUDED."lastSeenAt"),
       "firstSeenAt" = LEAST("pause_attendances"."firstSeenAt", EXCLUDED."firstSeenAt"),
       "beats" = "pause_attendances"."beats" + 1
@@ -104,8 +107,14 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
   // plus serverNow so the client can correct its clock.
   app.get("/pause/schedule", { preHandler: optionalAuth }, async (req) => {
     const now = resolveNow();
-    const config = await loadConfig();
-    const occurrence = resolveOccurrence(config, now);
+    const { config, slots } = await loadPauseSchedule();
+    // `upcoming` filters on the same predicate resolveOccurrence picks with, in
+    // the same order, so upcoming[0] *is* the resolved occurrence and
+    // upcoming[1] is the one after it — which is what the client counts down to
+    // once this one's meditation has started.
+    const upcoming = upcomingOccurrences(config, slots, now);
+    const occurrence = upcoming[0] ?? null;
+    const nextUp = upcoming[1] ?? null;
     const [welcomeMessages, intentions] = await Promise.all([
       prisma.pauseWelcomeMessage.findMany({
         where: { isActive: true },
@@ -119,12 +128,27 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
 
     return {
       serverNow: now.toISOString(),
-      pauseDate: occurrence.pauseDate,
+      // Never omitted, even with no occurrence to describe: `pauseDate` is a
+      // required field on every client, so a schedule-less answer has to be an
+      // empty phase list on a real date rather than a missing key.
+      pauseDate: occurrence?.pauseDate ?? localDate(now, config.timezone),
+      slotId: occurrence?.slotId ?? null,
       timezone: config.timezone,
-      phases: occurrence.phases.map((p) => ({
+      phases: (occurrence?.phases ?? []).map((p) => ({
         key: p.key,
         startsAt: p.startsAt.toISOString(),
         endsAt: p.endsAt.toISOString(),
+      })),
+      // When the meditation after this one begins. Retires the client's old
+      // "same time tomorrow" projection, which is wrong twice a day as soon as
+      // a day holds more than one slot.
+      nextMeditationStartsAt: nextUp ? meditationWindow(nextUp).startsAt.toISOString() : null,
+      upcoming: upcoming.map((o) => ({
+        slotId: o.slotId,
+        pauseDate: o.pauseDate,
+        lobbyStartsAt: o.phases[0]!.startsAt.toISOString(),
+        meditationStartsAt: meditationWindow(o).startsAt.toISOString(),
+        windowEndsAt: o.phases[o.phases.length - 1]!.endsAt.toISOString(),
       })),
       lobbyAudioUrl: mediaUrl(config.lobbyAudioPath),
       lobbyDurationSeconds: config.lobbyDurationSeconds,
@@ -161,10 +185,10 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     // durable attendance record — the evidence POST /me/pause/award judges.
     const now = resolveNow();
     if (req.auth) {
-      const config = await loadConfig();
-      const occurrence = resolveOccurrence(config, now);
-      if (occurrence.phaseAt(now) === "meditation") {
-        await recordAttendance(req.auth.sub, occurrence.pauseDate, now);
+      const { config, slots } = await loadPauseSchedule();
+      const occurrence = resolveOccurrence(config, slots, now);
+      if (occurrence && occurrence.phaseAt(now) === "meditation") {
+        await recordAttendance(req.auth.sub, occurrence.pauseDate, occurrence.slotId, now);
       }
     }
 
@@ -182,18 +206,22 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
   // tonight's message feed.
   app.get("/pause/live", { preHandler: optionalAuth }, async (req) => {
     const now = resolveNow();
-    const config = await loadConfig();
-    const occurrence = resolveOccurrence(config, now);
+    const { config, slots } = await loadPauseSchedule();
+    const occurrence = resolveOccurrence(config, slots, now);
     const snap = presence.snapshot();
     const messages = await prisma.peaceMessage.findMany({
-      where: { pauseDate: occurrence.pauseDate, status: "PUBLISHED" },
+      // The feed is the day's, not the occurrence's: peace messages, their
+      // three-a-day limit and the reflection are all keyed on pauseDate.
+      where: { pauseDate: localDate(now, config.timezone), status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
       take: LIVE_MESSAGE_COUNT,
     });
 
     return {
       serverNow: now.toISOString(),
-      phase: occurrence.phaseAt(now),
+      // "offHours" now also means "between today's slots", not only "the day's
+      // pause is over" — do not read it as the latter.
+      phase: occurrence?.phaseAt(now) ?? "offHours",
       participantCount: snap.total,
       byCountry: Object.entries(snap.byCountry).map(([iso, count]) => ({ iso, count })),
       // Where the world is pausing, coarsely — what the live session names
@@ -222,26 +250,25 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
   app.post("/me/pause/award", { preHandler: requireAuth }, async (req) => {
     const userId = req.auth!.sub;
     const now = resolveNow();
-    const config = await loadConfig();
-    // Today's pause — deliberately NOT resolveOccurrence, which rolls to
-    // tomorrow once tonight's window has ended.
-    const { pauseDate, phases } = occurrenceOn(config, localDate(now, config.timezone));
-    const meditation = phases.find((p) => p.key === "meditation")!;
+    const { config, slots } = await loadPauseSchedule();
+    // Every one of today's occurrences — deliberately NOT resolveOccurrence,
+    // which has already moved on to the next slot (or to tomorrow) by the time
+    // a member reaches the reflection screen.
+    const pauseDate = localDate(now, config.timezone);
+    const occurrences = occurrencesOn(config, slots, pauseDate);
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw ApiError.unauthorized();
     const tz = requestTimezone(req, user.timezone, config.timezone);
     rememberTimezone(userId, tz, user.timezone);
 
-    const attendance = await prisma.pauseAttendance.findUnique({
-      where: { userId_pauseDate: { userId, pauseDate } },
+    // Evidence is per occurrence; the award below is per day. Sitting through
+    // both of today's pauses earns once, because PAUSE_ATTENDED is capped at
+    // one a day against this same dayKey.
+    const attendances = await prisma.pauseAttendance.findMany({
+      where: { userId, pauseDate },
     });
-    const eligible =
-      attendance != null &&
-      attendanceCovers(
-        { startsAt: meditation.startsAt, endsAt: meditation.endsAt },
-        attendance,
-      );
+    const eligible = coveredOccurrence(occurrences, attendances) != null;
 
     const outcome = eligible
       ? await grantAward({
@@ -274,15 +301,15 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       })
       .parse(req.body);
     const now = resolveNow();
-    const config = await loadConfig();
+    const config = await loadPauseConfig();
     const pauseDate = localDate(now, config.timezone);
 
     const auth = req.auth!;
     const already = await prisma.peaceMessage.count({
       where: { userId: auth.sub, pauseDate },
     });
-    if (already >= MESSAGES_PER_NIGHT) {
-      throw ApiError.forbidden("Message limit reached for tonight", "message_limit");
+    if (already >= MESSAGES_PER_DAY) {
+      throw ApiError.forbidden("Message limit reached for today", "message_limit");
     }
 
     const user = await prisma.user.findUnique({ where: { id: auth.sub } });
@@ -376,7 +403,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       .refine((b) => b.intention || b.mood, { message: "intention or mood required" })
       .parse(req.body);
     const now = resolveNow();
-    const config = await loadConfig();
+    const config = await loadPauseConfig();
     const pauseDate = localDate(now, config.timezone);
 
     const auth = req.auth!;
@@ -410,21 +437,42 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const COUNTDOWN_LEAD_MS = 15 * 60 * 1000;
 
     app.post("/dev/pause/time-travel", async (req) => {
-      const { mode } = z
-        .object({ mode: z.enum(["live", "countdown", "lobby", "off"]) })
+      // `slot` picks which of the day's sessions to loop: a slot id, or a
+      // 1-based index in clock order (which is what a human at a terminal
+      // wants). Absent means whichever session is live or coming up next —
+      // identical to the old behaviour back when there was only ever one.
+      const { mode, slot } = z
+        .object({
+          mode: z.enum(["live", "countdown", "lobby", "off"]),
+          slot: z.union([z.string(), z.number().int().positive()]).optional(),
+        })
         .parse(req.body);
       if (mode === "off") {
         setLiveWindow(null);
         return { mode, serverNow: new Date().toISOString() };
       }
-      const config = await loadConfig();
-      const occurrence = resolveOccurrence(config, new Date());
-      const meditation = occurrence.phases.find((p) => p.key === "meditation")!;
+      const { config, slots } = await loadPauseSchedule();
+      const realNow = new Date();
+      const today = occurrencesOn(config, slots, localDate(realNow, config.timezone));
+      const chosen =
+        slot === undefined
+          ? resolveOccurrence(config, slots, realNow)
+          : typeof slot === "number"
+            ? (today[slot - 1] ?? null)
+            : (today.find((o) => o.slotId === slot) ?? null);
+      if (!chosen) {
+        throw ApiError.badRequest(
+          `No session matches ${JSON.stringify(slot)}. Today has ${today.length}: ` +
+            today.map((o, i) => `${i + 1}=${meditationWindow(o).startsAt.toISOString()}`).join(", "),
+          "unknown_slot",
+        );
+      }
+      const meditation = meditationWindow(chosen);
       if (mode === "lobby") {
         // Fuku's set runs from the top of the lobby phase, so looping the phase
         // itself replays the whole broadcast — intro, handoff, music, sign-off —
         // without dragging the countdown arc along behind it.
-        setLiveWindow(occurrence.phases.find((p) => p.key === "lobby")!);
+        setLiveWindow(chosen.phases.find((p) => p.key === "lobby")!);
       } else if (mode === "countdown") {
         setLiveWindow({
           startsAt: new Date(meditation.startsAt.getTime() - COUNTDOWN_LEAD_MS),
@@ -433,7 +481,14 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       } else {
         setLiveWindow(meditation);
       }
-      return { mode, serverNow: resolveNow().toISOString() };
+      // Echoed back because with more than one session "which one did it pick?"
+      // is the first question every time.
+      return {
+        mode,
+        slotId: chosen.slotId,
+        meditationStartsAt: meditation.startsAt.toISOString(),
+        serverNow: resolveNow().toISOString(),
+      };
     });
 
     // Dev-only geolocation override for the globe: "fixed" pins every new

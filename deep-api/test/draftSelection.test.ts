@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { ContentDraft, DraftEntity, DraftOp } from "@prisma/client";
+import type { ContentDraft, DraftOp } from "@prisma/client";
+import { DraftEntity } from "@prisma/client";
+type DraftEntity = (typeof DraftEntity)[keyof typeof DraftEntity];
 import {
   withRequiredAncestors,
   withStagedDescendants,
@@ -112,7 +114,10 @@ test("PUBLISH_ORDER puts every parent before its children", () => {
   assert.ok(before("SOUND_COLLECTION") < before("SOUND_TRACK"));
   assert.ok(before("SOUND_TRACK") < before("TRACK_LYRICS"));
   assert.ok(before("PLANT") < before("PLANT_STAGE"));
+  assert.ok(before("PAUSE_CONFIG") < before("PAUSE_SLOT"));
   // Every entity must appear exactly once, or sorting silently drops it to -1.
+  // Counted against the enum rather than a literal, so adding an entity and
+  // forgetting to order it fails here instead of quietly ordering it last.
   assert.equal(new Set(PUBLISH_ORDER).size, PUBLISH_ORDER.length);
-  assert.equal(PUBLISH_ORDER.length, 9);
+  assert.deepEqual(new Set(PUBLISH_ORDER), new Set(Object.keys(DraftEntity)));
 });

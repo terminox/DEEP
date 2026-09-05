@@ -41,7 +41,8 @@ enum FukuClip: String, CaseIterable {
   }
 }
 
-/// DJ Fuku's nightly set, as instants: it opens at the top of the lobby phase
+/// DJ Fuku's set for one occurrence, as instants: it opens at the top of its
+/// lobby phase
 /// with the intro clip playing aloud, hands off to the lounge track, and signs
 /// off when the track runs out.
 ///
@@ -63,6 +64,9 @@ struct LoungeBroadcast: Equatable {
   /// Where the set is cut off whatever it has left to play: the welcome phase,
   /// which belongs to the pause itself. A longer track uploaded into an
   /// untouched window can shorten Fuku's set, but never talk over the countdown.
+  ///
+  /// The track is shared by every session of the day while each has its own
+  /// lobby, so a set that fits one session's run-up can be cut short in another.
   let hardStop: Date
 
   var endsAt: Date {

@@ -13,6 +13,7 @@ import type {
   Palette,
   PauseConfig,
   PauseIntentionOption,
+  PauseSlot,
   PauseStats,
   PauseWelcomeMessage,
   PeaceMessageStatus,
@@ -412,10 +413,6 @@ export async function getPauseConfig(): Promise<PauseConfig> {
 
 export type PauseConfigInput = {
   timezone: string
-  lobbyStart: string
-  welcomeStart: string
-  meditationStart: string
-  windowEnd: string
   lobbyAudioPath: string
   meditationAudioPath: string
   // Each is only used when its path is an external URL the server can't
@@ -432,6 +429,42 @@ export async function updatePauseConfig(
     body
   )
   return data.config
+}
+
+// ---- Pause session times ----
+export type PauseSlotInput = {
+  lobbyStart: string
+  welcomeStart: string
+  meditationStart: string
+  windowEnd: string
+}
+
+export async function listPauseSlots(): Promise<PauseSlot[]> {
+  const { data } = await http.get<{ slots: PauseSlot[] }>('/admin/pause/slots')
+  return data.slots
+}
+
+export async function createPauseSlot(body: PauseSlotInput): Promise<PauseSlot> {
+  const { data } = await http.post<{ slot: PauseSlot }>(
+    '/admin/pause/slots',
+    body
+  )
+  return data.slot
+}
+
+export async function updatePauseSlot(
+  id: string,
+  body: Partial<PauseSlotInput>
+): Promise<PauseSlot> {
+  const { data } = await http.patch<{ slot: PauseSlot }>(
+    `/admin/pause/slots/${id}`,
+    body
+  )
+  return data.slot
+}
+
+export async function deletePauseSlot(id: string): Promise<void> {
+  await http.delete(`/admin/pause/slots/${id}`)
 }
 
 // ---- Pause welcome messages ----

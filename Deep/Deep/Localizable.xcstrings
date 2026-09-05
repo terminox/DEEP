@@ -2568,12 +2568,32 @@
         }
       }
     },
+    "Today · %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "วันนี้ · %@"
+          }
+        }
+      }
+    },
     "Together Foundation": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "มูลนิธิทูเกทเธอร์"
+          }
+        }
+      }
+    },
+    "Tomorrow · %@": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "พรุ่งนี้ · %@"
           }
         }
       }

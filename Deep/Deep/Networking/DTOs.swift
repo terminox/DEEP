@@ -218,6 +218,9 @@ struct PauseScheduleDTO: Decodable {
   let lobbyDurationSeconds: Int?
   let meditationAudioUrl: String?
   let meditationDurationSeconds: Int
+  // When the meditation *after* this one begins. Absent on servers from before
+  // a day could hold more than one pause; see `PauseSchedule`.
+  let nextMeditationStartsAt: String?
   let welcomeMessages: [String]
   let intentions: [Intention]
 }
