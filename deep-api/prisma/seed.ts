@@ -606,8 +606,44 @@ async function main() {
     create: { id: 1, ...pauseConfig },
   });
 
+  // Two session times, so local development exercises the multi-session paths
+  // by default rather than only the one-a-day case. Production gets its single
+  // session from the 20260905120000_pause_slots backfill, not from here.
+  //
+  // Upserted on meditationStart rather than wiped and recreated: slot ids are
+  // what pause_attendances keys its evidence on, so re-seeding a running dev
+  // database should not quietly invalidate today's unclaimed award.
+  const PAUSE_SLOTS = [
+    {
+      lobbyStart: "08:00:00",
+      welcomeStart: "08:09:50",
+      meditationStart: "08:10:00",
+      windowEnd: "08:30:00",
+    },
+    {
+      lobbyStart: "20:30:00",
+      welcomeStart: "20:39:50",
+      meditationStart: "20:40:00",
+      windowEnd: "21:00:00",
+    },
+  ];
+  for (const slot of PAUSE_SLOTS) {
+    await prisma.pauseSlot.upsert({
+      where: { meditationStart: slot.meditationStart },
+      update: slot,
+      create: slot,
+    });
+  }
+  // Anything a previous seed or an admin left behind still goes, so a seed is
+  // a reset to a known schedule.
+  await prisma.pauseSlot.deleteMany({
+    where: { meditationStart: { notIn: PAUSE_SLOTS.map((s) => s.meditationStart) } },
+  });
+
+  // Time-neutral on purpose: these lines are shared by every session of the
+  // day, so a morning one cannot say "tonight".
   const WELCOME_MESSAGES = [
-    "Welcome. Tonight the world pauses together.",
+    "Welcome. The world is about to pause together.",
     "Wherever you are, you are not alone.",
     "Settle in. We begin in a moment.",
   ];
@@ -734,6 +770,7 @@ async function main() {
     questions: await prisma.quizQuestion.count(),
     plants: await prisma.plant.count(),
     plantStages: await prisma.plantStage.count(),
+    pauseSlots: await prisma.pauseSlot.count(),
     welcomeMessages: await prisma.pauseWelcomeMessage.count(),
     intentions: await prisma.pauseIntentionOption.count(),
     peaceMessages: await prisma.peaceMessage.count(),

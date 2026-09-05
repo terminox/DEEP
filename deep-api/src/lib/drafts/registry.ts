@@ -123,12 +123,9 @@ export const plantStageBody = z.object({
   heroVideoPath: mediaRefSchema.nullable().optional(),
 });
 
+// What every session of the day shares. *When* they happen is `pauseSlotBody`.
 export const pauseConfigBody = z.object({
   timezone: z.string().trim().min(1),
-  lobbyStart: hms,
-  welcomeStart: hms,
-  meditationStart: hms,
-  windowEnd: hms,
   lobbyAudioPath: mediaRefSchema,
   meditationAudioPath: mediaRefSchema,
   // Optional because the file is the authority: PUT /admin/pause/config reads
@@ -137,6 +134,15 @@ export const pauseConfigBody = z.object({
   // columns carry a default, so a create is complete without either.
   lobbyDurationSeconds: z.number().int().positive().optional(),
   meditationDurationSeconds: z.number().int().positive().optional(),
+});
+
+// One daily session, times only. Nothing else belongs here: the timezone, both
+// tracks and their measured lengths are shared by every session of the day.
+export const pauseSlotBody = z.object({
+  lobbyStart: hms,
+  welcomeStart: hms,
+  meditationStart: hms,
+  windowEnd: hms,
 });
 
 export const welcomeMessageBody = z.object({
@@ -270,6 +276,27 @@ export const REGISTRY: Record<DraftEntity, EntitySpec> = {
     parseId: () => 1,
   },
 
+  PAUSE_SLOT: {
+    entity: "PAUSE_SLOT",
+    noun: "Session time",
+    area: "pause",
+    delegate: (db) => db.pauseSlot as never,
+    createSchema: pauseSlotBody,
+    label: (r) => `${str(r, "meditationStart").slice(0, 5)} session`,
+    // Deliberately parentless. Hanging sessions off PAUSE_CONFIG would group
+    // them on the review screen for free, but parentKey also means lifecycle
+    // ownership: discarding a config edit would throw away every staged session
+    // with it, and a config delete would claim to remove them. The config is
+    // shared settings, not a container — and `area: "pause"` already groups
+    // them where it matters.
+    parentOf: () => null,
+    // Two sessions cannot begin their meditation at the same instant. Mirrors
+    // the database unique, and catches two staged creates colliding before
+    // either reaches it.
+    uniqueFields: ["meditationStart"],
+    versioned: true,
+  },
+
   PAUSE_WELCOME_MESSAGE: {
     entity: "PAUSE_WELCOME_MESSAGE",
     noun: "Welcome message",
@@ -303,6 +330,7 @@ export function specFor(entity: DraftEntity): EntitySpec {
 /** Parent-before-child. Publish creates in this order and deletes in reverse. */
 export const PUBLISH_ORDER: DraftEntity[] = [
   "PAUSE_CONFIG",
+  "PAUSE_SLOT",
   "PAUSE_WELCOME_MESSAGE",
   "PAUSE_INTENTION",
   "SOUND_CATEGORY",

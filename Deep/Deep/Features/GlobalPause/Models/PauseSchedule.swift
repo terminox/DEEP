@@ -12,8 +12,12 @@ struct PausePhaseWindow: Equatable {
   let endsAt: Date
 }
 
-/// Tonight's Global Pause, fully resolved: phase instants, event audio, the
-/// welcome copy, and the intention options for the feedback phase.
+/// One Global Pause occurrence, fully resolved: phase instants, event audio,
+/// the welcome copy, and the intention options for the feedback phase.
+///
+/// A day can hold several sessions. The server always resolves exactly one of
+/// them — the one under way, else the next — so this stays a single occurrence
+/// with four phases, and `nextOccurrenceMeditationStart` says what follows it.
 struct PauseSchedule: Equatable {
   let pauseDate: String
   let timezone: String
@@ -25,11 +29,20 @@ struct PauseSchedule: Equatable {
   let lobbyDuration: TimeInterval
   let meditationAudioURL: URL?
   let meditationDuration: TimeInterval
+  /// When the meditation begins in the occurrence *after* this one. Nil on a
+  /// server that only ever runs one pause a day — see `nextMeditationStart`.
+  var nextOccurrenceMeditationStart: Date? = nil
   let welcomeMessages: [String]
   let intentions: [Intention]
 
   func window(for key: PausePhaseWindow.Key) -> PausePhaseWindow? {
     phases.first { $0.key == key }
+  }
+
+  /// The instant this whole occurrence is over. Nil only for a phase-less
+  /// schedule, which is what a server with no sessions configured answers with.
+  var windowEnd: Date? {
+    phases.map(\.endsAt).max()
   }
 
   /// The next phase boundary strictly after `date`, or nil once the whole
@@ -41,12 +54,21 @@ struct PauseSchedule: Equatable {
       .min()
   }
 
-  /// When the meditation next begins: tonight's start, or — once tonight is
-  /// over — a 24h projection. The projection is only a countdown target; the
-  /// real next occurrence arrives with the post-window schedule re-fetch.
-  func nextMeditationStart(after date: Date) -> Date {
-    guard let meditation = window(for: .meditation) else { return date }
+  /// When the meditation next begins, strictly after `date`: this occurrence's
+  /// start while it is still ahead, then the next occurrence the server named.
+  ///
+  /// The fallback is a 24h projection, and on the server that omits the field
+  /// it is exact rather than a guess: only a server running one pause a day
+  /// leaves `nextOccurrenceMeditationStart` nil, and there the next occurrence
+  /// really is the same wall clock tomorrow. It is the wrong answer on a
+  /// multi-session day — twice a day it would point at tomorrow while the next
+  /// pause is hours away — which is why the field exists.
+  func nextMeditationStart(after date: Date) -> Date? {
+    guard let meditation = window(for: .meditation) else { return nil }
     if date < meditation.startsAt { return meditation.startsAt }
+    // Guards a server echoing this occurrence's own start, which would leave
+    // the countdown target permanently in the past.
+    if let next = nextOccurrenceMeditationStart, next > meditation.startsAt { return next }
     return meditation.startsAt.addingTimeInterval(24 * 60 * 60)
   }
 }

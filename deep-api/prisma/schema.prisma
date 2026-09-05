@@ -227,12 +227,12 @@ model SoundTrack {
   kind            TrackKind @default(INSTRUMENTAL)
   // Relative media path (e.g. /media/audio/xyz.mp3); served absolute to clients.
   audioPath       String?
-  displayOrder    Int             @default(0)
-  isPremium       Boolean         @default(false)
+  displayOrder    Int       @default(0)
+  isPremium       Boolean   @default(false)
   // See SoundCategory.isActive.
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   collection    SoundCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   lyrics        TrackLyrics[]
@@ -401,9 +401,9 @@ enum PeaceMessageStatus {
   HIDDEN
 }
 
-// Singleton (id = 1). Phase boundaries are wall-clock "HH:mm:ss" strings in
-// `timezone`; the server resolves them into absolute instants per occurrence,
-// so clients never do timezone math.
+// Singleton (id = 1): what every Global Pause of the day shares — the timezone
+// its slots are written in, and the two tracks it plays. *When* a pause happens
+// lives in `PauseSlot`, one row per daily slot.
 //
 // There is deliberately no column for where the meditation ends: it is
 // meditationStart + meditationDurationSeconds, and that duration is measured
@@ -418,6 +418,16 @@ enum PeaceMessageStatus {
 model PauseConfig {
   id                        Int      @id @default(1)
   timezone                  String   @default("Asia/Bangkok")
+  // DEAD. Moved to `PauseSlot` in 20260905120000_pause_slots; nothing reads
+  // them any more (see lib/pauseSlots.ts). They stay for exactly one release
+  // because the previous revision still SELECTs them by name — Prisma never
+  // issues `SELECT *` — and the service runs at maxInstances 1, so a drop in
+  // the same deploy takes the old revision down with it.
+  //
+  // The NEXT release deletes these five lines and ships the one-line migration
+  // that drops the columns, run AFTER the new revision is serving. That is the
+  // ordering 20260828061500_derive_meditation_end_from_track was written to
+  // warn about; it is the same trap.
   lobbyStart                String   @default("20:30:00")
   welcomeStart              String   @default("20:39:50")
   meditationStart           String   @default("20:40:00")
@@ -429,6 +439,40 @@ model PauseConfig {
   updatedAt                 DateTime @updatedAt
 
   @@map("pause_config")
+}
+
+// When a Global Pause happens, every day. One row per slot; the four phase
+// boundaries are wall-clock "HH:mm:ss" strings in `PauseConfig.timezone`.
+//
+// The vocabulary this table introduces, written down because it is the thing
+// that will rot:
+//   config      — how a pause sounds and where its clock lives. One row.
+//   slot        — when a pause happens, every day. This table.
+//   occurrence  — one slot resolved onto one date, as absolute instants.
+//   pauseDate   — the member-facing day key: awards, messages, reflections, feed.
+// Member-facing and admin copy still says "session". Schema names do not have
+// to match the product's words, and "session" is already three other things
+// here (the breathing exercise, the iOS live screen, AuthSession).
+//
+// Deliberately spare. No `label`: the review screen derives one from
+// meditationStart, so it can never go stale against the time it names. No
+// `displayOrder`: the order is the clock. No `isActive`: a hidden slot and a
+// deleted slot read identically to everyone downstream, and the safe-publish
+// drafts already make a deletion staged, reviewable and discardable.
+model PauseSlot {
+  id              String   @id @default(uuid())
+  lobbyStart      String
+  welcomeStart    String
+  meditationStart String
+  windowEnd       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // The database backstop for the no-overlap rule — two slots cannot begin
+  // their meditation at the same instant — and what feeds `uniqueFields` in the
+  // drafts registry, so two staged creates cannot collide either.
+  @@unique([meditationStart])
+  @@map("pause_slots")
 }
 
 model PauseWelcomeMessage {
@@ -493,19 +537,32 @@ model PauseReflection {
   @@map("pause_reflections")
 }
 
-// Durable "was present" record per user per night (live presence is
-// in-memory); feeds the attended-through-meditation award eligibility.
+// Durable "was present" record for one OCCURRENCE (live presence is in-memory);
+// feeds the attended-through-meditation award eligibility.
+//
+// Keyed per slot rather than per day, and that is load-bearing. The span widens
+// monotonically (GREATEST/LEAST in recordAttendance), so with two meditations
+// in a day a member who caught the start of the morning one and the end of the
+// evening one would hold a single span that `attendanceCovers` reads as full
+// coverage of a window they never sat through. The *award* stays per day:
+// AwardKind.PAUSE_ATTENDED has perDay 1 against dayKey = pauseDate.
+//
+// `slotId` is deliberately not a foreign key, because evidence has to outlive
+// content edits. Restrict would block deleting a slot, Cascade would erase
+// attendance history along with it, and SetNull would break this unique. An
+// orphaned row simply stops matching any window, which is what we want.
 model PauseAttendance {
   id          String   @id @default(uuid())
   userId      String
   pauseDate   String
+  slotId      String
   firstSeenAt DateTime
   lastSeenAt  DateTime
   beats       Int      @default(1)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, pauseDate])
+  @@unique([userId, pauseDate, slotId])
   @@map("pause_attendances")
 }
 
@@ -531,6 +588,7 @@ enum DraftEntity {
   PLANT
   PLANT_STAGE
   PAUSE_CONFIG
+  PAUSE_SLOT
   PAUSE_WELCOME_MESSAGE
   PAUSE_INTENTION
 }

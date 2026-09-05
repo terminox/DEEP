@@ -165,7 +165,7 @@ struct GlobalPauseReflectionView: View {
     case .unauthorized:
       "Sign in from the You tab to leave a message."
     case .http(_, let code, _) where code == "message_limit":
-      "Three messages a night is plenty. Rest now."
+      "Three messages a day is plenty. Rest now."
     default:
       "Your message couldn't be sent just now."
     }
