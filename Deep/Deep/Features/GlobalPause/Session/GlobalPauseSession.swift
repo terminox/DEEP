@@ -500,6 +500,16 @@ extension GlobalPauseSession {
     return session
   }
 
+  /// Runs one live poll immediately, rather than waiting out the 5 s beat.
+  ///
+  /// The participant-scale demo eases its count over ~1.6 s; without this the
+  /// whole ramp would land in one step at the next poll, and the count line's
+  /// numeric transition would jump instead of climbing. Reaches `pollLive()`
+  /// because a same-file extension sees the type's private members.
+  func pollNow() async {
+    await pollLive()
+  }
+
   /// A session whose attendance claim has settled — the reflection screen's
   /// award caption reads it.
   static func previewAwarded() -> GlobalPauseSession {

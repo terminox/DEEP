@@ -70,6 +70,14 @@ final class GlobalPauseSessionController: UIViewController {
 
   private var duration: TimeInterval = 600
 
+  #if DEBUG
+  /// The participant-scale demo's scrubber, installed lazily on first reveal.
+  /// Stored here rather than in the director so it dies with the session.
+  private var demoBarHost: UIHostingController<AnyView>?
+  private var demoBarHideTask: Task<Void, Never>?
+  private var demoPumpTask: Task<Void, Never>?
+  #endif
+
   init(
     session: GlobalPauseSession,
     scene: GlobalPauseEarthScene,
@@ -153,6 +161,15 @@ final class GlobalPauseSessionController: UIViewController {
       closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
       closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: .edge)
     ])
+
+    #if DEBUG
+    let demoReveal = UITapGestureRecognizer(target: self, action: #selector(handleDemoReveal))
+    demoReveal.numberOfTouchesRequired = 2
+    // The globe reads raw touches rather than a recognizer, so nothing is being
+    // competed with — but let every touch through regardless.
+    demoReveal.cancelsTouchesInView = false
+    view.addGestureRecognizer(demoReveal)
+    #endif
 
     // The session begins: presence + live polling for as long as we're here.
     session.enterSession()
@@ -386,7 +403,93 @@ final class GlobalPauseSessionController: UIViewController {
     host.didMove(toParent: self)
 
     overlayHost = host
+    // The demo bar deliberately does *not* show itself here. It used to, for
+    // four seconds, to teach the gesture — but that put it in the opening of
+    // every screen recording, over the globe being filmed. The crowd size is
+    // set in Settings → Developer before the session opens; two fingers still
+    // bring the scrubber up when changing it live is what you want.
   }
+
+  #if DEBUG
+
+  // MARK: - Participant-scale demo (Dev builds only)
+
+  /// Two fingers anywhere on the session reveal the scale bar.
+  ///
+  /// Safe from the globe's own drag: `EarthMTKView` is
+  /// `isMultipleTouchEnabled = false` (`EarthMetalView.swift`), so a second
+  /// finger is never delivered to it, and nothing else in the feature installs a
+  /// gesture recognizer.
+  @objc private func handleDemoReveal() {
+    guard PauseDemoDirector.shared.isEnabled else { return }
+    revealDemoBar(holdFor: .seconds(8))
+  }
+
+  private func revealDemoBar(holdFor hold: Duration) {
+    installDemoBarIfNeeded()
+    guard let host = demoBarHost else { return }
+    demoBarHideTask?.cancel()
+    UIView.animate(withDuration: 0.28) { host.view.alpha = 1 }
+    demoBarHideTask = Task { [weak self] in
+      try? await Task.sleep(for: hold)
+      guard !Task.isCancelled, let host = self?.demoBarHost else { return }
+      UIView.animate(withDuration: 0.4) { host.view.alpha = 0 }
+    }
+  }
+
+  /// A bottom strip rather than a full-bounds overlay, so the globe stays
+  /// draggable everywhere the bar is not.
+  private func installDemoBarIfNeeded() {
+    guard demoBarHost == nil else { return }
+    let host = UIHostingController(
+      rootView: AnyView(
+        PauseDemoScaleBar { [weak self] in
+          self?.pumpDemoPolls()
+          // Touching the bar restarts its hide timer. Without this it withdraws
+          // eight seconds after the reveal even while someone is still
+          // scrubbing — which is exactly when it is wanted.
+          self?.revealDemoBar(holdFor: .seconds(8))
+        }
+      )
+    )
+    host.view.backgroundColor = .clear
+    host.sizingOptions = [.intrinsicContentSize]
+    host.view.alpha = 0
+    host.view.translatesAutoresizingMaskIntoConstraints = false
+
+    addChild(host)
+    view.insertSubview(host.view, belowSubview: closeButton)
+    host.didMove(toParent: self)
+    NSLayoutConstraint.activate([
+      host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: .edge),
+      host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -CGFloat.edge),
+      // Sits above the continent row, not over it. That row is one of the few
+      // readouts that actually moves with the tier, so covering it would hide
+      // part of what the demo exists to show. Measured against the overlay's
+      // own layout: continents occupy roughly the last 170pt above the safe
+      // area, with the progress line below them.
+      host.view.bottomAnchor.constraint(
+        equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -150
+      ),
+    ])
+    demoBarHost = host
+  }
+
+  /// Runs a short burst of polls across the director's ~1.6 s ramp, so the count
+  /// line climbs through its numeric transition and the glow blooms over its
+  /// 0.8 s lerp — instead of the whole change landing in one step at the next
+  /// 5 s beat. That progressive bloom is the demo.
+  private func pumpDemoPolls() {
+    demoPumpTask?.cancel()
+    demoPumpTask = Task { [weak self] in
+      for _ in 0..<8 {
+        guard !Task.isCancelled, let self else { return }
+        await self.session.pollNow()
+        try? await Task.sleep(for: .milliseconds(220))
+      }
+    }
+  }
+  #endif
 
   // MARK: - Completion
 
@@ -624,6 +727,12 @@ final class GlobalPauseSessionController: UIViewController {
     // Leaving mid-arrival: the landing never comes, so neither does the spark.
     ownJoinTask?.cancel()
     ownJoinTask = nil
+    #if DEBUG
+    demoBarHideTask?.cancel()
+    demoBarHideTask = nil
+    demoPumpTask?.cancel()
+    demoPumpTask = nil
+    #endif
     arrivalDeadline = nil
     arrivalTarget = nil
     audio.stop()

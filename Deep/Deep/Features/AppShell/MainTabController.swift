@@ -177,7 +177,11 @@ final class MainTabController: UITabBarController {
     let you = host(
       YouCoordinatorView()
         .environment(\.onboardingStore, onboardingStore)
-        .environment(\.accountStore, accountStore),
+        .environment(\.accountStore, accountStore)
+        // Settings reaches the pause engine through this: its Developer section
+        // restarts the engine when the demo is armed. Harmless everywhere else —
+        // the key and its fixture default are ordinary, non-DEBUG symbols.
+        .environment(\.globalPauseSession, pauseSession),
       title: String(localized: "You", bundle: .app, locale: .app),
       systemImage: "person.fill"
     )

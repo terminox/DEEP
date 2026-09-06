@@ -25,6 +25,14 @@ struct SettingsView: View {
   @Environment(\.reminderStore) private var reminderStore
   @Environment(\.openLanguage) private var openLanguage
   @Environment(\.openDailyReminder) private var openDailyReminder
+  #if DEBUG
+  /// Only the Developer section reads this — arming the demo has to restart the
+  /// pause engine so the card flips live without waiting on its 60 s retry.
+  @Environment(\.globalPauseSession) private var globalPauseSession
+  /// The number pad has no return key, so the crowd field needs somewhere to
+  /// send focus when you are done typing.
+  @FocusState private var isDemoCountFocused: Bool
+  #endif
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -49,6 +57,9 @@ struct SettingsView: View {
           preferencesSection
           membershipSection
           accountSection
+          #if DEBUG
+          developerSection
+          #endif
           footer
         }
         .padding(.horizontal, .edge)
@@ -315,6 +326,101 @@ struct SettingsView: View {
       }
     }
   }
+
+  #if DEBUG
+
+  // MARK: - Developer
+
+  /// Arms the participant-scale demo. The scrubber itself lives inside the live
+  /// session (two-finger tap) — this is only the switch that makes the session
+  /// enterable, since `presentSession()` refuses to open outside a live window.
+  @ViewBuilder
+  private var developerSection: some View {
+    SettingsSection(title: "Developer") {
+      SettingsToggleRow(
+        icon: "globe.badge.chevron.backward",
+        title: "Global Pause demo",
+        isOn: Binding(
+          get: { PauseDemoDirector.shared.isEnabled },
+          set: { isOn in
+            PauseDemoDirector.shared.setEnabled(isOn, clock: globalPauseSession.clock)
+            // Re-resolve now rather than waiting out the engine's 60 s boundary
+            // retry, so the card is live by the time you reach the tab.
+            Task { await globalPauseSession.start() }
+          }
+        )
+      )
+      if PauseDemoDirector.shared.isEnabled {
+        demoScaleRow
+      }
+    }
+  }
+
+  /// Sets the crowd size before the session is opened, so a screen recording
+  /// catches a clean globe — the in-session scrubber sits over the very thing
+  /// you would be filming. The two-finger scrubber is still there for changing
+  /// size live; this is the one to use when the camera is running.
+  private var demoScaleRow: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 14) {
+        Image(systemName: "person.3.fill")
+          .font(DeepType.body)
+          .foregroundStyle(Color.deepPlum.opacity(0.7))
+          .frame(width: 24, height: 24)
+        Text("People in the session")
+          .font(DeepType.body)
+          .foregroundStyle(.deepPlum)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          // Outbids the field for width, or the label wraps to two lines while
+          // the field sits half empty beside it.
+          .layoutPriority(1)
+        // Type any figure; the chips below are shortcuts, not the whole range.
+        // `.number` parses on commit rather than per keystroke, so typing
+        // "300000" doesn't march the globe through 3, 30, 300…
+        TextField(
+          "",
+          value: Binding(
+            get: { PauseDemoDirector.shared.target },
+            set: { PauseDemoDirector.shared.jump(to: $0) }
+          ),
+          format: .number.locale(.app)
+        )
+        .keyboardType(.numberPad)
+        .multilineTextAlignment(.trailing)
+        .font(DeepType.body)
+        .monospacedDigit()
+        .foregroundStyle(.deepPlum)
+        .focused($isDemoCountFocused)
+        // Wide enough for seven digits and a tap target, narrow enough to leave
+        // the label its full line.
+        .frame(width: 110, alignment: .trailing)
+        .toolbar {
+          ToolbarItemGroup(placement: .keyboard) {
+            Spacer()
+            Button("Done") { isDemoCountFocused = false }
+          }
+        }
+      }
+      Picker(
+        "People in the session",
+        selection: Binding(
+          get: { PauseDemoDirector.shared.target },
+          // Lands on the figure at once rather than easing: the session should
+          // open already showing it, with no ramp caught on the recording.
+          set: { PauseDemoDirector.shared.jump(to: $0) }
+        )
+      ) {
+        ForEach(PauseDemoDirector.tiers, id: \.self) { tier in
+          Text(tier.formatted(.number.notation(.compactName).locale(.app))).tag(tier)
+        }
+      }
+      .pickerStyle(.segmented)
+      .labelsHidden()
+    }
+    .padding(.vertical, 16)
+    .padding(.horizontal, 18)
+  }
+  #endif
 
   // MARK: - Footer
 

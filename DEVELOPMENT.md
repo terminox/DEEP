@@ -99,8 +99,7 @@ See `CLAUDE.md` — headless control is via `baguette`, not the Simulator UI.
 
 The nightly pause only goes live 20:40–20:50 Bangkok time. To test it any
 time, shift the *server's* clock — every client syncs to `serverNow` on every
-response, so the whole app follows through the production code path (there is
-no debug code in the app):
+response, so the whole app follows through the production code path:
 
 ```bash
 ./scripts/pause-time-travel.sh live       # meditation live until switched off
@@ -130,3 +129,39 @@ Notes:
 - The switch is in-memory: restarting `deep-api` returns to real time.
 - It affects every client of that dev server — handy for watching two
   simulators go live together.
+
+## Global Pause participant-scale demo
+
+For showing someone what a pause session looks like with a crowd in it. Turn it
+on in **Settings → Developer → Global Pause demo** (Dev builds only). A second
+row appears there — **People in the session** — which is where to set the crowd
+size: tap the figure and type any number up to ten million, or use the
+1K / 10K / 300K chips as shortcuts. Then open the Global Pause tab: the card is
+live immediately and the session is enterable.
+
+Set the size *before* opening the session when you are recording. Inside the
+session a **two-finger tap** reveals a scale bar (the same three tiers plus a
+slider from 1 to about 500,000) for changing size live, but it sits over the
+globe — which is usually the thing being filmed. It never appears on its own,
+so a recording stays clean unless you ask for it.
+
+It needs no server, no Mac and no VPN — the schedule and the live snapshot are
+answered on the device, so the session opens at any hour in any timezone. Only
+the pause session is offline, though: sign-in, the home feed and the garden
+still want the API on a Dev build, so warm the phone up and leave it signed in
+before handing it to anyone.
+
+**What the demo shows, and what it does not.** The count line, the continent
+row and the arrival rate all move with the tier. The globe barely does, and
+that is the honest finding rather than a fault in the demo: participant cells
+saturate at `EarthGlowStore.Tuning.pointSoftCap` (6 people), the renderer caps
+at `EarthRendererConstants.maxGlowSources` (64), the server clusters to 96
+points and sends at most 50 recent joins, and the scene queues 10 per drain. So
+the globe is fully lit somewhere under a thousand people and looks the same at
+10,000 and 300,000. Nothing here tunes around that.
+
+This is not a substitute for time travel. Demo mode replaces the repository, so
+it exercises none of `/pause/*`; `pause-time-travel.sh` remains the only way to
+test the real thing against a real server. Everything in it — the whole
+`Features/GlobalPause/Demo/` folder, the Settings row and the session's gesture
+— is `#if DEBUG` and compiles out of Staging, Pilot, Prod and CentralFlight.

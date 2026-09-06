@@ -96,7 +96,18 @@ final class AppDependencies {
     // Global Pause: one synced clock + one app-long phase engine, so the home
     // feed's countdown and the lobby run off the same time authority.
     let clock = SyncedClock()
-    let pauseRepository = APIPauseEventRepository(client: client, clock: clock)
+    let pauseAPI = APIPauseEventRepository(client: client, clock: clock)
+    #if DEBUG
+    // Dev builds get the participant-scale demo standing in front of the API.
+    // Disarmed it forwards every call untouched, so this changes nothing until
+    // someone turns it on in Settings → Developer.
+    let pauseRepository: any PauseEventRepository = SimulatedPauseEventRepository(
+      forwardingTo: pauseAPI,
+      clock: clock
+    )
+    #else
+    let pauseRepository: any PauseEventRepository = pauseAPI
+    #endif
     self.pauseClock = clock
     self.pauseRepository = pauseRepository
     self.pauseSession = GlobalPauseSession(
