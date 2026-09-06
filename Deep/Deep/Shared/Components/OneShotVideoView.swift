@@ -8,6 +8,10 @@ import AVFoundation
 /// walks in two seconds late sees the intro two seconds in, hears it, and the
 /// hero hands off to the ambient loop when it ends.
 ///
+/// Carrying sound means claiming the audio session. An unmuted clip puts it on
+/// `.playback`, the category the app's four audio engines set, so the ring/silent
+/// switch can't silence it; a muted one claims nothing.
+///
 /// If the named resource is missing it renders nothing and reports the end
 /// immediately, so a stripped bundle degrades into "there was no intro" rather
 /// than a hero that never moves on.
@@ -52,6 +56,7 @@ struct OneShotVideoView: UIViewRepresentable {
 
     private var endObserver: NSObjectProtocol?
     private var hasEnded = false
+    private var sessionConfigured = false
 
     init(resource: String, fileExtension: String) {
       guard let url = Bundle.main.url(forResource: resource, withExtension: fileExtension) else {
@@ -72,6 +77,7 @@ struct OneShotVideoView: UIViewRepresentable {
         return
       }
       player.isMuted = muted
+      if !muted { configureSessionIfNeeded() }
       endObserver = NotificationCenter.default.addObserver(
         forName: AVPlayerItem.didPlayToEndTimeNotification,
         object: player.currentItem,
@@ -87,6 +93,9 @@ struct OneShotVideoView: UIViewRepresentable {
 
     func setMuted(_ muted: Bool) {
       player?.isMuted = muted
+      // Un-muting mid-clip — the member tapping ON AIR back on — is the other
+      // moment there is something to hear.
+      if !muted { configureSessionIfNeeded() }
     }
 
     func stop() {
@@ -100,6 +109,29 @@ struct OneShotVideoView: UIViewRepresentable {
       guard !hasEnded else { return }
       hasEnded = true
       onEnded()
+    }
+
+    // MARK: - Session
+
+    /// The same category the app's four audio engines set, behind the same
+    /// latch. Left alone, an `AVPlayer` plays under the process default
+    /// `.soloAmbient`, where the ring/silent switch silences it — which is how
+    /// Fuku's intro came to be mute on a phone in silent mode while the lounge
+    /// track that follows it, joined through `LoungeRadioPlayer`, played
+    /// straight through. Never deactivated: the session is process-wide and
+    /// shared with the streamers.
+    ///
+    /// Claimed only when there is something to hear. `.playback` takes the
+    /// session outright, so a muted clip must not stop whatever the member is
+    /// listening to elsewhere — and the latch earns its keep more here than it
+    /// does for the engines, because `updateUIView` re-asserts the mute flag on
+    /// every body pass.
+    private func configureSessionIfNeeded() {
+      guard !sessionConfigured else { return }
+      sessionConfigured = true
+      let session = AVAudioSession.sharedInstance()
+      try? session.setCategory(.playback, mode: .default)
+      try? session.setActive(true)
     }
   }
 }
