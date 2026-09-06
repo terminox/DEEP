@@ -76,6 +76,7 @@ final class APIPauseEventRepository: PauseEventRepository {
       lobbyDuration: TimeInterval(dto.lobbyDurationSeconds ?? 0),
       meditationAudioURL: dto.meditationAudioUrl.flatMap(URL.init(string:)),
       meditationDuration: TimeInterval(dto.meditationDurationSeconds),
+      nextOccurrenceMeditationStart: dto.nextMeditationStartsAt.map(date),
       welcomeMessages: dto.welcomeMessages,
       intentions: dto.intentions.map { Intention(key: $0.key, label: $0.label) }
     )
@@ -295,10 +296,15 @@ final class FixturePauseEventRepository: PauseEventRepository {
     ),
   ]
 
+  /// One resolved occurrence, built around the hour its meditation starts.
+  ///
   /// `lobbyAudioURL` is nil by default so nothing tries to fetch a track it has
   /// no business fetching; on-air previews pass a placeholder, which the mock
   /// radio player only ever looks at, never loads.
-  static func tonightSchedule(
+  static func occurrence(
+    meditationAt hour: Int,
+    _ minute: Int,
+    nextMeditationAt next: (hour: Int, minute: Int, tomorrow: Bool)? = nil,
     now: Date = Date(),
     lobbyAudioURL: URL? = nil,
     lobbyDuration: TimeInterval = 262
@@ -306,17 +312,18 @@ final class FixturePauseEventRepository: PauseEventRepository {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone(identifier: "Asia/Bangkok") ?? .current
 
-    func tonight(_ hour: Int, _ minute: Int, _ second: Int = 0) -> Date {
-      calendar.date(
-        bySettingHour: hour, minute: minute, second: second, of: now
-      ) ?? now
+    func at(_ hour: Int, _ minute: Int, _ second: Int = 0, dayOffset: Int = 0) -> Date {
+      let day = calendar.date(byAdding: .day, value: dayOffset, to: now) ?? now
+      return calendar.date(bySettingHour: hour, minute: minute, second: second, of: day) ?? day
     }
 
-    let lobby = tonight(20, 30)
-    let welcome = tonight(20, 39, 50)
-    let meditation = tonight(20, 40)
-    let feedback = tonight(20, 50)
-    let end = tonight(21, 0)
+    // The shape of a real occurrence: a 30-minute lobby run-up, ten seconds of
+    // welcome, a ten-minute meditation, then the rest of the window.
+    let meditation = at(hour, minute)
+    let lobby = meditation.addingTimeInterval(-10 * 60)
+    let welcome = meditation.addingTimeInterval(-10)
+    let feedback = meditation.addingTimeInterval(10 * 60)
+    let end = meditation.addingTimeInterval(20 * 60)
 
     return PauseSchedule(
       pauseDate: now.formatted(.iso8601.year().month().day()),
@@ -331,8 +338,13 @@ final class FixturePauseEventRepository: PauseEventRepository {
       lobbyDuration: lobbyDuration,
       meditationAudioURL: nil,
       meditationDuration: 600,
+      nextOccurrenceMeditationStart: next.map {
+        at($0.hour, $0.minute, dayOffset: $0.tomorrow ? 1 : 0)
+      },
       welcomeMessages: [
-        "Welcome. Tonight the world pauses together.",
+        // Time-neutral, like the seeded copy: these lines are shared by every
+        // session of the day, so a morning one cannot say "tonight".
+        "Welcome. The world is about to pause together.",
         "Wherever you are, you are not alone.",
         "Settle in. We begin in a moment.",
       ],
@@ -340,8 +352,57 @@ final class FixturePauseEventRepository: PauseEventRepository {
     )
   }
 
+  /// The morning session, with tonight's to follow.
+  static func morningOccurrence(
+    now: Date = Date(),
+    lobbyAudioURL: URL? = nil,
+    lobbyDuration: TimeInterval = 262
+  ) -> PauseSchedule {
+    occurrence(
+      meditationAt: 8, 10,
+      nextMeditationAt: (20, 40, false),
+      now: now, lobbyAudioURL: lobbyAudioURL, lobbyDuration: lobbyDuration
+    )
+  }
+
+  /// The evening session, with tomorrow morning's to follow.
+  static func eveningOccurrence(
+    now: Date = Date(),
+    lobbyAudioURL: URL? = nil,
+    lobbyDuration: TimeInterval = 262
+  ) -> PauseSchedule {
+    occurrence(
+      meditationAt: 20, 40,
+      nextMeditationAt: (8, 10, true),
+      now: now, lobbyAudioURL: lobbyAudioURL, lobbyDuration: lobbyDuration
+    )
+  }
+
+  /// Whichever occurrence a real server would resolve right now. Previews and
+  /// simulator runs are meant to behave the way the app would at this moment,
+  /// and with two sessions a day that has to mean picking between them rather
+  /// than always handing back the evening.
+  static func nextOccurrence(
+    now: Date = Date(),
+    lobbyAudioURL: URL? = nil,
+    lobbyDuration: TimeInterval = 262
+  ) -> PauseSchedule {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "Asia/Bangkok") ?? .current
+    let hour = calendar.component(.hour, from: now)
+    let minute = calendar.component(.minute, from: now)
+    let sinceMidnight = hour * 60 + minute
+    // Past the morning window (which closes at 08:30) the evening one is next;
+    // past the evening's, tomorrow morning's — which this fixture renders as
+    // today's, since only its clock face is ever read.
+    let morningIsNext = sinceMidnight < 8 * 60 + 30 || sinceMidnight >= 21 * 60
+    return morningIsNext
+      ? morningOccurrence(now: now, lobbyAudioURL: lobbyAudioURL, lobbyDuration: lobbyDuration)
+      : eveningOccurrence(now: now, lobbyAudioURL: lobbyAudioURL, lobbyDuration: lobbyDuration)
+  }
+
   func schedule() async throws -> PauseSchedule {
-    Self.tonightSchedule()
+    Self.nextOccurrence()
   }
 
   func live() async throws -> PauseLiveSnapshot {

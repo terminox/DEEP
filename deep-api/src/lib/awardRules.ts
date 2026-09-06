@@ -120,6 +120,38 @@ export function attendanceCovers(
   );
 }
 
+/** An occurrence, as much of one as the coverage rule needs to see. */
+export interface AttendableOccurrence {
+  slotId: string;
+  phases: { key: string; startsAt: Date; endsAt: Date }[];
+}
+
+/**
+ * The occurrence a member's evidence actually covers today, if any — what the
+ * attendance award is granted on when a day holds more than one pause.
+ *
+ * Evidence is matched slot to slot rather than pooled across the day, and that
+ * is the whole point: one span widened over two meditations (the start of the
+ * morning, the end of the evening) would satisfy `attendanceCovers` for a
+ * window nobody actually sat through. Pairing each span with its own slot makes
+ * that impossible to express.
+ *
+ * The award itself stays per day — the caller keys it on pauseDate, and
+ * PAUSE_ATTENDED's perDay of 1 means sitting through both earns once.
+ */
+export function coveredOccurrence<O extends AttendableOccurrence>(
+  occurrences: O[],
+  attendances: (AttendanceSpan & { slotId: string })[],
+): O | null {
+  for (const occurrence of occurrences) {
+    const meditation = occurrence.phases.find((p) => p.key === "meditation");
+    if (!meditation) continue;
+    const attendance = attendances.find((a) => a.slotId === occurrence.slotId);
+    if (attendance && attendanceCovers(meditation, attendance)) return occurrence;
+  }
+  return null;
+}
+
 export interface StageThreshold {
   /** CUMULATIVE sunlight needed to reach the stage; first stage must be 0. */
   sunlightRequired: number;

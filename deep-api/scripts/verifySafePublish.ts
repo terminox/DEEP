@@ -244,95 +244,228 @@ async function main() {
   pass("5b. published delete removes it");
 
   // ---- 6. Global Pause schedule ----
-  const lobbyStartOf = (schedule: { phases: { key: string; startsAt: string }[] }) => {
-    const lobby = schedule.phases.find((p) => p.key === "lobby");
-    assert.ok(lobby, "/pause/schedule returns a lobby phase");
-    return lobby.startsAt;
+  //
+  // The schedule is now a config (timezone + audio, shared) plus a list of
+  // session times, one row each. Every rule below is a rule about the *set*,
+  // which is why they are checked here end to end rather than field by field.
+  const scheduleOf = async () =>
+    json(await app.inject({ method: "GET", url: "/pause/schedule" }));
+  const meditationStarts = (schedule: {
+    upcoming: { meditationStartsAt: string }[];
+  }) => schedule.upcoming.map((o) => o.meditationStartsAt);
+
+  const slotsOf = async () => {
+    const body = await json(
+      await app.inject({ method: "GET", url: "/admin/pause/slots", headers: auth() }),
+    );
+    return body.slots as { id: string; meditationStart: string }[];
   };
-  const beforeSchedule = await json(
-    await app.inject({ method: "GET", url: "/pause/schedule" }),
-  );
-  const beforeLobby = lobbyStartOf(beforeSchedule);
-  const badTimes = await app.inject({
-    method: "PUT",
-    url: "/admin/pause/config",
-    headers: auth(),
-    payload: {
-      timezone: "Asia/Bangkok",
-      lobbyStart: "22:00:00",
-      welcomeStart: "21:00:00", // out of order
-      meditationStart: "21:10:00",
-      windowEnd: "21:30:00",
-      lobbyAudioPath: "/media/audio/global-pause.mp3",
-      meditationAudioPath: "/media/audio/global-pause.mp3",
-      meditationDurationSeconds: 132,
-    },
+
+  const beforeSchedule = await scheduleOf();
+  assert.equal(beforeSchedule.phases.length, 4, "/pause/schedule resolves one occurrence");
+  const liveSlots = await slotsOf();
+  assert.equal(liveSlots.length, 1, "a fresh database has exactly one session");
+  const eveningId = liveSlots[0]!.id;
+
+  const addSlot = (payload: Record<string, unknown>) =>
+    app.inject({
+      method: "POST",
+      url: "/admin/pause/slots",
+      headers: auth(),
+      payload,
+    });
+
+  const badTimes = await addSlot({
+    lobbyStart: "22:00:00",
+    welcomeStart: "21:00:00", // out of order
+    meditationStart: "21:10:00",
+    windowEnd: "21:30:00",
   });
   assert.equal(badTimes.statusCode, 400, "out-of-order phases still rejected");
   pass("6. out-of-order phase times are refused at save");
 
   // The meditation ends where its track does, so the window has to have room
   // for it. global-pause.mp3 is 132s; this window leaves 60.
-  const overrun = await app.inject({
-    method: "PUT",
-    url: "/admin/pause/config",
-    headers: auth(),
-    payload: {
-      timezone: "Asia/Bangkok",
-      lobbyStart: "19:00:00",
-      welcomeStart: "19:09:50",
-      meditationStart: "19:10:00",
-      windowEnd: "19:11:00",
-      lobbyAudioPath: "/media/audio/global-pause.mp3",
-      meditationAudioPath: "/media/audio/global-pause.mp3",
-    },
+  const overrun = await addSlot({
+    lobbyStart: "19:00:00",
+    welcomeStart: "19:09:50",
+    meditationStart: "19:10:00",
+    windowEnd: "19:11:00",
   });
   assert.equal(overrun.statusCode, 400, "a track longer than the window is refused");
-  assert.match(JSON.parse(overrun.body).error?.code ?? "", /meditation_overruns_window/);
+  assert.match(JSON.parse(overrun.body).error?.code ?? "", /invalid_pause_schedule/);
   assert.equal(await prisma.contentDraft.count(), 0, "and nothing was staged");
-  pass("6a. a meditation that overruns the window is refused, and stages nothing");
+  pass("6a. a session whose window cannot hold the track is refused, and stages nothing");
 
-  await app.inject({
-    method: "PUT",
-    url: "/admin/pause/config",
-    headers: auth(),
-    payload: {
-      timezone: "Asia/Bangkok",
-      lobbyStart: "19:00:00",
-      welcomeStart: "19:09:50",
-      meditationStart: "19:10:00",
-      windowEnd: "19:30:00",
-      lobbyAudioPath: "/media/audio/global-pause.mp3",
-      meditationAudioPath: "/media/audio/global-pause.mp3",
-      meditationDurationSeconds: 132,
-    },
+  // The live session runs 20:30-21:00; this one opens inside it.
+  const overlapping = await addSlot({
+    lobbyStart: "20:45:00",
+    welcomeStart: "20:49:50",
+    meditationStart: "20:50:00",
+    windowEnd: "21:20:00",
   });
-  const afterStage = await json(await app.inject({ method: "GET", url: "/pause/schedule" }));
-  assert.equal(
-    lobbyStartOf(afterStage),
-    beforeLobby,
-    "tonight's event is unchanged while the new schedule is staged",
-  );
-  pass("6b. a staged schedule does not move tonight's Global Pause");
+  assert.equal(overlapping.statusCode, 400, "an overlapping session is refused");
+  assert.match(JSON.parse(overlapping.body).error?.message ?? "", /cannot overlap/);
+  assert.equal(await prisma.contentDraft.count(), 0, "and nothing was staged");
+  pass("6b. a session overlapping another is refused, and stages nothing");
 
-  const cfgChanges = await json(
+  const added = await addSlot({
+    lobbyStart: "08:00:00",
+    welcomeStart: "08:09:50",
+    meditationStart: "08:10:00",
+    windowEnd: "09:00:00",
+  });
+  assert.equal(added.statusCode, 200, "a well-formed morning session stages");
+  const morningId = JSON.parse(added.body).slot.id as string;
+
+  const afterStage = await scheduleOf();
+  assert.deepEqual(
+    meditationStarts(afterStage),
+    meditationStarts(beforeSchedule),
+    "the app still sees only the published sessions while a new one is staged",
+  );
+  pass("6c. a staged session does not appear in the app's schedule");
+
+  const slotChanges = await json(
     await app.inject({ method: "GET", url: "/admin/changes", headers: auth() }),
   );
-  const cfg = cfgChanges.changes.find((c: { entity: string }) => c.entity === "PAUSE_CONFIG");
-  assert.ok(cfg, "schedule change is listed");
-  assert.ok(
-    cfg.fields.some((f: { field: string }) => f.field === "lobbyStart"),
-    "diff names the changed phase",
+  const staged = slotChanges.changes.find(
+    (c: { entity: string }) => c.entity === "PAUSE_SLOT",
   );
+  assert.ok(staged, "the new session is listed as a pending change");
+  assert.match(staged.label, /08:10/, "and is labelled by the time it runs");
+
   await app.inject({
     method: "POST",
     url: "/admin/changes/publish",
     headers: auth(),
-    payload: { refs: ["PAUSE_CONFIG:1"] },
+    payload: { refs: [`PAUSE_SLOT:${morningId}`] },
   });
-  const afterPublish = await json(await app.inject({ method: "GET", url: "/pause/schedule" }));
-  assert.notEqual(lobbyStartOf(afterPublish), beforeLobby);
-  pass("6c. publishing the schedule moves it");
+  const afterPublish = await scheduleOf();
+  assert.equal(
+    afterPublish.upcoming.length,
+    beforeSchedule.upcoming.length + 1,
+    "publishing adds the session to the app's schedule",
+  );
+  assert.equal(
+    afterPublish.nextMeditationStartsAt != null,
+    true,
+    "and the payload names the meditation after the resolved one",
+  );
+  pass("6d. publishing the session puts it on the app's schedule");
+
+  // Deleting the last remaining session would leave the Global Pause with no
+  // times at all, which is not a state the product has.
+  await app.inject({
+    method: "DELETE",
+    url: `/admin/pause/slots/${morningId}`,
+    headers: auth(),
+  });
+  const lastOne = await app.inject({
+    method: "DELETE",
+    url: `/admin/pause/slots/${eveningId}`,
+    headers: auth(),
+  });
+  assert.equal(lastOne.statusCode, 400, "the last session cannot be removed");
+  assert.match(JSON.parse(lastOne.body).error?.message ?? "", /at least one session/);
+  pass("6e. the last session time cannot be deleted");
+
+  // A longer track can overrun some sessions' windows and not others, so the
+  // config write is judged against every session — including a staged one.
+  await app.inject({
+    method: "POST",
+    url: "/admin/changes/discard",
+    headers: auth(),
+    payload: { refs: [`PAUSE_SLOT:${morningId}`] },
+  });
+  const tightSlot = await addSlot({
+    lobbyStart: "06:00:00",
+    welcomeStart: "06:09:50",
+    meditationStart: "06:10:00",
+    windowEnd: "06:13:00", // room for 180s
+  });
+  assert.equal(tightSlot.statusCode, 200, "a session with 3 minutes of room stages");
+  const tightId = JSON.parse(tightSlot.body).slot.id as string;
+
+  const longTrack = await app.inject({
+    method: "PUT",
+    url: "/admin/pause/config",
+    headers: auth(),
+    payload: {
+      timezone: "Asia/Bangkok",
+      lobbyAudioPath: "https://cdn.example.com/lobby.mp3",
+      lobbyDurationSeconds: 262,
+      meditationAudioPath: "https://cdn.example.com/nineteen-minutes.mp3",
+      meditationDurationSeconds: 19 * 60,
+    },
+  });
+  assert.equal(longTrack.statusCode, 400, "a track no session's window can hold is refused");
+  assert.match(JSON.parse(longTrack.body).error?.message ?? "", /the 06:10 session/);
+  pass("6f. a meditation track that overruns a session's window is refused, and names it");
+
+  await app.inject({
+    method: "POST",
+    url: "/admin/changes/discard",
+    headers: auth(),
+    payload: { refs: [`PAUSE_SLOT:${tightId}`] },
+  });
+
+  // The case only the publish path can catch. Widening the evening window and
+  // uploading a longer track are coherent *together*, so both stage happily —
+  // the admin screen validates against everything staged, which is what it is
+  // looking at. Publishing only one of them is a different set, and it is the
+  // one the app would actually get.
+  const widened = await app.inject({
+    method: "PATCH",
+    url: `/admin/pause/slots/${eveningId}`,
+    headers: auth(),
+    payload: { windowEnd: "21:30:00" },
+  });
+  assert.equal(widened.statusCode, 200, "widening the evening window stages");
+
+  const longerTrack = await app.inject({
+    method: "PUT",
+    url: "/admin/pause/config",
+    headers: auth(),
+    payload: {
+      timezone: "Asia/Bangkok",
+      lobbyAudioPath: "https://cdn.example.com/lobby.mp3",
+      lobbyDurationSeconds: 262,
+      meditationAudioPath: "https://cdn.example.com/twenty-five.mp3",
+      meditationDurationSeconds: 25 * 60,
+    },
+  });
+  assert.equal(longerTrack.statusCode, 200, "a track that fits the widened window stages");
+
+  const halfway = await json(
+    await app.inject({
+      method: "POST",
+      url: "/admin/changes/validate",
+      headers: auth(),
+      payload: { refs: ["PAUSE_CONFIG:1"] },
+    }),
+  );
+  assert.ok(
+    halfway.blockers.some((b: string) => /the 20:40 session/.test(b)),
+    "publishing the track without the window it needs is blocked",
+  );
+  const together = await json(
+    await app.inject({
+      method: "POST",
+      url: "/admin/changes/validate",
+      headers: auth(),
+      payload: { refs: ["PAUSE_CONFIG:1", `PAUSE_SLOT:${eveningId}`] },
+    }),
+  );
+  assert.deepEqual(together.blockers, [], "publishing both together is fine");
+  pass("6g. publishing half a schedule change is blocked; publishing both is not");
+
+  await app.inject({
+    method: "POST",
+    url: "/admin/changes/discard",
+    headers: auth(),
+    payload: { refs: ["PAUSE_CONFIG:1", `PAUSE_SLOT:${eveningId}`] },
+  });
 
   // ---- 7. Visibility: hide live content without deleting it ----
   await app.inject({

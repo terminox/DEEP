@@ -465,7 +465,7 @@ final class GlobalPauseCardView: UIControl {
   card.frame = CGRect(x: 20, y: 100, width: 350, height: 200)
   card.autoresizingMask = [.flexibleWidth]
   card.setChromeState(
-    .countdown(target: Date().addingTimeInterval(899), scheduleLine: "Tonight · 20:40 Thailand Time"),
+    .countdown(target: Date().addingTimeInterval(899), scheduleLine: "Today · 8:40 PM"),
     animated: false
   )
   container.addSubview(card)

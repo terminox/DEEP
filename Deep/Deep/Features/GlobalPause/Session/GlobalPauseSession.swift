@@ -11,8 +11,8 @@ enum GlobalPauseCardState: Equatable {
   case live
 }
 
-/// The Global Pause engine: holds tonight's schedule, tracks whether the
-/// nightly meditation is live against the synced clock (flipping
+/// The Global Pause engine: holds the resolved occurrence, tracks whether
+/// its meditation is live against the synced clock (flipping
 /// `isMeditationLive` at exact window boundaries), and scopes the live
 /// presence/polling loops to the time the session screen is open.
 ///
@@ -23,7 +23,8 @@ enum GlobalPauseCardState: Equatable {
 final class GlobalPauseSession {
   let clock: SyncedClock
 
-  /// Tonight's resolved schedule; nil until the first fetch lands.
+  /// The occurrence the server resolved — the one under way, else the next.
+  /// Nil until the first fetch lands.
   private(set) var schedule: PauseSchedule?
   /// True exactly while the nightly meditation window is open — the one state
   /// the live session has. The boundary timer flips it at the window edges.
@@ -38,8 +39,12 @@ final class GlobalPauseSession {
   /// property would never wake the chrome's observation loop — the boundary
   /// timer recomputes this at every edge instead.
   private(set) var cardState: GlobalPauseCardState = .off(
-    scheduleLine: "Breathe with the world, together"
+    scheduleLine: GlobalPauseSession.restingLine
   )
+
+  /// What the card says when there is no next pause to name — before the first
+  /// schedule lands, or on a server with no sessions configured at all.
+  static let restingLine = "Breathe with the world, together"
   private(set) var participantCount = 0
   private(set) var participantsByCountry: [String: Int] = [:]
   /// Tallied by continent code — what the live session names beneath the
@@ -76,9 +81,9 @@ final class GlobalPauseSession {
   private(set) var postedMessage: PeaceMessage?
 
   /// When the next meditation begins — the countdown target for the card's
-  /// caption. Nil until the schedule lands.
+  /// caption. Nil until the schedule lands, or when it carries no meditation.
   var nextMeditationStart: Date? {
-    schedule?.nextMeditationStart(after: clock.now)
+    schedule.flatMap { $0.nextMeditationStart(after: clock.now) }
   }
 
   /// Seconds into the meditation stream at the synced clock's now.
@@ -89,8 +94,8 @@ final class GlobalPauseSession {
 
   var meditationDuration: TimeInterval { schedule?.meditationDuration ?? 0 }
 
-  /// Tonight's lounge set, once the schedule has landed and the intro clip has
-  /// been measured. Nil when there is nothing to broadcast.
+  /// This occurrence's lounge set, once the schedule has landed and the intro
+  /// clip has been measured. Nil when there is nothing to broadcast.
   var loungeBroadcast: LoungeBroadcast? {
     schedule?.loungeBroadcast(introDuration: introDuration)
   }
@@ -122,6 +127,9 @@ final class GlobalPauseSession {
   @ObservationIgnored private var hasMeasuredIntro = false
   @ObservationIgnored private var pauseAwardTask: Task<Void, Never>?
   @ObservationIgnored private var boundaryTask: Task<Void, Never>?
+  /// The window end we have already gone back to the server for; see
+  /// `armBoundaryTimer`.
+  @ObservationIgnored private var refetchedWindowEnd: Date?
   @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
   @ObservationIgnored private var pollTask: Task<Void, Never>?
   @ObservationIgnored private var foregroundObserver: NSObjectProtocol?
@@ -204,19 +212,23 @@ final class GlobalPauseSession {
     guard let schedule, let window = schedule.window(for: .meditation) else {
       isMeditationLive = false
       setFukuOnAir(false)
-      setCardState(.off(scheduleLine: "Breathe with the world, together"))
+      setCardState(.off(scheduleLine: Self.restingLine))
       return
     }
     let now = clock.now
     isMeditationLive = now >= window.startsAt && now < window.endsAt
     setFukuOnAir(loungeBroadcast?.isOnAir(at: now) ?? false)
-    let target = schedule.nextMeditationStart(after: now)
     if isMeditationLive {
       setCardState(.live)
-    } else if target.timeIntervalSince(now) <= Self.countdownLead {
-      setCardState(.countdown(target: target, scheduleLine: scheduleLine(for: target)))
+    } else if let target = schedule.nextMeditationStart(after: now) {
+      let line = scheduleLine(for: target)
+      setCardState(
+        target.timeIntervalSince(now) <= Self.countdownLead
+          ? .countdown(target: target, scheduleLine: line)
+          : .off(scheduleLine: line)
+      )
     } else {
-      setCardState(.off(scheduleLine: scheduleLine(for: target)))
+      setCardState(.off(scheduleLine: Self.restingLine))
     }
   }
 
@@ -242,9 +254,10 @@ final class GlobalPauseSession {
   private func nextStateBoundary(after now: Date) -> Date? {
     guard let schedule, let phaseBoundary = schedule.nextBoundary(after: now) else { return nil }
     var candidates = [phaseBoundary]
-    let countdownStart = schedule.nextMeditationStart(after: now)
-      .addingTimeInterval(-Self.countdownLead)
-    if countdownStart > now { candidates.append(countdownStart) }
+    if let next = schedule.nextMeditationStart(after: now) {
+      let countdownStart = next.addingTimeInterval(-Self.countdownLead)
+      if countdownStart > now { candidates.append(countdownStart) }
+    }
     // The set ends partway through the lobby phase, so its end is not a phase
     // boundary of its own — without it the ON AIR badge would stay lit through
     // the quiet run-up to the welcome.
@@ -253,14 +266,42 @@ final class GlobalPauseSession {
   }
 
   /// One sleeping task per upcoming boundary; re-armed after every firing and
-  /// clock sync. Crossing the final boundary re-fetches the next occurrence.
+  /// clock sync. An occurrence that is over is re-fetched rather than waited
+  /// out, because only the server knows what comes next.
   private func armBoundaryTimer() {
     boundaryTask?.cancel()
     let now = clock.now
+
+    // The occurrence in hand is spent. Only a fetch can name the next one —
+    // its phases, its lobby set, its welcome lines, the pauseDate the awards
+    // key on — and this has to be tested first rather than left to the
+    // no-boundary case below: once the schedule carries the next occurrence's
+    // meditation start, there IS still a boundary here (the countdown), so
+    // that case would never fire and the phases would never be refreshed.
+    //
+    // Latched on the spent window's own end, which is what keeps a server that
+    // keeps handing back the same finished occurrence from becoming a
+    // zero-backoff request loop: a fetch landing a new occurrence moves
+    // `windowEnd` and re-arms the latch for free, while one landing the same
+    // occurrence — or failing, which leaves the old schedule in place on
+    // purpose — falls through to the 60s sleep below. Cost of a misbehaving
+    // server: exactly one extra request.
+    if let windowEnd = schedule?.windowEnd, now >= windowEnd,
+       refetchedWindowEnd != windowEnd {
+      refetchedWindowEnd = windowEnd
+      // Spawned rather than awaited: armBoundaryTimer is called *from*
+      // refreshSchedule, so a direct call would recurse on the same turn.
+      boundaryTask = Task { [weak self] in
+        guard !Task.isCancelled else { return }
+        await self?.refreshSchedule()
+      }
+      return
+    }
+
     guard let boundary = nextStateBoundary(after: now) else {
-      // No schedule yet (first fetch failed) or window over; the next fetch
-      // supplies it. The delay keeps a failing fetch from becoming a
-      // zero-backoff request loop (refresh → no boundary → refresh …).
+      // No schedule yet (first fetch failed), or one we have already been back
+      // for. The delay keeps a failing fetch from becoming a zero-backoff
+      // request loop (refresh → no boundary → refresh …).
       boundaryTask = Task { [weak self] in
         try? await Task.sleep(for: .seconds(60))
         guard !Task.isCancelled else { return }
@@ -268,6 +309,9 @@ final class GlobalPauseSession {
       }
       return
     }
+
+    // A live boundary means the occurrence in hand is current again.
+    refetchedWindowEnd = nil
     let delay = boundary.timeIntervalSince(now)
     boundaryTask = Task { [weak self] in
       try? await Task.sleep(for: .seconds(max(0.05, delay)))
@@ -444,20 +488,13 @@ final class GlobalPauseSession {
 
   // MARK: - Schedule phrasing
 
-  /// "Tonight · 20:40 Thailand Time" / "Tomorrow · 20:40 Thailand Time",
-  /// phrased against the pause's home timezone rather than the device's.
+  /// "Today · 8:10 AM" — when the next pause begins, in the member's own clock.
+  ///
+  /// Read against the synced clock rather than the device's: dev time travel
+  /// moves `serverNow` arbitrarily far from the real one, and the day word
+  /// would lie all through QA otherwise.
   func scheduleLine(for target: Date) -> String {
-    var calendar = Calendar(identifier: .gregorian)
-    let timeZone = TimeZone(identifier: schedule?.timezone ?? "Asia/Bangkok") ?? .current
-    calendar.timeZone = timeZone
-
-    let formatter = DateFormatter()
-    formatter.timeZone = timeZone
-    formatter.dateFormat = "HH:mm"
-    let time = formatter.string(from: target)
-
-    let day = calendar.isDate(clock.now, inSameDayAs: target) ? "Tonight" : "Tomorrow"
-    return "\(day) · \(time) Thailand Time"
+    PauseScheduleLine.text(target: target, now: clock.now)
   }
 }
 
@@ -471,7 +508,7 @@ extension GlobalPauseSession {
       clock: SyncedClock(),
       repository: FixturePauseEventRepository()
     )
-    session.schedule = FixturePauseEventRepository.tonightSchedule()
+    session.schedule = FixturePauseEventRepository.nextOccurrence()
     session.isMeditationLive = live
     if live { session.cardState = .live }
     session.participantCount = 4218
@@ -493,7 +530,7 @@ extension GlobalPauseSession {
   /// mock radio player ever sees, so nothing is fetched.
   static func previewOnAir() -> GlobalPauseSession {
     let session = preview()
-    session.schedule = FixturePauseEventRepository.tonightSchedule(
+    session.schedule = FixturePauseEventRepository.nextOccurrence(
       lobbyAudioURL: URL(string: "fixture://lounge-set")
     )
     session.isFukuOnAir = true

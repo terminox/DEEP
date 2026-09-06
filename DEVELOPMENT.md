@@ -97,10 +97,10 @@ See `CLAUDE.md` — headless control is via `baguette`, not the Simulator UI.
 
 ## Global Pause time travel
 
-The nightly pause only goes live 20:40–20:50 Bangkok time. To test it any
-time, shift the *server's* clock — every client syncs to `serverNow` on every
-response, so the whole app follows through the production code path (there is
-no debug code in the app):
+A Global Pause only goes live inside its own few minutes of the day. To test it
+any time, shift the *server's* clock — every client syncs to `serverNow` on
+every response, so the whole app follows through the production code path
+(there is no debug code in the app):
 
 ```bash
 ./scripts/pause-time-travel.sh live       # meditation live until switched off
@@ -108,8 +108,21 @@ no debug code in the app):
 ./scripts/pause-time-travel.sh off        # back to real time
 ```
 
-`live` is sticky: the server's clock loops inside the meditation window, so
-the session stays enterable no matter how long ago you ran it. Each pass
+A day can hold more than one session (the dev seed makes two: 08:10 and 20:40
+Bangkok). An optional second argument picks which — a 1-based position in clock
+order, or a session id — and the reply names the one it chose:
+
+```bash
+./scripts/pause-time-travel.sh live 2        # the day's second session
+./scripts/pause-time-travel.sh countdown 1   # count down into the morning one
+```
+
+Left out, it takes whichever session is live now or coming up next, which is
+what it always did when there was only ever one. Session times are managed in
+the admin panel under Schedule.
+
+`live` is sticky: the server's clock loops inside that session's meditation
+window, so the session stays enterable no matter how long ago you ran it. Each pass
 still elapses like a real night — a session that runs its course ends into
 the reflection screen naturally. To end one early, run `off`: real time is
 outside the window, so a running session crossfades into reflection within

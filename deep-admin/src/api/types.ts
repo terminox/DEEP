@@ -196,13 +196,10 @@ export type PlantDetail = Pending & {
   stages: PlantStage[]
 }
 
+// What every session of the day shares. *When* they happen is `PauseSlot`.
 export type PauseConfig = Pending & {
   id: number
   timezone: string
-  lobbyStart: string
-  welcomeStart: string
-  meditationStart: string
-  windowEnd: string
   lobbyAudioPath: string
   // Measured off lobbyAudioPath by the server. DJ Fuku's nightly set runs
   // lobbyStart -> lobbyStart + this, and the app's ON AIR badge follows it.
@@ -211,6 +208,18 @@ export type PauseConfig = Pending & {
   // Measured off meditationAudioPath by the server. The meditation phase runs
   // meditationStart -> meditationStart + this, so there is no separate end time.
   meditationDurationSeconds: number
+  updatedAt: string
+}
+
+// One daily session, times only: every session of the day shares the timezone,
+// both tracks and their measured lengths. Sorted by meditationStart everywhere,
+// because a session's place in the day is its clock, not a display order.
+export type PauseSlot = Pending & {
+  id: string
+  lobbyStart: string
+  welcomeStart: string
+  meditationStart: string
+  windowEnd: string
   updatedAt: string
 }
 

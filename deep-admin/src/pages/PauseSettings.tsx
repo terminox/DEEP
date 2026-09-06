@@ -2,20 +2,28 @@ import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   createPauseIntention,
+  createPauseSlot,
   createPauseWelcomeMessage,
   deletePauseIntention,
+  deletePauseSlot,
   deletePauseWelcomeMessage,
   getPauseConfig,
   listPauseIntentions,
+  listPauseSlots,
   listPauseWelcomeMessages,
   reorderPauseIntentions,
   reorderPauseWelcomeMessages,
   updatePauseConfig,
   updatePauseIntention,
+  updatePauseSlot,
   updatePauseWelcomeMessage,
   uploadMedia,
 } from '../api/endpoints'
-import type { PauseIntentionOption, PauseWelcomeMessage } from '../api/types'
+import type {
+  PauseIntentionOption,
+  PauseSlot,
+  PauseWelcomeMessage,
+} from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 import { moveItem } from '../lib/reorder'
 import { MediaDropzone } from '../components/MediaDropzone'
@@ -24,64 +32,44 @@ import { PendingBadge } from '../components/PendingBadge'
 
 type ConfigForm = {
   timezone: string
-  lobbyStart: string
-  welcomeStart: string
-  meditationStart: string
-  windowEnd: string
   lobbyAudioPath: string
   lobbyDurationSeconds: string
   meditationAudioPath: string
   meditationDurationSeconds: string
 }
 
+/** The four wall-clock boundaries of one daily session. */
+type SlotForm = {
+  lobbyStart: string
+  welcomeStart: string
+  meditationStart: string
+  windowEnd: string
+}
+
 const TIME_RE = /^\d{2}:\d{2}:\d{2}$/
+
+const EMPTY_SLOT: SlotForm = {
+  lobbyStart: '',
+  welcomeStart: '',
+  meditationStart: '',
+  windowEnd: '',
+}
 
 // A /media/... path is a file the server can measure; anything else is an
 // external URL whose length only the admin can supply.
 const isUploadedFile = (path: string) => path.startsWith('/media/')
 
-// Mirrors the server rules: valid HH:mm:ss values, strictly increasing, and a
-// meditation that finishes before the window closes.
-function validateConfig(form: ConfigForm): string | null {
-  const phases: [string, string][] = [
-    ['Lobby start', form.lobbyStart],
-    ['Welcome start', form.welcomeStart],
-    ['Meditation start', form.meditationStart],
-    ['Window end', form.windowEnd],
-  ]
-  for (const [label, value] of phases) {
-    if (!TIME_RE.test(value)) return `${label} must be HH:mm:ss`
-  }
-  const order = phases.map(([, value]) => value)
-  if (!order.every((t, i) => i === 0 || order[i - 1] < t)) {
-    return 'Phase times must be strictly increasing'
-  }
-  const lobbyDuration = Number(form.lobbyDurationSeconds)
-  if (!Number.isInteger(lobbyDuration) || lobbyDuration <= 0) {
-    return "Lounge set duration must be a positive whole number of seconds"
-  }
-  const duration = Number(form.meditationDurationSeconds)
-  if (!Number.isInteger(duration) || duration <= 0) {
-    return 'Meditation duration must be a positive whole number of seconds'
-  }
-  const end = timeToSeconds(form.meditationStart)! + duration
-  if (end >= timeToSeconds(form.windowEnd)!) {
-    return `A ${duration}s meditation starting ${form.meditationStart} runs to ${secondsToTime(
-      end
-    )}, past the window end ${form.windowEnd} — extend the window end.`
-  }
-  return null
-}
-
-// Parses an HH:mm:ss value into seconds since local midnight, per TIME_RE.
+/** Parses an HH:mm:ss value into seconds since local midnight, per TIME_RE. */
 function timeToSeconds(time: string): number | null {
   if (!TIME_RE.test(time)) return null
   const [h, m, s] = time.split(':').map(Number)
   return h * 3600 + m * 60 + s
 }
 
-// Formats seconds since local midnight back into the HH:mm:ss shape the
-// other time fields use.
+/**
+ * Formats seconds since local midnight back into the HH:mm:ss shape the
+ * other time fields use.
+ */
 function secondsToTime(totalSeconds: number): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   const h = Math.floor(totalSeconds / 3600)
@@ -95,36 +83,112 @@ function formatLength(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-// The meditation phase runs meditationStart -> meditationStart + the track's
-// length, and the feedback phase takes the rest of the window. Both are derived
-// here exactly as the server derives them, so the admin can see what a new
-// track did to the night rather than having to keep an end time in sync with it.
-function describeWindow(form: ConfigForm): { meditation: string; feedback: string } | null {
-  const start = timeToSeconds(form.meditationStart)
-  const duration = Number(form.meditationDurationSeconds)
-  if (start == null || !Number.isInteger(duration) || duration <= 0) return null
-  const end = secondsToTime(start + duration)
+/** How a session is named in a message, matching the server's wording. */
+function slotName(slot: SlotForm): string {
+  return `the ${slot.meditationStart.slice(0, 5)} session`
+}
+
+/**
+ * Mirrors the server rules in lib/drafts/validators.ts, so a mistake is named
+ * while it is being typed rather than on save. Every rule here is a rule about
+ * the whole day: the meditation's length lives on the config while the windows
+ * live on the sessions, so none of them can be judged one row at a time.
+ */
+function scheduleProblems(
+  slots: SlotForm[],
+  meditationDurationSeconds: number
+): string[] {
+  const problems: string[] = []
+  if (slots.length === 0) {
+    return ['The Global Pause needs at least one session time.']
+  }
+
+  for (const slot of slots) {
+    const labelled: [string, string][] = [
+      ['Lobby start', slot.lobbyStart],
+      ['Welcome start', slot.welcomeStart],
+      ['Meditation start', slot.meditationStart],
+      ['Window end', slot.windowEnd],
+    ]
+    const malformed = labelled.find(([, value]) => !TIME_RE.test(value))
+    if (malformed) {
+      problems.push(`${malformed[0]} must be HH:mm:ss`)
+      continue
+    }
+    if (slot.windowEnd <= slot.lobbyStart) {
+      problems.push(
+        `${slotName(slot)} ends at ${slot.windowEnd}, at or before it opens at ${slot.lobbyStart} — a session cannot run past midnight.`
+      )
+      continue
+    }
+    const order = labelled.map(([, value]) => value)
+    if (!order.every((t, i) => i === 0 || order[i - 1] < t)) {
+      problems.push(`In ${slotName(slot)}: phase times must be strictly increasing.`)
+      continue
+    }
+    const end = timeToSeconds(slot.meditationStart)! + meditationDurationSeconds
+    if (end >= timeToSeconds(slot.windowEnd)!) {
+      problems.push(
+        `In ${slotName(slot)}, a ${meditationDurationSeconds}s meditation starting ${slot.meditationStart} runs to ${secondsToTime(end)}, past its window end ${slot.windowEnd} — extend that session's window end.`
+      )
+    }
+  }
+
+  const ordered = [...slots].sort((a, b) => a.lobbyStart.localeCompare(b.lobbyStart))
+  for (let i = 1; i < ordered.length; i += 1) {
+    const prev = ordered[i - 1]
+    const next = ordered[i]
+    if (next.lobbyStart < prev.windowEnd) {
+      problems.push(
+        `${slotName(next)} opens at ${next.lobbyStart}, before ${slotName(prev)} closes at ${prev.windowEnd} — sessions cannot overlap.`
+      )
+    }
+  }
+
+  return problems
+}
+
+/**
+ * The meditation phase runs meditationStart -> meditationStart + the track's
+ * length, and the feedback phase takes the rest of the window. Both are derived
+ * here exactly as the server derives them, so the admin can see what a new
+ * track did to a session rather than having to keep an end time in sync with it.
+ */
+function describeWindow(
+  slot: SlotForm,
+  meditationDurationSeconds: number
+): { meditation: string; feedback: string } | null {
+  const start = timeToSeconds(slot.meditationStart)
+  if (start == null || meditationDurationSeconds <= 0) return null
+  const end = secondsToTime(start + meditationDurationSeconds)
   return {
-    meditation: `${form.meditationStart} – ${end} (${formatLength(duration)})`,
-    feedback: `${end} – ${form.windowEnd}`,
+    meditation: `${slot.meditationStart} – ${end} (${formatLength(meditationDurationSeconds)})`,
+    feedback: `${end} – ${slot.windowEnd}`,
   }
 }
 
-// Where DJ Fuku's nightly set lands inside the lobby phase. The app plays a
-// short bundled intro clip first, so the music starts a beat after lobbyStart
-// and this end time is a few seconds early — close enough to answer the only
-// question worth asking here, which is whether the track fits before the
-// welcome. `overruns` says it doesn't: the app cuts the set off at the welcome
-// rather than letting it play over the countdown.
-function describeSet(form: ConfigForm): { window: string; overruns: boolean } | null {
-  const start = timeToSeconds(form.lobbyStart)
-  const welcome = timeToSeconds(form.welcomeStart)
-  const duration = Number(form.lobbyDurationSeconds)
+/**
+ * Where DJ Fuku's set lands inside this session's lobby phase. The app plays a
+ * short bundled intro clip first, so the music starts a beat after lobbyStart
+ * and this end time is a few seconds early — close enough to answer the only
+ * question worth asking here, which is whether the track fits before the
+ * welcome. `overruns` says it doesn't: the app cuts the set off at the welcome
+ * rather than letting it play over the countdown.
+ *
+ * The track is shared by every session, so a set that fits one session's lobby
+ * can overrun another's.
+ */
+function describeSet(
+  slot: SlotForm,
+  lobbyDurationSeconds: number
+): { window: string; overruns: boolean } | null {
+  const start = timeToSeconds(slot.lobbyStart)
+  const welcome = timeToSeconds(slot.welcomeStart)
   if (start == null || welcome == null) return null
-  if (!Number.isInteger(duration) || duration <= 0) return null
-  const end = start + duration
+  if (lobbyDurationSeconds <= 0) return null
+  const end = start + lobbyDurationSeconds
   return {
-    window: `${form.lobbyStart} – ${secondsToTime(end)} (${formatLength(duration)})`,
+    window: `${slot.lobbyStart} – ${secondsToTime(end)} (${formatLength(lobbyDurationSeconds)})`,
     overruns: end >= welcome,
   }
 }
@@ -145,10 +209,6 @@ function ConfigPanel() {
   const form: ConfigForm | null = data
     ? {
         timezone: data.timezone,
-        lobbyStart: data.lobbyStart,
-        welcomeStart: data.welcomeStart,
-        meditationStart: data.meditationStart,
-        windowEnd: data.windowEnd,
         lobbyAudioPath: data.lobbyAudioPath,
         lobbyDurationSeconds: String(data.lobbyDurationSeconds),
         meditationAudioPath: data.meditationAudioPath,
@@ -157,17 +217,10 @@ function ConfigPanel() {
       }
     : null
 
-  const phaseWindow = form ? describeWindow(form) : null
-  const setWindow = form ? describeSet(form) : null
-
   const save = useMutation({
     mutationFn: (body: ConfigForm) =>
       updatePauseConfig({
         timezone: body.timezone,
-        lobbyStart: body.lobbyStart,
-        welcomeStart: body.welcomeStart,
-        meditationStart: body.meditationStart,
-        windowEnd: body.windowEnd,
         lobbyAudioPath: body.lobbyAudioPath,
         lobbyDurationSeconds: Number(body.lobbyDurationSeconds),
         meditationAudioPath: body.meditationAudioPath,
@@ -177,7 +230,9 @@ function ConfigPanel() {
       setEdits({})
       setFormError(null)
       setSaved(true)
+      // A new track length changes every session's derived windows.
       qc.invalidateQueries({ queryKey: ['pause-config'] })
+      qc.invalidateQueries({ queryKey: ['pause-slots'] })
     },
     onError: (e) => {
       setSaved(false)
@@ -193,10 +248,16 @@ function ConfigPanel() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     if (!form) return
-    const validationError = validateConfig(form)
-    if (validationError) {
+    const lobbyDuration = Number(form.lobbyDurationSeconds)
+    if (!Number.isInteger(lobbyDuration) || lobbyDuration <= 0) {
       setSaved(false)
-      setFormError(validationError)
+      setFormError('Lounge set duration must be a positive whole number of seconds')
+      return
+    }
+    const duration = Number(form.meditationDurationSeconds)
+    if (!Number.isInteger(duration) || duration <= 0) {
+      setSaved(false)
+      setFormError('Meditation duration must be a positive whole number of seconds')
       return
     }
     setFormError(null)
@@ -205,13 +266,13 @@ function ConfigPanel() {
 
   return (
     <div className="panel">
-      <div className="panel-title">Schedule &amp; audio</div>
+      <div className="panel-title">Timezone &amp; audio</div>
       {error && <div className="error-banner">{apiErrorMessage(error)}</div>}
       {formError && <div className="error-banner">{formError}</div>}
       {saved && (
         <div className="success-banner">
-          Saved as a pending change. Tonight&apos;s Global Pause is unchanged
-          until you publish it.
+          Saved as a pending change. Today&apos;s Global Pause is unchanged until
+          you publish it.
         </div>
       )}
       <PendingBar entityKey="PAUSE_CONFIG:1" />
@@ -228,6 +289,9 @@ function ConfigPanel() {
                 placeholder="Asia/Bangkok"
                 required
               />
+              <div className="field-hint">
+                Every session time below is written in this zone.
+              </div>
             </div>
             <div className="field">
               <label>Lounge set duration (seconds)</label>
@@ -264,48 +328,6 @@ function ConfigPanel() {
               </div>
             </div>
           </div>
-          <div className="form-row">
-            <div className="field">
-              <label>Lobby start</label>
-              <input
-                className="mono"
-                value={form.lobbyStart}
-                onChange={(e) => update({ lobbyStart: e.target.value })}
-                placeholder="20:30:00"
-                required
-              />
-            </div>
-            <div className="field">
-              <label>Welcome start</label>
-              <input
-                className="mono"
-                value={form.welcomeStart}
-                onChange={(e) => update({ welcomeStart: e.target.value })}
-                placeholder="20:39:50"
-                required
-              />
-            </div>
-            <div className="field">
-              <label>Meditation start</label>
-              <input
-                className="mono"
-                value={form.meditationStart}
-                onChange={(e) => update({ meditationStart: e.target.value })}
-                placeholder="20:40:00"
-                required
-              />
-            </div>
-            <div className="field">
-              <label>Window end</label>
-              <input
-                className="mono"
-                value={form.windowEnd}
-                onChange={(e) => update({ windowEnd: e.target.value })}
-                placeholder="21:00:00"
-                required
-              />
-            </div>
-          </div>
           <MediaDropzone
             label="Lobby audio"
             kind="audio"
@@ -328,25 +350,16 @@ function ConfigPanel() {
               placeholder: '/media/audio/global-pause-lobby.mp3',
             }}
           />
-          {setWindow && (
-            <div className="field-hint">
-              <strong>Fuku&apos;s set</strong>{' '}
-              <span className="mono">{setWindow.window}</span>
-              <br />
-              {setWindow.overruns
-                ? `This track runs past the welcome at ${form.welcomeStart}, so the app cuts the set off there. Shorten it, or start the lobby earlier.`
-                : 'The lounge goes on air at the lobby start and its ON AIR badge goes dark when the track ends.'}
-            </div>
-          )}
           <MediaDropzone
             label="Meditation audio"
             kind="audio"
             currentUrl={form.meditationAudioPath || null}
             onUpload={async (file, onProgress) => {
               const media = await uploadMedia('audio', file, onProgress)
-              // The server measured it as it stored it, so the derived window
-              // below updates the moment the file lands — no typing, and no
-              // browser guess that quietly returns nothing for some containers.
+              // The server measured it as it stored it, so the derived windows
+              // in the sessions below update the moment the file lands — no
+              // typing, and no browser guess that quietly returns nothing for
+              // some containers.
               update({
                 meditationAudioPath: media.path,
                 ...(media.durationSeconds != null
@@ -360,24 +373,265 @@ function ConfigPanel() {
               placeholder: '/media/audio/inner-light.mp3',
             }}
           />
-          {/* Sits under the meditation audio on purpose: this is where the
-              night's shape changes, so the consequence of dropping a track is
-              read here rather than in a banner further up the form. */}
-          {phaseWindow && (
-            <div className="field-hint">
-              <strong>Meditation</strong> <span className="mono">{phaseWindow.meditation}</span>
-              {' · '}
-              <strong>Feedback</strong> <span className="mono">{phaseWindow.feedback}</span>
-              <br />
-              The meditation ends when its track does — there is nothing to set.
-            </div>
-          )}
+          <div className="field-hint">
+            Both tracks are shared by every session of the day. A longer
+            meditation has to fit inside every session&apos;s window, so one that
+            overruns any of them is refused here.
+          </div>
           <div className="form-actions">
             <button className="btn" type="submit" disabled={save.isPending}>
               Save configuration
             </button>
           </div>
         </form>
+      )}
+    </div>
+  )
+}
+
+function SlotRow({
+  slot,
+  slots,
+  meditationDurationSeconds,
+  lobbyDurationSeconds,
+  canDelete,
+}: {
+  slot: PauseSlot
+  slots: PauseSlot[]
+  meditationDurationSeconds: number
+  lobbyDurationSeconds: number
+  canDelete: boolean
+}) {
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState<SlotForm>(slot)
+  const [error, setError] = useState<string | null>(null)
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['pause-slots'] })
+
+  const save = useMutation({
+    mutationFn: () => updatePauseSlot(slot.id, form),
+    onSuccess: () => {
+      setEditing(false)
+      setError(null)
+      invalidate()
+    },
+    onError: (e) => setError(apiErrorMessage(e)),
+  })
+
+  const remove = useMutation({
+    mutationFn: () => deletePauseSlot(slot.id),
+    onSuccess: invalidate,
+    onError: (e) => setError(apiErrorMessage(e)),
+  })
+
+  const handleSave = () => {
+    // Validated against the day as this edit would leave it, which is the only
+    // set any of these rules can be judged on.
+    const next = slots.map((s) => (s.id === slot.id ? form : s))
+    const problems = scheduleProblems(next, meditationDurationSeconds)
+    if (problems.length > 0) {
+      setError(problems.join(' '))
+      return
+    }
+    setError(null)
+    save.mutate()
+  }
+
+  const shown: SlotForm = editing ? form : slot
+  const window = describeWindow(shown, meditationDurationSeconds)
+  const set = describeSet(shown, lobbyDurationSeconds)
+
+  const timeCell = (key: keyof SlotForm) =>
+    editing ? (
+      <input
+        className="mono"
+        value={form[key]}
+        onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+      />
+    ) : (
+      <span className="mono">{slot[key]}</span>
+    )
+
+  return (
+    <tr>
+      <td>{timeCell('lobbyStart')}</td>
+      <td>{timeCell('welcomeStart')}</td>
+      <td>{timeCell('meditationStart')}</td>
+      <td>{timeCell('windowEnd')}</td>
+      <td>
+        {window && (
+          <div className="field-hint">
+            <strong>Meditation</strong> <span className="mono">{window.meditation}</span>
+            <br />
+            <strong>Feedback</strong> <span className="mono">{window.feedback}</span>
+            {set && (
+              <>
+                <br />
+                <strong>Fuku&apos;s set</strong>{' '}
+                <span className="mono">{set.window}</span>
+                {set.overruns &&
+                  ` — runs past the welcome at ${shown.welcomeStart}, so the app cuts it off there.`}
+              </>
+            )}
+          </div>
+        )}
+        {error && <div className="error-banner">{error}</div>}
+      </td>
+      <td>
+        <PendingBadge pending={slot.pending} />
+      </td>
+      <td>
+        <div className="row-actions">
+          {editing ? (
+            <>
+              <button className="btn btn-sm" onClick={handleSave} disabled={save.isPending}>
+                Save
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setEditing(false)
+                  setForm(slot)
+                  setError(null)
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+              Edit
+            </button>
+          )}
+          <button
+            className="btn btn-danger btn-sm"
+            disabled={!canDelete || remove.isPending}
+            title={
+              canDelete
+                ? undefined
+                : 'The Global Pause needs at least one session time.'
+            }
+            onClick={() => {
+              if (confirm(`Delete ${slotName(slot)}?`)) remove.mutate()
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+function SessionTimesPanel() {
+  const qc = useQueryClient()
+  const { data: config } = useQuery({
+    queryKey: ['pause-config'],
+    queryFn: () => getPauseConfig(),
+  })
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['pause-slots'],
+    queryFn: () => listPauseSlots(),
+  })
+
+  const [draft, setDraft] = useState<SlotForm>(EMPTY_SLOT)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const create = useMutation({
+    mutationFn: () => createPauseSlot(draft),
+    onSuccess: () => {
+      setDraft(EMPTY_SLOT)
+      setFormError(null)
+      qc.invalidateQueries({ queryKey: ['pause-slots'] })
+    },
+    onError: (e) => setFormError(apiErrorMessage(e)),
+  })
+
+  const handleCreate = (e: FormEvent) => {
+    e.preventDefault()
+    const problems = scheduleProblems(
+      [...(data ?? []), draft],
+      config?.meditationDurationSeconds ?? 0
+    )
+    if (problems.length > 0) {
+      setFormError(problems.join(' '))
+      return
+    }
+    setFormError(null)
+    create.mutate()
+  }
+
+  const field = (key: keyof SlotForm, label: string, placeholder: string) => (
+    <div className="field">
+      <label>{label}</label>
+      <input
+        className="mono"
+        value={draft[key]}
+        onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+        placeholder={placeholder}
+        required
+      />
+    </div>
+  )
+
+  return (
+    <div className="panel">
+      <div className="panel-title">Session times</div>
+      <div className="field-hint">
+        Each one runs every day, in the timezone above. Sessions cannot overlap,
+        and there must always be at least one.
+      </div>
+      {formError && <div className="error-banner">{formError}</div>}
+      <form className="inline-form" onSubmit={handleCreate}>
+        {field('lobbyStart', 'Lobby start', '08:00:00')}
+        {field('welcomeStart', 'Welcome start', '08:09:50')}
+        {field('meditationStart', 'Meditation start', '08:10:00')}
+        {field('windowEnd', 'Window end', '08:30:00')}
+        <button className="btn" type="submit" disabled={create.isPending}>
+          Add session
+        </button>
+      </form>
+
+      {error && <div className="error-banner">{apiErrorMessage(error)}</div>}
+
+      {isLoading ? (
+        <div className="state">Loading…</div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lobby</th>
+                <th>Welcome</th>
+                <th>Meditation</th>
+                <th>Window end</th>
+                <th>Derived</th>
+                <th>Status</th>
+                <th style={{ width: 220 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data ?? []).map((slot) => (
+                <SlotRow
+                  key={slot.id}
+                  slot={slot}
+                  slots={data!}
+                  meditationDurationSeconds={config?.meditationDurationSeconds ?? 0}
+                  lobbyDurationSeconds={config?.lobbyDurationSeconds ?? 0}
+                  canDelete={data!.length > 1}
+                />
+              ))}
+              {data && data.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="empty">
+                    No session times yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -556,6 +810,9 @@ function WelcomeMessagesPanel() {
   return (
     <div className="panel">
       <div className="panel-title">Welcome messages</div>
+      <div className="field-hint">
+        Shown before every session of the day, so keep them free of a time of day.
+      </div>
       {formError && <div className="error-banner">{formError}</div>}
       <form className="inline-form" onSubmit={handleCreate}>
         <div className="field">
@@ -563,7 +820,7 @@ function WelcomeMessagesPanel() {
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Welcome to tonight's pause"
+            placeholder="Welcome. The world is about to pause together."
             required
           />
         </div>
@@ -869,14 +1126,16 @@ function PauseSettingsPage() {
         <div>
           <h1>Schedule</h1>
           <div className="page-subtitle">
-            Nightly Global Pause schedule, welcome messages and intentions.
-            Changes here reach every user at once, so they publish explicitly.
+            Global Pause session times, the audio and welcome copy they share,
+            and the intentions offered afterwards. Changes here reach every user
+            at once, so they publish explicitly.
           </div>
         </div>
       </div>
 
       <div className="stack">
         <ConfigPanel />
+        <SessionTimesPanel />
         <WelcomeMessagesPanel />
         <IntentionsPanel />
       </div>

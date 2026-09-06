@@ -12,17 +12,19 @@ For the design language — colour, motion, typography, the feeling of the thing
 
 ### Global Pause
 
-The world breathing together. Deep holds one synchronized pause every night that anyone, anywhere, can join — the premise being that ten minutes of stillness is different when thousands of people are in it with you.
+The world breathing together. Deep holds a synchronized pause at set times each day that anyone, anywhere, can join — the premise being that ten minutes of stillness is different when thousands of people are in it with you.
 
 The experience is three surfaces:
 
-- **Fuku's Lounge** — the Global Pause lobby, opened from the DJ Fuku card on the home feed. One slow scroll: DJ Fuku full-bleed at the top, an ON AIR pill, the live globe card (Metal-rendered, interactive, with country lookup and halo ripples as people join), and beneath it the peace-message feed — messages from around the world, paging in forever as you scroll. The lounge is where the lobby's other roles live: playing the nightly theme and showing the welcome lines (both planned; see below).
-- **The live session** — tapping the globe card lifts it into a full-screen meditation, one continuous motion (the card and the session backdrop are literally the same view re-parented mid-flight). The session has exactly one state: the live meditation. It can only be entered while the nightly meditation window is open — outside it, the card's caption counts down to the next one and the tap rests. It joins the shared stream at the synced offset, the globe decelerates to rest, and the screen stays deliberately near-empty: a LIVE mark, how many people are pausing with you, a thin progress line. No transport — the meditation cannot be paused; leaving is the only exit.
+- **Fuku's Lounge** — the Global Pause lobby, opened from the DJ Fuku card on the home feed. One slow scroll: DJ Fuku full-bleed at the top, an ON AIR pill, the live globe card (Metal-rendered, interactive, with country lookup and halo ripples as people join), and beneath it the peace-message feed — messages from around the world, paging in forever as you scroll. The lounge is where the lobby's other roles live: playing the session's theme and showing the welcome lines (both planned; see below).
+- **The live session** — tapping the globe card lifts it into a full-screen meditation, one continuous motion (the card and the session backdrop are literally the same view re-parented mid-flight). The session has exactly one state: the live meditation. It can only be entered while a meditation window is open — outside it, the card's caption counts down to the next one and the tap rests. It joins the shared stream at the synced offset, the globe decelerates to rest, and the screen stays deliberately near-empty: a LIVE mark, how many people are pausing with you, a thin progress line. No transport — the meditation cannot be paused; leaving is the only exit.
 - **Reflection** — when the meditation ends (the stream completes or the window closes), the session crossfades into a thank-you, a peace-message composer, an intention picker, and a mood check-in. Closing it lands you back where you were, the globe already turning again.
 
 **Global Pause Schedule**
-- DEEP provides 1 Global Pause session per day, everyday.
-- 20:30 - 21:00 Bangkok timezone (UTC+7). The server resolves the exact windows; the app keeps its clock synced to the server's.
+- DEEP provides one or more Global Pause sessions per day, every day. An admin manages the list under Schedule in the admin panel; each session runs daily at the time it is given.
+- Times are written in one timezone (Bangkok, UTC+7) and every session of the day shares the same tracks, welcome lines and intentions — only *when* they happen differs. The server resolves the exact windows and hands the app absolute instants; the app keeps its clock synced to the server's and reads them in the member's own timezone.
+- Sessions cannot overlap, so at most one is ever live. The evening session (20:30 - 21:00 Bangkok) is the original; extra ones exist so people outside Asia get a pause at a sane local hour, and so someone who misses one can catch another.
+- Attending is rewarded once a day however many sessions you join, and the three-peace-messages limit and the reflection are per day too.
 
 **Global Pause Phases**
 1. Lobby opens (20:30 - 20:39:50)
@@ -40,7 +42,7 @@ The experience is three surfaces:
 - The globe starts rotating again.
 - Users can leave feedback, known as Peace Message (plus an intention and a mood). Messages are displayed in the lounge's feed.
 
-*Today:* the lounge, the live session, reflection, and the peace-message feed all run against the backend — schedule, synced clock, presence heartbeats, live participant counts lighting the globe, joins rippling outward, message paging and posting. The lounge's theme music and welcome lines are the open work. For testing, the dev server can time-travel (`scripts/pause-time-travel.sh live|off`): `live` keeps the nightly meditation live until switched off, and every client follows through the production code path — no debug code in the app.
+*Today:* the lounge, the live session, reflection, and the peace-message feed all run against the backend — schedule, synced clock, presence heartbeats, live participant counts lighting the globe, joins rippling outward, message paging and posting. The lounge's theme music and welcome lines are the open work. For testing, the dev server can time-travel (`scripts/pause-time-travel.sh live|off`, with an optional session to pick when the day holds several): `live` keeps that session's meditation live until switched off, and every client follows through the production code path — no debug code in the app.
 
 
 ### Deep Session
@@ -113,7 +115,7 @@ The **You** tab. Your avatar, your name, how you signed in — and a log out tha
 
 Deep is a working prototype of the whole experience, backed by a real API (`deep-api`) where it matters most: the home feed's shelves, the sound library (streamed audio), and all of **Global Pause** — schedule, synced clock, presence, live counts, peace messages — are served by the backend. Onboarding persists locally: whether you finished it, and what you answered.
 
-Two areas carry known gaps. The **Mind Garden**'s growth points and the **Compassion Portfolio**'s balances are fixture state that nothing writes to — practice feeds today's minutes, but not yet growth points or hearts. And inside **Global Pause**, the lounge's remaining roles — the nightly theme music and the welcome lines — are modelled (the schedule already carries both) but not yet played or shown.
+Two areas carry known gaps. The **Mind Garden**'s growth points and the **Compassion Portfolio**'s balances are fixture state that nothing writes to — practice feeds today's minutes, but not yet growth points or hearts. And inside **Global Pause**, the lounge's remaining roles — the theme music and the welcome lines — are modelled (the schedule already carries both) but not yet played or shown.
 
 ## Login
 

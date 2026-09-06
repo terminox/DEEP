@@ -14,6 +14,7 @@ import type {
   SoundTrack,
   TrackLyrics,
   PauseConfig,
+  PauseSlot,
   PauseWelcomeMessage,
   PauseIntentionOption,
 } from "@prisma/client";
@@ -36,6 +37,7 @@ import {
   collectionBody,
   trackBody,
   pauseConfigBody,
+  pauseSlotBody,
   welcomeMessageBody,
   intentionBody,
 } from "../lib/drafts/registry.js";
@@ -56,17 +58,64 @@ import {
   publish,
   validate,
 } from "../lib/drafts/publish.js";
-import {
-  PHASE_ORDER_MESSAGE,
-  meditationOverrun,
-  phaseTimesIncreasing,
-} from "../lib/drafts/validators.js";
+import { scheduleProblems, type PhaseTimes } from "../lib/drafts/validators.js";
 
 const adminOnly = { preHandler: requireRole("ADMIN") };
 
 /** Who staged the change. requireRole has already put the claims on the request. */
 function actor(req: FastifyRequest): string {
   return req.auth!.sub;
+}
+
+/**
+ * The Global Pause schedule as the admin screen currently shows it: live rows
+ * overlaid with everything staged, with `override` applied on top for the edit
+ * about to be made. Refuses the write if the resulting schedule doesn't hold
+ * together.
+ *
+ * One helper for all four write paths — the config PUT and the three session
+ * routes — because none of the rules can be judged from a single record: the
+ * meditation's length lives on the config while the windows live on the
+ * sessions, so a longer track can overrun some sessions and not others. The
+ * publish path runs the same rules over a different set (see
+ * validatePauseSchedule in lib/drafts/publish.ts).
+ */
+async function assertScheduleValid(override: {
+  /** Replaces the staged length, for a config write that changes the track. */
+  meditationDurationSeconds?: number;
+  /** Replaces (or, with a fresh id, adds) one session. */
+  slot?: PhaseTimes & { id: string };
+  /** Removes one session. */
+  removeSlotId?: string;
+}): Promise<void> {
+  const resolvedConfig = await resolveOne<PauseConfig>("PAUSE_CONFIG", "1");
+  const duration =
+    override.meditationDurationSeconds ??
+    resolvedConfig?.row.meditationDurationSeconds ??
+    0;
+
+  const resolvedSlots = await resolveMany<PauseSlot>(
+    "PAUSE_SLOT",
+    await prisma.pauseSlot.findMany(),
+    { sort: false },
+  );
+  const byId = new Map<string, PhaseTimes & { id: string }>(
+    resolvedSlots
+      // resolveMany keeps a row staged for deletion, marked rather than
+      // removed, so the admin screen can still show what will go. The schedule
+      // it *will* be is the one without them — dropping them here is what makes
+      // "you cannot remove the last session" true when the others are already
+      // staged for deletion.
+      .filter((r) => r.pending?.op !== "DELETE")
+      .map((r) => [r.row.id, r.row as PhaseTimes & { id: string }]),
+  );
+  if (override.removeSlotId) byId.delete(override.removeSlotId);
+  if (override.slot) byId.set(override.slot.id, override.slot);
+
+  const { blockers } = scheduleProblems([...byId.values()], duration);
+  if (blockers.length > 0) {
+    throw ApiError.badRequest(blockers.join(" "), "invalid_pause_schedule");
+  }
 }
 
 const idParam = z.object({ id: z.string() });
@@ -383,11 +432,6 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.put("/admin/pause/config", adminOnly, async (req) => {
     const body = pauseConfigBody.parse(req.body);
-    // Checked here for a clear error while typing, and again at publish, because
-    // a staged schedule can sit for days before it is applied.
-    if (!phaseTimesIncreasing(body)) {
-      throw ApiError.badRequest(PHASE_ORDER_MESSAGE, "invalid_phase_times");
-    }
 
     // The meditation phase runs meditationStart → meditationStart + this, so
     // the track's real length *is* the length of the event. Measured here
@@ -403,8 +447,11 @@ export async function adminRoutes(app: FastifyInstance) {
       );
     }
 
-    const overrun = meditationOverrun({ ...body, meditationDurationSeconds });
-    if (overrun) throw ApiError.badRequest(overrun, "meditation_overruns_window");
+    // A longer track can overrun some sessions' windows and not others, so the
+    // new length is judged against every session, not against one. Checked here
+    // for a clear error while typing, and again at publish, because a staged
+    // schedule can sit for days before it is applied.
+    await assertScheduleValid({ meditationDurationSeconds });
 
     // Fuku's lounge set runs lobbyStart → lobbyStart + this, and the lounge and
     // the home card that opens it both light their ON AIR badge off it. Measured
@@ -426,6 +473,49 @@ export async function adminRoutes(app: FastifyInstance) {
       actor(req),
     );
     return { config: withPending(staged.row, staged.pending) };
+  });
+
+  // Session times — when the Global Pause happens, every day.
+  app.get("/admin/pause/slots", adminOnly, async () => {
+    // `sort: false` because resolveMany orders by displayOrder, which sessions
+    // deliberately do not have: their order is the clock.
+    const resolved = await resolveMany<PauseSlot>(
+      "PAUSE_SLOT",
+      await prisma.pauseSlot.findMany(),
+      { sort: false },
+    );
+    const slots = resolved
+      .slice()
+      .sort((a, b) => a.row.meditationStart.localeCompare(b.row.meditationStart));
+    return { slots: slots.map((s) => withPending(s.row, s.pending)) };
+  });
+
+  app.post("/admin/pause/slots", adminOnly, async (req) => {
+    const body = pauseSlotBody.parse(req.body);
+    // A staged create needs an id before it can be validated alongside the
+    // others; stageCreate mints its own, so this one is only for the check.
+    await assertScheduleValid({ slot: { ...body, id: "__new__" } });
+    const staged = await stageCreate<PauseSlot>("PAUSE_SLOT", body, actor(req));
+    return { slot: withPending(staged.row, staged.pending) };
+  });
+
+  app.patch("/admin/pause/slots/:id", adminOnly, async (req) => {
+    const { id } = idParam.parse(req.params);
+    const body = pauseSlotBody.partial().parse(req.body);
+    const current = await resolveOne<PauseSlot>("PAUSE_SLOT", id);
+    if (!current) throw ApiError.notFound("Session time not found");
+    await assertScheduleValid({ slot: { ...current.row, ...body, id } });
+    const staged = await stageUpdate<PauseSlot>("PAUSE_SLOT", id, body, actor(req));
+    return { slot: withPending(staged.row, staged.pending) };
+  });
+
+  app.delete("/admin/pause/slots/:id", adminOnly, async (req) => {
+    const { id } = idParam.parse(req.params);
+    // Catches the last one: scheduleProblems refuses an empty schedule, because
+    // a Global Pause with no session times is not a state the product has.
+    await assertScheduleValid({ removeSlotId: id });
+    await stageDelete("PAUSE_SLOT", id, actor(req));
+    return { ok: true };
   });
 
   // Welcome messages

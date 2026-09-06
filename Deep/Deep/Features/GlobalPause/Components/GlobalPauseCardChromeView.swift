@@ -262,7 +262,7 @@ private let previewNight = UIColor(red: 0.09, green: 0.07, blue: 0.17, alpha: 1)
 #Preview("Chrome — off") {
   let chrome = GlobalPauseCardChromeView(caption: "Breathe with the world, together")
   chrome.backgroundColor = previewNight
-  chrome.setState(.off(scheduleLine: "Tonight · 20:40 Thailand Time"), animated: false)
+  chrome.setState(.off(scheduleLine: "Today · 8:40 PM"), animated: false)
   return chrome
 }
 
@@ -270,7 +270,7 @@ private let previewNight = UIColor(red: 0.09, green: 0.07, blue: 0.17, alpha: 1)
   let chrome = GlobalPauseCardChromeView(caption: "Breathe with the world, together")
   chrome.backgroundColor = previewNight
   chrome.setState(
-    .countdown(target: Date().addingTimeInterval(899), scheduleLine: "Tonight · 20:40 Thailand Time"),
+    .countdown(target: Date().addingTimeInterval(899), scheduleLine: "Today · 8:40 PM"),
     animated: false
   )
   return chrome
