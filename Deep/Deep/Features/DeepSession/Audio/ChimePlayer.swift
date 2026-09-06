@@ -32,6 +32,7 @@ final class ChimePlayer: ChimePlaying {
   }
 
   func prepare() {
+    configureSessionIfNeeded()
     loadIfNeeded()?.prepareToPlay()
   }
 
@@ -70,8 +71,16 @@ final class ChimePlayer: ChimePlaying {
   /// member can reach the end of a practice having never played a track, which
   /// leaves the session on the default `.soloAmbient` — where the ring/silent
   /// switch would mute the bell, while the rest of the app's audio deliberately
-  /// plays straight through it. Never deactivated: the session is process-wide
-  /// and shared with both streamers.
+  /// plays straight through it.
+  ///
+  /// Claimed from `prepare()`, a whole practice before the strike, rather than
+  /// on the strike itself: `setActive` is a blocking round-trip to mediaserverd,
+  /// and changing category reconfigures the audio hardware — done at ring time
+  /// it would both stall the main actor and undo the priming `prepareToPlay()`
+  /// had just performed under the old category. `.playback` does not mix, so
+  /// other apps' audio stops when the practice opens; that suits a screen which
+  /// already silences Deep's own ambience on arrival. Never deactivated: the
+  /// session is process-wide and shared with both streamers.
   private func configureSessionIfNeeded() {
     guard !sessionConfigured else { return }
     sessionConfigured = true

@@ -30,10 +30,12 @@ private struct DeepSessionRunModifier: ViewModifier {
   @Environment(\.imageLoader) private var imageLoader
   @Environment(\.videoCache) private var videoCache
 
-  /// Owned out here, not by the practice: the bell is struck *as* the session
-  /// dismisses, so a chime living inside the presentation would be torn down
-  /// mid-ring. This modifier rides the pushed threshold the practice is shown
-  /// over, which outlasts it, so the bell rings on across the hush transition.
+  /// Owned out here, not by the practice: the bell is struck on the last exhale
+  /// and rings for close to four seconds — long enough for a member to tap
+  /// through the reward ritual and dismiss while it is still sounding, and a
+  /// chime living inside the presentation would be torn down mid-ring. This
+  /// modifier rides the pushed threshold the practice is shown over, which
+  /// outlasts it, so the bell rings on across the hush transition.
   @State private var chime = ChimePlayer()
 
   func body(content: Content) -> some View {

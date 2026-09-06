@@ -62,7 +62,7 @@ struct DeepSessionCoordinatorView: View {
           RewardRitualView(
             receipt: rewardReceipt,
             continuityHeadline: "You returned today",
-            onFinish: closeRitual
+            onFinish: onFinish
           )
           .transition(.softDrift)
         }
@@ -74,8 +74,9 @@ struct DeepSessionCoordinatorView: View {
       // the track only stops here. It stays loaded, so the mini player is
       // waiting on return.
       soundPlayer.pause()
-      // Warmed a whole practice ahead of the strike, so the bell that ends it
-      // isn't the thing loading the file mid-transition.
+      // Warmed a whole practice ahead of the strike — the file loaded and the
+      // audio session claimed here — so the bell that ends the practice is not
+      // the thing waking the audio stack on the last exhale.
       chimePlayer.prepare()
       // A breath practice is hands-off; don't let the screen sleep mid-round.
       UIApplication.shared.isIdleTimerDisabled = true
@@ -98,22 +99,18 @@ struct DeepSessionCoordinatorView: View {
     }
   }
 
-  /// The bell that closes the practice, struck as the session releases its
-  /// member back to the app. Leaving early stays silent — every other way out
-  /// runs straight to `onFinish` — because the bell marks a practice carried
-  /// through, not an exit. It rings from the threshold underneath, which the
-  /// presentation is only laid over, so the dismissal doesn't cut it short.
-  private func closeRitual() {
-    chimePlayer.ring()
-    onFinish()
-  }
-
   /// Banks the practice and both rewards once, then freezes the before/after
   /// values the ending ritual will animate. The server still owns final truth;
   /// its absolute grant quietly reconciles the live stores behind this receipt.
   private func finishSession() {
     guard !didRecord else { return }
     didRecord = true
+
+    // The bell marks the breath, not the exit: struck the instant the final
+    // exhale settles, ahead of everything below, so no bookkeeping sits between
+    // the practice ending and the sound. Only a practice carried through
+    // reaches `.finished`, so leaving early still leaves in silence.
+    chimePlayer.ring()
 
     let now = Date.now
     let gardenBefore = gardenStore.growth
