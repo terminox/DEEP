@@ -2,9 +2,9 @@ import SwiftUI
 
 /// Which door the paywall was opened from.
 ///
-/// It tailors the headline and the subhead, and nothing else — what DEEP
-/// Premium includes doesn't change with where you were standing when you asked.
-/// One screen, several ways in.
+/// It tailors the subhead, and nothing else. The headline is the product's
+/// name on every door, and what DEEP Premium includes doesn't change with
+/// where you were standing when you asked. One screen, several ways in.
 enum PaywallSource: String, Identifiable, Hashable {
   /// The "Upgrade to DEEP Premium" row in Settings.
   case settings
@@ -14,14 +14,6 @@ enum PaywallSource: String, Identifiable, Hashable {
   case onboarding
 
   var id: String { rawValue }
-
-  var headline: LocalizedStringKey {
-    switch self {
-    case .settings: return "DEEP Premium"
-    case .lockedSound: return "This sound is waiting for you"
-    case .onboarding: return "Begin with everything open"
-    }
-  }
 
   var subhead: LocalizedStringKey {
     switch self {

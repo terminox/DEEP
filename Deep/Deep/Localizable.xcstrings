@@ -618,16 +618,6 @@
         }
       }
     },
-    "Begin with everything open": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เริ่มต้นโดยเปิดทุกอย่างไว้ให้คุณ"
-          }
-        }
-      }
-    },
     "Billed monthly": {
       "localizations": {
         "th": {
@@ -2925,16 +2915,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "การซื้อนี้ต้องได้รับการอนุมัติก่อนจึงจะเสร็จสมบูรณ์"
-          }
-        }
-      }
-    },
-    "This sound is waiting for you": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เสียงนี้รอคุณอยู่"
           }
         }
       }

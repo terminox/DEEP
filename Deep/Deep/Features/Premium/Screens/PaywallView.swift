@@ -187,11 +187,13 @@ struct PaywallView: View {
     .frame(maxWidth: .infinity)
   }
 
+  /// The product's name, whichever door this was. Only the two stages that are
+  /// no longer selling anything say something else.
   private var headline: LocalizedStringKey {
     switch stage {
     case .welcoming: return "Welcome to DEEP Premium"
     case .member: return "You're already with us"
-    default: return source.headline
+    default: return "DEEP Premium"
     }
   }
 
