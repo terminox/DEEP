@@ -70,7 +70,7 @@ struct DailyReminderView: View {
       Text("A quiet nudge, once a day")
         .font(DeepType.displayTitle)
         .foregroundStyle(.deepPlum)
-      Text("Deep will send one gentle note at the time you choose. No streak to defend, nothing to catch up on.")
+      Text("DEEP will send one gentle note at the time you choose. No streak to defend, nothing to catch up on.")
         .font(DeepType.body)
         .foregroundStyle(.driftGrey)
         .fixedSize(horizontal: false, vertical: true)
@@ -88,7 +88,7 @@ struct DailyReminderView: View {
 
   private var deniedNote: some View {
     VStack(alignment: .leading, spacing: 10) {
-      Text("Notifications are switched off for Deep, so the reminder can't reach you. You can turn them back on in iOS Settings.")
+      Text("Notifications are switched off for DEEP, so the reminder can't reach you. You can turn them back on in iOS Settings.")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
         .fixedSize(horizontal: false, vertical: true)

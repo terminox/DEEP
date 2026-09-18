@@ -20,6 +20,10 @@ enum OnboardingRoute: Hashable {
   case signUp
   /// Log in — returning users, reached from the welcome screen.
   case logIn
+  /// The DEEP Premium invitation, offered once the account exists and there is
+  /// something to attach a membership to. Skippable, and skipped entirely by a
+  /// returning member logging back in.
+  case premium
   /// Gentle "shaping your space" loader; syncs onboarding to the backend and
   /// finishes when its checklist fills.
   case craftingSpace
