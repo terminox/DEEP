@@ -11,7 +11,7 @@ protocol SubscriptionStore: AnyObject, Observable {
 
   /// Fetch the available plans from the store. Safe to call repeatedly.
   func loadPlans() async
-  func purchase(_ plan: SubscriptionPlan) async throws
+  func purchase(_ plan: SubscriptionPlan) async throws -> PurchaseOutcome
   func restore() async throws
 }
 
@@ -22,9 +22,23 @@ extension SubscriptionStore {
   }
 }
 
-/// Product identifiers for Deep Pro — must match `Deep.storekit` (and, later,
-/// App Store Connect / RevenueCat). `nonisolated` so they read as the plain
-/// compile-time constants they are from any isolation.
+/// What came of a purchase attempt.
+///
+/// Backing out and Ask-to-Buy are ordinary outcomes, not errors: the paywall
+/// stands down in silence for one and says something quiet for the other. A
+/// thrown error means the purchase genuinely failed. Without this the three
+/// are indistinguishable, and a family purchase awaiting approval would look
+/// exactly like a change of heart.
+enum PurchaseOutcome: Equatable {
+  case purchased
+  case cancelled
+  case pending
+}
+
+/// Product identifiers for DEEP Premium — must match `Deep.storekit` (and,
+/// later, App Store Connect / RevenueCat). Unchanged from the product's former
+/// name: an App Store Connect product id can never be reused. `nonisolated` so
+/// they read as the plain compile-time constants they are from any isolation.
 enum DeepProduct {
   nonisolated static let monthly = "deep.pro.monthly"
   nonisolated static let yearly = "deep.pro.yearly"
@@ -33,7 +47,9 @@ enum DeepProduct {
 
 extension EnvironmentValues {
   /// The default is the offline mock so paywall previews are hermetic; the real
-  /// `StoreKitSubscriptionStore` is injected at `AppRootView`.
+  /// `StoreKitSubscriptionStore` is built in `AppDependencies` and injected at
+  /// `AppRootView` — and again inside the UIKit tab shell, which the SwiftUI
+  /// environment does not survive.
   @Entry var subscriptionStore: any SubscriptionStore = PreviewSubscriptionStore()
 }
 
@@ -45,6 +61,6 @@ final class PreviewSubscriptionStore: SubscriptionStore {
   var status: SubscriptionState = .none
   var plans: [SubscriptionPlan] = []
   func loadPlans() async {}
-  func purchase(_ plan: SubscriptionPlan) async throws {}
+  func purchase(_ plan: SubscriptionPlan) async throws -> PurchaseOutcome { .cancelled }
   func restore() async throws {}
 }
