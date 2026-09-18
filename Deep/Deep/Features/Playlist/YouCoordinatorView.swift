@@ -39,7 +39,11 @@ struct YouCoordinatorView: View {
         }
     }
     .sheet(item: $paywallSource) { source in
-      PaywallView(source: source)
+      PaywallView(source: source) { paywallSource = nil }
+        .presentationDetents([.large])
+        // The screen draws its own atmosphere, so the sheet's own background
+        // steps aside rather than stacking a second one behind it.
+        .presentationBackground(.clear)
     }
     .environment(\.openPaywall, { paywallSource = $0 })
     .environment(\.openSettings, { path.append(Route.settings) })

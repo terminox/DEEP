@@ -9,11 +9,14 @@ import SwiftUI
 /// means the screen needs no chrome branching when it is reused as an
 /// onboarding step.
 struct PaywallView: View {
-  @Environment(\.dismiss) private var dismiss
   @Environment(\.subscriptionStore) private var subscriptionStore
   @Environment(\.locale) private var locale
 
   let source: PaywallSource
+  /// What happens when the member is done here — bought, or declined. The
+  /// screen never closes itself: a sheet's opener clears its own item, and the
+  /// onboarding coordinator routes on. Routing stays where it belongs.
+  let onFinish: () -> Void
 
   /// Where a purchase has got to. `welcoming` is the beat between a successful
   /// purchase and the sheet closing.
@@ -34,8 +37,13 @@ struct PaywallView: View {
 
   /// `purchase` is injectable so a preview can open the screen already in a
   /// state that a tap would otherwise have to produce.
-  init(source: PaywallSource, purchase: PurchasePhase = .idle) {
+  init(
+    source: PaywallSource,
+    onFinish: @escaping () -> Void,
+    purchase: PurchasePhase = .idle
+  ) {
     self.source = source
+    self.onFinish = onFinish
     _purchase = State(initialValue: purchase)
   }
 
@@ -83,52 +91,58 @@ struct PaywallView: View {
   }
 
   var body: some View {
-    // The plans scroll above the action bar rather than under it: the one act
-    // on this screen keeps its own ground.
-    //
-    // Only the act is pinned. The fine print scrolls with the content it
-    // describes — pinning it too would leave the plan rows a sliver of screen
-    // to live in, with the monthly option hidden behind a wall of terms.
-    VStack(spacing: 0) {
-      ScrollView {
-        VStack(spacing: .rhythm) {
-          hero
-          if stage != .member {
-            benefits
-          }
-          planBand
-          if stage != .member, stage != .welcoming {
-            PaywallFinePrint(
-              billingLine: billingLine,
-              restore: restore,
-              onRestore: restorePurchases
-            )
-          }
-        }
-        .padding(.horizontal, .edge)
-        .padding(.top, .rhythm)
-        .padding(.bottom, 12)
-        // The welcome beat and the member acknowledgement are a few lines
-        // each; left at the top of a full-height sheet they sit above a void.
-        // Centring them is the reward screens' arrangement — applied only
-        // there, since pinning a scrolling screen to the container's height
-        // would clip everything past the fold.
-        .modifier(CentredWhenShort(isActive: isShortStage))
-      }
-      .scrollIndicators(.hidden)
-      .scrollBounceBehavior(.basedOnSize)
-
-      actionBar
+    ZStack {
+      // The screen owns its own ground, so it reads the same whether it is
+      // raised as a sheet from Settings or standing as a step in the
+      // onboarding flow.
+      AtmosphereBackground()
+      content
     }
     .animation(.bloom, value: stage)
     .sensoryFeedback(.selection, trigger: selectedPlanID)
     .sensoryFeedback(.success, trigger: stage == .welcoming)
-    .presentationDetents([.large])
-    .presentationBackground { AtmosphereBackground() }
     .task {
       await subscriptionStore.loadPlans()
       hasAttemptedLoad = true
     }
+  }
+
+  /// Only the act is pinned. The fine print scrolls with the content it
+  /// describes — pinning it too would leave the plan rows a sliver of screen to
+  /// live in, with the monthly option hidden behind a wall of terms.
+  private var content: some View {
+    ScrollView {
+      VStack(spacing: .rhythm) {
+        hero
+        if stage != .member {
+          benefits
+        }
+        planBand
+        if stage != .member, stage != .welcoming {
+          PaywallFinePrint(
+            billingLine: billingLine,
+            restore: restore,
+            onRestore: restorePurchases
+          )
+        }
+      }
+      .padding(.horizontal, .edge)
+      .padding(.top, .rhythm)
+      .padding(.bottom, 12)
+      // The welcome beat and the member acknowledgement are a few lines each;
+      // left at the top of a full-height screen they sit above a void. Centring
+      // them is the reward screens' arrangement — applied only there, since
+      // pinning a scrolling screen to the container's height would clip
+      // everything past the fold.
+      .modifier(CentredWhenShort(isActive: isShortStage))
+    }
+    .scrollIndicators(.hidden)
+    .scrollBounceBehavior(.basedOnSize)
+    // A bar rather than a plain inset: only a bar earns the scroll edge
+    // effect, which softens the terms as they pass under the act instead of
+    // slicing a sentence in half at the fold.
+    .safeAreaBar(edge: .bottom) { actionBar }
+    .scrollEdgeEffectStyle(.soft, for: .bottom)
   }
 
   // MARK: - Hero
@@ -136,15 +150,24 @@ struct PaywallView: View {
   @ViewBuilder
   private var hero: some View {
     VStack(spacing: 14) {
-      // Inked rather than glowing: the sheet's atmosphere is at its palest up
-      // here, and a cream mark with a halo simply disappears into it.
-      DeepLogoMark(size: stage == .welcoming ? 88 : 64, tint: .irisDusk, isGlowing: false)
-        .padding(.top, 4)
+      // The same lockup the account screen wears, a size down: arriving here
+      // straight from signing up, it should read as the same doorway.
+      DeepLogoMark(
+        size: stage == .welcoming ? 72 : 56,
+        tint: .moonCream,
+        isGlowing: true
+      )
+      .padding(.top, 4)
 
-      Text("DEEP PREMIUM")
-        .font(DeepType.micro)
-        .tracking(.microTracking)
-        .foregroundStyle(.driftGrey)
+      Image("OnboardingLogoText")
+        .renderingMode(.template)
+        .resizable()
+        .scaledToFit()
+        .foregroundStyle(.irisDusk)
+        .frame(maxWidth: 170)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityLabel("DEEP — peace begins within")
+        .shadow(color: .moonCream.opacity(0.8), radius: 12)
 
       Text(headline)
         .font(DeepType.displayTitle)
@@ -353,7 +376,7 @@ struct PaywallView: View {
         .frame(maxWidth: .infinity)
         .frame(minHeight: 56)
     case .member:
-      Button { dismiss() } label: {
+      Button(action: onFinish) {
         Text("Done")
           .font(DeepType.body.weight(.medium))
           .foregroundStyle(.deepPlum)
@@ -371,7 +394,7 @@ struct PaywallView: View {
   }
 
   private var declineControl: some View {
-    Button { dismiss() } label: {
+    Button(action: onFinish) {
       Text("Not right now")
         .font(DeepType.caption)
         .foregroundStyle(.driftGrey)
@@ -410,7 +433,7 @@ struct PaywallView: View {
           withAnimation(.bloom) { purchase = .welcoming }
           // A beat to read the welcome, then out. No confetti.
           try? await Task.sleep(for: .seconds(1.8))
-          dismiss()
+          onFinish()
         case .cancelled:
           // Backing out is not a failure. Say nothing at all.
           purchase = .idle
@@ -482,75 +505,87 @@ private struct PaywallPreviewHost<Content: View>: View {
   var body: some View {
     Color.clear
       .background { AtmosphereBackground() }
-      .sheet(isPresented: $isPresented) { content }
+      .sheet(isPresented: $isPresented) {
+        content
+          .presentationDetents([.large])
+          .presentationBackground(.clear)
+      }
   }
 }
 
 #Preview("Paywall — plans loaded") {
-  PaywallPreviewHost { PaywallView(source: .settings) }
+  PaywallPreviewHost { PaywallView(source: .settings) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — only the year has a trial") {
-  PaywallPreviewHost { PaywallView(source: .settings) }
+  PaywallPreviewHost { PaywallView(source: .settings) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.mixedTrials)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — loading plans") {
-  PaywallPreviewHost { PaywallView(source: .settings) }
+  PaywallPreviewHost { PaywallView(source: .settings) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.loadingPlans)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — store unreachable") {
-  PaywallPreviewHost { PaywallView(source: .settings) }
+  PaywallPreviewHost { PaywallView(source: .settings) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.unreachable)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — purchasing") {
   PaywallPreviewHost {
-    PaywallView(source: .settings, purchase: .purchasing(productID: DeepProduct.yearly))
+    PaywallView(source: .settings, onFinish: {}, purchase: .purchasing(productID: DeepProduct.yearly))
   }
   .environment(\.subscriptionStore, MockSubscriptionStore.free)
   .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — purchase failed") {
-  PaywallPreviewHost { PaywallView(source: .settings, purchase: .failed) }
+  PaywallPreviewHost { PaywallView(source: .settings, onFinish: {}, purchase: .failed) }
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — welcome beat") {
-  PaywallPreviewHost { PaywallView(source: .settings, purchase: .welcoming) }
+  PaywallPreviewHost { PaywallView(source: .settings, onFinish: {}, purchase: .welcoming) }
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — already a member") {
-  PaywallPreviewHost { PaywallView(source: .settings) }
+  PaywallPreviewHost { PaywallView(source: .settings) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.subscribed)
     .environment(\.legalLinks, .placeholder)
 }
 
+/// The onboarding step is the screen standing on its own, not raised as a
+/// sheet — no detent, no drag, and the flow's next step behind the decline.
+#Preview("Paywall — onboarding step") {
+  PaywallView(source: .onboarding) {}
+    .environment(\.subscriptionStore, MockSubscriptionStore.free)
+    .environment(\.legalLinks, .placeholder)
+}
+
 #Preview("Paywall — from a locked sound") {
-  PaywallPreviewHost { PaywallView(source: .lockedSound) }
+  PaywallPreviewHost { PaywallView(source: .lockedSound) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — large type") {
-  PaywallPreviewHost { PaywallView(source: .settings) }
+  PaywallPreviewHost { PaywallView(source: .settings) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
     .environment(\.dynamicTypeSize, .accessibility2)
 }
 
 #Preview("Paywall — Thai") {
-  PaywallPreviewHost { PaywallView(source: .settings) }
+  PaywallPreviewHost { PaywallView(source: .settings) {} }
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
     .environment(\.locale, Locale(identifier: "th"))

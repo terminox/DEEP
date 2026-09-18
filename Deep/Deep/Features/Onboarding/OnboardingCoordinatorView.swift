@@ -96,10 +96,12 @@ struct OnboardingCoordinatorView: View {
     }
   }
 
-  /// Chrome shows on every routed screen except the crafting loader, which is
-  /// committing the gathered answers and can't be backed out of.
+  /// Chrome shows on every routed screen except the two that can't be backed
+  /// out of: the crafting loader, which is committing the gathered answers, and
+  /// the premium invitation, which sits past a created account — stepping back
+  /// to the sign-up form would offer to make an account that already exists.
   private var showsChrome: Bool {
-    !routes.isEmpty && currentRoute != .craftingSpace
+    !routes.isEmpty && currentRoute != .craftingSpace && currentRoute != .premium
   }
 
   /// Progress for the persistent bar: the quiz questions plus the Mind Tree
@@ -277,9 +279,10 @@ struct OnboardingCoordinatorView: View {
     }
   }
 
-  /// Pops one step. A no-op on the welcome screen and the crafting loader.
+  /// Pops one step. A no-op wherever chrome is hidden — the welcome screen, the
+  /// crafting loader, and the premium invitation.
   private func goBack() {
-    guard !routes.isEmpty, currentRoute != .craftingSpace else { return }
+    guard !routes.isEmpty, showsChrome else { return }
     navDirection = .backward
     withAnimation(.hush) { _ = routes.removeLast() }
   }
@@ -303,6 +306,10 @@ struct OnboardingCoordinatorView: View {
       routed(SignUpView())
     case .logIn:
       routed(LogInView())
+    case .premium:
+      // Not `routed`: it carries no chrome, so it needs no inset for one. The
+      // way on is the screen's own "Not right now".
+      PaywallView(source: .onboarding) { advance(to: .craftingSpace) }
     case .craftingSpace:
       CraftingSpaceView()
     }
