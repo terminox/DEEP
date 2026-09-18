@@ -55,6 +55,68 @@ the media URLs in a response are identical either way.
 Delete `Local.xcconfig` and the Dev build falls back to `http://localhost:8080`,
 which is simulator-only.
 
+## Running the Android app
+
+The Android app lives in `android/`, alongside the iOS app in `Deep/`. It talks to
+the same `deep-api`, so the backend steps above are unchanged.
+
+```bash
+cd android
+./gradlew :app:installDevDebug     # builds and installs on the running emulator
+```
+
+Four product flavors mirror the four `.xcconfig` environments — `dev`, `staging`,
+`pilot`, `prod` — with the same suffix trick (`.dev`, `.staging`, `.pilot`, none),
+so all four install side by side on one device, exactly as on iOS.
+
+### The emulator needs no setup
+
+Android has two localhosts. The emulator reaches this Mac at the constant
+`10.0.2.2`, which is the Gradle default, so a fresh clone builds and talks to a
+local API with nothing to configure.
+
+```bash
+$ANDROID_HOME/emulator/emulator -avd Medium_Phone_API_36 &
+adb install -r app/build/outputs/apk/dev/debug/app-dev-debug.apk
+```
+
+### A physical Android device does need setup
+
+Run `./scripts/dev-setup.sh` from the repo root. It writes
+`android/local.properties` (gitignored) the way it writes `Deep/Config/Local.xcconfig`.
+
+**It writes a LAN IP there, not the mDNS name iOS gets.** Android has no mDNS
+responder in its C library, so a `.local` name does not resolve through the
+ordinary lookup an HTTP client performs — `NsdManager` is a separate discovery API
+that OkHttp never consults. So Android takes the DHCP churn that the mDNS name was
+chosen to avoid, and the script has to be re-run when this Mac changes address.
+
+Cleartext to that host is permitted by a `network_security_config.xml` that lives
+only in the `dev` source set, so no shipping flavor can merge it.
+
+### Guardrail
+
+`:app:checkApiHosts` runs before every build, the Android twin of the
+**Check dev API host** phase in the Xcode project: it fails the build with the fix
+in the message rather than installing an app whose every request times out.
+
+Note it is necessarily softer than the iOS one. Xcode knows at build time whether
+an artifact is device-bound (`PLATFORM_NAME`); Gradle does not, because the same
+`devDebug` APK installs on both. So the task catches an unreachable *literal*
+(`localhost`, a cleartext shipping URL) rather than the emulator-versus-device
+mismatch, which only the runtime can see.
+
+### Driving the emulator headlessly
+
+The Android counterpart of `baguette`:
+
+```bash
+adb shell input tap <x> <y>
+adb shell input swipe <x1> <y1> <x2> <y2> <ms>
+adb exec-out screencap -p > shot.png
+adb shell am start -n io.appbeyond.freelance.deep.dev/io.appbeyond.freelance.deep.MainActivity
+```
+
 ## Why media URLs just work
 
 `deep-api` returns **absolute** URLs for audio and artwork. Those used to be built

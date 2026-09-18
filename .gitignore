@@ -32,6 +32,37 @@ Deep/fastlane/Preview.html
 Deep/fastlane/screenshots/**/*.png
 Deep/fastlane/test_output
 
+# Android / Gradle
+#
+# Prefixed with `android/` rather than written bare, for the same reason the
+# Xcode rules above are prefixed and `/resources/` below is anchored: an
+# unanchored `build/` or `assets/`, with core.ignorecase true as it is on macOS,
+# would also swallow directories elsewhere in the tree.
+android/build/
+android/**/build/
+android/.gradle/
+android/.kotlin/
+android/.cxx/
+android/captures/
+android/**/.idea/
+android/**/*.iml
+
+# Per-machine build settings: the SDK location and the dev API host that
+# scripts/dev-setup.sh writes. The Android twin of Deep/Config/Local.xcconfig.
+android/local.properties
+
+# Signing. terminox/DEEP is a public repository — an upload key that reaches the
+# history cannot be un-leaked, and cannot be rotated on a store track later
+# without pain.
+android/keystore.properties
+*.jks
+*.keystore
+
+# Build artifacts. The weekly client build is attached to its PR, not committed.
+*.apk
+*.aab
+*.aar
+
 # macOS
 Deep/**/.DS_Store
 Deep/**/.AppleDouble
