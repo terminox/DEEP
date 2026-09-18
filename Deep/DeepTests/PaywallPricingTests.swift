@@ -176,7 +176,9 @@ struct PaywallPricingTests {
       currency: Self.usd,
       locale: Locale(identifier: "en_US")
     )
-    #expect(line == "Free for 7 days, then $7.67 a month, billed yearly at $91.98. Cancel any time.")
+    // "Cancel any time." gets its own line: it is the reassurance, not another
+    // clause of the charge.
+    #expect(line == "Free for 7 days, then $7.67 a month, billed yearly at $91.98.\nCancel any time.")
   }
 
   @Test("A monthly plan's sentence doesn't mention a year")
@@ -186,7 +188,7 @@ struct PaywallPricingTests {
       currency: Self.usd,
       locale: Locale(identifier: "en_US")
     )
-    #expect(line == "Free for 7 days, then $19.98 a month. Cancel any time.")
+    #expect(line == "Free for 7 days, then $19.98 a month.\nCancel any time.")
   }
 
   @Test("The savings badge is a whole percent")

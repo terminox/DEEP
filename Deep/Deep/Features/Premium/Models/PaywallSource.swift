@@ -17,7 +17,7 @@ enum PaywallSource: String, Identifiable, Hashable {
 
   var headline: LocalizedStringKey {
     switch self {
-    case .settings: return "Open all of Deep"
+    case .settings: return "DEEP Premium"
     case .lockedSound: return "This sound is waiting for you"
     case .onboarding: return "Begin with everything open"
     }

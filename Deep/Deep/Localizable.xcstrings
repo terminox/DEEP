@@ -35,30 +35,30 @@
         }
       }
     },
-    "%@ a month, billed yearly at %@. Cancel any time.": {
+    "%@ a month, billed yearly at %@.\nCancel any time.": {
       "comment": "Paywall billing terms for a yearly plan with no free trial.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "%1$@ a month, billed yearly at %2$@. Cancel any time."
+            "value": "%1$@ a month, billed yearly at %2$@.\nCancel any time."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ ต่อเดือน เรียกเก็บรายปี %2$@ ยกเลิกได้ทุกเมื่อ"
+            "value": "%1$@ ต่อเดือน เรียกเก็บรายปี %2$@\nยกเลิกได้ทุกเมื่อ"
           }
         }
       }
     },
-    "%@ a month. Cancel any time.": {
+    "%@ a month.\nCancel any time.": {
       "comment": "Paywall billing terms for a monthly plan with no free trial.",
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ ต่อเดือน ยกเลิกได้ทุกเมื่อ"
+            "value": "%@ ต่อเดือน\nยกเลิกได้ทุกเมื่อ"
           }
         }
       }
@@ -966,11 +966,22 @@
       }
     },
     "DEEP PREMIUM": {
+      "extractionState": "stale",
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "DEEP PREMIUM"
+          }
+        }
+      }
+    },
+    "DEEP Premium": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEEP Premium"
           }
         }
       }
@@ -981,6 +992,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "เซสชัน DEEP"
+          }
+        }
+      }
+    },
+    "DEEP reads in this language everywhere, including the reminders it sends you.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEEP จะใช้ภาษานี้ทุกที่ รวมถึงข้อความเตือนที่ส่งถึงคุณ"
+          }
+        }
+      }
+    },
+    "DEEP will send one gentle note at the time you choose. No streak to defend, nothing to catch up on.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEEP จะส่งข้อความเบา ๆ หนึ่งครั้งในเวลาที่คุณเลือก ไม่มีสถิติให้รักษา ไม่มีอะไรให้ตามให้ทัน"
           }
         }
       }
@@ -1032,26 +1063,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deep Sound"
-          }
-        }
-      }
-    },
-    "Deep reads in this language everywhere, including the reminders it sends you.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deep จะใช้ภาษานี้ทุกที่ รวมถึงข้อความเตือนที่ส่งถึงคุณ"
-          }
-        }
-      }
-    },
-    "Deep will send one gentle note at the time you choose. No streak to defend, nothing to catch up on.": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deep จะส่งข้อความเบา ๆ หนึ่งครั้งในเวลาที่คุณเลือก ไม่มีสถิติให้รักษา ไม่มีอะไรให้ตามให้ทัน"
           }
         }
       }
@@ -1284,36 +1295,36 @@
         }
       }
     },
-    "Free for %lld days, then %@ a month, billed yearly at %@. Cancel any time.": {
+    "Free for %lld days, then %@ a month, billed yearly at %@.\nCancel any time.": {
       "comment": "Paywall billing terms for a yearly plan with a free trial.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "Free for %1$lld days, then %2$@ a month, billed yearly at %3$@. Cancel any time."
+            "value": "Free for %1$lld days, then %2$@ a month, billed yearly at %3$@.\nCancel any time."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ฟรี %1$lld วัน จากนั้น %2$@ ต่อเดือน เรียกเก็บรายปี %3$@ ยกเลิกได้ทุกเมื่อ"
+            "value": "ฟรี %1$lld วัน จากนั้น %2$@ ต่อเดือน เรียกเก็บรายปี %3$@\nยกเลิกได้ทุกเมื่อ"
           }
         }
       }
     },
-    "Free for %lld days, then %@ a month. Cancel any time.": {
+    "Free for %lld days, then %@ a month.\nCancel any time.": {
       "comment": "Paywall billing terms for a monthly plan with a free trial.",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
-            "value": "Free for %1$lld days, then %2$@ a month. Cancel any time."
+            "value": "Free for %1$lld days, then %2$@ a month.\nCancel any time."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "ฟรี %1$lld วัน จากนั้น %2$@ ต่อเดือน ยกเลิกได้ทุกเมื่อ"
+            "value": "ฟรี %1$lld วัน จากนั้น %2$@ ต่อเดือน\nยกเลิกได้ทุกเมื่อ"
           }
         }
       }
@@ -1898,16 +1909,6 @@
         }
       }
     },
-    "New sounds as they arrive": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เสียงใหม่ทันทีที่มาถึง"
-          }
-        }
-      }
-    },
     "No hearts left": {
       "localizations": {
         "th": {
@@ -1978,12 +1979,12 @@
         }
       }
     },
-    "Notifications are switched off for Deep, so the reminder can't reach you. You can turn them back on in iOS Settings.": {
+    "Notifications are switched off for DEEP, so the reminder can't reach you. You can turn them back on in iOS Settings.": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "การแจ้งเตือนของ Deep ถูกปิดอยู่ ข้อความเตือนจึงส่งถึงคุณไม่ได้ เปิดใหม่ได้ในการตั้งค่า iOS"
+            "value": "การแจ้งเตือนของ DEEP ถูกปิดอยู่ ข้อความเตือนจึงส่งถึงคุณไม่ได้ เปิดใหม่ได้ในการตั้งค่า iOS"
           }
         }
       }
@@ -2074,16 +2075,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "เปิดการตั้งค่า"
-          }
-        }
-      }
-    },
-    "Open all of Deep": {
-      "localizations": {
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เปิดทุกสิ่งใน Deep"
           }
         }
       }
@@ -3128,7 +3119,16 @@
         }
       }
     },
-    "We couldn't reach Deep just now.": {},
+    "We couldn't reach DEEP just now.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เราเชื่อมต่อ DEEP ไม่ได้ในตอนนี้"
+          }
+        }
+      }
+    },
     "We couldn't reach the App Store just now.": {
       "localizations": {
         "th": {

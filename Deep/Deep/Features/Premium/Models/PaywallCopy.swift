@@ -38,28 +38,28 @@ enum PaywallCopy {
     switch facts {
     case .trialThenYearly(let days, let perMonth, let total):
       return String(
-        localized: "Free for \(days) days, then \(money(perMonth)) a month, billed yearly at \(money(total)). Cancel any time.",
+        localized: "Free for \(days) days, then \(money(perMonth)) a month, billed yearly at \(money(total)).\nCancel any time.",
         bundle: bundle,
         locale: locale,
         comment: "Paywall billing terms for a yearly plan with a free trial."
       )
     case .trialThenMonthly(let days, let total):
       return String(
-        localized: "Free for \(days) days, then \(money(total)) a month. Cancel any time.",
+        localized: "Free for \(days) days, then \(money(total)) a month.\nCancel any time.",
         bundle: bundle,
         locale: locale,
         comment: "Paywall billing terms for a monthly plan with a free trial."
       )
     case .yearly(let perMonth, let total):
       return String(
-        localized: "\(money(perMonth)) a month, billed yearly at \(money(total)). Cancel any time.",
+        localized: "\(money(perMonth)) a month, billed yearly at \(money(total)).\nCancel any time.",
         bundle: bundle,
         locale: locale,
         comment: "Paywall billing terms for a yearly plan with no free trial."
       )
     case .monthly(let total):
       return String(
-        localized: "\(money(total)) a month. Cancel any time.",
+        localized: "\(money(total)) a month.\nCancel any time.",
         bundle: bundle,
         locale: locale,
         comment: "Paywall billing terms for a monthly plan with no free trial."

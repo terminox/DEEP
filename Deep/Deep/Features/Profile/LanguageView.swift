@@ -30,7 +30,7 @@ struct LanguageView: View {
               }
             }
           }
-          Text("Deep reads in this language everywhere, including the reminders it sends you.")
+          Text("DEEP reads in this language everywhere, including the reminders it sends you.")
             .font(DeepType.caption)
             .foregroundStyle(.driftGrey)
             .padding(.horizontal, 8)

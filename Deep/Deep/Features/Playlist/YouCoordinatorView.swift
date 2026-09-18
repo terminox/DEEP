@@ -1,25 +1,25 @@
 import SwiftUI
 
 /// Coordinator view for the You tab — the business-specific composition root.
-/// It owns navigation (playlist → settings, and the paywall sheet) and nothing
-/// else.
+/// It owns navigation (playlist → settings → the premium invitation) and
+/// nothing else.
 ///
 /// Per the project's SwiftUI rules a coordinator keeps styling to a minimum:
 /// the atmosphere lives in `PlaylistView`, the leaf, so it renders behind that
 /// screen's content rather than behind the `NavigationStack`.
 struct YouCoordinatorView: View {
   @State private var path = NavigationPath()
-  /// The paywall is a sheet rather than a push: it covers the whole tab and
-  /// stays independent of the navigation path, so closing it never rewinds
-  /// where the member was. The source it was raised from is the payload.
-  @State private var paywallSource: PaywallSource?
 
-  /// The destinations this tab pushes — settings, and the two preference
-  /// screens it opens onto.
+  /// The destinations this tab pushes — settings, the two preference screens
+  /// it opens onto, and the premium invitation.
   private enum Route: Hashable {
     case settings
     case language
     case dailyReminder
+    /// A real screen on the stack, not a sheet or a cover: the paywall is a
+    /// place you go, the same one the first run walks you through, and it
+    /// keeps the system's back gesture rather than a lid you have to find.
+    case premium(PaywallSource)
   }
 
   var body: some View {
@@ -35,21 +35,24 @@ struct YouCoordinatorView: View {
             LanguageView()
           case .dailyReminder:
             DailyReminderView()
+          case .premium(let source):
+            PaywallView(source: source) { pop() }
+              .toolbarVisibility(.hidden, for: .navigationBar)
           }
         }
     }
-    .sheet(item: $paywallSource) { source in
-      PaywallView(source: source) { paywallSource = nil }
-        .presentationDetents([.large])
-        // The screen draws its own atmosphere, so the sheet's own background
-        // steps aside rather than stacking a second one behind it.
-        .presentationBackground(.clear)
-    }
-    .environment(\.openPaywall, { paywallSource = $0 })
+    .environment(\.openPaywall, { path.append(Route.premium($0)) })
     .environment(\.openSettings, { path.append(Route.settings) })
     .environment(\.openLanguage, { path.append(Route.language) })
     .environment(\.openDailyReminder, { path.append(Route.dailyReminder) })
     .preferredColorScheme(.light)
+  }
+
+  /// Steps back one screen. The paywall's own "Not right now" calls this, so
+  /// the screen never has to know it was pushed.
+  private func pop() {
+    guard !path.isEmpty else { return }
+    path.removeLast()
   }
 }
 

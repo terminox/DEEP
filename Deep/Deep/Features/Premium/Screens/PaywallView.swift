@@ -3,23 +3,25 @@ import SwiftUI
 /// The one paywall. Every door opens onto this screen; only the headline and
 /// the subhead know which door it was.
 ///
+/// It is a screen, not a sheet or a cover — a place you go, pushed onto the
+/// stack from Settings and stood up as a step in the first run. One arrangement
+/// serves both, so nothing about it has to branch on how it was reached.
+///
 /// There is no close control in a corner, deliberately. An X reads as an escape
 /// hatch from a demand, and this is meant to read as an invitation: the way out
-/// is a quiet "Not right now" at the foot, plus the sheet's own drag. That also
-/// means the screen needs no chrome branching when it is reused as an
-/// onboarding step.
+/// is a quiet "Not right now" at the foot.
 struct PaywallView: View {
   @Environment(\.subscriptionStore) private var subscriptionStore
   @Environment(\.locale) private var locale
 
   let source: PaywallSource
   /// What happens when the member is done here — bought, or declined. The
-  /// screen never closes itself: a sheet's opener clears its own item, and the
+  /// screen never leaves under its own power: the You coordinator pops it, the
   /// onboarding coordinator routes on. Routing stays where it belongs.
   let onFinish: () -> Void
 
   /// Where a purchase has got to. `welcoming` is the beat between a successful
-  /// purchase and the sheet closing.
+  /// purchase and leaving the screen.
   enum PurchasePhase: Equatable {
     case idle
     case purchasing(productID: String)
@@ -93,8 +95,7 @@ struct PaywallView: View {
   var body: some View {
     ZStack {
       // The screen owns its own ground, so it reads the same whether it is
-      // raised as a sheet from Settings or standing as a step in the
-      // onboarding flow.
+      // pushed from Settings or standing as a step in the onboarding flow.
       AtmosphereBackground()
       content
     }
@@ -142,7 +143,9 @@ struct PaywallView: View {
     // effect, which softens the terms as they pass under the act instead of
     // slicing a sentence in half at the fold.
     .safeAreaBar(edge: .bottom) { actionBar }
-    .scrollEdgeEffectStyle(.soft, for: .bottom)
+    // Both edges: the screen carries no navigation bar, so scrolled content
+    // would otherwise pass hard under the status bar as well as under the act.
+    .scrollEdgeEffectStyle(.soft, for: .all)
   }
 
   // MARK: - Hero
@@ -219,10 +222,11 @@ struct PaywallView: View {
   /// Constant across every door — what the membership includes doesn't depend
   /// on where you were standing when you asked.
   private var benefits: some View {
+    // Two lines, because two is what the app actually unlocks today: premium
+    // sounds and premium plants. A third would have to be invented.
     VStack(alignment: .leading, spacing: 18) {
       CraftingChecklistRow("Every sound in the library", isDone: true)
       CraftingChecklistRow("Exclusive plants for your Mind Garden", isDone: true)
-      CraftingChecklistRow("New sounds as they arrive", isDone: true)
     }
     .padding(.vertical, 20)
     .padding(.horizontal, 18)
@@ -478,7 +482,7 @@ struct PaywallView: View {
 }
 
 /// Fills the scroll container and centres its content, but only while asked to.
-/// A short screen otherwise hangs from the top edge of a full-height sheet.
+/// A short screen otherwise hangs from the top edge of a full-height screen.
 private struct CentredWhenShort: ViewModifier {
   let isActive: Bool
 
@@ -492,79 +496,54 @@ private struct CentredWhenShort: ViewModifier {
 }
 
 #if DEBUG
-/// Every preview hosts the screen in a real sheet, so the detent and the
-/// atmosphere background actually render.
-private struct PaywallPreviewHost<Content: View>: View {
-  @State private var isPresented = true
-  let content: Content
-
-  init(@ViewBuilder content: () -> Content) {
-    self.content = content()
-  }
-
-  var body: some View {
-    Color.clear
-      .background { AtmosphereBackground() }
-      .sheet(isPresented: $isPresented) {
-        content
-          .presentationDetents([.large])
-          .presentationBackground(.clear)
-      }
-  }
-}
-
 #Preview("Paywall — plans loaded") {
-  PaywallPreviewHost { PaywallView(source: .settings) {} }
+  PaywallView(source: .settings) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — only the year has a trial") {
-  PaywallPreviewHost { PaywallView(source: .settings) {} }
+  PaywallView(source: .settings) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.mixedTrials)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — loading plans") {
-  PaywallPreviewHost { PaywallView(source: .settings) {} }
+  PaywallView(source: .settings) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.loadingPlans)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — store unreachable") {
-  PaywallPreviewHost { PaywallView(source: .settings) {} }
+  PaywallView(source: .settings) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.unreachable)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — purchasing") {
-  PaywallPreviewHost {
-    PaywallView(source: .settings, onFinish: {}, purchase: .purchasing(productID: DeepProduct.yearly))
-  }
+  PaywallView(source: .settings, onFinish: {}, purchase: .purchasing(productID: DeepProduct.yearly))
   .environment(\.subscriptionStore, MockSubscriptionStore.free)
   .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — purchase failed") {
-  PaywallPreviewHost { PaywallView(source: .settings, onFinish: {}, purchase: .failed) }
+  PaywallView(source: .settings, onFinish: {}, purchase: .failed)
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — welcome beat") {
-  PaywallPreviewHost { PaywallView(source: .settings, onFinish: {}, purchase: .welcoming) }
+  PaywallView(source: .settings, onFinish: {}, purchase: .welcoming)
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — already a member") {
-  PaywallPreviewHost { PaywallView(source: .settings) {} }
+  PaywallView(source: .settings) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.subscribed)
     .environment(\.legalLinks, .placeholder)
 }
 
-/// The onboarding step is the screen standing on its own, not raised as a
-/// sheet — no detent, no drag, and the flow's next step behind the decline.
 #Preview("Paywall — onboarding step") {
   PaywallView(source: .onboarding) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
@@ -572,20 +551,20 @@ private struct PaywallPreviewHost<Content: View>: View {
 }
 
 #Preview("Paywall — from a locked sound") {
-  PaywallPreviewHost { PaywallView(source: .lockedSound) {} }
+  PaywallView(source: .lockedSound) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
 }
 
 #Preview("Paywall — large type") {
-  PaywallPreviewHost { PaywallView(source: .settings) {} }
+  PaywallView(source: .settings) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
     .environment(\.dynamicTypeSize, .accessibility2)
 }
 
 #Preview("Paywall — Thai") {
-  PaywallPreviewHost { PaywallView(source: .settings) {} }
+  PaywallView(source: .settings) {}
     .environment(\.subscriptionStore, MockSubscriptionStore.free)
     .environment(\.legalLinks, .placeholder)
     .environment(\.locale, Locale(identifier: "th"))
