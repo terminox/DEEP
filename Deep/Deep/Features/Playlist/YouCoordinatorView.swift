@@ -1,13 +1,18 @@
 import SwiftUI
 
 /// Coordinator view for the You tab — the business-specific composition root.
-/// It owns navigation (playlist → settings) and nothing else.
+/// It owns navigation (playlist → settings, and the paywall sheet) and nothing
+/// else.
 ///
 /// Per the project's SwiftUI rules a coordinator keeps styling to a minimum:
 /// the atmosphere lives in `PlaylistView`, the leaf, so it renders behind that
 /// screen's content rather than behind the `NavigationStack`.
 struct YouCoordinatorView: View {
   @State private var path = NavigationPath()
+  /// The paywall is a sheet rather than a push: it covers the whole tab and
+  /// stays independent of the navigation path, so closing it never rewinds
+  /// where the member was. The source it was raised from is the payload.
+  @State private var paywallSource: PaywallSource?
 
   /// The destinations this tab pushes — settings, and the two preference
   /// screens it opens onto.
@@ -33,6 +38,10 @@ struct YouCoordinatorView: View {
           }
         }
     }
+    .sheet(item: $paywallSource) { source in
+      PaywallView(source: source)
+    }
+    .environment(\.openPaywall, { paywallSource = $0 })
     .environment(\.openSettings, { path.append(Route.settings) })
     .environment(\.openLanguage, { path.append(Route.language) })
     .environment(\.openDailyReminder, { path.append(Route.dailyReminder) })

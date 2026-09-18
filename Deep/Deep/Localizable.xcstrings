@@ -24,6 +24,45 @@
         }
       }
     },
+    "%@ a month": {
+      "comment": "Subline on the yearly plan row. The placeholder is a price.",
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ต่อเดือน"
+          }
+        }
+      }
+    },
+    "%@ a month, billed yearly at %@. Cancel any time.": {
+      "comment": "Paywall billing terms for a yearly plan with no free trial.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ a month, billed yearly at %2$@. Cancel any time."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ต่อเดือน เรียกเก็บรายปี %2$@ ยกเลิกได้ทุกเมื่อ"
+          }
+        }
+      }
+    },
+    "%@ a month. Cancel any time.": {
+      "comment": "Paywall billing terms for a monthly plan with no free trial.",
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ต่อเดือน ยกเลิกได้ทุกเมื่อ"
+          }
+        }
+      }
+    },
     "%@ hearts": {
       "localizations": {
         "th": {
@@ -152,6 +191,16 @@
     },
     "%lld": {
       "shouldTranslate": false
+    },
+    "%lld DAYS FREE": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทดลองฟรี %lld วัน"
+          }
+        }
+      }
     },
     "%lld hearts": {
       "localizations": {
@@ -312,6 +361,7 @@
         }
       }
     },
+    "1 person is pausing with you": {},
     "12,000 saplings planted": {
       "localizations": {
         "th": {
@@ -568,6 +618,26 @@
         }
       }
     },
+    "Begin with everything open": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่มต้นโดยเปิดทุกอย่างไว้ให้คุณ"
+          }
+        }
+      }
+    },
+    "Billed monthly": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เรียกเก็บรายเดือน"
+          }
+        }
+      }
+    },
     "Books and resources for children in need.": {
       "localizations": {
         "th": {
@@ -624,6 +694,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "สร้างชุมชนที่เข้มแข็งด้วยการดูแลร่วมกันและมือของคนในพื้นที่"
+          }
+        }
+      }
+    },
+    "By continuing, you agree to our [Terms](%@) and [Privacy Policy](%@).": {
+      "comment": "Onboarding footer. The placeholders are URLs — keep the [text](url) markdown intact.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "By continuing, you agree to our [Terms](%1$@) and [Privacy Policy](%2$@)."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เมื่อดำเนินการต่อ ถือว่าคุณยอมรับ[ข้อกำหนด](%1$@)และ[นโยบายความเป็นส่วนตัว](%2$@)ของเรา"
           }
         }
       }
@@ -878,6 +965,16 @@
         }
       }
     },
+    "DEEP PREMIUM": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DEEP PREMIUM"
+          }
+        }
+      }
+    },
     "DEEP SESSION": {
       "localizations": {
         "th": {
@@ -899,6 +996,7 @@
       }
     },
     "DEEP — your peaceful space": {
+      "extractionState": "stale",
       "localizations": {
         "th": {
           "stringUnit": {
@@ -1046,6 +1144,16 @@
         }
       }
     },
+    "Done": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสร็จสิ้น"
+          }
+        }
+      }
+    },
     "Each return is enough": {
       "localizations": {
         "th": {
@@ -1106,6 +1214,56 @@
         }
       }
     },
+    "Every sound in the library": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทุกเสียงในคลัง"
+          }
+        }
+      }
+    },
+    "Every sound, every session — yours whenever you need them.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทุกเสียง ทุกช่วงเวลา — เป็นของคุณทุกเมื่อที่ต้องการ"
+          }
+        }
+      }
+    },
+    "Everything is open now.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทุกอย่างเปิดให้คุณแล้ว"
+          }
+        }
+      }
+    },
+    "Everything is open.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทุกอย่างเปิดแล้ว"
+          }
+        }
+      }
+    },
+    "Exclusive plants for your Mind Garden": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ต้นไม้พิเศษสำหรับสวนใจของคุณ"
+          }
+        }
+      }
+    },
     "Explore %@": {
       "localizations": {
         "th": {
@@ -1122,6 +1280,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "สำรวจ Deep Sound"
+          }
+        }
+      }
+    },
+    "Free for %lld days, then %@ a month, billed yearly at %@. Cancel any time.": {
+      "comment": "Paywall billing terms for a yearly plan with a free trial.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Free for %1$lld days, then %2$@ a month, billed yearly at %3$@. Cancel any time."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฟรี %1$lld วัน จากนั้น %2$@ ต่อเดือน เรียกเก็บรายปี %3$@ ยกเลิกได้ทุกเมื่อ"
+          }
+        }
+      }
+    },
+    "Free for %lld days, then %@ a month. Cancel any time.": {
+      "comment": "Paywall billing terms for a monthly plan with a free trial.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Free for %1$lld days, then %2$@ a month. Cancel any time."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ฟรี %1$lld วัน จากนั้น %2$@ ต่อเดือน ยกเลิกได้ทุกเมื่อ"
           }
         }
       }
@@ -1366,6 +1558,16 @@
         }
       }
     },
+    "It's part of DEEP Premium, along with everything else in the library.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียงนี้เป็นส่วนหนึ่งของ DEEP Premium พร้อมกับทุกอย่างในคลังเสียง"
+          }
+        }
+      }
+    },
     "Keep %@": {
       "localizations": {
         "th": {
@@ -1556,6 +1758,16 @@
         }
       }
     },
+    "Manage subscription": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "จัดการการสมัครสมาชิก"
+          }
+        }
+      }
+    },
     "Maybe later": {
       "localizations": {
         "th": {
@@ -1626,6 +1838,16 @@
         }
       }
     },
+    "Monthly": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รายเดือน"
+          }
+        }
+      }
+    },
     "Mutes Fuku's set": {
       "localizations": {
         "th": {
@@ -1676,6 +1898,16 @@
         }
       }
     },
+    "New sounds as they arrive": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียงใหม่ทันทีที่มาถึง"
+          }
+        }
+      }
+    },
     "No hearts left": {
       "localizations": {
         "th": {
@@ -1712,6 +1944,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "เพลงนี้ไม่มีเนื้อร้อง — ปล่อยให้มันโอบคุณไว้"
+          }
+        }
+      }
+    },
+    "Not right now": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่ใช่ตอนนี้"
           }
         }
       }
@@ -1816,12 +2058,32 @@
         }
       }
     },
+    "One moment": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สักครู่"
+          }
+        }
+      }
+    },
     "Open Settings": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "เปิดการตั้งค่า"
+          }
+        }
+      }
+    },
+    "Open all of Deep": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เปิดทุกสิ่งใน Deep"
           }
         }
       }
@@ -2006,6 +2268,23 @@
         }
       }
     },
+    "Read our [Terms](%@) and [Privacy Policy](%@).": {
+      "comment": "Paywall footer. The placeholders are URLs — keep the [text](url) markdown intact.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Read our [Terms](%1$@) and [Privacy Policy](%2$@)."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อ่าน[ข้อกำหนด](%1$@)และ[นโยบายความเป็นส่วนตัว](%2$@)ของเรา"
+          }
+        }
+      }
+    },
     "Refresh": {
       "localizations": {
         "th": {
@@ -2066,12 +2345,42 @@
         }
       }
     },
+    "Restore purchases": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กู้คืนการซื้อ"
+          }
+        }
+      }
+    },
     "Restore the Forest": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "ฟื้นผืนป่า"
+          }
+        }
+      }
+    },
+    "Restored. Welcome back.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กู้คืนแล้ว ยินดีต้อนรับกลับมา"
+          }
+        }
+      }
+    },
+    "Restoring…": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "กำลังกู้คืน…"
           }
         }
       }
@@ -2112,6 +2421,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "โลกตัวอย่าง"
+          }
+        }
+      }
+    },
+    "Save %@": {
+      "comment": "Badge on the yearly plan row. The placeholder is a percentage.",
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ประหยัด %@"
           }
         }
       }
@@ -2366,6 +2686,26 @@
         }
       }
     },
+    "Start your %lld days free": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่มทดลองฟรี %lld วัน"
+          }
+        }
+      }
+    },
+    "Starts your free trial of DEEP Premium": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เริ่มทดลองใช้ DEEP Premium ฟรี"
+          }
+        }
+      }
+    },
     "Stay": {
       "localizations": {
         "th": {
@@ -2412,6 +2752,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "นักเรียนจากต่างจังหวัดเริ่มภาคเรียนแรกในมหาวิทยาลัย"
+          }
+        }
+      }
+    },
+    "Subscribe": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมัครสมาชิก"
+          }
+        }
+      }
+    },
+    "Subscribes to DEEP Premium": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมัครสมาชิก DEEP Premium"
           }
         }
       }
@@ -2538,12 +2898,52 @@
         }
       }
     },
+    "That didn't go through. Nothing was charged.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การชำระเงินไม่สำเร็จ ยังไม่มีการเรียกเก็บเงิน"
+          }
+        }
+      }
+    },
+    "There's nothing to restore on this Apple Account.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่มีรายการให้กู้คืนสำหรับ Apple Account นี้"
+          }
+        }
+      }
+    },
     "This one is part of DEEP Premium. It'll be here whenever you're ready.": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "เสียงนี้เป็นส่วนหนึ่งของ DEEP Premium มันจะอยู่ตรงนี้เมื่อคุณพร้อม"
+          }
+        }
+      }
+    },
+    "This purchase needs approval before it can finish.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การซื้อนี้ต้องได้รับการอนุมัติก่อนจึงจะเสร็จสมบูรณ์"
+          }
+        }
+      }
+    },
+    "This sound is waiting for you": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เสียงนี้รอคุณอยู่"
           }
         }
       }
@@ -2598,6 +2998,16 @@
         }
       }
     },
+    "Try DEEP Premium free for seven days. Nothing to decide today.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ทดลองใช้ DEEP Premium ฟรี 7 วัน ยังไม่ต้องตัดสินใจวันนี้"
+          }
+        }
+      }
+    },
     "Try again": {
       "localizations": {
         "th": {
@@ -2624,6 +3034,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "เปิดเสียงเซ็ตของ Fuku"
+          }
+        }
+      }
+    },
+    "Upgrade to DEEP Premium": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "อัปเกรดเป็น DEEP Premium"
           }
         }
       }
@@ -2708,12 +3128,33 @@
         }
       }
     },
+    "We couldn't reach Deep just now.": {},
+    "We couldn't reach the App Store just now.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เราเชื่อมต่อ App Store ไม่ได้ในตอนนี้"
+          }
+        }
+      }
+    },
     "We couldn't reach your playlist just now.": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "เราเข้าถึงเพลย์ลิสต์ของคุณไม่ได้ในตอนนี้"
+          }
+        }
+      }
+    },
+    "We couldn't restore just now. Please try again in a moment.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เรากู้คืนไม่สำเร็จในตอนนี้ กรุณาลองใหม่อีกครั้งในอีกสักครู่"
           }
         }
       }
@@ -2734,6 +3175,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ยินดีต้อนรับกลับมา"
+          }
+        }
+      }
+    },
+    "Welcome to DEEP Premium": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยินดีต้อนรับสู่ DEEP Premium"
           }
         }
       }
@@ -2798,6 +3249,16 @@
         }
       }
     },
+    "Yearly": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "รายปี"
+          }
+        }
+      }
+    },
     "You": {
       "localizations": {
         "th": {
@@ -2848,6 +3309,26 @@
         }
       }
     },
+    "You're already with us": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "คุณเป็นสมาชิกอยู่แล้ว"
+          }
+        }
+      }
+    },
+    "Your DEEP Premium membership is active.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมาชิก DEEP Premium ของคุณกำลังใช้งานอยู่"
+          }
+        }
+      }
+    },
     "Your breath will be here whenever you’re ready to return.": {
       "localizations": {
         "th": {
@@ -2888,12 +3369,42 @@
         }
       }
     },
+    "Your monthly DEEP Premium membership is active.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมาชิก DEEP Premium รายเดือนของคุณกำลังใช้งานอยู่"
+          }
+        }
+      }
+    },
     "Your practice is safely remembered": {
       "localizations": {
         "th": {
           "stringUnit": {
             "state": "translated",
             "value": "การฝึกของคุณถูกจดจำไว้อย่างปลอดภัย"
+          }
+        }
+      }
+    },
+    "Your subscription renews automatically until you cancel it in your App Store settings.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "การสมัครสมาชิกจะต่ออายุอัตโนมัติ จนกว่าคุณจะยกเลิกในการตั้งค่า App Store ของคุณ"
+          }
+        }
+      }
+    },
+    "Your yearly DEEP Premium membership is active.": {
+      "localizations": {
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "สมาชิก DEEP Premium รายปีของคุณกำลังใช้งานอยู่"
           }
         }
       }

@@ -4,8 +4,22 @@ import SwiftUI
 /// filled lavender check as each step completes, blooming in gently. Mirrors the
 /// Calm reference's "We're crafting your sleep plan" checklist, re-voiced.
 struct CraftingChecklistRow: View {
-  let title: String
-  let isDone: Bool
+  private let label: Text
+  private let isDone: Bool
+
+  /// For a caller whose title is chosen at runtime. Such a title does not pass
+  /// through the String Catalog.
+  init(title: String, isDone: Bool) {
+    self.label = Text(title)
+    self.isDone = isDone
+  }
+
+  /// For a literal title, which resolves through the String Catalog against the
+  /// view's locale — how the paywall's benefit list reaches Thai.
+  init(_ titleKey: LocalizedStringKey, isDone: Bool) {
+    self.label = Text(titleKey)
+    self.isDone = isDone
+  }
 
   var body: some View {
     HStack(spacing: 14) {
@@ -22,7 +36,7 @@ struct CraftingChecklistRow: View {
         }
       }
 
-      Text(title)
+      label
         .font(DeepType.body)
         .foregroundStyle(isDone ? .deepPlum : .driftGrey)
 

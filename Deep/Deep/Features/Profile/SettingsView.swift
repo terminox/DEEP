@@ -25,6 +25,7 @@ struct SettingsView: View {
   @Environment(\.reminderStore) private var reminderStore
   @Environment(\.openLanguage) private var openLanguage
   @Environment(\.openDailyReminder) private var openDailyReminder
+  @Environment(\.openPaywall) private var openPaywall
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -78,7 +79,7 @@ struct SettingsView: View {
     } message: {
       Text(
         "This permanently erases your account and everything you've shared. "
-        + "If you have a DEEP Pro subscription, cancel it separately in your "
+        + "If you have a DEEP Premium subscription, cancel it separately in your "
         + "App Store settings — deleting your account doesn't cancel billing."
       )
     }
@@ -149,9 +150,9 @@ struct SettingsView: View {
     switch subscriptionStore.status {
     case .subscribed(let productID):
       switch productID {
-      case DeepProduct.yearly: return "DEEP Pro, yearly"
-      case DeepProduct.monthly: return "DEEP Pro, monthly"
-      default: return "DEEP Pro"
+      case DeepProduct.yearly: return "DEEP Premium, yearly"
+      case DeepProduct.monthly: return "DEEP Premium, monthly"
+      default: return "DEEP Premium"
       }
     case .none:
       return "Free plan"
@@ -201,12 +202,21 @@ struct SettingsView: View {
   private var membershipSection: some View {
     VStack(alignment: .leading, spacing: 8) {
       SettingsSection(title: "Membership") {
-        SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {
+        // The first door to the paywall. Shown only once we actually know
+        // there is something to sell — `.unknown` would put "Upgrade" directly
+        // above a chip still reading "Checking…", and offer a paying member
+        // what they already have.
+        if subscriptionStore.status == .none {
+          SettingsRow(icon: "sparkles", "Upgrade to DEEP Premium", accessory: .chevron) {
+            openPaywall(.settings)
+          }
+        }
+        SettingsRow(icon: "creditcard", "Manage subscription", accessory: .chevron) {
           showManageSubscriptions = true
         }
         SettingsRow(
           icon: "arrow.clockwise",
-          title: "Restore purchases",
+          "Restore purchases",
           accessory: restoreAccessory,
           action: restorePurchases
         )

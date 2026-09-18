@@ -53,7 +53,21 @@ final class AppDependencies {
     self.accountStore = APIAccountStore(client: client)
     self.onboardingStore = OnboardingProgressDefaultsStore()
     self.onboardingRemote = APIOnboardingRemote(client: client)
+    #if DEBUG
+    // A simulator launched with `xcrun simctl` never gets the scheme's
+    // `Deep.storekit` configuration, so StoreKit answers with no products at
+    // all and the paywall can only ever show its offline state. This launch
+    // argument swaps in the in-memory store so the whole purchase mechanic —
+    // plans, selection, the welcome beat, the flipped plan chip — is drivable
+    // headlessly. It compiles out of every shipping build.
+    if ProcessInfo.processInfo.arguments.contains("-DeepMockSubscriptions") {
+      self.subscriptionStore = MockSubscriptionStore.free
+    } else {
+      self.subscriptionStore = StoreKitSubscriptionStore()
+    }
+    #else
     self.subscriptionStore = StoreKitSubscriptionStore()
+    #endif
     self.soundRepository = APISoundContentRepository(client: client)
 
     // Rewards: remote → ledger → garden → the one ingest seam. Every award
