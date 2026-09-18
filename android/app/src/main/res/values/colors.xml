@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The only colours that exist as Android resources, because the platform needs
+  them before Compose runs: the window background, the splash, and the launcher
+  icon. Everything else lives in theme/DeepColor.kt.
+
+  These four duplicate values from DeepPalette, which the token rules forbid
+  everywhere else. There is no way to hand a Compose Color to a window theme, so
+  the duplication is structural. Keep them in step with theme/DeepColor.kt.
+-->
+<resources>
+  <color name="moon_cream">#FBF7FF</color>
+  <color name="lavender_mist">#B8A7E8</color>
+  <color name="deep_plum">#3D3654</color>
+  <color name="ic_launcher_background">#FBF7FF</color>
+</resources>
