@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Placeholder mark: the ring and dot of the Deep logo, drawn to the proportions
+  recorded for the iOS icon (a 2% stroke and a 13% dot on the full canvas).
+
+  The real adaptive icon is week-8 work. It needs a proper foreground/background
+  split and a monochrome layer for themed icons, and there is no vector master in
+  references/ to cut it from — only a flat 1024 PNG.
+
+  Adaptive icon geometry: 108dp canvas, with only the middle 72dp guaranteed
+  visible, so the mark sits well inside that safe zone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+  <!-- Ring: radius 22 on a 108 canvas, stroke 2.16 (2% of the canvas). -->
+  <path
+      android:strokeColor="#B8A7E8"
+      android:strokeWidth="2.16"
+      android:fillColor="#00000000"
+      android:pathData="M 54,32 A 22,22 0 1 1 53.99,32 Z" />
+
+  <!-- Dot: 13% of the canvas across, so radius 7.02. -->
+  <path
+      android:fillColor="#B8A7E8"
+      android:pathData="M 54,46.98 A 7.02,7.02 0 1 1 53.99,46.98 Z" />
+
+</vector>

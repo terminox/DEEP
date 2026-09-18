@@ -19,6 +19,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 XCCONFIG="$ROOT/Deep/Config/Local.xcconfig"
+ANDROID_PROPS="$ROOT/android/local.properties"
 API_ENV="$ROOT/deep-api/.env"
 API_ENV_EXAMPLE="$ROOT/deep-api/.env.example"
 
@@ -81,6 +82,48 @@ cat > "$XCCONFIG" <<EOF
 DEV_API_HOST = $host:$port
 EOF
 ok "Wrote Deep/Config/Local.xcconfig"
+
+# ---- 1b. Android: the same host, resolved differently ----
+#
+# Android cannot use the mDNS name iOS prefers. Bionic ships no mDNS responder,
+# so `.local` does not resolve through the ordinary name lookup an HTTP client
+# performs; NsdManager is a separate discovery API that OkHttp never consults.
+# So Android gets the LAN IP, and takes the DHCP churn iOS was designed to avoid.
+#
+# The emulator needs neither: it reaches this Mac at 10.0.2.2, which is a
+# constant. That is the Gradle default, so the emulator works on a fresh clone
+# with no setup at all — this file only matters for a physical device.
+if [ -d "$ROOT/android" ]; then
+  iface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2}')"
+  lan_ip="$(ipconfig getifaddr "${iface:-en0}" 2>/dev/null || true)"
+
+  if [ -n "$lan_ip" ]; then
+    # sdk.dir belongs to Android Studio and must survive; only our key is rewritten.
+    sdk_dir=""
+    if [ -f "$ANDROID_PROPS" ]; then
+      sdk_dir="$(awk -F= '/^sdk\.dir=/{sub(/^sdk\.dir=/,""); print; exit}' "$ANDROID_PROPS")"
+    fi
+    [ -n "$sdk_dir" ] || sdk_dir="$HOME/Library/Android/sdk"
+
+    cat > "$ANDROID_PROPS" <<EOF
+# Written by scripts/dev-setup.sh — gitignored, per-machine.
+#
+# sdk.dir is Android Studio's. deep.devApiHost is what the Dev flavor's
+# API_BASE_URL is built from, and is only consulted for builds on a physical
+# device — the emulator reaches this Mac at the constant 10.0.2.2:$port.
+#
+# This is a LAN IP rather than the mDNS name in Local.xcconfig because Android
+# cannot resolve .local names. It is DHCP-assigned, so re-run this script when
+# the Mac lands on a new address.
+sdk.dir=$sdk_dir
+deep.devApiHost=$lan_ip:$port
+EOF
+    ok "Wrote android/local.properties (device host $lan_ip:$port)"
+  else
+    warn "No LAN IP found; skipped android/local.properties."
+    warn "The Android emulator still works — it reaches this Mac at 10.0.2.2:$port."
+  fi
+fi
 
 # ---- 2. Backend: make sure it can start at all ----
 if [ -f "$API_ENV" ]; then

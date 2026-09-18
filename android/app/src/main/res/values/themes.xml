@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+  <!--
+    The window theme, not the app's design system — Compose owns everything past
+    the first frame. Its only job is to make the handoff from the OS launch window
+    into the first composed frame invisible.
+
+    moonCream is the app background (DeepPalette.moonCream, #FBF7FF). Anything
+    else here shows as a flash before Compose draws.
+  -->
+  <style name="Theme.Deep.Starting" parent="Theme.SplashScreen">
+    <item name="windowSplashScreenBackground">@color/moon_cream</item>
+    <item name="postSplashScreenTheme">@style/Theme.Deep</item>
+  </style>
+
+  <style name="Theme.Deep" parent="android:Theme.Material.Light.NoActionBar">
+    <item name="android:windowBackground">@color/moon_cream</item>
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+    <item name="android:statusBarColor">@android:color/transparent</item>
+    <!-- The app is light-only. iOS pins .light at every coordinator; there is no
+         dark palette to fall back to, so a dark-mode window would show through. -->
+    <item name="android:forceDarkAllowed">false</item>
+  </style>
+
+</resources>

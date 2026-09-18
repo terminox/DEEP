@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dev-only overlay. The Dev build talks to a server on this Mac over plain http,
+  so it needs cleartext permission — the Android twin of NSAllowsLocalNetworking
+  in Deep/Config/Info.plist.
+
+  It lives in the dev source set on purpose: a shipping flavor never merges this,
+  so no release build can silently gain cleartext permission.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <application android:networkSecurityConfig="@xml/network_security_config" />
+
+</manifest>
