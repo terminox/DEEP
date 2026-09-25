@@ -26,13 +26,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.BuildConfig
@@ -74,9 +75,8 @@ private const val AVATAR_RIM_ALPHA = 0.6f
 
 /** The avatar's lift — iOS's `shadow(color: .lavenderMist.opacity(0.4), radius: 18, y: 8)`. */
 private const val AVATAR_GLOW_ALPHA = 0.4f
-private val AVATAR_GLOW_SPREAD = 18.dp
+private val AVATAR_GLOW_RADIUS = 18.dp
 private val AVATAR_GLOW_OFFSET_Y = 8.dp
-private const val AVATAR_GLOW_STEPS = 6
 
 private val PLAN_CHIP_PADDING_HORIZONTAL = 12.dp
 private val PLAN_CHIP_PADDING_VERTICAL = 6.dp
@@ -355,23 +355,17 @@ private fun Avatar(initials: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * The soft lavender lift under the avatar, drawn as stacked fading discs for
- * the reason `frostedCard` draws its bloom that way: a platform shadow reads as
- * hard grey here, and `Modifier.blur` is a no-op below API 31.
+ * The soft lavender lift under the avatar — `Modifier.dropShadow`, as in
+ * `frostedCard`, because a platform elevation shadow reads as hard grey here.
  */
-private fun Modifier.avatarGlow(): Modifier = drawBehind {
-  val radius = size.minDimension / 2f
-  val spread = AVATAR_GLOW_SPREAD.toPx()
-  val center = Offset(size.width / 2f, size.height / 2f + AVATAR_GLOW_OFFSET_Y.toPx())
-  for (step in AVATAR_GLOW_STEPS downTo 1) {
-    val t = step / AVATAR_GLOW_STEPS.toFloat()
-    drawCircle(
-      color = Color.lavenderMist.copy(alpha = AVATAR_GLOW_ALPHA * (1f - t) * (1f - t)),
-      radius = radius + spread * t,
-      center = center,
-    )
-  }
-}
+private fun Modifier.avatarGlow(): Modifier = dropShadow(
+  shape = CircleShape,
+  shadow = Shadow(
+    radius = AVATAR_GLOW_RADIUS,
+    color = Color.lavenderMist.copy(alpha = AVATAR_GLOW_ALPHA),
+    offset = DpOffset(0.dp, AVATAR_GLOW_OFFSET_Y),
+  ),
+)
 
 /**
  * The non-actionable membership status, worn as part of the identity — the
