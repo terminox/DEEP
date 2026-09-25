@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Onboarding copy, ported verbatim from Deep/Deep/Features/Onboarding. English
+  only; Thai lands with the rest of values-th in week 5.
+-->
+<resources>
+
+  <!-- Welcome -->
+  <string name="onboarding_logo_description">DEEP — peace begins within</string>
+  <string name="onboarding_begin">Begin</string>
+  <string name="onboarding_try_again">Try again</string>
+  <string name="onboarding_config_failed">We couldn\'t reach Deep just now.</string>
+  <!-- %1$s is onboarding_log_in_link, drawn bold and underlined. -->
+  <string name="onboarding_have_account">Already have an account? %1$s</string>
+  <string name="onboarding_log_in_link">Log in</string>
+
+  <!-- Chrome -->
+  <string name="onboarding_back">Back</string>
+  <string name="onboarding_progress">Progress</string>
+  <string name="onboarding_progress_fraction">%1$d of %2$d</string>
+  <string name="onboarding_progress_percent">%1$d percent</string>
+
+  <!-- Quiz + Mind Tree -->
+  <string name="onboarding_continue">Continue</string>
+  <string name="onboarding_mind_tree_title">Choose your Mind Tree</string>
+  <string name="onboarding_mind_tree_subtitle">You can change it anytime.</string>
+
+  <!-- Create account gateway -->
+  <string name="onboarding_create_account_title">Create an account to save your progress</string>
+  <string name="onboarding_continue_with_email">Continue with Email</string>
+  <!-- %1$s = onboarding_terms, %2$s = onboarding_privacy; both become links. -->
+  <string name="onboarding_legal">By continuing, you agree to our %1$s and %2$s.</string>
+  <string name="onboarding_terms">Terms</string>
+  <string name="onboarding_privacy">Privacy Policy</string>
+
+  <!-- Auth fields -->
+  <string name="onboarding_field_name">Your name</string>
+  <string name="onboarding_field_email">Email</string>
+  <string name="onboarding_field_password">Password</string>
+  <string name="onboarding_show_password">Show password</string>
+  <string name="onboarding_hide_password">Hide password</string>
+
+  <!-- Sign up -->
+  <string name="onboarding_sign_up_title">Create your space</string>
+  <string name="onboarding_sign_up_subtitle">So your practice stays with you.</string>
+  <string name="onboarding_password_rule">At least 8 characters</string>
+  <string name="onboarding_create_account">Create account</string>
+  <string name="onboarding_sign_up_breathe">Take a deep breath.\nWe\'re creating your space.</string>
+  <string name="onboarding_sign_up_failed">We couldn\'t create your space just now. Please try again.</string>
+  <string name="onboarding_problem_missing_name">Please share a name we can call you.</string>
+  <string name="onboarding_problem_malformed_email">That email doesn\'t look quite right.</string>
+  <string name="onboarding_problem_short_password">Use at least 8 characters.</string>
+
+  <!-- Log in -->
+  <string name="onboarding_log_in_title">Welcome back</string>
+  <string name="onboarding_log_in_subtitle">Pick up right where you left off.</string>
+  <string name="onboarding_log_in">Log in</string>
+  <string name="onboarding_log_in_breathe">Take a deep breath.\nWe\'re signing you in.</string>
+  <string name="onboarding_log_in_failed">We couldn\'t sign you in just now. Please try again.</string>
+
+  <!-- Crafting -->
+  <string name="onboarding_crafting_title">We\'re shaping your space</string>
+  <string name="onboarding_crafting_step_1">Gathering a little calm</string>
+  <string name="onboarding_crafting_step_2">Listening to what you shared</string>
+  <string name="onboarding_crafting_step_3">Choosing sounds that suit you</string>
+  <string name="onboarding_crafting_step_4">Shaping your space</string>
+  <string name="onboarding_crafting_step_5">Almost ready</string>
+  <string name="onboarding_step_done">done</string>
+  <string name="onboarding_step_in_progress">in progress</string>
+
+</resources>

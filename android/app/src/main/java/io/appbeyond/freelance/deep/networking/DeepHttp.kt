@@ -207,8 +207,9 @@ private class SessionAuthenticator : Authenticator {
     val access = try {
       runBlocking { refresher.refreshedAccessToken(failed) }
     } catch (ended: SessionEnded) {
-      // The server refused the refresh token itself. Tokens are already cleared;
-      // letting the 401 stand is what tells the caller the session is over.
+      // The request's session is over — refused by the server (tokens cleared,
+      // account store already signed out) or replaced by a newer sign-in or
+      // sign-out mid-flight. Letting the 401 stand is what tells the caller.
       return null
     } catch (offline: IOException) {
       // Not a revocation — a blip. Failing the call as a transport error rather

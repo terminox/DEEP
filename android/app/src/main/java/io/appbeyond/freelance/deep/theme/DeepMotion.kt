@@ -7,6 +7,8 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 // MARK: - Curves (single source of truth)
 
@@ -119,6 +121,20 @@ val exhaleEasing: Easing get() = DeepCurve.ExhaleEasing
  * flashes it.
  */
 const val BREATHE_FLOOR_MILLIS = 900L
+
+// MARK: - Travel
+
+/**
+ * How far content drifts as a screen hands off — the soft drift's one
+ * magnitude. Going forward new content rises this far into place from below
+ * while the old drifts up by the same; going back mirrors it. Never under
+ * reduced motion.
+ *
+ * Ported from `SoftDrift.drop` in Deep/Deep/Shared/Transition/SoftDriftTransition.swift
+ * (16pt). A Dp extension, like the spacing tokens, so it reads
+ * `slideInVertically { Dp.drift.roundToPx() }`.
+ */
+val Dp.Companion.drift: Dp get() = 16.dp
 
 @Suppress("unused")
 private val springSentinel = Spring.StiffnessMedium

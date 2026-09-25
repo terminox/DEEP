@@ -1,8 +1,11 @@
 package io.appbeyond.freelance.deep.auth
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -11,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * The suite that earns [TokenRefresher] its module boundary.
@@ -27,6 +31,7 @@ import kotlin.test.assertNull
  * token => compromise. Kill it."). A second concurrent refresh is not a wasted
  * round trip; it is a forced sign-out.
  */
+@OptIn(ExperimentalCoroutinesApi::class) // runCurrent, to park a rotation mid-flight.
 class TokenRefresherTest {
 
   @Test
@@ -147,6 +152,97 @@ class TokenRefresherTest {
         "same refresh token is the reuse that revokes the session.",
     )
     assertEquals(20, outcomes.count { it.isFailure })
+  }
+
+  @Test
+  @DisplayName("a refusal tells the account store the session is over, exactly once")
+  fun rejectionRunsTheSessionEndedHandler() = runTest {
+    val store = FakeTokenStore(TokenPair(access = "access-stale", refresh = "refresh-1"))
+    val endpoint = CountingTokenRefresh {
+      delay(50)
+      throw RefusedByServer(status = 401, code = "token_reuse")
+    }
+    val refresher = TokenRefresher(store, endpoint)
+    var ended = 0
+    refresher.onSessionEnded = { ended += 1 }
+
+    val outcomes = (1..5)
+      .map { async { runCatching { refresher.refreshedAccessToken("access-stale") } } }
+      .awaitAll()
+
+    assertTrue(outcomes.all { it.exceptionOrNull() is SessionEnded })
+    assertEquals(1, ended, "One refusal is one sign-out, however many requests shared it.")
+  }
+
+  @Test
+  @DisplayName("a stale refusal landing after a newer login leaves the new session alone")
+  fun staleRejectionKeepsNewerLogin() = runTest {
+    val store = FakeTokenStore(TokenPair(access = "access-a", refresh = "refresh-a"))
+    val gate = CompletableDeferred<Unit>()
+    val endpoint = CountingTokenRefresh {
+      gate.await()
+      throw RefusedByServer(status = 401, code = "token_reuse")
+    }
+    val refresher = TokenRefresher(store, endpoint)
+    var ended = 0
+    refresher.onSessionEnded = { ended += 1 }
+
+    val stale = async { runCatching { refresher.refreshedAccessToken("access-a") } }
+    runCurrent() // A's refresh is now out on the network.
+
+    // Log out of A and into B while it is in flight.
+    refresher.end()
+    val newer = TokenPair(access = "access-b", refresh = "refresh-b")
+    refresher.adopt(newer)
+    gate.complete(Unit)
+
+    assertTrue(stale.await().exceptionOrNull() is SessionEnded, "A's requests end with A.")
+    assertEquals(newer, store.stored, "A refusal of A's token must not sign B out.")
+    assertEquals(1, store.clears, "Only the voluntary log out cleared anything.")
+    assertEquals(0, ended, "B is still signed in; nobody may be told otherwise.")
+  }
+
+  @Test
+  @DisplayName("a stale rotation landing after logout does not resurrect the session")
+  fun staleSuccessAfterLogoutStaysSignedOut() = runTest {
+    val store = FakeTokenStore(TokenPair(access = "access-a", refresh = "refresh-a"))
+    val gate = CompletableDeferred<Unit>()
+    val endpoint = CountingTokenRefresh {
+      gate.await()
+      TokenPair(access = "access-a2", refresh = "refresh-a2")
+    }
+    val refresher = TokenRefresher(store, endpoint)
+
+    val stale = async { runCatching { refresher.refreshedAccessToken("access-a") } }
+    runCurrent()
+
+    refresher.end()
+    gate.complete(Unit)
+
+    assertTrue(stale.await().exceptionOrNull() is SessionEnded)
+    assertNull(store.stored, "Logging out must stick even if a rotation was in flight.")
+  }
+
+  @Test
+  @DisplayName("a stale rotation landing after a newer login does not overwrite it")
+  fun staleSuccessKeepsNewerLogin() = runTest {
+    val store = FakeTokenStore(TokenPair(access = "access-a", refresh = "refresh-a"))
+    val gate = CompletableDeferred<Unit>()
+    val endpoint = CountingTokenRefresh {
+      gate.await()
+      TokenPair(access = "access-a2", refresh = "refresh-a2")
+    }
+    val refresher = TokenRefresher(store, endpoint)
+
+    val stale = async { runCatching { refresher.refreshedAccessToken("access-a") } }
+    runCurrent()
+
+    val newer = TokenPair(access = "access-b", refresh = "refresh-b")
+    refresher.adopt(newer)
+    gate.complete(Unit)
+
+    assertTrue(stale.await().exceptionOrNull() is SessionEnded)
+    assertEquals(newer, store.stored, "A's rotated pair must never land on top of B.")
   }
 }
 

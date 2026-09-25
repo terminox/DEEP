@@ -32,6 +32,7 @@ import SwiftUI
 struct OnboardingCoordinatorView: View {
   @Environment(\.onboardingStore) private var store
   @Environment(\.onboardingRemote) private var remote
+  @Environment(\.accountStore) private var accountStore
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   /// The route stack; empty means the welcome screen is showing.
@@ -222,7 +223,14 @@ struct OnboardingCoordinatorView: View {
   /// Routes every leaf-screen advance. Off the welcome screen it's a calm
   /// hush; off it, the destination is swapped in without animation beneath a
   /// rippling freeze-frame of the welcome screen.
-  private func advance(to route: OnboardingRoute) {
+  private func advance(to requestedRoute: OnboardingRoute) {
+    // A signed-in member (e.g. one who logged in mid-onboarding and resumed
+    // at the quiz) has nothing left to create an account for — routing them
+    // to `.createAccount` would just dead-end at "log in again". Skip
+    // straight to crafting instead.
+    let route = (requestedRoute == .createAccount && accountStore.isSignedIn)
+      ? OnboardingRoute.craftingSpace
+      : requestedRoute
     // The quiz is pure server content, and `OnboardingQuizView` reads its
     // question by index. Hold the route until the config lands rather than
     // pushing an empty flow.

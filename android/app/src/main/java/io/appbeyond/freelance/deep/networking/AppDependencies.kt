@@ -4,7 +4,17 @@ import android.content.Context
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.auth.TokenStoring
 import io.appbeyond.freelance.deep.config.AppConfig
+import io.appbeyond.freelance.deep.feature.onboarding.store.AccountCache
+import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.ApiAccountStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.ApiOnboardingRemote
+import io.appbeyond.freelance.deep.feature.onboarding.store.DataStoreOnboardingProgressStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
@@ -52,9 +62,9 @@ class AppDependencies(context: Context) {
   )
 
   /**
-   * Exposed so a future account store can rotate or end a session through the
-   * same single-flight path the authenticator uses, rather than opening a
-   * second one.
+   * The single-flight path the authenticator rotates through, and the one
+   * writer of [tokens]: [accountStore] starts and ends sessions through it so a
+   * late rotation of an old session can never clobber a new one.
    */
   val tokenRefresher: TokenRefresher = http.tokenRefresher
 
@@ -74,4 +84,50 @@ class AppDependencies(context: Context) {
 
   val pauseHome: PauseHomeRepository =
     PauseHomeRepository(retrofit.create(PauseHomeService::class.java))
+
+  /**
+   * Process-lifetime scope for work that must outlive any single screen —
+   * right now, only [onboardingStore]'s eager DataStore load. `SupervisorJob`
+   * so a failure loading one store's persisted state can never cancel
+   * another's.
+   */
+  private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+  // Week two: accounts and onboarding. Both `accountStore` and
+  // `onboardingRemote` ride the same Retrofit and the same token store as
+  // `pauseHome` above — signing in rotates the pair `http`'s authenticator
+  // already knows how to refresh, with no wiring of its own. The onboarding
+  // *progress* store needs no network at all: it is local DataStore state
+  // that a returning member's `onboardingRemote.fetchProfile()` overwrites
+  // wholesale after login.
+  private val onboardingProgressStore =
+    DataStoreOnboardingProgressStore(context.applicationContext, appScope)
+  val onboardingStore: OnboardingProgressStore = onboardingProgressStore
+
+  /**
+   * Built after [onboardingStore] because it holds on to it: when the server
+   * ends a signed-in session — a refused refresh, a rejected restore — the
+   * previous member's onboarding answers are reset exactly as Settings resets
+   * them on a voluntary log out, so whoever signs in next starts clean.
+   */
+  val accountStore: AccountStore = ApiAccountStore(
+    auth = retrofit.create(AuthService::class.java),
+    tokens = tokens,
+    refresher = tokenRefresher,
+    cache = AccountCache(context.applicationContext),
+    onInvoluntarySignOut = { onboardingProgressStore.reset() },
+  )
+
+  val onboardingRemote: OnboardingRemote =
+    ApiOnboardingRemote(retrofit.create(OnboardingService::class.java))
+
+  /**
+   * Suspends until [onboardingStore]'s first real load — from disk, or
+   * [io.appbeyond.freelance.deep.onboarding.model.OnboardingState.Fresh] on a
+   * clean install — has landed in its `state`. The root view awaits this
+   * alongside [accountStore]'s [AccountStore.restore] before computing the
+   * root phase, so a persisted "onboarding complete" is never missed for one
+   * frame. See `DataStoreOnboardingProgressStore.awaitLoaded`.
+   */
+  suspend fun awaitOnboardingLoaded() = onboardingProgressStore.awaitLoaded()
 }
