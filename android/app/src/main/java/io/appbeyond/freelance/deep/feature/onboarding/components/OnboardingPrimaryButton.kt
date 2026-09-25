@@ -17,16 +17,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.chip
@@ -49,9 +50,8 @@ private val BORDER_WIDTH = 0.5.dp
 
 /** The bloom beneath the pill — iOS's `shadow(lavenderMist 0.35, radius: 20, y: 10)`. */
 private const val BLOOM_ALPHA = 0.35f
-private val BLOOM_SPREAD = 20.dp
+private val BLOOM_RADIUS = 20.dp
 private val BLOOM_OFFSET_Y = 10.dp
-private const val BLOOM_STEPS = 6
 
 /**
  * The soft full-width pill that moves onboarding forward — "Begin",
@@ -60,10 +60,9 @@ private const val BLOOM_STEPS = 6
  * Ported from Deep/Deep/Features/Onboarding/Components/OnboardingPrimaryButton.swift:
  * a moonCream capsule with a white hairline rim, lifted on a lavender bloom.
  * Disabled, it fades to half and ignores taps — the dimmed "Next" before a
- * choice is made, never an error. The bloom is stacked rounded rects, the way
- * `frostedCard` and `DeepChip` draw theirs, because `Modifier.shadow` casts a
- * grey drop shadow rather than a colour bloom and `Modifier.blur` is a no-op
- * below API 31.
+ * choice is made, never an error. The bloom is `Modifier.dropShadow`, as in
+ * `frostedCard` and `DeepChip` — a real coloured blur on every API level,
+ * where `Modifier.shadow` would cast a grey elevation shadow.
  *
  * @param interactive false draws the pill with no pointer handling at all —
  *   for a freeze-frame that touches must fall straight through (the welcome
@@ -124,24 +123,17 @@ fun OnboardingPrimaryButton(
 }
 
 /** The capsule fill and the lavender bloom it floats on. */
-private fun Modifier.pillBloom(): Modifier = drawBehind {
-  val radius = size.height / 2f
-  val spreadPx = BLOOM_SPREAD.toPx()
-  val offsetYPx = BLOOM_OFFSET_Y.toPx()
-
-  for (step in BLOOM_STEPS downTo 1) {
-    val t = step / BLOOM_STEPS.toFloat()
-    val spread = spreadPx * t
-    val bloomAlpha = BLOOM_ALPHA * (1f - t) * (1f - t)
-    drawRoundRect(
-      color = Color.lavenderMist.copy(alpha = bloomAlpha),
-      topLeft = Offset(-spread, offsetYPx - spread),
-      size = Size(size.width + spread * 2f, size.height + spread * 2f),
-      cornerRadius = CornerRadius(radius + spread),
-    )
+private fun Modifier.pillBloom(): Modifier =
+  dropShadow(
+    shape = RoundedCornerShape(percent = 50),
+    shadow = Shadow(
+      radius = BLOOM_RADIUS,
+      color = Color.lavenderMist.copy(alpha = BLOOM_ALPHA),
+      offset = DpOffset(0.dp, BLOOM_OFFSET_Y),
+    ),
+  ).drawBehind {
+    drawRoundRect(color = Color.moonCream, cornerRadius = CornerRadius(size.height / 2f))
   }
-  drawRoundRect(color = Color.moonCream, cornerRadius = CornerRadius(radius))
-}
 
 @Preview(showBackground = true, name = "Primary button")
 @Composable
