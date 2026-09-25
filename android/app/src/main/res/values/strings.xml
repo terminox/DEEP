@@ -36,6 +36,7 @@
   <string name="home_session_card_body">A guided breath, for as long as you have.</string>
   <string name="home_lounge_card_title">Fuku\'s Lounge</string>
   <string name="home_lounge_card_body">The world pauses together.</string>
+  <string name="home_explore_title">Explore</string>
 
   <!-- Deep Session -->
   <string name="session_begin">Begin</string>

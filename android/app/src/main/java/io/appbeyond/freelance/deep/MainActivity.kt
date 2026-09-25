@@ -4,10 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.appbeyond.freelance.deep.feature.appshell.AppRoot
 import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionCoordinator
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
+import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 
 /**
  * The single activity. Everything above this is Compose.
@@ -30,10 +33,27 @@ class MainActivity : ComponentActivity() {
 
     setContent {
       AppRoot(
+        accountStore = dependencies.accountStore,
+        onboardingStore = dependencies.onboardingStore,
+        onboardingRemote = dependencies.onboardingRemote,
+        awaitOnboardingLoaded = dependencies::awaitOnboardingLoaded,
+        language = dependencies.language,
+        flowContent = {
+          OnboardingCoordinator(
+            accountStore = dependencies.accountStore,
+            onboardingStore = dependencies.onboardingStore,
+            remote = dependencies.onboardingRemote,
+          )
+        },
         homeContent = { onOpenDeepSession ->
+          // Keyed on the member, so the personalised "Made for you" shelf
+          // reloads for whoever just signed up or logged in rather than
+          // keeping the feed fetched before their token existed.
+          val account by dependencies.accountStore.account.collectAsStateWithLifecycle()
           GlobalPauseHomeScreen(
             repository = dependencies.pauseHome,
             onOpenDeepSession = onOpenDeepSession,
+            refreshKey = account?.id,
           )
         },
         deepSessionContent = { session, onFinish ->

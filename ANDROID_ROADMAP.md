@@ -146,11 +146,25 @@ work, and pulling any of them in would mean shipping Android features the iPhone
 Deliberately unfinished. These are questions we can see coming but cannot yet state sharply
 enough to answer; each gets written up properly as the work reaches it.
 
-- **How the mini player docks.** iOS uses an OS-provided tab accessory. Android has no equivalent,
-  so this needs its own design pass — scheduled for week 2, before week 3 builds against it.
-- **The onboarding ripple-reveal.** iOS dissolves the welcome screen as an expanding water ripple
-  driven by a Metal shader. Android's `RuntimeShader` is API 33+, so this either degrades to a
-  crossfade below that floor or finds another route.
+- ~~**How the mini player docks.**~~ **Settled in week 2: a floating pill.** A frosted capsule
+  (`frostedCard`) 8dp above `DeepBottomBar`, shown with `AnimatedVisibility` only while a track is
+  loaded; it does not move on scroll, and scrolling screens add bottom padding while it shows.
+  Tap or swipe up opens Now Playing through a shared-element transform; swipe down or predictive
+  back shrinks it back into the pill. Hidden during a Deep Session and Global Pause live. Chosen
+  over a tray fused into the bar (Android-conventional, but dense against Deep's airy bottom edge)
+  and over an iOS-26-style collapsing pill (a nested-scroll inset every screen must track —
+  close to rebuilding the OS bar). The collapse can still layer on later without undoing this.
+- ~~**The onboarding ripple-reveal.**~~ **Settled in week 2:** `RippleReveal.metal` ported
+  one-to-one to AGSL for API 33+; below that the still fades out over the same duration. Not yet
+  seen on a real API 26–32 device — the emulator images here are 35 and 36.
+- **A lost refresh response signs the member out.** deep-api commits the refresh-token rotation
+  before it answers; if the answer never arrives, the client still holds the old token, and
+  presenting it next time reads as theft (`token_reuse`) and revokes the session. Both clients
+  share this. The fix is server-side — a short idempotency window on rotation — not a client
+  change.
+- **Finishing onboarding offline.** Both platforms complete onboarding locally even when the
+  shaping step's `PUT /me/onboarding` fails, so the next online launch hydrates the server's
+  `completed: false` and replays the flow. Parity for now; a pending-sync marker would fix both.
 - **The rounded-font substitute.** Three type tokens use SF Rounded, which Android has no
   equivalent for. Nunito is in place for week 1, but it ships no `tnum` table, and the 96sp session
   numeral rolls as the length slider moves — so either it has uniform figures by default, or that

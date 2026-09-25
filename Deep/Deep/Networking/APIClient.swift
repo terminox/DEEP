@@ -139,7 +139,7 @@ final class APIClient {
     }
 
     guard (200..<300).contains(http.statusCode) else {
-      throw apiError(from: data, status: http.statusCode)
+      throw Self.apiError(from: data, status: http.statusCode)
     }
     return data
   }
@@ -219,11 +219,22 @@ final class APIClient {
     }
   }
 
-  private func apiError(from data: Data, status: Int) -> APIError {
-    if status == 401 { return .unauthorized }
-    if let env = try? decoder.decode(APIErrorEnvelope.self, from: data) {
-      return .http(status: status, code: env.error.code, message: env.error.message)
+  /// A 401 only means "treat as signed out" when the server says the token
+  /// itself is the problem (`unauthorized`, or `token_reuse` from a refresh
+  /// rotation) — or when the body isn't a parseable envelope at all. A 401
+  /// with any other code, e.g. `invalid_credentials` from a bad login
+  /// attempt, is a plain request failure: the caller (a signed-out screen
+  /// like `LogInView`) should show the server's own message, not "Your
+  /// session has ended."
+  nonisolated static func apiError(from data: Data, status: Int) -> APIError {
+    guard let env = try? JSONDecoder().decode(APIErrorEnvelope.self, from: data) else {
+      return status == 401
+        ? .unauthorized
+        : .http(status: status, code: "http_\(status)", message: "Request failed (\(status)).")
     }
-    return .http(status: status, code: "http_\(status)", message: "Request failed (\(status)).")
+    if status == 401, env.error.code == "unauthorized" || env.error.code == "token_reuse" {
+      return .unauthorized
+    }
+    return .http(status: status, code: env.error.code, message: env.error.message)
   }
 }

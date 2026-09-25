@@ -1,6 +1,8 @@
 package io.appbeyond.freelance.deep.shared.components
 
+import android.graphics.Bitmap
 import android.view.TextureView
+import androidx.annotation.OptIn
 import androidx.annotation.RawRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -30,6 +32,10 @@ import androidx.media3.exoplayer.ExoPlayer
  *
  * Under reduced motion the first frame is held rather than played, matching the
  * iOS behaviour for a sustained atmospheric loop.
+ *
+ * @param frameGrabber optional handle a caller keeps to freeze the frame on
+ *   screen right now — the onboarding welcome screen's ripple send-off
+ *   dissolves a still of it (see [LoopingVideoFrameGrabber]).
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -37,6 +43,7 @@ fun LoopingVideoView(
   @RawRes resource: Int,
   modifier: Modifier = Modifier,
   isAnimating: Boolean = true,
+  frameGrabber: LoopingVideoFrameGrabber? = null,
 ) {
   val context = LocalContext.current
 
@@ -76,10 +83,34 @@ fun LoopingVideoView(
     onDispose { player.release() }
   }
 
+  DisposableEffect(frameGrabber) {
+    onDispose { frameGrabber?.view = null }
+  }
+
   AndroidView(
     modifier = modifier,
     factory = { ctx ->
-      TextureView(ctx).also { view -> player.setVideoTextureView(view) }
+      TextureView(ctx).also { view ->
+        player.setVideoTextureView(view)
+        frameGrabber?.view = view
+      }
     },
   )
+}
+
+/**
+ * Freezes whatever frame a [LoopingVideoView] is showing, as a bitmap the size
+ * of the view — so drawing it back over the same bounds lines up pixel for
+ * pixel.
+ *
+ * The Android twin of iOS's `LoopingVideoFrameGrabber`. iOS has to copy a pixel
+ * buffer out of `AVPlayerItemVideoOutput` asynchronously (and bounds the wait,
+ * since a layer shader cannot sample an `AVPlayerLayer`); a `TextureView` hands
+ * its current contents back synchronously, so there is nothing to wait on.
+ */
+class LoopingVideoFrameGrabber {
+  internal var view: TextureView? = null
+
+  /** The frame on screen now, or null before the first frame has rendered. */
+  fun currentFrame(): Bitmap? = view?.takeIf { it.isAvailable }?.bitmap
 }

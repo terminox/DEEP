@@ -59,16 +59,36 @@ sealed class DeepApiException(
      *
      * Ported from `APIClient.apiError(from:status:)`, including the fallback
      * copy for a body that is not the envelope — a proxy's HTML error page, or
-     * an empty 502 from Cloud Run while a revision rolls.
+     * an empty 502 from Cloud Run while a revision rolls — with one deliberate
+     * divergence from iOS: a 401 is only ever [Unauthorized] when it actually
+     * means the session is over.
+     *
+     * deep-api's own auth middleware writes `unauthorized` and `token_reuse`
+     * for a session it is ending; those, and any 401 with no readable envelope,
+     * become [Unauthorized]. Every other 401 — `invalid_credentials` on a bad
+     * login, most notably — is the server answering a specific request rather
+     * than revoking one, so it becomes an ordinary [Http] carrying the server's
+     * own message. That is what lets a login screen show "Incorrect email or
+     * password" instead of "Your session has ended" for someone who was never
+     * signed in. [Http] still implements [io.appbeyond.freelance.deep.auth.HttpStatusCarrying]
+     * with `status = 401`, so [io.appbeyond.freelance.deep.auth.TokenRefresher]
+     * still reads it as a rejection.
      */
     fun of(status: Int, body: String?): DeepApiException {
-      if (status == 401) return Unauthorized()
-
       val envelope = body
         ?.takeIf { it.isNotBlank() }
         ?.let { text ->
           runCatching { DeepJson.decodeFromString(ErrorEnvelope.serializer(), text) }.getOrNull()
         }
+
+      if (status == 401) {
+        val errorBody = envelope?.error
+        return if (errorBody != null && errorBody.code != "unauthorized" && errorBody.code != "token_reuse") {
+          Http(status = status, code = errorBody.code, serverMessage = errorBody.message)
+        } else {
+          Unauthorized()
+        }
+      }
 
       return if (envelope != null) {
         Http(status = status, code = envelope.error.code, serverMessage = envelope.error.message)

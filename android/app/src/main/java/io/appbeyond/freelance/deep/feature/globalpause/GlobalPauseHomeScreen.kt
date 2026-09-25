@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -39,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
+import io.appbeyond.freelance.deep.networking.CategoryDto
 import io.appbeyond.freelance.deep.networking.CollectionDto
 import io.appbeyond.freelance.deep.networking.PauseHomeDto
 import io.appbeyond.freelance.deep.networking.PauseHomeRepository
@@ -77,21 +80,29 @@ sealed interface HomeState {
  * world's pause, and the doorway into today's breath — and the server-composed
  * shelves follow.
  *
- * `v0.0.1` carries the hero, both cards and the first shelf. The explore grid and
- * the personalised shelf arrive in week 2; the shape here already holds them.
+ * `v0.0.1` carried the hero, both cards and the first shelf. `v0.0.2` renders
+ * every section the server sends, in server order — including the
+ * personalised "Made for you" shelf, which is a `PauseSectionDto` like any
+ * other — plus the Explore category grid below them.
  *
  * Ported from Deep/Deep/Features/GlobalPause/Components/GlobalPauseHomeView.swift.
+ *
+ * @param refreshKey an opaque value the load keys on alongside [repository] and
+ *   the retry counter — pass the signed-in account id (or `null` when signed
+ *   out) so a switched account reloads the feed and picks up its own
+ *   personalised shelf, rather than continuing to show the previous member's.
  */
 @Composable
 fun GlobalPauseHomeScreen(
   repository: PauseHomeRepository?,
   onOpenDeepSession: (DeepSession) -> Unit,
   modifier: Modifier = Modifier,
+  refreshKey: Any? = null,
 ) {
   var state by remember { mutableStateOf<HomeState>(HomeState.Loading) }
   var attempt by remember { mutableStateOf(0) }
 
-  LaunchedEffect(repository, attempt) {
+  LaunchedEffect(repository, refreshKey, attempt) {
     if (repository == null) return@LaunchedEffect
     state = HomeState.Loading
     state = when (val result = repository.load()) {
@@ -151,10 +162,17 @@ fun GlobalPauseHomeScreen(
         }
 
         is HomeState.Loaded -> {
-          // Week one shows the first shelf. The rest of the sections and the
-          // explore grid land in week 2 — the loop below already carries them.
-          items(current.home.sections.take(1), key = { it.key }) { section ->
+          // Every server-composed shelf, in server order — "Made for you" is
+          // just another PauseSectionDto (its `personalized` flag is what the
+          // server used to decide whether to include it at all).
+          items(current.home.sections, key = { it.key }) { section ->
             Shelf(section, Modifier.offset(y = -HERO_OVERLAP))
+          }
+
+          if (current.home.categories.isNotEmpty()) {
+            item(key = "explore") {
+              ExploreSection(current.home.categories, Modifier.offset(y = -HERO_OVERLAP))
+            }
           }
         }
       }
@@ -269,10 +287,101 @@ private fun CollectionTile(collection: CollectionDto, modifier: Modifier = Modif
   }
 }
 
+/**
+ * The home's "Explore" section — a two-column grid of category tiles, one per
+ * backend category: the category's lead-collection artwork under a scrim with
+ * the category name laid over it. `LazyColumn` cannot nest another lazy grid
+ * inside a single item without a fixed height, so this lays the tiles out with
+ * a plain `Column` of `Row`s instead — the category count is small enough that
+ * nothing here needs to be lazy.
+ *
+ * Ported from Deep/Deep/Features/GlobalPause/Components/ExploreByContentSection.swift.
+ * Tapping a tile does nothing yet — collection-list detail is week 3, matching
+ * how [CollectionTile] above has no tap handler either.
+ */
+@Composable
+private fun ExploreSection(categories: List<CategoryDto>, modifier: Modifier = Modifier) {
+  Column(
+    modifier.padding(top = Dp.rhythm),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    Text(
+      text = stringResource(R.string.home_explore_title),
+      style = DeepType.sectionTitle,
+      color = Color.deepPlum,
+      modifier = Modifier.padding(horizontal = Dp.edge),
+    )
+
+    Column(
+      Modifier.padding(horizontal = Dp.edge),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      categories.chunked(2).forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          row.forEach { category ->
+            ExploreTile(category, Modifier.weight(1f))
+          }
+          // An odd category out fills its row alone; the empty weight keeps
+          // it at half width rather than stretching to fill the row.
+          if (row.size == 1) {
+            Spacer(Modifier.weight(1f))
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun ExploreTile(category: CategoryDto, modifier: Modifier = Modifier) {
+  val artwork = category.collections?.firstOrNull()
+  Box(
+    modifier
+      .height(EXPLORE_TILE_HEIGHT)
+      .clip(RoundedCornerShape(Dp.tile)),
+  ) {
+    ArtworkImage(
+      url = artwork?.imageUrl,
+      palette = artwork?.palette,
+      contentDescription = category.title,
+      modifier = Modifier.fillMaxSize(),
+    )
+    // Scrim so the title stays legible over a photograph.
+    Box(
+      Modifier
+        .fillMaxSize()
+        .background(
+          Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.deepPlum.copy(alpha = 0.5f)),
+          ),
+        ),
+    )
+    Text(
+      text = category.title,
+      style = DeepType.displayTitle,
+      color = Color.White,
+      modifier = Modifier
+        .align(Alignment.BottomStart)
+        .padding(14.dp),
+    )
+  }
+}
+
 @Composable
 private fun HomeSkeleton(modifier: Modifier = Modifier) {
   Column(
     modifier.padding(top = Dp.rhythm),
+    verticalArrangement = Arrangement.spacedBy(Dp.rhythm),
+  ) {
+    repeat(SKELETON_SHELF_COUNT) { ShelfSkeleton() }
+    ExploreSkeleton()
+  }
+}
+
+@Composable
+private fun ShelfSkeleton(modifier: Modifier = Modifier) {
+  Column(
+    modifier,
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     SkeletonBlock(
@@ -290,6 +399,36 @@ private fun HomeSkeleton(modifier: Modifier = Modifier) {
         SkeletonBlock(
           modifier = Modifier
             .size(TILE_WIDTH)
+            .clip(RoundedCornerShape(Dp.tile))
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun ExploreSkeleton(modifier: Modifier = Modifier) {
+  Column(
+    modifier.padding(horizontal = Dp.edge),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    SkeletonBlock(
+      modifier = Modifier
+        .width(100.dp)
+        .height(18.dp)
+    )
+    repeat(EXPLORE_SKELETON_ROWS) {
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        SkeletonBlock(
+          modifier = Modifier
+            .weight(1f)
+            .height(EXPLORE_TILE_HEIGHT)
+            .clip(RoundedCornerShape(Dp.tile))
+        )
+        SkeletonBlock(
+          modifier = Modifier
+            .weight(1f)
+            .height(EXPLORE_TILE_HEIGHT)
             .clip(RoundedCornerShape(Dp.tile))
         )
       }
@@ -349,9 +488,40 @@ private fun HomeFailed(
 
 private val HERO_OVERLAP = 80.dp
 private val TILE_WIDTH = 160.dp
+private val EXPLORE_TILE_HEIGHT = 92.dp
+
+/** Placeholder shelves shown while loading — real content decides the real count. */
+private const val SKELETON_SHELF_COUNT = 2
+private const val EXPLORE_SKELETON_ROWS = 2
 
 @Preview(showBackground = true, name = "Loading")
 @Composable
 private fun GlobalPauseHomeLoadingPreview() {
   DeepTheme { GlobalPauseHomeScreen(repository = null, onOpenDeepSession = {}) }
+}
+
+@Preview(showBackground = true, name = "Explore section")
+@Composable
+private fun ExploreSectionPreview() {
+  DeepTheme {
+    Column(Modifier.fillMaxWidth().background(Color.moonCream)) {
+      ExploreSection(
+        categories = listOf(
+          CategoryDto(id = "calm", slug = "calm", title = "Calm"),
+          CategoryDto(id = "morning", slug = "morning", title = "Morning"),
+          CategoryDto(id = "sleep", slug = "sleep", title = "Sleep"),
+        ),
+      )
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Home skeleton")
+@Composable
+private fun HomeSkeletonPreview() {
+  DeepTheme {
+    Column(Modifier.fillMaxWidth().background(Color.moonCream)) {
+      HomeSkeleton()
+    }
+  }
 }
