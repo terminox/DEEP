@@ -1,0 +1,204 @@
+/* Deep design tokens for the web. Mirrors the iOS source of truth, Deep/Deep/Theme/DeepTheme.swift. */
+
+:root {
+  /* MARK: Palette */
+  --lavender-mist: #b8a7e8;
+  --soft-lilac: #d4c5f0;
+  --blush-powder: #f4c9d4;
+  --sky-wash: #c5d8f0;
+  --peach-cloud: #f5d9c4;
+  --moon-cream: #fbf7ff;
+  --deep-plum: #3d3654;
+  --drift-grey: #8b82a8;
+  --dusk-rose: #c25e6e;
+  --iris-dusk: #9a8cce;
+
+  /* MARK: Garden palette (GardenPalette.swift) */
+  --meadow: #cfe1c6;
+  --sage: #a5c69e;
+  --fern: #739d78;
+  --sunbeam: #b5954a;
+
+  /* MARK: Surfaces */
+  --frost: rgb(255 255 255 / 0.55);
+  --frost-rim: rgb(255 255 255 / 0.45);
+  --frost-shadow: 0 12px 24px rgb(from var(--lavender-mist) r g b / 0.18);
+  --bloom-shadow: 0 24px 80px rgb(from var(--lavender-mist) r g b / 0.08);
+  --atmosphere: linear-gradient(
+    180deg,
+    var(--moon-cream) 0%,
+    rgb(from var(--soft-lilac) r g b / 0.55) 40%,
+    rgb(from var(--blush-powder) r g b / 0.45) 75%,
+    rgb(from var(--peach-cloud) r g b / 0.3) 100%
+  );
+
+  /* MARK: Typography */
+  --serif: 'Cormorant Garamond', 'Fraunces', Georgia, serif;
+  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --display: 56px;
+  --h1: 32px;
+  --h2: 24px;
+  --h3: 18px;
+  --body: 16px;
+  --caption: 13px;
+  --micro: 11px;
+
+  /* MARK: Motion */
+  --exhale: cubic-bezier(0.32, 0, 0.36, 1);
+  --exhale-length: 6s;
+  --inhale-length: 4s;
+  --drift: 800ms;
+  --bloom-curve: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --bloom: 700ms;
+  --hush-curve: cubic-bezier(0.3, 0, 0.2, 1);
+  --hush: 1050ms;
+  --ripple-curve: cubic-bezier(0.25, 0.45, 0.35, 1);
+  --ripple: 1350ms;
+  --atmosphere-drift: 14s;
+
+  /* MARK: Radii */
+  --card: 24px;
+  --tile: 20px;
+  --pill: 999px;
+
+  /* MARK: Spacing */
+  --rhythm: 24px;
+  --edge: 20px;
+  --section-gap: clamp(96px, 14vw, 180px);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 96px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--moon-cream);
+  color: var(--deep-plum);
+  font-family: var(--sans);
+  font-size: var(--body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+img,
+video {
+  max-width: 100%;
+  display: block;
+}
+
+/* MARK: Shared recipes */
+
+/* FrostedCardStyle.swift: white 0.55 over a blur, a 0.5pt rim, a soft lavender shadow. */
+.frosted {
+  background: var(--frost);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2);
+  backdrop-filter: blur(30px) saturate(1.2);
+  border: 0.5px solid var(--frost-rim);
+  border-radius: var(--card);
+  box-shadow: var(--frost-shadow);
+}
+
+/* Bloom: content appears by scaling 0.92 to 1 with opacity, once, as it enters the viewport. */
+.bloom {
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity var(--bloom) var(--bloom-curve),
+    transform var(--bloom) var(--bloom-curve);
+  transition-delay: var(--bloom-delay, 0ms);
+}
+
+.bloom.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloom {
+    transform: none;
+    transition: opacity var(--bloom) linear;
+  }
+}
+
+/* Section scaffolding shared by every feature section. */
+.eyebrow {
+  margin: 0;
+  font-size: var(--micro);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--drift-grey);
+}
+
+.headline {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(40px, 6vw, 72px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+}
+
+.headline em {
+  font-style: italic;
+  color: var(--iris-dusk);
+}
+
+.lede {
+  margin: 0;
+  max-width: 34em;
+  font-size: clamp(16px, 1.3vw, 18px);
+  line-height: 1.65;
+  color: rgb(from var(--deep-plum) r g b / 0.78);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: var(--pill);
+  font: 500 15px/1 var(--sans);
+  color: var(--deep-plum);
+  text-decoration: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
+  box-shadow: 0 12px 32px rgb(from var(--lavender-mist) r g b / 0.4);
+  transition: transform var(--drift) var(--exhale);
+}
+
+.pill:active {
+  transform: scale(0.97);
+}
+
+.pill--ghost {
+  background: rgb(255 255 255 / 0.5);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: none;
+  border: 0.5px solid var(--frost-rim);
+}
+
+:focus-visible {
+  outline: 2px solid var(--iris-dusk);
+  outline-offset: 3px;
+}

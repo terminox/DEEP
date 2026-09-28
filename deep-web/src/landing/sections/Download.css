@@ -1,0 +1,93 @@
+.dl {
+  padding: var(--section-gap) var(--edge) 0;
+}
+
+.dl-stage {
+  position: relative;
+  max-width: 1240px;
+  min-height: min(88vh, 820px);
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 40px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.dl-stage > .atmosphere {
+  z-index: -2;
+}
+
+/* The BreathingOrb recipe at rest scale, breathing 4s in and 6s out behind the words. */
+.dl-orb {
+  position: absolute;
+  z-index: -1;
+  width: min(78vw, 640px);
+  aspect-ratio: 1;
+  animation: dl-breathe calc(var(--inhale-length) + var(--exhale-length)) var(--exhale) infinite;
+}
+
+.dl-orb-body {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 42%,
+    rgb(255 255 255 / 0.95) 0%,
+    rgb(from var(--soft-lilac) r g b / 0.75) 38%,
+    rgb(from var(--lavender-mist) r g b / 0.45) 58%,
+    rgb(from var(--sky-wash) r g b / 0.2) 72%,
+    transparent 100%
+  );
+  opacity: 0.85;
+}
+
+@keyframes dl-breathe {
+  0% {
+    transform: scale(0.82);
+  }
+  40% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(0.82);
+  }
+}
+
+.dl-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  max-width: 560px;
+  padding: 96px var(--edge);
+  text-align: center;
+}
+
+.dl-content .lede {
+  margin-inline: auto;
+}
+
+.dl-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(52px, 8vw, 104px);
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 600px) {
+  .dl-stage {
+    border-radius: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dl-orb {
+    animation: none;
+    transform: scale(0.9);
+  }
+}

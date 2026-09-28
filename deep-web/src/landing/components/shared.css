@@ -1,0 +1,158 @@
+/* MARK: Deep mark */
+.logo-mark {
+  display: block;
+  flex: none;
+}
+
+.logo-mark--glow {
+  filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 7px rgb(from currentColor r g b / 0.55));
+}
+
+.wordmark {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, var(--lavender-mist), var(--iris-dusk));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding-right: 0.08em; /* the italic's overhang */
+}
+
+/* MARK: Store badges */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.badges--center {
+  justify-content: center;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 24px 0 20px;
+  border-radius: var(--pill);
+  color: var(--deep-plum);
+  text-decoration: none;
+  transition: transform var(--drift) var(--exhale);
+}
+
+.badge:active {
+  transform: scale(0.97);
+}
+
+.badge--store {
+  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
+  box-shadow: 0 14px 36px rgb(from var(--lavender-mist) r g b / 0.45);
+}
+
+.badge--soon {
+  background: rgb(255 255 255 / 0.5);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 0.5px solid var(--frost-rim);
+  color: var(--drift-grey);
+  cursor: default;
+}
+
+.badge-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.badge-small {
+  font-size: var(--micro);
+  letter-spacing: 0.02em;
+}
+
+.badge-big {
+  font-size: 19px;
+  font-weight: 500;
+}
+
+/* MARK: Atmosphere (AtmosphereBackground.swift) */
+.atmosphere {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--moon-cream);
+  background-image: var(--atmosphere);
+}
+
+.atmosphere-orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  opacity: 0.55;
+  animation: atmosphere-drift var(--atmosphere-drift) ease-in-out infinite alternate;
+}
+
+/* Sizes and offsets are the iOS points scaled up for a desktop canvas. */
+.atmosphere-orb--lavender {
+  width: min(62vw, 560px);
+  aspect-ratio: 1;
+  background: var(--lavender-mist);
+  filter: blur(90px);
+  --rest: translate(-95%, -120%);
+  --drift-to: translate(-80%, -130%);
+}
+
+.atmosphere-orb--blush {
+  width: min(52vw, 460px);
+  aspect-ratio: 1;
+  background: var(--blush-powder);
+  filter: blur(100px);
+  --rest: translate(10%, -105%);
+  --drift-to: translate(22%, -90%);
+}
+
+.atmosphere-orb--sky {
+  width: min(46vw, 420px);
+  aspect-ratio: 1;
+  background: var(--sky-wash);
+  filter: blur(90px);
+  --rest: translate(-90%, 45%);
+  --drift-to: translate(-102%, 55%);
+}
+
+@keyframes atmosphere-drift {
+  from {
+    transform: var(--rest);
+  }
+  to {
+    transform: var(--drift-to);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmosphere-orb {
+    animation: none;
+    transform: var(--rest);
+  }
+}
+
+/* MARK: Section scaffolding */
+.section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.section-head--center {
+  align-items: center;
+  text-align: center;
+}
+
+.section-head--center .lede {
+  margin-inline: auto;
+}

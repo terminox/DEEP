@@ -1,0 +1,696 @@
+/* Compassion Portfolio: the iOS portfolio home (CompassionPortfolioHomeView.swift) laid out as a landing moment. */
+
+.cp {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  padding: var(--section-gap) var(--edge);
+}
+
+/* The atmosphere melts into the page at both edges so the section has no seam. */
+.cp-atmosphere {
+  z-index: -1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.cp-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'head'
+    'mine'
+    'pool'
+    'causes'
+    'field';
+  gap: calc(var(--rhythm) * 1.5);
+}
+
+.cp-head {
+  grid-area: head;
+  margin-bottom: var(--rhythm);
+}
+
+.cp-mine {
+  grid-area: mine;
+}
+
+.cp-pool {
+  grid-area: pool;
+}
+
+.cp-causes {
+  grid-area: causes;
+  min-width: 0;
+  margin-top: var(--rhythm);
+}
+
+.cp-field {
+  grid-area: field;
+  margin-top: var(--rhythm);
+}
+
+/* MARK: Shared type */
+
+.cp-micro {
+  margin: 0;
+  font-size: var(--micro);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--drift-grey);
+}
+
+.cp-subhead {
+  margin: 0 0 18px;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(26px, 2.6vw, 32px);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--deep-plum);
+}
+
+.cp-caption {
+  margin: 0;
+  font-size: var(--caption);
+  color: var(--drift-grey);
+  text-align: center;
+}
+
+.cp-count {
+  display: inline-block;
+  animation: cp-settle-in var(--bloom) var(--bloom-curve);
+}
+
+@keyframes cp-settle-in {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* MARK: Motif (CompassionMotif.swift) */
+
+.cp-motif {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--tile);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.35);
+}
+
+.cp-motif-glyph {
+  width: 42%;
+  height: 42%;
+  color: rgb(255 255 255 / 0.92);
+  filter: drop-shadow(0 3px 8px rgb(from var(--deep-plum) r g b / 0.18));
+}
+
+.cp-motif-glyph--flat {
+  filter: none;
+  color: rgb(255 255 255 / 0.95);
+}
+
+/* MARK: My hearts (CompassionPortfolioCard.swift) */
+
+.cp-mine {
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 3vw, 36px);
+  padding: clamp(22px, 3vw, 36px);
+}
+
+.cp-mine-halo {
+  flex: none;
+  width: clamp(116px, 13vw, 184px);
+}
+
+.cp-halo {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+}
+
+.cp-halo > * {
+  grid-area: 1 / 1;
+}
+
+.cp-halo-ring {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.cp-ring-track {
+  fill: none;
+  stroke: rgb(from var(--lavender-mist) r g b / 0.16);
+}
+
+.cp-halo-arc {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1800ms var(--exhale);
+}
+
+.cp-halo-arc--bloom {
+  opacity: 0.5;
+}
+
+/* A closed day settles into a glow rather than announcing itself. */
+.cp-halo.is-full .cp-halo-ring {
+  filter: drop-shadow(0 0 7px rgb(from var(--blush-powder) r g b / 0.55));
+}
+
+/* Portrait inset by gap + ring width: 12 of 100. */
+.cp-halo-portrait {
+  margin: 12%;
+  border-radius: 50%;
+}
+
+.cp-halo-portrait .cp-motif-glyph {
+  width: 40%;
+  height: 40%;
+}
+
+/* Halo pulse: a single slow ring outward as a heart leaves. */
+.cp-halo-pulse {
+  margin: 12%;
+  border-radius: 50%;
+  border: 1.5px solid rgb(from var(--blush-powder) r g b / 0.9);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cp-mine-halo.is-sending .cp-halo-pulse {
+  animation: cp-pulse var(--ripple) var(--ripple-curve);
+}
+
+@keyframes cp-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+.cp-mine-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cp-balance {
+  margin: 0 0 6px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  font-family: var(--serif);
+  font-weight: 300;
+  color: var(--deep-plum);
+  letter-spacing: 0.02em;
+}
+
+.cp-balance-num {
+  font-size: clamp(56px, 6.4vw, 88px);
+  line-height: 0.95;
+  animation: cp-settle-in var(--bloom) var(--bloom-curve);
+}
+
+.cp-balance-word {
+  font-size: clamp(22px, 2.2vw, 28px);
+  font-style: italic;
+  color: var(--iris-dusk);
+}
+
+.cp-fact {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--caption);
+  color: var(--drift-grey);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-fact strong {
+  font-weight: 600;
+  color: var(--deep-plum);
+}
+
+.cp-fact-glyph {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.cp-fact-glyph--blush {
+  color: var(--blush-powder);
+}
+
+.cp-fact-glyph--rose {
+  color: rgb(from var(--dusk-rose) r g b / 0.75);
+}
+
+.cp-fact-glyph--lavender {
+  color: var(--lavender-mist);
+}
+
+/* MARK: Community pool (CommunityPoolCard.swift) */
+
+.cp-pool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: clamp(22px, 3vw, 36px);
+}
+
+.cp-pool-halo {
+  position: relative;
+  width: clamp(168px, 17vw, 216px);
+  aspect-ratio: 1;
+  display: grid;
+  margin: 4px 0;
+}
+
+.cp-pool-halo > * {
+  grid-area: 1 / 1;
+}
+
+.cp-pool-ring {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.cp-pool-arc {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dasharray 1800ms var(--exhale);
+}
+
+.cp-pool-centre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cp-pool-heart {
+  width: 16px;
+  height: 16px;
+  color: var(--blush-powder);
+}
+
+.cp-pool-total {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(38px, 3.6vw, 48px);
+  line-height: 1;
+  color: var(--deep-plum);
+  letter-spacing: 0.02em;
+}
+
+/* The pebble: a tonal inner panel, never a rule. */
+.cp-legend {
+  list-style: none;
+  margin: 0;
+  width: 100%;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: var(--tile);
+  background: rgb(255 255 255 / 0.42);
+}
+
+.cp-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cp-legend-chip {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.cp-legend-chip .cp-motif-glyph {
+  width: 56%;
+  height: 56%;
+}
+
+.cp-legend-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  color: var(--deep-plum);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cp-legend-share {
+  width: 40px;
+  text-align: right;
+  font-size: var(--caption);
+  font-weight: 600;
+  color: var(--deep-plum);
+  font-variant-numeric: tabular-nums;
+}
+
+/* MARK: Causes shelf (CategoryTile.swift) */
+
+.cp-shelf {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--edge);
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--edge));
+  padding: 8px var(--edge) 36px;
+}
+
+.cp-shelf::-webkit-scrollbar {
+  display: none;
+}
+
+.cp-shelf-item {
+  flex: none;
+  display: flex;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 1240px) {
+  .cp-shelf {
+    justify-content: space-between;
+  }
+}
+
+.cp-tile {
+  width: 224px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 0% 55%, rgb(from var(--cp-tint) r g b / 0.2), transparent 70%),
+    var(--frost);
+}
+
+.cp-tile-banner {
+  position: relative;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--card) var(--card) 0 0;
+}
+
+.cp-tile-glyph {
+  width: 61px;
+  height: 61px;
+  color: rgb(255 255 255 / 0.92);
+  filter: drop-shadow(0 3px 8px rgb(from var(--deep-plum) r g b / 0.18));
+}
+
+/* A heart arriving: one slow halo from the glyph, once. */
+.cp-tile-pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 76px;
+  height: 76px;
+  margin: -38px 0 0 -38px;
+  border-radius: 50%;
+  border: 1.5px solid rgb(255 255 255 / 0.9);
+  opacity: 0;
+  pointer-events: none;
+  animation: cp-pulse 1600ms var(--ripple-curve);
+}
+
+.cp-tile-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 16px;
+}
+
+.cp-tile-name {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--deep-plum);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cp-tile-tagline {
+  margin: 0;
+  min-height: calc(2 * 1.45em);
+  font-size: var(--caption);
+  line-height: 1.45;
+  color: var(--drift-grey);
+}
+
+.cp-tile-facts {
+  margin: 12px 0 18px;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-radius: var(--tile);
+  background: rgb(255 255 255 / 0.42);
+}
+
+.cp-tile-facts .cp-fact {
+  font-weight: 500;
+  color: var(--deep-plum);
+}
+
+.cp-tile-facts .cp-fact-glyph {
+  width: 11px;
+  height: 11px;
+}
+
+.cp-give {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border: 0;
+  border-radius: var(--pill);
+  font: 500 15px/1 var(--sans);
+  color: var(--deep-plum);
+  cursor: pointer;
+  background: linear-gradient(90deg, var(--lavender-mist), var(--blush-powder));
+  transition: transform var(--drift) var(--exhale);
+}
+
+.cp-give:active {
+  transform: scale(0.97);
+}
+
+.cp-give-glyph {
+  width: 14px;
+  height: 14px;
+  color: rgb(255 255 255 / 0.95);
+}
+
+/* MARK: Field report (FieldReportRow.swift) */
+
+.cp-report {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: clamp(18px, 2.4vw, 26px);
+}
+
+.cp-report-thumb {
+  flex: none;
+  width: clamp(64px, 7vw, 84px);
+  aspect-ratio: 1;
+}
+
+.cp-report-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cp-report-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(22px, 2vw, 26px);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--deep-plum);
+}
+
+.cp-report-blurb {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgb(from var(--deep-plum) r g b / 0.72);
+}
+
+.cp-report-meta {
+  margin: 6px 0 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--caption);
+  color: var(--drift-grey);
+}
+
+.cp-report-place {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-report-pin {
+  width: 13px;
+  height: 13px;
+  color: var(--lavender-mist);
+}
+
+.cp-note {
+  margin: 18px 0 0;
+  max-width: 40em;
+  font-size: var(--caption);
+  line-height: 1.6;
+  color: var(--drift-grey);
+}
+
+/* MARK: The travelling heart */
+
+.cp-traveller {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  width: 30px;
+  height: 30px;
+  opacity: 0;
+  pointer-events: none;
+  color: var(--blush-powder);
+  filter: drop-shadow(0 0 8px rgb(from var(--blush-powder) r g b / 0.9))
+    drop-shadow(0 4px 10px rgb(from var(--lavender-mist) r g b / 0.5));
+}
+
+.cp-traveller svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-halo-arc,
+  .cp-pool-arc {
+    transition: none;
+  }
+
+  .cp-mine-halo.is-sending .cp-halo-pulse,
+  .cp-tile-pulse {
+    animation: none;
+  }
+}
+
+/* MARK: Wide layout */
+
+@media (min-width: 960px) {
+  .cp-inner {
+    grid-template-columns: minmax(0, 11fr) minmax(0, 13fr);
+    grid-template-areas:
+      'head head'
+      'mine pool'
+      'causes causes'
+      'field field';
+    column-gap: calc(var(--rhythm) * 1.5);
+    row-gap: calc(var(--rhythm) * 1.5);
+  }
+
+  .cp-head {
+    margin-bottom: calc(var(--rhythm) * 1.5);
+  }
+
+  .cp-causes,
+  .cp-field {
+    margin-top: calc(var(--rhythm) * 2);
+  }
+
+  /* Mine, then ours, level with each other: the pool lays its ring beside the legend. */
+  .cp-pool {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'label label'
+      'ring legend'
+      'caption caption';
+    align-items: center;
+    column-gap: clamp(28px, 3.4vw, 48px);
+    row-gap: 22px;
+  }
+
+  .cp-pool > .cp-micro {
+    grid-area: label;
+    text-align: center;
+  }
+
+  .cp-pool-halo {
+    grid-area: ring;
+  }
+
+  .cp-legend {
+    grid-area: legend;
+  }
+
+  .cp-pool > .cp-caption {
+    grid-area: caption;
+  }
+
+  .cp-field {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-areas:
+      'sub sub'
+      'report note';
+    column-gap: calc(var(--rhythm) * 1.5);
+    align-items: center;
+  }
+
+  .cp-field > .cp-subhead {
+    grid-area: sub;
+  }
+
+  .cp-report {
+    grid-area: report;
+  }
+
+  .cp-note {
+    grid-area: note;
+    margin: 0;
+  }
+}
