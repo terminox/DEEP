@@ -1,5 +1,4 @@
+.env*
 node_modules
 dist
-.env*.local
-.vercel
 scripts/.hero-work
