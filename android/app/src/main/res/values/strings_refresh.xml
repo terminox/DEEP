@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pull-to-refresh for hero-led screens (shared/components/HeroRefreshable.kt).
+  Kept in their own file while strings.xml is being merged; fold them in with
+  the next pass over it. Keys mirror the iOS catalog entries "Refresh" and
+  "Refreshing".
+-->
+<resources>
+  <!-- The accessibility action that stands in for the pull gesture. -->
+  <string name="refresh_action">Refresh</string>
+  <!-- Spoken for the cue while a refresh is in flight. -->
+  <string name="refresh_in_progress">Refreshing</string>
+</resources>

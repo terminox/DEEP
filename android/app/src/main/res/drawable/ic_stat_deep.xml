@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The status-bar mark for Deep Sound's media notification: the ring and dot of
+  the Deep logo, as in ic_launcher_foreground.xml.
+
+  Not a copy of that drawable. Status-bar icons are alpha masks — the system
+  throws the colour away and keeps only the shape — so this one is pure white,
+  and at 24dp the launcher's 2% hairline ring would vanish, so the ring is
+  thickened until it survives the smallest status bar.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+  <!-- Ring: radius 9, stroke 2 — the thinnest line that still reads at 24dp. -->
+  <path
+      android:strokeColor="#FFFFFFFF"
+      android:strokeWidth="2"
+      android:fillColor="#00000000"
+      android:pathData="M 12,3 A 9,9 0 1 1 11.99,3 Z" />
+
+  <!-- Dot: the logo's 13% dot, scaled to the ring. -->
+  <path
+      android:fillColor="#FFFFFFFF"
+      android:pathData="M 12,9 A 3,3 0 1 1 11.99,9 Z" />
+
+</vector>

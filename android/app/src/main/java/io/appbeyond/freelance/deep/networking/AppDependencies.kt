@@ -4,6 +4,12 @@ import android.content.Context
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.auth.TokenStoring
 import io.appbeyond.freelance.deep.config.AppConfig
+import io.appbeyond.freelance.deep.feature.deepsound.model.ListenRules
+import io.appbeyond.freelance.deep.feature.deepsound.player.ApiTrackListenReporter
+import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlayer
+import io.appbeyond.freelance.deep.feature.deepsound.player.TrackListenReporting
+import io.appbeyond.freelance.deep.feature.deepsound.store.ApiSoundLibrary
+import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountCache
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.ApiAccountStore
@@ -11,10 +17,16 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.ApiOnboardingRemote
 import io.appbeyond.freelance.deep.feature.onboarding.store.DataStoreOnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
+import io.appbeyond.freelance.deep.feature.playlist.store.ApiPlaylistStore
+import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistCache
+import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
@@ -87,9 +99,8 @@ class AppDependencies(context: Context) {
 
   /**
    * Process-lifetime scope for work that must outlive any single screen —
-   * right now, only [onboardingStore]'s eager DataStore load. `SupervisorJob`
-   * so a failure loading one store's persisted state can never cancel
-   * another's.
+   * [onboardingStore]'s eager DataStore load, and the fire-and-forget listen
+   * reports. `SupervisorJob` so a failure in one can never cancel another.
    */
   private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -130,4 +141,64 @@ class AppDependencies(context: Context) {
    * frame. See `DataStoreOnboardingProgressStore.awaitLoaded`.
    */
   suspend fun awaitOnboardingLoaded() = onboardingProgressStore.awaitLoaded()
+
+  // Week three: Deep Sound. The player is process-lifetime, like iOS's
+  // `soundPlayer`, so the mini player and the lock screen outlive every screen
+  // that started a track. The audio itself plays in `DeepSoundService`, which
+  // reads `http`, `trackListens` and `accountStore` from here when the system
+  // starts it — it runs in this process, so it shares this graph rather than
+  // building a second one.
+
+  /**
+   * Told by the service when a track plays through to its natural end. Rides
+   * the one Retrofit, so the report carries the member's timezone and the award
+   * lands on their local day, as iOS's `reportListen` does.
+   */
+  val trackListens: TrackListenReporting = ApiTrackListenReporter(
+    service = retrofit.create(SoundListensService::class.java),
+    scope = appScope,
+  )
+
+  /**
+   * The one player. Connects to the service lazily, on the first track, so a
+   * member who never opens Deep Sound never starts it.
+   */
+  val soundPlayer: SoundPlayer = SoundPlayer(context.applicationContext)
+
+  private val soundService: SoundService = retrofit.create(SoundService::class.java)
+
+  /** The shelves and the lyrics. `/sound/home` is anonymous-tolerant, like `pauseHome`. */
+  val soundLibrary: SoundLibrary = ApiSoundLibrary(soundService)
+
+  /**
+   * The member's saved sounds, cached on disk so the You tab opens on them
+   * offline. Hydrates from that cache on [appScope] as it is built.
+   */
+  val playlistStore: PlaylistStore = ApiPlaylistStore(
+    service = soundService,
+    cache = PlaylistCache(context.applicationContext),
+    scope = appScope,
+  )
+
+  init {
+    // A member signing out takes their queue and their saved sounds with them:
+    // the next person on this phone must not find the last one's track in the
+    // mini player, on the lock screen, or in the You tab. Watched here, not in Settings, because a session can also
+    // end server-side (a refused refresh) with no screen involved.
+    // `ListenRules.shouldClearPlayer` decides which changes count — never a
+    // first sign-in, always a sign-out or a switch.
+    appScope.launch(Dispatchers.Main) {
+      var before: String? = null
+      accountStore.account
+        .map { it?.id }
+        .distinctUntilChanged()
+        .collect { after ->
+          if (ListenRules.shouldClearPlayer(before, after)) {
+            soundPlayer.clear()
+            playlistStore.resetLocalState()
+          }
+          before = after
+        }
+    }
+  }
 }

@@ -9,6 +9,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import io.appbeyond.freelance.deep.feature.appshell.AppRoot
 import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionCoordinator
+import io.appbeyond.freelance.deep.feature.deepsound.player.play
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 
@@ -38,6 +39,9 @@ class MainActivity : ComponentActivity() {
         onboardingRemote = dependencies.onboardingRemote,
         awaitOnboardingLoaded = dependencies::awaitOnboardingLoaded,
         language = dependencies.language,
+        soundPlayer = dependencies.soundPlayer,
+        soundLibrary = dependencies.soundLibrary,
+        playlistStore = dependencies.playlistStore,
         flowContent = {
           OnboardingCoordinator(
             accountStore = dependencies.accountStore,
@@ -45,14 +49,18 @@ class MainActivity : ComponentActivity() {
             remote = dependencies.onboardingRemote,
           )
         },
-        homeContent = { onOpenDeepSession ->
+        homeContent = { actions ->
           // Keyed on the member, so the personalised "Made for you" shelf
           // reloads for whoever just signed up or logged in rather than
           // keeping the feed fetched before their token existed.
           val account by dependencies.accountStore.account.collectAsStateWithLifecycle()
           GlobalPauseHomeScreen(
             repository = dependencies.pauseHome,
-            onOpenDeepSession = onOpenDeepSession,
+            onOpenDeepSession = actions.openDeepSession,
+            // iOS's home tiles start their collection outright, with no detail
+            // screen between the tap and the sound.
+            onPlayCollection = { dependencies.soundPlayer.play(it) },
+            onOpenCollectionList = actions.openCollectionList,
             refreshKey = account?.id,
           )
         },

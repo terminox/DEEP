@@ -45,6 +45,7 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.MockAccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
+import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
@@ -179,7 +180,9 @@ fun SettingsScreen(
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
           .padding(horizontal = Dp.edge)
-          .padding(top = Dp.rhythm, bottom = SCROLL_BOTTOM_INSET),
+          // Clears the mini player too while a track is loaded, or the pill
+          // sits on the version footer with no way to scroll it free.
+          .padding(top = Dp.rhythm, bottom = SCROLL_BOTTOM_INSET + LocalMiniPlayerClearance.current),
         verticalArrangement = Arrangement.spacedBy(Dp.rhythm),
       ) {
         IdentityHeader(account)

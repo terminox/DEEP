@@ -43,7 +43,8 @@ kotlinxSerialization = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 datastore = "1.2.1"
 
-# Week 3. Declared now so the catalog is the full picture; unused until then.
+# ExoPlayer for the home hero video since week 1; the session and the OkHttp
+# data source for Deep Sound since week 3.
 media3 = "1.11.1"
 
 coil = "3.6.2"
