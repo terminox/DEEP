@@ -1,6 +1,7 @@
 package io.appbeyond.freelance.deep.feature.deepsession
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -57,6 +58,14 @@ fun DeepSessionCoordinator(
     title = stringResource(R.string.home_session_card_title),
     tagline = stringResource(R.string.home_session_card_body),
   )
+
+  // Back from the threshold leaves, as the iOS threshold's back swipe does.
+  // Without it the press fell through to the shell underneath, which quietly
+  // switched tabs (or closed the app from Home) while the threshold stayed
+  // up with no way out. Registered as the visit opens, so it outranks the
+  // shell's handler; the practice screen's own confirm-to-leave handler is
+  // composed later still and takes over once the breath begins.
+  BackHandler(enabled = stage == SessionStage.Threshold) { onFinish() }
 
   AnimatedContent(
     targetState = stage,

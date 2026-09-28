@@ -22,12 +22,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
+import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
+import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
+import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockAccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingRemote
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
+import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
+import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.networking.DeepApiException
 import io.appbeyond.freelance.deep.onboarding.model.OnboardingState
 import io.appbeyond.freelance.deep.onboarding.model.RootPhase
@@ -95,6 +101,12 @@ private object Handoff {
  * @param awaitOnboardingLoaded suspends until [onboardingStore]'s first real
  *   load has landed, so a persisted "onboarding complete" is never missed for
  *   one frame.
+ * @param soundPlayer paused as a practice opens: the session plays its own
+ *   bell and breath, and a track underneath would talk over both. It stays
+ *   loaded, so the mini player picks up where the member left off — iOS's
+ *   `pause()` on Deep Session entry.
+ * @param soundLibrary / playlistStore handed on to the shell for Deep Sound
+ *   and the You tab's saved sounds.
  * @param flowContent the onboarding and auth flow. A slot rather than a direct
  *   call so this file does not depend on the flow's wiring.
  */
@@ -105,9 +117,12 @@ fun AppRoot(
   onboardingRemote: OnboardingRemote,
   awaitOnboardingLoaded: suspend () -> Unit,
   language: AppLanguage,
+  soundPlayer: SoundPlaying,
+  soundLibrary: SoundLibrary,
+  playlistStore: PlaylistStore,
   modifier: Modifier = Modifier,
   flowContent: @Composable () -> Unit = {},
-  homeContent: @Composable (onOpenDeepSession: (DeepSession) -> Unit) -> Unit = {},
+  homeContent: @Composable (actions: HomeActions) -> Unit = {},
   deepSessionContent: @Composable (session: DeepSession, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
 ) {
@@ -206,8 +221,14 @@ fun AppRoot(
             accountStore = accountStore,
             onboardingStore = onboardingStore,
             language = language,
+            soundPlayer = soundPlayer,
+            soundLibrary = soundLibrary,
+            playlistStore = playlistStore,
             homeContent = homeContent,
-            onOpenDeepSession = { runningSession = it },
+            onOpenDeepSession = {
+              soundPlayer.pause()
+              runningSession = it
+            },
           )
         }
       }
@@ -246,6 +267,9 @@ private fun AppRootPreview() {
     onboardingRemote = MockOnboardingRemote(),
     awaitOnboardingLoaded = {},
     language = AppLanguage.English,
+    soundPlayer = MockSoundPlayer.idle(),
+    soundLibrary = remember { MockSoundLibrary.loaded },
+    playlistStore = MockPlaylistStore.empty,
     homeContent = { TabPlaceholderScreen(DeepTab.Home) },
   )
 }
@@ -259,6 +283,9 @@ private fun AppRootFirstLaunchPreview() {
     onboardingRemote = MockOnboardingRemote(),
     awaitOnboardingLoaded = {},
     language = AppLanguage.English,
+    soundPlayer = MockSoundPlayer.idle(),
+    soundLibrary = remember { MockSoundLibrary.loaded },
+    playlistStore = MockPlaylistStore.empty,
     flowContent = { TabPlaceholderScreen(DeepTab.Garden) },
   )
 }

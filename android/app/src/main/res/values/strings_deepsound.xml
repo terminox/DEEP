@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deep Sound: the home, a collection's detail and the lyrics sheet. Copy ported
+  verbatim from Deep/Deep/Features/DeepSound/Components/*.swift and the matching
+  Deep/Localizable.xcstrings keys (quoted beside each entry). Thai lands in
+  week 5 as values-th/strings_deepsound.xml.
+-->
+<resources>
+
+  <!-- Home (DeepSoundHomeView.swift) -->
+  <!-- "Deep Sound" -->
+  <string name="deepsound_title">Deep Sound</string>
+  <!-- "Breathe and listen" -->
+  <string name="deepsound_subtitle">Breathe and listen</string>
+  <!-- "We couldn't gather the sounds just now." -->
+  <string name="deepsound_failed">We couldn\'t gather the sounds just now.</string>
+  <!-- "Try again" -->
+  <string name="deepsound_retry">Try again</string>
+
+  <!-- Breathe hero card (BreatheHeroCard.swift) -->
+  <!-- "DEEP SESSION" -->
+  <string name="deepsound_breathe_eyebrow">DEEP SESSION</string>
+  <!-- "Breathe" -->
+  <string name="deepsound_breathe_title">Breathe</string>
+  <!-- "%llds in · %llds out" -->
+  <string name="deepsound_breathe_pattern">%1$ds in · %2$ds out</string>
+  <!-- "Breathe, a guided breathing session" -->
+  <string name="deepsound_breathe_a11y">Breathe, a guided breathing session</string>
+  <!-- DeepSessionLibrary.balancingBreath (DeepSession.swift): "Balancing breath" -->
+  <string name="deepsound_balancing_breath_title">Balancing breath</string>
+  <!-- "Slow breathing to settle back into now" -->
+  <string name="deepsound_balancing_breath_tagline">Slow breathing to settle back into now</string>
+
+  <!-- Collection detail (CollectionDetailView.swift) -->
+  <!-- "Back" -->
+  <string name="deepsound_back">Back</string>
+  <!-- "%lld tracks · %@" — the count and the length, joined -->
+  <string name="deepsound_collection_meta">%1$s · %2$s</string>
+  <plurals name="deepsound_track_count">
+    <item quantity="one">%d track</item>
+    <item quantity="other">%d tracks</item>
+  </plurals>
+  <!-- TimeInterval.minutesString: "\(minutes) min" -->
+  <string name="deepsound_minutes">%d min</string>
+  <!-- SoundActionButton titles — plain Strings on iOS, so not in the catalog -->
+  <string name="deepsound_play">Play</string>
+  <string name="deepsound_shuffle">Shuffle</string>
+  <!-- "Save to playlist" / "Remove from playlist" -->
+  <string name="deepsound_save_to_playlist">Save to playlist</string>
+  <string name="deepsound_remove_from_playlist">Remove from playlist</string>
+
+  <!-- Lyrics (LyricsSheet.swift) -->
+  <!-- "No lyrics for this one — just let it wash over you." -->
+  <string name="deepsound_lyrics_empty">No lyrics for this one — just let it wash over you.</string>
+
+</resources>

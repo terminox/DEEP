@@ -56,11 +56,11 @@ android {
     minSdk = 26
     targetSdk = 36
 
-    // Week two of eight. The versionCode scheme is still open — iOS stamps Unix
+    // Week three of eight. The versionCode scheme is still open — iOS stamps Unix
     // epoch seconds, which does not survive the port because versionCode is a
     // signed 32-bit int that can never decrease on a store track.
-    versionCode = 2
-    versionName = "0.0.2"
+    versionCode = 3
+    versionName = "0.0.3"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -238,9 +238,12 @@ dependencies {
 
   implementation(libs.androidx.datastore.preferences)
 
-  // Week 3 is when audio lands, but the home hero plays looping video in week 1
-  // and that is the same player.
+  // The home hero's looping video and Deep Sound's audio share one player.
   implementation(libs.androidx.media3.exoplayer)
+  // Deep Sound: the session and service that keep audio playing in the
+  // background, and the data source that streams it over our own OkHttp pool.
+  implementation(libs.androidx.media3.session)
+  implementation(libs.androidx.media3.datasource.okhttp)
 
   implementation(libs.coil.compose)
   implementation(libs.coil.network.okhttp)

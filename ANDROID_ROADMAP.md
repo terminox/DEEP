@@ -89,6 +89,22 @@ docked above the tab bar and the full Now Playing above that.
 
 This is the week that changes the shape of every screen, which is why it is early.
 
+Decided while building it:
+
+- **Parity, deliberately.** The queue repeats forever, previous restarts after 3s, duration
+  comes from the server, and only a natural end reports a listen (`POST /me/sound/listens`,
+  when signed in — the hearts it earns surface in week 4). The Now Playing volume slider is the
+  player's own gain starting at 60%, exactly as iOS, not the system volume.
+- **Android on top of iOS.** Lock-screen and notification controls, audio focus (a call pauses
+  the track) and pausing when headphones are pulled. iOS has none of these for Deep Sound.
+- **Divergences, on the record.** Premium sounds play for everyone on Android — no lock, no
+  "A premium sound" alert — until Premium itself is in scope. The dead AirPlay button is gone
+  from Now Playing, and gone from iOS too. Signing out stops the player and forgets the saved
+  sounds, so the next member never finds the last one's track on the lock screen.
+- **Scope pulled in.** The saved-sounds playlist became the You tab's root (as on iOS), Home's
+  tiles play their collection and its Explore tiles open a collection list, and Home took the
+  collapsing header and hero pull-to-refresh along with Deep Sound.
+
 ### Week 4 — `v0.0.4` · Practice grows something
 
 Mind Garden, the reward ritual, the practice journal with its offline sync queue, and the wallet.
@@ -154,6 +170,8 @@ enough to answer; each gets written up properly as the work reaches it.
   over a tray fused into the bar (Android-conventional, but dense against Deep's airy bottom edge)
   and over an iOS-26-style collapsing pill (a nested-scroll inset every screen must track —
   close to rebuilding the OS bar). The collapse can still layer on later without undoing this.
+  Built in week 3, with one adjustment: the pill rests on the bar's layout edge, because the
+  bar's 12dp bloom already reads as the gap — 8dp on top of it measured ~18dp on screen.
 - ~~**The onboarding ripple-reveal.**~~ **Settled in week 2:** `RippleReveal.metal` ported
   one-to-one to AGSL for API 33+; below that the still fades out over the same duration. Not yet
   seen on a real API 26–32 device — the emulator images here are 35 and 36.

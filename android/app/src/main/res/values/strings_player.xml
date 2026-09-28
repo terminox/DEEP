@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The player (mini player pill, Now Playing) and the playlist (the You tab's
+  root). Copy is verbatim from Deep/Deep/Localizable.xcstrings where iOS has it;
+  the transport labels iOS gets for free from SF Symbols' automatic VoiceOver
+  names are spelled out here, since an Android glyph has none of its own.
+-->
+<resources>
+  <!-- Mini player — MiniPlayerBar.swift -->
+  <string name="player_not_playing">Not playing</string>
+  <string name="player_now_playing_a11y">Now playing %1$s. Tap to open the player.</string>
+
+  <!-- Transport and utilities — VoiceOver names of the SF Symbols iOS draws -->
+  <string name="player_play">Play</string>
+  <string name="player_pause">Pause</string>
+  <string name="player_next">Next</string>
+  <string name="player_previous">Previous</string>
+  <string name="player_lyrics">Lyrics</string>
+  <string name="player_volume">Volume</string>
+  <string name="player_position">Playback position</string>
+  <string name="player_close">Close the player</string>
+
+  <!-- Save to playlist — SaveTrackButton.swift -->
+  <string name="player_save_to_playlist">Save to playlist</string>
+  <string name="player_saved_to_playlist">Saved to playlist</string>
+  <string name="player_save_hint_add">Adds this sound to your playlist</string>
+  <string name="player_save_hint_remove">Removes this sound from your playlist</string>
+
+  <!-- Playlist — PlaylistView.swift, PlaylistTrackRow.swift -->
+  <string name="playlist_title">Playlist</string>
+  <string name="playlist_subtitle">Sounds you\'ve saved</string>
+  <string name="playlist_settings">Settings</string>
+  <string name="playlist_empty_title">Nothing saved yet</string>
+  <string name="playlist_empty_body">Save a sound while it\'s playing and it\'ll be waiting here.</string>
+  <string name="playlist_explore">Explore Deep Sound</string>
+  <string name="playlist_failed">We couldn\'t reach your playlist just now.</string>
+  <string name="playlist_try_again">Try again</string>
+  <string name="playlist_remove">Remove from playlist</string>
+  <string name="playlist_row_a11y">%1$s, from %2$s</string>
+</resources>

@@ -2,6 +2,7 @@ package io.appbeyond.freelance.deep.feature.globalpause
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,14 +47,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
+import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.networking.CategoryDto
 import io.appbeyond.freelance.deep.networking.CollectionDto
 import io.appbeyond.freelance.deep.networking.PauseHomeDto
 import io.appbeyond.freelance.deep.networking.PauseHomeRepository
 import io.appbeyond.freelance.deep.networking.PauseHomeResult
 import io.appbeyond.freelance.deep.networking.PauseSectionDto
+import io.appbeyond.freelance.deep.networking.toDomain
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
+import io.appbeyond.freelance.deep.shared.components.CollapsibleHomeHeader
+import io.appbeyond.freelance.deep.shared.components.HeroRefreshable
+import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
 import io.appbeyond.freelance.deep.shared.components.LoopingVideoView
 import io.appbeyond.freelance.deep.shared.components.SkeletonBlock
 import io.appbeyond.freelance.deep.shared.components.StretchyHero
@@ -83,14 +94,25 @@ sealed interface HomeState {
  * `v0.0.1` carried the hero, both cards and the first shelf. `v0.0.2` renders
  * every section the server sends, in server order — including the
  * personalised "Made for you" shelf, which is a `PauseSectionDto` like any
- * other — plus the Explore category grid below them.
+ * other — plus the Explore category grid below them. `v0.0.3` wires the large
+ * collapsing title and pull-to-refresh, and gives both the shelf tiles and the
+ * Explore grid somewhere to go.
  *
  * Ported from Deep/Deep/Features/GlobalPause/Components/GlobalPauseHomeView.swift.
+ * The Compose shape of `.collapsibleHomeHeader` and `.heroRefreshable` is two
+ * containers, as in `DeepSoundHomeScreen` — [HeroRefreshable] outermost, so its
+ * cue draws over the header; [CollapsibleHomeHeader] inside it, wrapping only
+ * the list so its blur never reaches [AtmosphereBackground] behind it. A pull
+ * reloads the feed.
  *
  * @param refreshKey an opaque value the load keys on alongside [repository] and
  *   the retry counter — pass the signed-in account id (or `null` when signed
  *   out) so a switched account reloads the feed and picks up its own
  *   personalised shelf, rather than continuing to show the previous member's.
+ * @param onPlayCollection starts a shelf tile's collection playing in place —
+ *   iOS's `HomeTile` / `FeatureCard` reading `soundPlayer` from the environment.
+ * @param onOpenCollectionList asks the coordinator to push an Explore
+ *   category's full collection list — iOS's `openCollectionList`.
  */
 @Composable
 fun GlobalPauseHomeScreen(
@@ -98,80 +120,109 @@ fun GlobalPauseHomeScreen(
   onOpenDeepSession: (DeepSession) -> Unit,
   modifier: Modifier = Modifier,
   refreshKey: Any? = null,
+  onPlayCollection: (SoundCollection) -> Unit = {},
+  onOpenCollectionList: (title: String, collections: List<SoundCollection>) -> Unit = { _, _ -> },
 ) {
   var state by remember { mutableStateOf<HomeState>(HomeState.Loading) }
   var attempt by remember { mutableStateOf(0) }
 
-  LaunchedEffect(repository, refreshKey, attempt) {
-    if (repository == null) return@LaunchedEffect
-    state = HomeState.Loading
+  // iOS's `load()`: the skeleton only returns when there is nothing to keep
+  // on screen, and a refresh that fails over an already-loaded feed keeps it,
+  // silently — a feed that was fine a moment ago is worth more than an error.
+  suspend fun load() {
+    if (repository == null) return
+    if (state !is HomeState.Loaded) state = HomeState.Loading
     state = when (val result = repository.load()) {
       is PauseHomeResult.Loaded -> HomeState.Loaded(result.home)
-      is PauseHomeResult.Failed -> HomeState.Failed(result.error.message)
+      is PauseHomeResult.Failed -> (state as? HomeState.Loaded) ?: HomeState.Failed(result.error.message)
     }
   }
 
+  LaunchedEffect(repository, refreshKey, attempt) { load() }
+
   val listState = rememberLazyListState()
   val (pull, nestedScroll) = rememberHeroPull(listState)
+  val bottomInset = Dp.rhythm * 2 + LocalMiniPlayerClearance.current
 
-  Box(
-    modifier
-      .fillMaxSize()
-      .background(Color.moonCream),
+  HeroRefreshable(
+    pull = pull,
+    onRefresh = { load() },
+    modifier = modifier,
   ) {
-    AtmosphereBackground()
-
-    LazyColumn(
-      state = listState,
-      modifier = Modifier
+    Box(
+      Modifier
         .fillMaxSize()
-        .nestedScroll(nestedScroll),
-      contentPadding = PaddingValues(bottom = Dp.rhythm * 2),
+        .background(Color.moonCream),
     ) {
-      item(key = "hero") {
-        StretchyHero(pull = pull, listState = listState) {
-          LoopingVideoView(resource = R.raw.sky, modifier = Modifier.fillMaxSize())
-        }
-      }
+      AtmosphereBackground()
 
-      // The content rides up over the hero's feathered bottom rather than
-      // starting beneath it, which is what makes the two read as one surface.
-      item(key = "cards") {
-        Column(
-          Modifier
-            .offset(y = -HERO_OVERLAP)
-            .padding(horizontal = Dp.edge),
-          verticalArrangement = Arrangement.spacedBy(16.dp),
+      CollapsibleHomeHeader(
+        title = stringResource(R.string.home_header_title),
+        subtitle = stringResource(R.string.home_header_subtitle),
+        listState = listState,
+        modifier = Modifier.fillMaxSize(),
+      ) {
+        LazyColumn(
+          state = listState,
+          modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScroll),
+          contentPadding = PaddingValues(bottom = bottomInset),
         ) {
-          LoungeCard()
-          DeepSessionEntryCard(onOpen = onOpenDeepSession)
-        }
-      }
-
-      when (val current = state) {
-        HomeState.Loading -> item(key = "skeleton") {
-          HomeSkeleton(Modifier.offset(y = -HERO_OVERLAP))
-        }
-
-        is HomeState.Failed -> item(key = "failed") {
-          HomeFailed(
-            message = current.message,
-            onRetry = { attempt += 1 },
-            modifier = Modifier.offset(y = -HERO_OVERLAP),
-          )
-        }
-
-        is HomeState.Loaded -> {
-          // Every server-composed shelf, in server order — "Made for you" is
-          // just another PauseSectionDto (its `personalized` flag is what the
-          // server used to decide whether to include it at all).
-          items(current.home.sections, key = { it.key }) { section ->
-            Shelf(section, Modifier.offset(y = -HERO_OVERLAP))
+          item(key = "hero") {
+            StretchyHero(pull = pull, listState = listState) {
+              LoopingVideoView(resource = R.raw.sky, modifier = Modifier.fillMaxSize())
+            }
           }
 
-          if (current.home.categories.isNotEmpty()) {
-            item(key = "explore") {
-              ExploreSection(current.home.categories, Modifier.offset(y = -HERO_OVERLAP))
+          // The content rides up over the hero's feathered bottom rather than
+          // starting beneath it, which is what makes the two read as one surface.
+          item(key = "cards") {
+            Column(
+              Modifier
+                .offset(y = -HERO_OVERLAP)
+                .padding(horizontal = Dp.edge),
+              verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+              LoungeCard()
+              DeepSessionEntryCard(onOpen = onOpenDeepSession)
+            }
+          }
+
+          when (val current = state) {
+            HomeState.Loading -> item(key = "skeleton") {
+              HomeSkeleton(Modifier.offset(y = -HERO_OVERLAP))
+            }
+
+            is HomeState.Failed -> item(key = "failed") {
+              HomeFailed(
+                message = current.message,
+                onRetry = { attempt += 1 },
+                modifier = Modifier.offset(y = -HERO_OVERLAP),
+              )
+            }
+
+            is HomeState.Loaded -> {
+              // Every server-composed shelf, in server order — "Made for you"
+              // is just another PauseSectionDto (its `personalized` flag is
+              // what the server used to decide whether to include it at all).
+              items(current.home.sections, key = { it.key }) { section ->
+                Shelf(
+                  section = section,
+                  onPlayCollection = onPlayCollection,
+                  modifier = Modifier.offset(y = -HERO_OVERLAP),
+                )
+              }
+
+              if (current.home.categories.isNotEmpty()) {
+                item(key = "explore") {
+                  ExploreSection(
+                    categories = current.home.categories,
+                    onOpenCollectionList = onOpenCollectionList,
+                    modifier = Modifier.offset(y = -HERO_OVERLAP),
+                  )
+                }
+              }
             }
           }
         }
@@ -227,7 +278,11 @@ private fun DeepSessionEntryCard(
 }
 
 @Composable
-private fun Shelf(section: PauseSectionDto, modifier: Modifier = Modifier) {
+private fun Shelf(
+  section: PauseSectionDto,
+  onPlayCollection: (SoundCollection) -> Unit,
+  modifier: Modifier = Modifier,
+) {
   Column(
     modifier.padding(top = Dp.rhythm),
     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -244,16 +299,41 @@ private fun Shelf(section: PauseSectionDto, modifier: Modifier = Modifier) {
       contentPadding = PaddingValues(horizontal = Dp.edge),
     ) {
       items(section.collections, key = { it.id }) { collection ->
-        CollectionTile(collection)
+        CollectionTile(collection, onPlay = onPlayCollection)
       }
     }
   }
 }
 
+/**
+ * A single shelf tile: square artwork, the collection's title and a one-line
+ * subtitle. Tapping it starts the collection playing in place, as iOS's
+ * `HomeTile` / `FeatureCard` play button does — there is no collection detail
+ * to push to from Global Pause yet, so the whole tile is the play affordance
+ * rather than splitting a body tap from a play button.
+ */
 @Composable
-private fun CollectionTile(collection: CollectionDto, modifier: Modifier = Modifier) {
+private fun CollectionTile(
+  collection: CollectionDto,
+  onPlay: (SoundCollection) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val playLabel = stringResource(R.string.home_play_collection, collection.title)
+
   Column(
-    modifier.width(TILE_WIDTH),
+    modifier
+      .width(TILE_WIDTH)
+      .softPress()
+      .clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        onClick = { onPlay(collection.toDomain()) },
+      )
+      .clearAndSetSemantics {
+        contentDescription = playLabel
+        role = Role.Button
+        onClick { onPlay(collection.toDomain()); true }
+      },
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     ArtworkImage(
@@ -296,11 +376,15 @@ private fun CollectionTile(collection: CollectionDto, modifier: Modifier = Modif
  * nothing here needs to be lazy.
  *
  * Ported from Deep/Deep/Features/GlobalPause/Components/ExploreByContentSection.swift.
- * Tapping a tile does nothing yet — collection-list detail is week 3, matching
- * how [CollectionTile] above has no tap handler either.
+ * Tapping a tile pushes the category's collection list via
+ * [onOpenCollectionList], as iOS's `openCollectionList` does.
  */
 @Composable
-private fun ExploreSection(categories: List<CategoryDto>, modifier: Modifier = Modifier) {
+private fun ExploreSection(
+  categories: List<CategoryDto>,
+  onOpenCollectionList: (title: String, collections: List<SoundCollection>) -> Unit,
+  modifier: Modifier = Modifier,
+) {
   Column(
     modifier.padding(top = Dp.rhythm),
     verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -319,7 +403,7 @@ private fun ExploreSection(categories: List<CategoryDto>, modifier: Modifier = M
       categories.chunked(2).forEach { row ->
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
           row.forEach { category ->
-            ExploreTile(category, Modifier.weight(1f))
+            ExploreTile(category, onOpenCollectionList, Modifier.weight(1f))
           }
           // An odd category out fills its row alone; the empty weight keeps
           // it at half width rather than stretching to fill the row.
@@ -333,12 +417,25 @@ private fun ExploreSection(categories: List<CategoryDto>, modifier: Modifier = M
 }
 
 @Composable
-private fun ExploreTile(category: CategoryDto, modifier: Modifier = Modifier) {
+private fun ExploreTile(
+  category: CategoryDto,
+  onOpen: (title: String, collections: List<SoundCollection>) -> Unit,
+  modifier: Modifier = Modifier,
+) {
   val artwork = category.collections?.firstOrNull()
   Box(
     modifier
       .height(EXPLORE_TILE_HEIGHT)
-      .clip(RoundedCornerShape(Dp.tile)),
+      .softPress()
+      .clip(RoundedCornerShape(Dp.tile))
+      .clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        role = Role.Button,
+        onClick = {
+          onOpen(category.title, (category.collections ?: emptyList()).map { it.toDomain() })
+        },
+      ),
   ) {
     ArtworkImage(
       url = artwork?.imageUrl,
@@ -511,6 +608,7 @@ private fun ExploreSectionPreview() {
           CategoryDto(id = "morning", slug = "morning", title = "Morning"),
           CategoryDto(id = "sleep", slug = "sleep", title = "Sleep"),
         ),
+        onOpenCollectionList = { _, _ -> },
       )
     }
   }

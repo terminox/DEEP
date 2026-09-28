@@ -55,6 +55,21 @@ class DeepHttp(
   val client: OkHttpClient
 
   /**
+   * The client Deep Sound streams audio on — [client]'s connection pool and
+   * dispatcher, none of its Deep-specific behaviour.
+   *
+   * Two things on [client] are wrong for a stream. Its interceptors attach the
+   * member's bearer token to every request, and an `audioUrl` is not always
+   * ours — a seeded track can point at any host, and a session token must never
+   * leave for one. And its 30-second call timeout caps the *whole* call: a
+   * nine-minute track streamed as one response would be cut off mid-play. So
+   * both go, the authenticator with them (there is no token to refresh), and a
+   * read timeout remains to notice a stream that has genuinely stalled.
+   * `AVPlayer` on iOS streams on its own session for the same reasons.
+   */
+  val mediaClient: OkHttpClient
+
+  /**
    * The one place a session is rotated, shared by the authenticator and by
    * anything else that needs a live access token.
    */
@@ -102,6 +117,19 @@ class DeepHttp(
     // and reads its token from the body (`routes/auth.ts`).
     val refreshClient = client.newBuilder().authenticator(Authenticator.NONE).build()
 
+    mediaClient = client.newBuilder()
+      .apply {
+        interceptors().clear()
+        networkInterceptors().clear()
+        // Request lines only — BASIC never buffers a body, so logging cannot
+        // hold a stream in memory.
+        if (logRequests) addInterceptor(wireLog())
+      }
+      .authenticator(Authenticator.NONE)
+      .callTimeout(0, TimeUnit.SECONDS)
+      .readTimeout(MEDIA_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      .build()
+
     tokenRefresher = TokenRefresher(tokens, AuthRefreshEndpoint(refreshClient, baseUrl, json))
     authenticator.refresher = tokenRefresher
   }
@@ -109,6 +137,7 @@ class DeepHttp(
   private companion object {
     const val CONNECT_READ_TIMEOUT_SECONDS = 10L
     const val CALL_TIMEOUT_SECONDS = 30L
+    const val MEDIA_READ_TIMEOUT_SECONDS = 30L
   }
 }
 

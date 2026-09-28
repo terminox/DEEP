@@ -1,15 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The You tab and Settings. Copy ported from
+  Settings. Copy ported from
   Deep/Deep/Features/Profile/SettingsView.swift. Thai lands in week 5 as
   values-th/strings_profile.xml.
 -->
 <resources>
-
-  <!-- You tab -->
-  <string name="you_title">You</string>
-  <string name="you_greeting">Hello, %1$s</string>
-  <string name="you_open_settings">Settings</string>
 
   <!-- Settings -->
   <string name="settings_title">Settings</string>
