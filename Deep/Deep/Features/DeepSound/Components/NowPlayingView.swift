@@ -207,7 +207,6 @@ struct NowPlayingView: View {
 
   private var bottomRow: some View {
     HStack {
-      utilityButton("airplayaudio") {}
       Spacer()
       // Lyrics — opens the (multi-language) lyrics sheet for the current track.
       utilityButton("list.bullet") { showLyrics = true }
