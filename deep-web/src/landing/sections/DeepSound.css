@@ -1,0 +1,628 @@
+/* Deep Sound: the iOS sound home (DeepSoundHomeView.swift), mini player and Now Playing as a landing moment. */
+
+.snd {
+  --snd-tile: 150px;
+  --snd-settle: cubic-bezier(0.34, 1.22, 0.64, 1);
+  position: relative;
+  isolation: isolate;
+  padding: var(--section-gap) var(--edge) calc(var(--section-gap) * 0.6);
+}
+
+@media (min-width: 900px) {
+  .snd {
+    --snd-tile: 176px;
+  }
+}
+
+.snd-atmosphere {
+  z-index: -1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+}
+
+.snd-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* MARK: Sky band */
+
+.snd-band {
+  position: relative;
+  height: clamp(460px, 50vw, 640px);
+  border-radius: calc(var(--card) + 8px);
+  overflow: hidden;
+  /* The bottom melts into the page, so the shelves can ride up over the sky. */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 48%, rgb(0 0 0 / 0.3) 72%, transparent 90%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 48%, rgb(0 0 0 / 0.3) 72%, transparent 90%);
+}
+
+.snd-band-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
+
+/* A soft plum veil at the top-leading corner seats the white type on the bright sky. */
+.snd-band::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 78% at 8% 22%, rgb(from var(--deep-plum) r g b / 0.34), transparent 72%),
+    linear-gradient(180deg, rgb(from var(--deep-plum) r g b / 0.14), transparent 55%);
+}
+
+/* On a narrow band the copy covers most of the sky, so the veil runs the full width. */
+@media (max-width: 719px) {
+  .snd-band::after {
+    background: linear-gradient(
+      180deg,
+      rgb(from var(--deep-plum) r g b / 0.34) 0%,
+      rgb(from var(--deep-plum) r g b / 0.26) 55%,
+      transparent 85%
+    );
+  }
+}
+
+.snd-band-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 640px;
+  padding: clamp(32px, 5vw, 64px) clamp(24px, 5vw, 64px);
+}
+
+.snd-band-eyebrow {
+  color: rgb(255 255 255 / 0.88);
+}
+
+.snd-band-headline {
+  color: #fff;
+  text-shadow: 0 2px 24px rgb(from var(--deep-plum) r g b / 0.28);
+}
+
+.snd-band-headline em {
+  color: var(--moon-cream);
+}
+
+.snd-band-lede {
+  color: #fff;
+  text-shadow:
+    0 1px 2px rgb(from var(--deep-plum) r g b / 0.25),
+    0 1px 16px rgb(from var(--deep-plum) r g b / 0.45);
+  max-width: 28em;
+}
+
+/* MARK: Shelves (CollectionCarousel.swift) */
+
+.snd-shelves {
+  position: relative;
+  z-index: 1;
+  margin-top: clamp(-200px, -14vw, -110px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(28px, 3vw, 40px);
+}
+
+.snd-shelf-title {
+  margin: 0 0 14px;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(26px, 2.4vw, 32px);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  color: var(--deep-plum);
+}
+
+.snd-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--edge);
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--edge));
+  padding: 4px var(--edge) 24px;
+}
+
+.snd-row::-webkit-scrollbar {
+  display: none;
+}
+
+.snd-row-item {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 900px) {
+  .snd-row {
+    gap: 20px;
+  }
+}
+
+/* MARK: Artwork (SoundArtwork.swift) */
+
+.snd-art {
+  display: block;
+  border-radius: var(--tile);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.35);
+}
+
+/* MARK: Tile (CollectionTile.swift) */
+
+.snd-tile {
+  width: var(--snd-tile);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--tile);
+  transition: transform var(--drift) var(--exhale);
+}
+
+.snd-tile:active {
+  transform: scale(0.97);
+}
+
+.snd-tile-art {
+  width: var(--snd-tile);
+  height: var(--snd-tile);
+  margin-bottom: 8px;
+  box-shadow:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
+    0 8px 24px rgb(from var(--lavender-mist) r g b / 0.2);
+  transition:
+    box-shadow var(--hush) var(--hush-curve),
+    transform var(--hush) var(--hush-curve);
+}
+
+@media (hover: hover) {
+  .snd-tile:hover .snd-tile-art {
+    transform: translateY(-3px);
+    box-shadow:
+      inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
+      0 14px 32px rgb(from var(--lavender-mist) r g b / 0.32);
+  }
+}
+
+.snd-tile.is-active .snd-tile-art {
+  box-shadow:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
+    0 0 0 3px rgb(255 255 255 / 0.7),
+    0 14px 36px rgb(from var(--lavender-mist) r g b / 0.5);
+}
+
+.snd-tile-title,
+.snd-tile-subtitle {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snd-tile-title {
+  font-size: var(--body);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--deep-plum);
+}
+
+.snd-tile-subtitle {
+  font-size: var(--caption);
+  line-height: 1.4;
+  color: var(--drift-grey);
+}
+
+.snd-note {
+  margin: 0;
+  font-size: var(--caption);
+  color: var(--drift-grey);
+}
+
+/* MARK: Dock */
+
+.snd-dock {
+  position: sticky;
+  bottom: 20px;
+  z-index: 5;
+  margin: clamp(40px, 5vw, 64px) auto 0;
+  width: min(560px, 100%);
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+  transition:
+    opacity var(--hush) var(--hush-curve),
+    transform var(--hush) var(--hush-curve);
+}
+
+.snd-dock.is-present {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* MARK: Mini player (MiniPlayerBar.swift) */
+
+.snd-mini {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 6px 0 10px;
+  border-radius: var(--pill);
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.52);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 0.5px solid var(--frost-rim);
+  box-shadow:
+    var(--frost-shadow),
+    inset 0 1px 0 rgb(255 255 255 / 0.5);
+}
+
+.snd-mini-expand {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--pill);
+}
+
+.snd-mini-layers {
+  display: grid;
+  height: 100%;
+  align-items: center;
+}
+
+.snd-mini-layer {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.snd-mini-layer.is-entering {
+  animation: snd-fade-in var(--bloom) var(--bloom-curve) both;
+}
+
+.snd-mini-layer.is-leaving {
+  animation: snd-fade-out var(--bloom) var(--bloom-curve) both;
+}
+
+@keyframes snd-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes snd-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.snd-mini-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.snd-mini-art {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.snd-mini-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.snd-mini-title,
+.snd-mini-subtitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snd-mini-title {
+  font-size: var(--caption);
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--deep-plum);
+}
+
+.snd-mini-subtitle {
+  font-size: var(--micro);
+  line-height: 1.3;
+  color: var(--drift-grey);
+}
+
+.snd-mini-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--deep-plum);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform var(--drift) var(--exhale);
+}
+
+.snd-mini-btn:active {
+  transform: scale(0.94);
+}
+
+.snd-mini-btn svg,
+.snd-mini-pp {
+  width: 22px;
+  height: 22px;
+}
+
+.snd-mini-btn--next svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* The 2pt lavender line along the capsule's floor, clipped by its curve. */
+.snd-mini-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: var(--pill);
+  background: rgb(from var(--lavender-mist) r g b / 0.7);
+  transform-origin: left center;
+  transition: transform 500ms linear;
+  pointer-events: none;
+}
+
+/* Play and pause share one spot and crossfade. */
+.snd-pp {
+  display: grid;
+}
+
+.snd-pp > svg {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  transition:
+    opacity var(--drift) var(--exhale),
+    transform var(--drift) var(--exhale);
+}
+
+.snd-pp[data-playing='true'] .snd-pp-play,
+.snd-pp[data-playing='false'] .snd-pp-pause {
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+/* MARK: Now Playing (NowPlayingView.swift) */
+
+.snd-np {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 14px);
+  width: min(400px, calc(100vw - 2 * var(--edge)));
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  scrollbar-width: none;
+  margin-left: calc(-0.5 * min(400px, calc(100vw - 2 * var(--edge))));
+  padding: 14px clamp(22px, 5vw, 32px) 30px;
+  border-radius: calc(var(--card) + 4px);
+  background:
+    linear-gradient(
+      180deg,
+      var(--soft-lilac),
+      rgb(from var(--lavender-mist) r g b / 0.7),
+      rgb(from var(--blush-powder) r g b / 0.6)
+    ),
+    var(--soft-lilac);
+  box-shadow:
+    0 30px 80px rgb(from var(--lavender-mist) r g b / 0.45),
+    0 0 0 0.5px rgb(255 255 255 / 0.45) inset;
+  transform-origin: 50% 100%;
+  animation: snd-np-in var(--bloom) var(--bloom-curve) both;
+}
+
+.snd-np::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes snd-np-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.snd-np-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 36px;
+  margin: 0 auto 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgb(from var(--deep-plum) r g b / 0.45);
+  cursor: pointer;
+  border-radius: var(--pill);
+}
+
+.snd-np-close svg {
+  width: 26px;
+  height: 26px;
+}
+
+.snd-np-stage {
+  display: grid;
+  place-items: center;
+  padding: 6px 0 24px;
+}
+
+/* Contracts when paused, opens when playing, on the settle spring. */
+.snd-np-art {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 22px;
+  transform: scale(0.84);
+  box-shadow:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
+    0 10px 32px rgb(from var(--lavender-mist) r g b / 0.22);
+  transition:
+    transform 900ms var(--snd-settle),
+    box-shadow 900ms var(--snd-settle);
+  animation: snd-fade-in var(--bloom) var(--bloom-curve) both;
+}
+
+.snd-np-art.is-playing {
+  transform: none;
+  box-shadow:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
+    0 20px 60px rgb(from var(--lavender-mist) r g b / 0.45);
+}
+
+.snd-np-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 20px;
+}
+
+.snd-np-track {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  color: var(--deep-plum);
+  animation: snd-fade-in var(--bloom) var(--bloom-curve) both;
+}
+
+.snd-np-collection {
+  font-size: var(--body);
+  color: var(--drift-grey);
+}
+
+.snd-np-bar {
+  position: relative;
+  display: block;
+  height: 5px;
+  border-radius: var(--pill);
+  overflow: hidden;
+  background: rgb(from var(--deep-plum) r g b / 0.12);
+}
+
+.snd-np-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--pill);
+  background: var(--deep-plum);
+  opacity: 0.7;
+  transform-origin: left center;
+  transition: transform 500ms linear;
+}
+
+.snd-np-times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: var(--caption);
+  color: var(--drift-grey);
+  font-variant-numeric: tabular-nums;
+}
+
+.snd-np-transport {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(24px, 8vw, 40px);
+  margin-top: 18px;
+}
+
+.snd-np-skip,
+.snd-np-play {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--deep-plum);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform var(--drift) var(--exhale);
+}
+
+.snd-np-skip:active,
+.snd-np-play:active {
+  transform: scale(0.97);
+}
+
+.snd-np-skip {
+  width: 56px;
+  height: 56px;
+}
+
+.snd-np-skip svg {
+  width: 30px;
+  height: 30px;
+}
+
+.snd-np-play {
+  width: 72px;
+  height: 72px;
+}
+
+.snd-np-pp {
+  width: 46px;
+  height: 46px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snd-np-art,
+  .snd-tile-art {
+    transition: none;
+  }
+
+  .snd-np {
+    animation: snd-fade-in var(--bloom) linear both;
+  }
+}

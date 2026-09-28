@@ -1,0 +1,513 @@
+/* Global Pause: the page's one night moment, a giant dark card inset from the moon-cream page. */
+
+.gp {
+  /* Night-only shades between tokens, as in NightSkyBackground.swift (darkness 0.90 → 0.60). */
+  --gp-sky-top: rgb(15 12 32);
+  --gp-sky-bottom: rgb(31 25 52);
+  --gp-ink: var(--moon-cream);
+  --gp-ink-soft: rgb(from var(--moon-cream) r g b / 0.72);
+  --gp-ink-quiet: rgb(from var(--soft-lilac) r g b / 0.6);
+  --gp-glass: rgb(255 255 255 / 0.06);
+  --gp-glass-rim: rgb(255 255 255 / 0.12);
+  --gp-globe: clamp(280px, calc(100vw - 48px), 560px);
+
+  padding: var(--section-gap) var(--edge) 0;
+}
+
+.gp-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  max-width: 1400px;
+  min-height: min(100vh, 1000px);
+  margin: 0 auto;
+  padding: clamp(56px, 8vw, 104px) clamp(20px, 5vw, 72px) clamp(48px, 6vw, 88px);
+  border-radius: 40px;
+  color: var(--gp-ink);
+  background: linear-gradient(180deg, var(--gp-sky-top), var(--gp-sky-bottom));
+  box-shadow: 0 40px 120px rgb(from var(--deep-plum) r g b / 0.22);
+}
+
+/* MARK: Sky */
+
+.gp-sky {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Stars thin out behind the copy column so no point of light sits on a letter. */
+.gp-stars {
+  position: absolute;
+  inset: 0;
+}
+
+@media (min-width: 960px) {
+  .gp-stars {
+    -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.3) 0%, rgb(0 0 0 / 0.3) 40%, #000 55%);
+    mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.3) 0%, rgb(0 0 0 / 0.3) 40%, #000 55%);
+  }
+}
+
+.gp-sky-horizon {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(80% 80% at 50% 110%, rgb(from var(--soft-lilac) r g b / 0.22), transparent 100%);
+}
+
+.gp-star {
+  position: absolute;
+  width: calc(var(--r) * 5.2);
+  height: calc(var(--r) * 5.2);
+  margin: calc(var(--r) * -2.6) 0 0 calc(var(--r) * -2.6);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    rgb(var(--tint)) 0 36%,
+    rgb(var(--tint) / 0.35) 40%,
+    rgb(var(--tint) / 0) 100%
+  );
+  opacity: var(--a);
+  animation: gp-twinkle 2s ease-in-out infinite alternate;
+}
+
+@keyframes gp-twinkle {
+  from {
+    opacity: var(--a);
+  }
+  to {
+    opacity: var(--a-dim);
+  }
+}
+
+/* MARK: Layout */
+
+.gp-inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.gp-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+.gp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.gp-eyebrow {
+  color: var(--lavender-mist);
+}
+
+.gp-headline {
+  color: var(--gp-ink);
+}
+
+.gp-headline em {
+  color: var(--lavender-mist);
+  background: linear-gradient(180deg, var(--soft-lilac), var(--lavender-mist) 70%, var(--blush-powder));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  padding-right: 0.06em;
+}
+
+.gp-lede {
+  color: var(--gp-ink-soft);
+  max-width: 30em;
+}
+
+/* Phones and tablets: the globe follows the headline, before the live strip and the lounge. */
+@media (max-width: 959px) {
+  .gp-copy {
+    display: contents;
+  }
+
+  .gp-head {
+    order: 1;
+  }
+
+  .gp-globe-slot {
+    order: 2;
+  }
+
+  .gp-live {
+    order: 3;
+  }
+
+  .gp-fuku {
+    order: 4;
+  }
+
+  .gp-stars {
+    -webkit-mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.3) 0, rgb(0 0 0 / 0.3) 18%, #000 30%);
+    mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.3) 0, rgb(0 0 0 / 0.3) 18%, #000 30%);
+  }
+}
+
+@media (min-width: 960px) {
+  .gp-inner {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: 24px;
+  }
+}
+
+/* MARK: Globe */
+
+.gp-globe-slot {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+.gp-globe {
+  position: relative;
+  width: var(--gp-globe);
+  height: var(--gp-globe);
+}
+
+/* The canvas is larger than the orb (a centred crop of the iOS frustum); it overflows the globe
+   box and is clipped only by the stage's rounded corners. */
+.gp-globe-canvas,
+.gp-globe-ripples {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--gp-globe) / var(--gp-fill));
+  height: calc(var(--gp-globe) / var(--gp-fill));
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.gp-globe-canvas {
+  opacity: 0;
+  /* Stands in for the iOS bloom chain: light spills softly off the continents and the rim. */
+  filter: drop-shadow(0 0 3px rgb(from var(--lavender-mist) r g b / 0.5))
+    drop-shadow(0 0 18px rgb(from var(--soft-lilac) r g b / 0.14));
+  transition: opacity var(--hush) var(--hush-curve);
+}
+
+.gp-globe--ready .gp-globe-canvas {
+  opacity: 1;
+}
+
+.gp-globe-ripples {
+  filter: blur(0.6px);
+}
+
+.gp-globe-hit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.gp-globe-hit:active {
+  cursor: grabbing;
+}
+
+/* EarthSceneView's lavender halo and blush cradle, sized off the orb radius and dimmed for the
+   night card (earthBackdropDim 0.25). */
+.gp-globe-halo,
+.gp-globe-cradle,
+.gp-globe-bloom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.gp-globe-halo {
+  width: calc(var(--gp-globe) * 3.725);
+  height: calc(var(--gp-globe) * 3.725);
+  transform: translate(-50%, calc(-50% - var(--gp-globe) * 0.09));
+  background: radial-gradient(closest-side, rgb(from var(--lavender-mist) r g b / 0.1), transparent);
+}
+
+.gp-globe-cradle {
+  width: calc(var(--gp-globe) * 2.03);
+  height: calc(var(--gp-globe) * 0.79);
+  transform: translate(-50%, calc(-50% + var(--gp-globe) * 0.72));
+  background: radial-gradient(closest-side, rgb(from var(--blush-powder) r g b / 0.12), transparent);
+}
+
+/* A soft glow seated behind the glass, so the transparent ocean reads as lit from within. */
+.gp-globe-bloom {
+  width: calc(var(--gp-globe) * 1.25);
+  height: calc(var(--gp-globe) * 1.25);
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    closest-side,
+    rgb(from var(--lavender-mist) r g b / 0.08),
+    rgb(from var(--lavender-mist) r g b / 0.05) 70%,
+    transparent
+  );
+  animation: gp-breathe calc(var(--inhale-length) + var(--exhale-length)) var(--exhale) infinite;
+}
+
+@keyframes gp-breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+/* Without WebGL2: a soft pastel orb with a moon-cream rim. */
+.gp-globe-fallback {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 30%, rgb(from var(--soft-lilac) r g b / 0.55), transparent 55%),
+    radial-gradient(circle at 62% 72%, rgb(from var(--blush-powder) r g b / 0.45), transparent 60%),
+    rgb(from var(--lavender-mist) r g b / 0.12);
+  box-shadow:
+    inset 0 0 0 1.5px rgb(from var(--moon-cream) r g b / 0.7),
+    inset 0 0 40px rgb(from var(--lavender-mist) r g b / 0.4),
+    0 0 60px rgb(from var(--lavender-mist) r g b / 0.3);
+}
+
+/* MARK: Live strip */
+
+.gp-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px 32px;
+  padding: 22px 26px;
+  border-radius: var(--card);
+  background: var(--gp-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  backdrop-filter: blur(24px) saturate(1.2);
+  border: 0.5px solid var(--gp-glass-rim);
+}
+
+.gp-live-when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.gp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: var(--pill);
+  font-size: var(--micro);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--soft-lilac);
+  background: rgb(from var(--lavender-mist) r g b / 0.14);
+}
+
+.gp-pill--live {
+  color: var(--deep-plum);
+  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
+}
+
+.gp-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--moon-cream);
+  animation: gp-breathe calc(var(--inhale-length) + var(--exhale-length)) var(--exhale) infinite;
+}
+
+.gp-countdown {
+  display: flex;
+  align-items: baseline;
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(34px, 4vw, 44px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--gp-ink);
+}
+
+.gp-countdown-gap {
+  width: 0.5em;
+}
+
+.gp-live-note {
+  margin: 0;
+  font-size: var(--caption);
+  line-height: 1.5;
+  color: var(--gp-ink-quiet);
+}
+
+.gp-live-count {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  text-align: right;
+}
+
+.gp-live-number {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(28px, 3vw, 34px);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--blush-powder);
+  animation: gp-tick var(--bloom) var(--bloom-curve);
+}
+
+@keyframes gp-tick {
+  from {
+    opacity: 0.45;
+  }
+}
+
+.gp-live-label {
+  font-size: var(--caption);
+  color: var(--gp-ink-quiet);
+}
+
+@media (max-width: 480px) {
+  .gp-live-count {
+    text-align: left;
+  }
+}
+
+/* MARK: Fuku */
+
+.gp-fuku {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 20px 12px 12px;
+  border-radius: var(--card);
+  background: var(--gp-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  backdrop-filter: blur(24px) saturate(1.2);
+  border: 0.5px solid var(--gp-glass-rim);
+  max-width: 460px;
+}
+
+.gp-fuku-video {
+  flex: none;
+  width: 104px;
+  aspect-ratio: 5 / 4;
+  object-fit: cover;
+  border-radius: var(--tile);
+  background: rgb(from var(--lavender-mist) r g b / 0.2);
+}
+
+.gp-fuku-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gp-fuku-kicker {
+  margin: 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: var(--h2);
+  line-height: 1.15;
+  color: var(--gp-ink);
+}
+
+.gp-fuku-line {
+  margin: 0;
+  font-size: var(--caption);
+  line-height: 1.55;
+  color: var(--gp-ink-soft);
+}
+
+/* MARK: Phases */
+
+.gp-phases {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 36px;
+  max-width: 1200px;
+  margin: clamp(48px, 7vw, 88px) auto 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 820px) {
+  .gp-phases {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 48px;
+  }
+}
+
+.gp-phase {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 22em;
+}
+
+.gp-phase-time {
+  font-size: var(--micro);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lavender-mist);
+}
+
+.gp-phase-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: var(--h2);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--gp-ink);
+}
+
+.gp-phase-body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--gp-ink-soft);
+}
+
+/* MARK: Small screens */
+
+@media (max-width: 600px) {
+  .gp {
+    padding-inline: 10px;
+  }
+
+  .gp-stage {
+    border-radius: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-star,
+  .gp-globe-bloom,
+  .gp-pill-dot,
+  .gp-live-number {
+    animation: none;
+  }
+}
