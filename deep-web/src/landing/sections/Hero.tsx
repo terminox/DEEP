@@ -3,7 +3,7 @@
 // legibility comes from shaping the light behind each part instead: the sky is deepened above the
 // sun so the cream mark reads as light, and a frosted cream mist settles behind the wordmark.
 import type { CSSProperties } from 'react'
-import { AmbientVideo, LogoMark, Wordmark, useBloom } from '../components/shared.tsx'
+import { AmbientVideo, LogoMark, useBloom, Wordmark } from '../components/shared.tsx'
 import './Hero.css'
 
 // Desktop plays the generated landscape film; phones in portrait play the iOS welcome itself.
@@ -46,7 +46,7 @@ export default function Hero() {
           </p>
           <div className="hero-actions bloom" style={{ '--bloom-delay': '520ms' } as CSSProperties}>
             <a className="pill" href="#download">
-              Download DEEP
+              Coming soon
             </a>
             <a className="pill pill--ghost" href="#global-pause">
               See how it feels

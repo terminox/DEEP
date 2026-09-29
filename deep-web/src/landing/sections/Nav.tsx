@@ -59,8 +59,8 @@ export default function Nav() {
           ))}
         </ul>
 
-        <a className="nav-cta" href="#download">
-          Get the app
+        <a className="pill pill--compact nav-cta" href="#download">
+          Coming soon
         </a>
 
         <button
@@ -87,7 +87,7 @@ export default function Nav() {
           ))}
         </ul>
         <a className="pill" href="#download" onClick={() => setOpen(false)}>
-          Get the app
+          Coming soon
         </a>
       </div>
     </nav>

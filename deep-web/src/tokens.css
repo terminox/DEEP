@@ -172,34 +172,82 @@ video {
   color: rgb(from var(--deep-plum) r g b / 0.78);
 }
 
+/* The primary capsule, "twilight": iris dusk into lavender mist into blush powder, the sky of the
+   hero film at sunrise. The iris start is what lets white semibold read; the blush tail keeps it
+   DEEP's pastel. Shape, 56pt height and .softPress's 0.97 press come from the iOS action capsule
+   (DeepSessionIntroView's Begin). A white inner rim and a lavender glow lift it off the veil. */
 .pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 48px;
-  padding: 0 26px;
+  min-height: 56px;
+  padding: 0 32px;
   border: 0;
   border-radius: var(--pill);
-  font: 500 15px/1 var(--sans);
-  color: var(--deep-plum);
+  font: 600 16px/1 var(--sans);
+  letter-spacing: 0.01em;
+  color: #fff;
   text-decoration: none;
+  text-shadow: 0 1px 3px rgb(from var(--iris-dusk) r g b / 0.55);
   cursor: pointer;
-  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
-  box-shadow: 0 12px 32px rgb(from var(--lavender-mist) r g b / 0.4);
-  transition: transform var(--drift) var(--exhale);
+  background: linear-gradient(120deg, var(--iris-dusk) 0%, var(--lavender-mist) 55%, var(--blush-powder) 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 8px 24px rgb(from var(--lavender-mist) r g b / 0.5);
+  transition:
+    transform var(--drift) var(--exhale),
+    box-shadow var(--drift) var(--exhale),
+    background-color var(--drift) var(--exhale);
+}
+
+@media (hover: hover) {
+  .pill:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.3),
+      0 12px 34px rgb(from var(--lavender-mist) r g b / 0.55);
+  }
 }
 
 .pill:active {
   transform: scale(0.97);
 }
 
+/* The nav's smaller sibling: same capsule, sized for a 54pt bar. */
+.pill--compact {
+  min-height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 4px 14px rgb(from var(--lavender-mist) r g b / 0.5);
+}
+
+@media (hover: hover) {
+  .pill--compact:hover {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.3),
+      0 6px 20px rgb(from var(--lavender-mist) r g b / 0.55);
+  }
+}
+
 .pill--ghost {
+  font-weight: 500;
+  color: var(--deep-plum);
+  text-shadow: none;
   background: rgb(255 255 255 / 0.5);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   box-shadow: none;
   border: 0.5px solid var(--frost-rim);
+}
+
+@media (hover: hover) {
+  .pill--ghost:hover {
+    background-color: rgb(255 255 255 / 0.72);
+    box-shadow: 0 6px 20px rgb(from var(--lavender-mist) r g b / 0.2);
+  }
 }
 
 :focus-visible {

@@ -1,5 +1,5 @@
-// Shared landing primitives: blooming on scroll, videos that only play in view, the DEEP mark,
-// and the store badges. Section files compose these; they never re-implement them.
+// Shared landing primitives: blooming on scroll, videos that only play in view, the DEEP mark
+// and wordmark. Section files compose these; they never re-implement them.
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { LOCKUP_BOX, TAGLINE_PATH, WORD_BOX, WORD_PATH } from './wordmarkPaths.ts'
 import './shared.css'
@@ -150,34 +150,6 @@ export function Wordmark({ className = '', tagline = false }: { className?: stri
       <path fillRule="evenodd" d={WORD_PATH} />
       {tagline && <path fillRule="evenodd" d={TAGLINE_PATH} />}
     </svg>
-  )
-}
-
-export function StoreBadges({ align = 'center' }: { align?: 'center' | 'start' }) {
-  return (
-    <div className={`badges badges--${align}`}>
-      <a className="badge badge--store" href="#">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8C7 7.4 5.6 8.3 4.8 9.7c-1.6 2.8-.4 6.9 1.2 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 2.9-.7s1.7.7 2.9.7c1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6 0 0-2.3-.9-2.3-3.7zM14.2 5.8c.6-.7 1-1.8.9-2.8-.9 0-2 .6-2.6 1.3-.6.6-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.2z"
-          />
-        </svg>
-        <span className="badge-text">
-          <span className="badge-small">Download on the</span>
-          <span className="badge-big">App Store</span>
-        </span>
-      </a>
-      <a className="badge badge--soon" href="#" aria-disabled="true" onClick={(e) => e.preventDefault()}>
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" d="M6 4.5v15l12-7.5z" />
-        </svg>
-        <span className="badge-text">
-          <span className="badge-small">Coming soon to</span>
-          <span className="badge-big">Google Play</span>
-        </span>
-      </a>
-    </div>
   )
 }
 

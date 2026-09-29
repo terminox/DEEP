@@ -9,7 +9,7 @@
 }
 
 .nav.is-condensed {
-  width: min(880px, calc(100% - 2 * var(--edge)));
+  width: min(920px, calc(100% - 2 * var(--edge)));
 }
 
 .nav-bar {
@@ -67,6 +67,7 @@
   padding: 8px 14px;
   border-radius: var(--pill);
   font-size: 14px;
+  white-space: nowrap;
   color: rgb(from var(--deep-plum) r g b / 0.72);
   text-decoration: none;
   transition:
@@ -83,16 +84,9 @@
   background: rgb(from var(--lavender-mist) r g b / 0.22);
 }
 
+/* The look is .pill--compact; this only places it in the bar. */
 .nav-cta {
   flex: none;
-  padding: 10px 18px;
-  border-radius: var(--pill);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--deep-plum);
-  text-decoration: none;
-  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
-  box-shadow: 0 8px 20px rgb(from var(--lavender-mist) r g b / 0.35);
 }
 
 .nav-toggle {
@@ -175,7 +169,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 960px) {
   .nav-links {
     display: none;
   }
