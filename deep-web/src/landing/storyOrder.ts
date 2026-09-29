@@ -1,4 +1,5 @@
-// The feature sections in story order. The nav and the page both read this, so they never disagree.
+// The nav's stops in story order: Global Pause, then the four chapters of Inside DEEP (their ids
+// live in InsideDeep.tsx). The nav and the page both read these ids, so they never disagree.
 export const sections = [
   { id: 'global-pause', label: 'Global Pause' },
   { id: 'deep-session', label: 'DEEP Session' },

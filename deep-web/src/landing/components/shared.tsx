@@ -51,10 +51,12 @@ type VideoProps = {
   style?: CSSProperties
   /** Start loading immediately (the hero); otherwise loads when near the viewport. */
   eager?: boolean
+  /** Holds the video on its current frame even while visible, e.g. a screen stacked under another. */
+  paused?: boolean
 }
 
 /** A muted, looping, inline video that only plays while visible, and stays a poster under reduced motion. */
-export function AmbientVideo({ name, portrait, className, style, eager }: VideoProps) {
+export function AmbientVideo({ name, portrait, className, style, eager, paused = false }: VideoProps) {
   const ref = useRef<HTMLVideoElement>(null)
   const near = useInView(ref, '200px')
   const [reduce] = useState(prefersReducedMotion)
@@ -71,9 +73,9 @@ export function AmbientVideo({ name, portrait, className, style, eager }: VideoP
   useEffect(() => {
     const video = ref.current
     if (!video || reduce || !armed) return
-    if (near) video.play().catch(() => {})
+    if (near && !paused) video.play().catch(() => {})
     else video.pause()
-  }, [near, armed, reduce])
+  }, [near, armed, reduce, paused])
 
   return (
     <video
