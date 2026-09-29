@@ -392,7 +392,7 @@ export default function CompassionPortfolio() {
         <div className="cp-head">
           <SectionHead
             eyebrow="Compassion Portfolio"
-            lede="Every quiet minute you spend in Deep becomes a heart. Give your hearts to the causes you care about, and Deep donates real money to partner organisations in proportion to where the community's hearts have gone."
+            lede="Every quiet minute you spend in DEEP becomes a heart. Give your hearts to the causes you care about, and DEEP donates real money to partner organisations in proportion to where the community's hearts have gone."
           >
             Make <em>real life</em> impacts
           </SectionHead>

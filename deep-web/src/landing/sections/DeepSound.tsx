@@ -1,4 +1,4 @@
-// Deep Sound: the iOS sound home (DeepSoundHomeView.swift) as a landing moment. A sky band with the
+// DEEP Sound: the iOS sound home (DeepSoundHomeView.swift) as a landing moment. A sky band with the
 // shelves riding up over it, and one glass mini player docked at the foot of the section that expands
 // into Now Playing. Everything is visual; no audio plays.
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -254,7 +254,7 @@ export default function DeepSound() {
         <div className="snd-band bloom">
           <AmbientVideo name="sky" className="snd-band-video" />
           <div className="snd-band-copy">
-            <p className="eyebrow snd-band-eyebrow">Deep Sound</p>
+            <p className="eyebrow snd-band-eyebrow">DEEP Sound</p>
             <h2 className="headline snd-band-headline">
               Collection of tracks <em>for mind</em>
             </h2>
@@ -279,7 +279,7 @@ export default function DeepSound() {
               </div>
             </div>
           ))}
-          <p className="snd-note bloom">Plus Deep Teacher and Deep Kids in the app. Collection names here are samples.</p>
+          <p className="snd-note bloom">Plus DEEP Teacher and DEEP Kids in the app. Collection names here are samples.</p>
         </div>
 
         {/* One player that follows you: the docked glass capsule, and Now Playing above it. */}

@@ -14,41 +14,51 @@
   background: var(--moon-cream) var(--atmosphere);
 }
 
+/* A gentle grade so no frame's highlights blow past the cream the page is built from. */
 .hero-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: 50% 55%;
+  filter: brightness(0.94) saturate(1.06);
 }
 
-/* The iOS veils: cream 0.55 fading down over the top half; cream rising to solid at the bottom. */
-.hero-veil {
+/*
+ * The logo keeps its iOS colours — a cream mark, an iris-dusk wordmark — and they want opposite
+ * backdrops: cream reads only against deeper tones, iris dusk only on light ones. The film already
+ * holds both (deeper sky overhead, the sun's bright core below), so the hero sharpens that ramp
+ * rather than covering it:
+ *
+ * 1. The dusk: a graduated deepening of the upper sky, a landscape photographer's ND filter.
+ *    Multiply keeps the footage's texture and hue and only lowers its light.
+ * 2. The pool: the same deepening, pooled around the mark, so its cream ring and bloom read as light.
+ * 3. The mist: frosted cream settling behind the wordmark, over the sun, smoothing the ridgeline and
+ *    flare that would otherwise break up the thin letter strokes.
+ * 4. The veil: cream rising from the lake to solid, for the copy and actions.
+ */
+.hero-dusk {
   position: absolute;
-  inset-inline: 0;
-}
-
-.hero-veil--top {
-  top: 0;
-  height: 50%;
-  background: linear-gradient(180deg, rgb(from var(--moon-cream) r g b / 0.55), transparent);
-}
-
-.hero-veil--bottom {
-  bottom: 0;
-  height: 55%;
+  inset: 0 0 auto;
+  height: 46%;
+  mix-blend-mode: multiply;
   background: linear-gradient(
     180deg,
-    transparent 0%,
-    rgb(from var(--moon-cream) r g b / 0.85) 55%,
-    var(--moon-cream) 100%
+    rgb(from var(--iris-dusk) r g b / 0.48) 0%,
+    rgb(from var(--iris-dusk) r g b / 0.34) 45%,
+    transparent 100%
   );
 }
 
-@media (prefers-contrast: more) {
-  .hero-veil--top,
-  .hero-veil--bottom {
-    background: rgb(from var(--moon-cream) r g b / 0.9);
-  }
+.hero-veil {
+  position: absolute;
+  inset: auto 0 0;
+  height: 58%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgb(from var(--moon-cream) r g b / 0.9) 38%,
+    var(--moon-cream) 100%
+  );
 }
 
 .hero-content {
@@ -57,60 +67,97 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 120px var(--edge) 72px;
+  padding: clamp(104px, 15vh, 220px) var(--edge) 72px;
 }
 
-/* The mark sits where the sun rises, cream light over the sunrise. */
-.hero-mark {
-  margin-top: 12vh;
-}
-
-.hero-title {
-  position: relative;
+/* MARK: The lockup — DeepLogoMark over OnboardingLogoText, a rhythm apart, as on iOS.
+   iOS gives the wordmark 300pt of a 390pt screen with an 80pt mark and a 24pt rhythm over it; the
+   web keeps those ratios as the lockup grows. */
+.hero-lockup {
+  --lockup: min(78vw, clamp(300px, 46vh, 640px));
+  --mark: calc(var(--lockup) * 80 / 300);
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 18px 0 0;
-  font-weight: 300;
+  gap: calc(var(--lockup) * 24 / 300);
+  margin: 0;
 }
 
-/* A soft cream seat so the wordmark and tagline read over the brightest part of the sunrise. */
-.hero-title::before {
-  content: '';
+.hero-seat {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* Paint order: mist, then pool, then the logo. The pool sits over the mist's upper reach so the
+   whole ring stays on deepened sky; the seats themselves stay unstacked so the pool's multiply
+   still reaches the film. */
+.hero-mark,
+.hero-word {
+  position: relative;
+  display: block;
+}
+
+.hero-mark {
+  z-index: 2;
+}
+
+/* A wide, soft deepening lifted above the mark. No plateau and no edge: it has to read as the sky
+   growing deeper overhead, never as a shape. */
+.hero-pool {
   position: absolute;
-  z-index: -1;
-  inset: -12% -22%;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--mark) * 6.4);
+  height: calc(var(--mark) * 3.6);
+  translate: -50% calc(-50% - var(--mark) * 0.3);
+  z-index: 1;
   border-radius: 50%;
+  mix-blend-mode: multiply;
   background: radial-gradient(
     closest-side,
-    rgb(from var(--moon-cream) r g b / 0.62),
-    rgb(from var(--moon-cream) r g b / 0.3) 55%,
+    rgb(from var(--iris-dusk) r g b / 0.6),
+    rgb(from var(--iris-dusk) r g b / 0.5) 34%,
+    rgb(from var(--iris-dusk) r g b / 0.27) 58%,
+    rgb(from var(--iris-dusk) r g b / 0.09) 80%,
     transparent
   );
-  filter: blur(8px);
+  pointer-events: none;
 }
 
+/* Wide enough that the mountain flanks either side of the sun sink into valley mist well before the
+   first and last letters; the core stays near-flat cream across the whole lockup. It reaches down
+   toward the sun far more than up, leaving the sky above to the mark. */
+.hero-mist {
+  position: absolute;
+  inset: -50% -82% -100%;
+  background: radial-gradient(
+    closest-side,
+    rgb(from var(--moon-cream) r g b / 0.9) 30%,
+    rgb(from var(--moon-cream) r g b / 0.78) 50%,
+    rgb(from var(--moon-cream) r g b / 0.42) 72%,
+    rgb(from var(--moon-cream) r g b / 0.1) 88%,
+    transparent
+  );
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  /* The blur fades out with the cream, so the mist has no edge to find. */
+  -webkit-mask-image: radial-gradient(closest-side, #000 40%, rgb(0 0 0 / 0.6) 68%, transparent 95%);
+  mask-image: radial-gradient(closest-side, #000 40%, rgb(0 0 0 / 0.6) 68%, transparent 95%);
+  pointer-events: none;
+}
+
+/* The cream shadow is iOS's `.shadow(moonCream 0.8, 12)`. */
 .hero-wordmark {
-  font-size: clamp(104px, 16vw, 200px);
-  line-height: 0.9;
-  background: linear-gradient(180deg, var(--lavender-mist), var(--iris-dusk));
-  -webkit-background-clip: text;
-  background-clip: text;
+  width: var(--lockup);
+  height: auto;
   filter: drop-shadow(0 0 12px rgb(from var(--moon-cream) r g b / 0.8));
 }
 
-.hero-tagline {
-  margin-top: 6px;
-  font-family: var(--serif);
-  font-style: italic;
-  font-size: clamp(20px, 2.2vw, 28px);
-  letter-spacing: 0.04em;
-  color: rgb(from var(--deep-plum) r g b / 0.72);
-  text-shadow: 0 0 12px var(--moon-cream), 0 0 24px var(--moon-cream);
-}
-
+/* MARK: Copy */
 .hero-foot {
   margin-top: auto;
+  padding-top: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -118,20 +165,21 @@
   max-width: 620px;
 }
 
+/* DeepType.displayTitle: New York light. */
 .hero-manifesto {
   margin: 0;
   font-family: var(--serif);
   font-weight: 300;
-  font-size: clamp(26px, 3vw, 36px);
-  line-height: 1.2;
-  letter-spacing: 0.02em;
+  font-size: clamp(24px, 2.6vw, 32px);
+  line-height: 1.25;
+  color: var(--deep-plum);
 }
 
 .hero-lede {
   margin: 0;
-  font-size: clamp(15px, 1.2vw, 17px);
+  font-size: clamp(16px, 1.25vw, 17px);
   line-height: 1.65;
-  color: rgb(from var(--deep-plum) r g b / 0.75);
+  color: rgb(from var(--deep-plum) r g b / 0.82);
 }
 
 .hero-actions {
@@ -142,12 +190,37 @@
   margin-top: 8px;
 }
 
-@media (max-width: 600px) {
-  .hero-mark {
-    margin-top: 8vh;
+/* Increase Contrast: the veils flatten to cream, as on iOS, and the mark trades its cream bloom for a
+   solid iris tint (OnboardingIntroView's increasedContrast branch) rather than vanishing into them. */
+@media (prefers-contrast: more) {
+  .hero-dusk,
+  .hero-pool,
+  .hero-mist {
+    display: none;
   }
 
+  .hero-veil {
+    inset: 0;
+    height: auto;
+    background: rgb(from var(--moon-cream) r g b / 0.9);
+  }
+
+  .hero-mark {
+    --mark-tint: var(--iris-dusk);
+  }
+
+  .hero-mark .logo-mark--glow {
+    filter: none;
+  }
+
+  .hero-mark .logo-mark-bloom {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
   .hero-content {
+    padding-top: clamp(96px, 13vh, 128px);
     padding-bottom: 48px;
   }
 

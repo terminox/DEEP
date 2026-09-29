@@ -1,6 +1,7 @@
-// Shared landing primitives: blooming on scroll, videos that only play in view, the Deep mark,
+// Shared landing primitives: blooming on scroll, videos that only play in view, the DEEP mark,
 // and the store badges. Section files compose these; they never re-implement them.
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { LOCKUP_BOX, TAGLINE_PATH, WORD_BOX, WORD_PATH } from './wordmarkPaths.ts'
 import './shared.css'
 
 export const prefersReducedMotion = () =>
@@ -90,26 +91,66 @@ export function AmbientVideo({ name, portrait, className, style, eager }: VideoP
   )
 }
 
-/** The Deep mark: a thin ring with a dot at its centre (DeepLogoMark.swift). Stroke 2%, dot 13%. */
-export function LogoMark({ size = 40, glow = false, tint = 'var(--iris-dusk)' }: { size?: number; glow?: boolean; tint?: string }) {
-  const stroke = 2 // of 100
+/**
+ * The DEEP mark: a thin ring with a dot at its centre (DeepLogoMark.swift). Stroke 2%, dot 13%.
+ * Glowing, it carries the iOS bloom: blurred copies of the ring and dot under the crisp pass, then a
+ * tight bright halo inside a wide soft one, all proportional to size. A caller can re-tint it from
+ * CSS through `--mark-tint` (the Increase Contrast path), which wins over the `tint` prop.
+ * `size` is pixels, or any CSS length when the mark scales with its surroundings.
+ */
+export function LogoMark({ size = 40, glow = false, tint = 'var(--iris-dusk)' }: { size?: number | string; glow?: boolean; tint?: string }) {
+  const length = typeof size === 'number' ? `${size}px` : size
+  // useId's delimiters aren't safe inside url(#…), so keep only the identifier characters.
+  const bloomId = `mark${useId().replace(/[^\w-]/g, '')}`
+  const ring = <circle cx="50" cy="50" r="49" fill="none" stroke="currentColor" strokeWidth="2" />
+  const dot = <circle cx="50" cy="50" r="6.5" fill="currentColor" />
   return (
     <svg
       className={`logo-mark${glow ? ' logo-mark--glow' : ''}`}
-      width={size}
-      height={size}
       viewBox="0 0 100 100"
-      style={{ color: tint }}
+      style={{ width: length, height: length, color: `var(--mark-tint, ${tint})`, '--mark-size': length } as CSSProperties}
       aria-hidden="true"
     >
-      <circle cx="50" cy="50" r={50 - stroke / 2} fill="none" stroke="currentColor" strokeWidth={stroke} />
-      <circle cx="50" cy="50" r="6.5" fill="currentColor" />
+      {glow && (
+        <>
+          <defs>
+            {/* Blur radii from DeepLogoMark.swift: 0.9 × stroke for the ring, 0.45 × dot for the dot. */}
+            <filter id={`${bloomId}-ring`} x="-10%" y="-10%" width="120%" height="120%">
+              <feGaussianBlur stdDeviation="1.8" />
+            </filter>
+            <filter id={`${bloomId}-dot`} x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="5.85" />
+            </filter>
+          </defs>
+          <g className="logo-mark-bloom" opacity="0.6">
+            <g filter={`url(#${bloomId}-ring)`}>{ring}</g>
+            <g filter={`url(#${bloomId}-dot)`}>{dot}</g>
+          </g>
+        </>
+      )}
+      {ring}
+      {dot}
     </svg>
   )
 }
 
-export function Wordmark({ className = '' }: { className?: string }) {
-  return <span className={`wordmark ${className}`}>deep</span>
+/**
+ * The DEEP wordmark, traced from the iOS OnboardingLogoText artwork and filled with the current
+ * colour (iris dusk by default, the tint iOS gives it). `tagline` adds "peace begins within." below.
+ */
+export function Wordmark({ className = '', tagline = false }: { className?: string; tagline?: boolean }) {
+  const box = tagline ? LOCKUP_BOX : WORD_BOX
+  return (
+    <svg
+      className={`wordmark ${className}`}
+      viewBox={`0 0 ${box.width} ${box.height}`}
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path fillRule="evenodd" d={WORD_PATH} />
+      {tagline && <path fillRule="evenodd" d={TAGLINE_PATH} />}
+    </svg>
+  )
 }
 
 export function StoreBadges({ align = 'center' }: { align?: 'center' | 'start' }) {

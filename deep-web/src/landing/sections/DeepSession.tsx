@@ -1,4 +1,4 @@
-// Deep Session, "Be with yourself". A web port of the iOS session screen: the BreathingOrb over the
+// DEEP Session, "Be with yourself". A web port of the iOS session screen: the BreathingOrb over the
 // atmosphere, the serif cue beneath it, and one breath the visitor can actually take with us.
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Atmosphere, SectionHead, prefersReducedMotion, useBloom } from '../components/shared.tsx'
@@ -150,14 +150,14 @@ export default function DeepSession() {
   ]
 
   return (
-    <section id="deep-session" className="ds" ref={rootRef} data-phase={phase} aria-label="Deep Session">
+    <section id="deep-session" className="ds" ref={rootRef} data-phase={phase} aria-label="DEEP Session">
       <Atmosphere className="ds-atmosphere" />
 
       <div className="ds-inner">
         <div className="ds-head">
           <SectionHead
-            eyebrow="Deep Session"
-            lede="The guided breath at the heart of Deep. An orb swells as you breathe in and softens as you breathe out, and for a few minutes there is nothing else to do."
+            eyebrow="DEEP Session"
+            lede="The guided breath at the heart of DEEP. An orb swells as you breathe in and softens as you breathe out, and for a few minutes there is nothing else to do."
           >
             Be with <em>yourself</em>
           </SectionHead>

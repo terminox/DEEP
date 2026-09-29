@@ -44,7 +44,7 @@ export default function Nav() {
   return (
     <nav className={`nav${condensed ? ' is-condensed' : ''}${open ? ' is-open' : ''}`} aria-label="Main">
       <div className="nav-bar">
-        <a className="nav-brand" href="#top" aria-label="Deep, back to top" onClick={() => setOpen(false)}>
+        <a className="nav-brand" href="#top" aria-label="DEEP, back to top" onClick={() => setOpen(false)}>
           <LogoMark size={26} />
           <Wordmark className="nav-wordmark" />
         </a>

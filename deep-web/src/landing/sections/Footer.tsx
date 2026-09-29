@@ -10,16 +10,16 @@ export default function Footer() {
     <footer className="ft">
       <div className="ft-inner">
         <div className="ft-brand">
-          <a className="ft-mark" href="#top" aria-label="Deep, back to top">
+          <a className="ft-mark" href="#top" aria-label="DEEP, back to top">
             <LogoMark size={30} />
             <Wordmark className="ft-wordmark" />
           </a>
-          <p className="ft-manifesto">Pause. Breathe. Connect. Heal — together.</p>
+          <p className="ft-manifesto">Pause. Breathe. Connect. Heal&nbsp;— together.</p>
         </div>
 
         <nav className="ft-cols" aria-label="Footer">
           <div>
-            <p className="eyebrow">Inside Deep</p>
+            <p className="eyebrow">Inside DEEP</p>
             <ul>
               {sections.map(({ id, label }) => (
                 <li key={id}>
@@ -29,7 +29,7 @@ export default function Footer() {
             </ul>
           </div>
           <div>
-            <p className="eyebrow">Deep</p>
+            <p className="eyebrow">DEEP</p>
             <ul>
               {company.map((label) => (
                 <li key={label}>
