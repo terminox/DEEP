@@ -24,7 +24,7 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * [PlaylistStore] backed by the Deep backend. The Android twin of
+ * [PlaylistStore] backed by the DEEP backend. The Android twin of
  * `PlaylistStore.swift`, folding what iOS splits into `PlaylistStore` +
  * `PlaylistRemote` into one class — [SoundService] and [cache] play the part
  * `APIPlaylistRemote` and its `UserDefaults` blob play there, the same

@@ -31,7 +31,7 @@ extension View {
 /// The same header for a screen with **no hero to collapse against**: the title
 /// simply stays, in plum, on nothing at all.
 ///
-/// Deep's hero-led tabs earn their collapse from a full-bleed video; a screen
+/// DEEP's hero-led tabs earn their collapse from a full-bleed video; a screen
 /// without one has nothing to roll against, and a white title would be
 /// invisible over the atmosphere. This keeps the shape those tabs establish —
 /// title top-left, accessory top-right, `.edge` inset — and drops the motion.
@@ -267,7 +267,7 @@ private struct CollapsibleHomeHeaderPreview<Trailing: View>: View {
 #if DEBUG
 #Preview("Collapsible header — over hero") {
   CollapsibleHomeHeaderPreview(
-    title: "Deep Sound",
+    title: "DEEP Sound",
     subtitle: "Sound to settle into"
   ) { EmptyView() }
 }

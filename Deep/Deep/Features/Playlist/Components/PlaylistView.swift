@@ -127,7 +127,7 @@ struct PlaylistView: View {
       }
 
       Button(action: openDeepSound) {
-        Text("Explore Deep Sound")
+        Text("Explore DEEP Sound")
           .font(DeepType.body.weight(.medium))
           .foregroundStyle(.deepPlum)
           .padding(.horizontal, 22)

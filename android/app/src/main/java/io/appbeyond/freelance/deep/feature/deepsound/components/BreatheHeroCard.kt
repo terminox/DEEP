@@ -82,14 +82,14 @@ private const val CHEVRON_SHADOW_ALPHA = 0.2f
 private val CHEVRON_SHADOW_RADIUS = 8.dp
 private val CHEVRON_SHADOW_OFFSET_Y = 4.dp
 
-/** Deep Session's default rounds — `DeepSessionLibrary.balancingBreath`'s `cycles: 6`. */
+/** DEEP Session's default rounds — `DeepSessionLibrary.balancingBreath`'s `cycles: 6`. */
 private const val BALANCING_BREATH_CYCLES = 6
 
 // MARK: - Card
 
 /**
- * The large editorial doorway at the top of the Deep Sound home — the bridge
- * into Deep Session. The whole card opens the session's threshold; unlike a
+ * The large editorial doorway at the top of the DEEP Sound home — the bridge
+ * into DEEP Session. The whole card opens the session's threshold; unlike a
  * collection tile there is nothing to play in place, so a quiet chevron disc
  * stands where a play button would, saying "go" rather than "play".
  *

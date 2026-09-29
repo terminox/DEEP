@@ -7,7 +7,7 @@ import SwiftUI
 /// its own language, which is the only labelling that stays legible whichever
 /// language the screen is currently showing.
 ///
-/// There is no row for following the device: Deep already does that until
+/// There is no row for following the device: DEEP already does that until
 /// someone picks, so the device's language is simply the one arriving checked.
 struct LanguageView: View {
   @Environment(\.languageStore) private var languageStore
@@ -30,7 +30,7 @@ struct LanguageView: View {
               }
             }
           }
-          Text("Deep reads in this language everywhere, including the reminders it sends you.")
+          Text("DEEP reads in this language everywhere, including the reminders it sends you.")
             .font(DeepType.caption)
             .foregroundStyle(.driftGrey)
             .padding(.horizontal, 8)

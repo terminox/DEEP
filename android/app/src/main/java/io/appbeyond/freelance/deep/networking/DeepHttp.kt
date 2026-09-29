@@ -24,10 +24,10 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 /**
- * The app's single HTTP seam to the Deep backend — the Android twin of
+ * The app's single HTTP seam to the DEEP backend — the Android twin of
  * `APIClient.swift`.
  *
- * It owns one [OkHttpClient] carrying everything every Deep request needs: the
+ * It owns one [OkHttpClient] carrying everything every DEEP request needs: the
  * two ambient headers, the bearer token, fail-fast timeouts, and a transparent
  * refresh-then-retry on a 401. Retrofit services and Coil both ride on it, so
  * the app has one connection pool, one DNS and TLS cache, and one place these
@@ -55,7 +55,7 @@ class DeepHttp(
   val client: OkHttpClient
 
   /**
-   * The client Deep Sound streams audio on — [client]'s connection pool and
+   * The client DEEP Sound streams audio on — [client]'s connection pool and
    * dispatcher, none of its Deep-specific behaviour.
    *
    * Two things on [client] are wrong for a stream. Its interceptors attach the
@@ -151,7 +151,7 @@ private fun wireLog(): HttpLoggingInterceptor =
   }
 
 /**
- * The two headers every Deep request carries, whether it is authorized or not.
+ * The two headers every DEEP request carries, whether it is authorized or not.
  *
  * The user's day boundary travels with every request: award day-keys and "earned
  * today" figures follow the device timezone server-side. The language travels

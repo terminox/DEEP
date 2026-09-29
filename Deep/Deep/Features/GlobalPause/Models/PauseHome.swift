@@ -2,7 +2,7 @@ import Foundation
 
 /// One server-composed shelf on the Global Pause home ("Popular now",
 /// "Today's sessions", "Made for you"). `id` is the backend's stable section
-/// key; items are full Deep Sound collections, so a card can push the real
+/// key; items are full DEEP Sound collections, so a card can push the real
 /// collection detail or start playback with no follow-up fetch.
 struct PauseHomeSection: Identifiable, Hashable {
   let id: String

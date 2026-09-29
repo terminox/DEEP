@@ -15,7 +15,7 @@ struct MindGardenHomeView: View {
   var bottomInset: CGFloat = .rhythm
 
   /// Today's practice is a guided breath. The card stays a dumb button; the
-  /// screen decides what tapping it does — here, pushing the Deep Session
+  /// screen decides what tapping it does — here, pushing the DEEP Session
   /// threshold through the coordinator.
   @Environment(\.openDeepSession) private var openDeepSession
 

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The large editorial doorway at the top of the home screen — Deep Sound's
-/// bridge into Deep Session. The whole card pushes the session's threshold onto
+/// The large editorial doorway at the top of the home screen — DEEP Sound's
+/// bridge into DEEP Session. The whole card pushes the session's threshold onto
 /// the tab's stack; unlike a collection card there is nothing to play in place,
 /// so a quiet halo ring (echoing the breathing orb) stands where a play button
 /// would.

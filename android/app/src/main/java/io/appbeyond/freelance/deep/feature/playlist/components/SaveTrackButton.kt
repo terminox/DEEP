@@ -54,7 +54,7 @@ private const val FILL_ALPHA = 0.4f
  * from `Deep/Deep/Features/Playlist/Components/SaveTrackButton.swift`.
  *
  * A bookmark rather than a heart on purpose: a filled blush heart is the
- * Compassion currency everywhere else in Deep, and the same mark cannot mean
+ * Compassion currency everywhere else in DEEP, and the same mark cannot mean
  * two things.
  *
  * Stateless where iOS reads the store from the environment: the caller knows

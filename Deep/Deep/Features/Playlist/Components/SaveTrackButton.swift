@@ -4,7 +4,7 @@ import SwiftUI
 /// utility control, in the soft translucent circle the screen already draws.
 ///
 /// A bookmark rather than a heart on purpose: `heart.fill` in blush is the
-/// Compassion currency everywhere else in Deep, and the same mark cannot mean
+/// Compassion currency everywhere else in DEEP, and the same mark cannot mean
 /// two things.
 struct SaveTrackButton: View {
   let track: SoundTrack

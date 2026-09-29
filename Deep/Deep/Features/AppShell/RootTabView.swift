@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Bridges the UIKit `MainTabController` into the SwiftUI app entry point.
 ///
-/// The shared stores + Deep Sound dependencies are passed down explicitly: the
+/// The shared stores + DEEP Sound dependencies are passed down explicitly: the
 /// tab shell's hosting controllers don't inherit the SwiftUI environment across
 /// the UIKit boundary, so the Profile tab (sign-out / onboarding reset) and the
 /// Sounds tab (content + player) act on the same instances `AppRootView` owns.

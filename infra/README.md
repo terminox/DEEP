@@ -1,4 +1,4 @@
-# Deep infrastructure (Pulumi + GCP)
+# DEEP infrastructure (Pulumi + GCP)
 
 One stack, one GCP project:
 

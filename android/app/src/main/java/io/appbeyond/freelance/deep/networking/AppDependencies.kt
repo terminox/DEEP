@@ -142,7 +142,7 @@ class AppDependencies(context: Context) {
    */
   suspend fun awaitOnboardingLoaded() = onboardingProgressStore.awaitLoaded()
 
-  // Week three: Deep Sound. The player is process-lifetime, like iOS's
+  // Week three: DEEP Sound. The player is process-lifetime, like iOS's
   // `soundPlayer`, so the mini player and the lock screen outlive every screen
   // that started a track. The audio itself plays in `DeepSoundService`, which
   // reads `http`, `trackListens` and `accountStore` from here when the system
@@ -161,7 +161,7 @@ class AppDependencies(context: Context) {
 
   /**
    * The one player. Connects to the service lazily, on the first track, so a
-   * member who never opens Deep Sound never starts it.
+   * member who never opens DEEP Sound never starts it.
    */
   val soundPlayer: SoundPlayer = SoundPlayer(context.applicationContext)
 

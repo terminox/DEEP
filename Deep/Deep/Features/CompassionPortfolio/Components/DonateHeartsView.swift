@@ -318,7 +318,7 @@ struct DonateHeartsView: View {
 }
 
 /// The soft number pad: `pebble` keys, the same inset tonal panel that groups
-/// anything else inside a Deep card. The bottom-left cell is left empty rather
+/// anything else inside a DEEP card. The bottom-left cell is left empty rather
 /// than filled with a "clear" key — holding delete does that, and a fourth verb
 /// on a pad this small reads as clutter.
 private struct HeartAmountPad: View {

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// One saved sound: the artwork of the collection it came from, its title, that
-/// collection's name, and how long it runs. The frosted-card list row Deep
+/// collection's name, and how long it runs. The frosted-card list row DEEP
 /// already uses for collections (`CollectionListView`), sized down for a track.
 ///
 /// Taking a sound out lives in the long-press menu, the same gesture that
@@ -54,7 +54,7 @@ struct PlaylistTrackRow: View {
     }
     .buttonStyle(.softPress)
     // No `.destructive` role: it would paint this the system's alarm red, and
-    // Deep has no urgent reds. Taking a sound out is one tap from saving it
+    // DEEP has no urgent reds. Taking a sound out is one tap from saving it
     // again.
     .contextMenu {
       Button(action: remove) {

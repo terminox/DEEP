@@ -29,7 +29,7 @@ function DashboardPage() {
       <div className="page-header">
         <div>
           <h1>Dashboard</h1>
-          <div className="page-subtitle">Content overview for the Deep app</div>
+          <div className="page-subtitle">Content overview for the DEEP app</div>
         </div>
       </div>
 

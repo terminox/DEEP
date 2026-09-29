@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The full-screen player. Mirrors Apple Music's Now Playing: a large artwork
 /// that contracts when paused, a draggable scrubber, transport, volume, and a
-/// bottom utility row — retinted to Deep and with softened motion.
+/// bottom utility row — retinted to DEEP and with softened motion.
 struct NowPlayingView: View {
   @Environment(\.soundPlayer) private var player
   @Environment(\.accessibilityReduceMotion) private var reduceMotion

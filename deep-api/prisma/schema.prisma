@@ -1,6 +1,6 @@
-// Deep backend schema.
+// DEEP backend schema.
 // Covers four features: auth (users + rotating refresh sessions),
-// onboarding (server-driven config + per-user profile), Deep Sound
+// onboarding (server-driven config + per-user profile), DEEP Sound
 // (categories -> collections -> tracks -> multi-language lyrics), and
 // practice-session logging (completed guided-breathing sessions).
 
@@ -181,7 +181,7 @@ model UserPlantProgress {
   @@map("user_plant_progress")
 }
 
-// ---- Deep Sound content ----
+// ---- DEEP Sound content ----
 
 model SoundCategory {
   id           String            @id @default(uuid())

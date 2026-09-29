@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Home-feed doorway into a guided Deep Session. Hosts only say *which*
+/// Home-feed doorway into a guided DEEP Session. Hosts only say *which*
 /// session to offer; tapping pushes the session's threshold through the tab
 /// coordinator's `openDeepSession` action.
 struct DeepSessionEntryCard: View {
@@ -52,7 +52,7 @@ struct DeepSessionEntryCard: View {
   }
 }
 
-#Preview("Deep session entry") {
+#Preview("DEEP Session entry") {
   ZStack {
     AtmosphereBackground()
     DeepSessionEntryCard(session: DeepSessionLibrary.balancingBreath)

@@ -3,13 +3,13 @@ package io.appbeyond.freelance.deep.shared.localization
 import java.util.Locale
 
 /**
- * The language Deep reads its copy in.
+ * The language DEEP reads its copy in.
  *
  * Ported from `Deep/Deep/Shared/Localization/AppLanguage.swift`, minus the pieces
- * that have no Android counterpart yet. Deep matches the device by default —
+ * that have no Android counterpart yet. DEEP matches the device by default —
  * that is behaviour, not a setting, so there is no "follow the system" case to
  * pick. Choosing one of these pins it in-app, so a member whose phone is set to
- * English can still read Deep in Thai without changing anything about their
+ * English can still read DEEP in Thai without changing anything about their
  * phone.
  *
  * That distinction is the whole reason `Accept-Language` is built from this enum
@@ -66,7 +66,7 @@ enum class AppLanguage(val rawValue: String) {
     fun of(rawValue: String): AppLanguage? = entries.firstOrNull { it.rawValue == rawValue }
 
     /**
-     * The language the device is asking for, narrowed to the two Deep speaks.
+     * The language the device is asking for, narrowed to the two DEEP speaks.
      *
      * `Locale.getDefault()` already reflects a per-app language override on
      * API 33+, and the device language below that, so a phone set to French

@@ -44,7 +44,7 @@ kotlinxCoroutines = "1.11.0"
 datastore = "1.2.1"
 
 # ExoPlayer for the home hero video since week 1; the session and the OkHttp
-# data source for Deep Sound since week 3.
+# data source for DEEP Sound since week 3.
 media3 = "1.11.1"
 
 coil = "3.6.2"

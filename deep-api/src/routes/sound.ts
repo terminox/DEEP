@@ -16,7 +16,7 @@ import {
 import { VISIBLE_CATEGORY_TREE, VISIBLE_TRACK, VISIBLE_TRACKS } from "../lib/soundQuery.js";
 
 export async function soundRoutes(app: FastifyInstance) {
-  // One call builds the entire Deep Sound home: ordered categories, each with
+  // One call builds the entire DEEP Sound home: ordered categories, each with
   // its ordered collections and their ordered tracks (with lyrics availability).
   // The payload is small, so the app needs no per-collection follow-up fetch.
   app.get("/sound/home", async () => {

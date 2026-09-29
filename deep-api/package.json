@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Deep backend \u2014 auth, onboarding, and Deep Sound content.",
+  "description": "DEEP backend \u2014 auth, onboarding, and DEEP Sound content.",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",

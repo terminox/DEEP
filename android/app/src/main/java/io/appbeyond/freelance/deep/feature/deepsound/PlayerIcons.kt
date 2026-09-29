@@ -30,7 +30,7 @@ import io.appbeyond.freelance.deep.theme.moonCream
 /** Circle-to-cubic control factor: 4/3 * tan(π/8). */
 private const val CIRCLE_K = 0.5523f
 
-/** DESIGN.md's line weight — the stroke every Deep glyph is drawn at. */
+/** DESIGN.md's line weight — the stroke every DEEP glyph is drawn at. */
 private const val LINE_WIDTH = 1.5f
 
 /**
@@ -51,7 +51,7 @@ private const val BULLET_RADIUS = 1.15f
  * iOS reaches for SF Symbols (`play.fill`, `pause.fill`, `forward.fill`,
  * `backward.fill`, `speaker.fill`, `speaker.wave.3.fill`, `list.bullet`,
  * `bookmark`, `bookmark.fill`) in `MiniPlayerBar.swift`, `NowPlayingView.swift`
- * and `SaveTrackButton.swift`. They are shared with the rest of Deep Sound —
+ * and `SaveTrackButton.swift`. They are shared with the rest of DEEP Sound —
  * one play triangle and one ribbon across the feature; [SoundIcons] carries
  * only what this set doesn't (shuffle, the struck-through bookmark, chevrons). The transport set is *solid* on iOS, as it is in
  * every music player, and stays solid here: a 1.5-stroke outline of a play

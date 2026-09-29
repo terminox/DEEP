@@ -13,7 +13,7 @@ struct ReminderCopy: Equatable, Sendable {
 
 extension ReminderCopy {
   /// Resolved through `Bundle.app` / `Locale.app` rather than the device's
-  /// language, so a member reading Deep in Thai on an English phone is
+  /// language, so a member reading DEEP in Thai on an English phone is
   /// reminded in Thai.
   ///
   /// A computed property, never a `static let`: a stored one would resolve

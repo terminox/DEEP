@@ -115,7 +115,7 @@ private const val FOOTER_ALPHA = 0.8f
  * the interactive edge-swipe pop; on Android system back is independent of the
  * control and pops the You tab's stack in `MainShellCoordinator`.
  *
- * @param language the language Deep currently reads in, named by its endonym.
+ * @param language the language DEEP currently reads in, named by its endonym.
  */
 @Composable
 fun SettingsScreen(

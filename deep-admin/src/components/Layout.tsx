@@ -71,7 +71,7 @@ function Layout() {
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-dot" />
-          Deep Admin
+          DEEP Admin
         </div>
         <nav className="nav-links">
           {navEntries.map((entry) =>

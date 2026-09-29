@@ -4,7 +4,7 @@ import Foundation
 /// promise honestly before the server has answered. The server remains the
 /// authority; these gates only stop the app promising what can never be granted.
 enum RewardRules {
-  /// How many Deep Sessions can earn per day. The completion beat's optimistic
+  /// How many DEEP Sessions can earn per day. The completion beat's optimistic
   /// heart is gated on this so it never promises a fifth heart the practice
   /// sync will not deliver.
   static let deepSessionDailyLimit = 4

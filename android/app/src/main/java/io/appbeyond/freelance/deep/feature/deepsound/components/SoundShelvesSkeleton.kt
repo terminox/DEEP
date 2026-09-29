@@ -35,7 +35,7 @@ private val TILE_SUBTITLE_WIDTH = 70.dp
 
 /**
  * A breathing skeleton mirroring the loaded home shelves — two carousels of
- * three placeholder tiles each, shown while the Deep Sound home fetches.
+ * three placeholder tiles each, shown while the DEEP Sound home fetches.
  *
  * Ported from Deep/Deep/Features/DeepSound/Components/SoundShelvesSkeleton.swift.
  * The tile row is wider than a phone, as the real row is; it sits in a

@@ -7,7 +7,7 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 /**
- * Deep Sound content and a listener's saved sounds. Paths are relative — see
+ * DEEP Sound content and a listener's saved sounds. Paths are relative — see
  * [PauseHomeService] for why.
  */
 interface SoundService {

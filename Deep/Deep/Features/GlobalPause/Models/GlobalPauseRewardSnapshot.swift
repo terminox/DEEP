@@ -5,7 +5,7 @@ import Foundation
 /// even though the grants land asynchronously behind the reflection.
 ///
 /// Global Pause awards are server-settled (5 hearts and 5 sunlight for the
-/// night, another pair for a first peace message), so unlike a Deep Session
+/// night, another pair for a first peace message), so unlike a DEEP Session
 /// there is no optimistic credit to read back: the "before" has to be kept.
 struct GlobalPauseRewardSnapshot: Equatable {
   let garden: GardenGrowth?
@@ -27,7 +27,7 @@ extension GlobalPauseRewardSnapshot {
     continuityWitnessedToday: false
   )
 
-  /// A member whose Deep Session already witnessed the rhythm today.
+  /// A member whose DEEP Session already witnessed the rhythm today.
   static let rhythmWitnessed = GlobalPauseRewardSnapshot(
     garden: GardenGrowth(plant: .oakFixture, sunlight: 240),
     heartBalance: 12,

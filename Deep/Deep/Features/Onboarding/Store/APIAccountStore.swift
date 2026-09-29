@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// `AccountStore` backed by the Deep backend. Auth calls go through `APIClient`,
+/// `AccountStore` backed by the DEEP backend. Auth calls go through `APIClient`,
 /// which persists the rotating token pair in the Keychain; this store keeps only
 /// the (non-secret) `Account` identity for the UI — mirrored into `UserDefaults`
 /// so an offline launch can restore the signed-in shell without the network.

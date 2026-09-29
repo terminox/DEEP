@@ -1,6 +1,6 @@
 import Foundation
 
-/// Wire shapes for the Deep API. These mirror the backend's JSON exactly
+/// Wire shapes for the DEEP API. These mirror the backend's JSON exactly
 /// (camelCase, so no key strategy needed) and are mapped into the app's domain
 /// models by each repository — keeping transport concerns out of the UI types.
 
@@ -101,7 +101,7 @@ struct OnboardingProfileDTO: Decodable {
   let completed: Bool
 }
 
-// MARK: - Deep Sound
+// MARK: - DEEP Sound
 
 struct TrackDTO: Decodable {
   let id: String

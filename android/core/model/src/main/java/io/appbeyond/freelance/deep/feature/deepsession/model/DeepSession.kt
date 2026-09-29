@@ -63,7 +63,7 @@ data class DeepSession(
   )
 }
 
-/** The lengths a Deep Session can be set to, in whole minutes. */
+/** The lengths a DEEP Session can be set to, in whole minutes. */
 object DeepSessionLength {
   val range = 1..10
 

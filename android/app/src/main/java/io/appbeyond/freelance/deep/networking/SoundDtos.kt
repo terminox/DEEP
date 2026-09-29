@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 import java.time.Instant
 
 /*
- * Wire shapes for Deep Sound and playlists, ported from `DTOs.swift`
+ * Wire shapes for DEEP Sound and playlists, ported from `DTOs.swift`
  * (`SoundHomeDTO`, `LyricsDTO`/`LyricsResponseDTO`, `PlaylistDTO`,
  * `PlaylistItemDTO`, `PlaylistsResponseDTO`, `PlaylistResponseDTO`,
  * `SaveTrackRequestDTO`). `CategoryDto`/`CollectionDto`/`TrackDto` already
@@ -107,7 +107,7 @@ private fun CategoryDto.toShelf(): SoundShelf = SoundShelf(
 /**
  * Ported from `APISoundContentRepository.collection(from:)`. Also used by
  * `ApiPlaylistStore` to map a saved sound's origin collection — the same
- * projection Deep Sound's shelves use, exactly as `APIPlaylistRemote` reuses
+ * projection DEEP Sound's shelves use, exactly as `APIPlaylistRemote` reuses
  * `APISoundContentRepository`'s statics rather than mapping its own copy.
  *
  * [CollectionDto.subtitle] defaults to empty rather than the DTO's `null`: the

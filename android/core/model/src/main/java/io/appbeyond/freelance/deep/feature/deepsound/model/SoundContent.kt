@@ -1,7 +1,7 @@
 package io.appbeyond.freelance.deep.feature.deepsound.model
 
 /**
- * Deep Sound's content, as the app holds it once `/sound/home` has been mapped.
+ * DEEP Sound's content, as the app holds it once `/sound/home` has been mapped.
  *
  * Ported from Deep/Deep/Features/DeepSound/Models/SoundContent.swift. URLs stay
  * plain strings — this module has no Android — and `palette` stays the server's
@@ -32,7 +32,7 @@ data class SoundTrack(
   val lyricsLanguages: List<String> = emptyList(),
 )
 
-/** A collection of tracks — Deep Sound's equivalent of an album. */
+/** A collection of tracks — DEEP Sound's equivalent of an album. */
 data class SoundCollection(
   val id: String,
   val title: String,
@@ -50,7 +50,7 @@ data class SoundCollection(
   fun queue(): List<SoundQueueEntry> = tracks.map { SoundQueueEntry(it, this) }
 }
 
-/** A shelf on the Deep Sound home: a category and its collections. */
+/** A shelf on the DEEP Sound home: a category and its collections. */
 data class SoundShelf(
   val id: String,
   val title: String,

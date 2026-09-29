@@ -168,7 +168,7 @@ struct SettingsView: View {
 
   // MARK: - Preferences
 
-  /// How Deep behaves for this member on this phone — as opposed to what their
+  /// How DEEP behaves for this member on this phone — as opposed to what their
   /// account is. Both rows push their own screen: a language list and a
   /// permission-bearing toggle are each too much to sit inline.
   private var preferencesSection: some View {

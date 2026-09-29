@@ -15,7 +15,7 @@ private struct DeepColorToken {
   var uiColor: UIColor { UIColor(red: red, green: green, blue: blue, alpha: 1) }
 }
 
-/// The Deep palette. Every colour the app uses originates here; the SwiftUI and
+/// The DEEP palette. Every colour the app uses originates here; the SwiftUI and
 /// UIKit accessors below are thin projections of these values — never duplicate
 /// an RGB literal elsewhere.
 private enum DeepPalette {
@@ -123,12 +123,12 @@ extension Animation {
   /// Drives the welcome screen's ripple-reveal transition.
   static let ripple = Animation.timingCurve(0.25, 0.45, 0.35, 1.0, duration: 1.35)
   /// The hush between two moments — the long screen dissolve. Reserved for
-  /// screen-level hand-offs (app root, onboarding routing, Deep Session
+  /// screen-level hand-offs (app root, onboarding routing, DEEP Session
   /// stages, Global Pause phases); micro-feedback keeps `.exhale` / `.bloom`.
   static let hush   = hushCurve.animation
 
   /// The breath itself — the exhale curve stretched over a whole breath phase,
-  /// the one motion in the app allowed to take entire seconds. Drives the Deep
+  /// the one motion in the app allowed to take entire seconds. Drives the DEEP
   /// Session orb.
   static func breath(over seconds: TimeInterval) -> Animation {
     .timingCurve(0.32, 0.0, 0.36, 1.0, duration: seconds)
@@ -136,7 +136,7 @@ extension Animation {
 }
 
 /// The breath's easing as a bare curve, for sampling where the animation runs
-/// (the Deep Session pause freeze reads the orb's true mid-flight position).
+/// (the DEEP Session pause freeze reads the orb's true mid-flight position).
 /// Same control points as `Animation.breath(over:)` — keep them in step.
 extension UnitCurve {
   static let breath = UnitCurve.bezier(

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Deep's full-screen loading beat: an opaque, calm scene with a centered
+/// DEEP's full-screen loading beat: an opaque, calm scene with a centered
 /// breathing line of serif text. Shown during whole-app waits — launch,
 /// log-in, sign-up. Content-level waits use breathing skeletons instead.
 struct BreatheLoadingView: View {

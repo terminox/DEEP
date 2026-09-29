@@ -1,6 +1,6 @@
 import UIKit
 
-/// The fade + lift that carries the Deep Session threshold into the practice —
+/// The fade + lift that carries the DEEP Session threshold into the practice —
 /// the same beat `.softDrift` on `.hush` plays between the session's own
 /// stages, ported to UIKit because the practice has to escape the tab bar while
 /// the threshold stays pushed underneath it.

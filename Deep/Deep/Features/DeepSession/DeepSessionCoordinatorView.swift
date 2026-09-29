@@ -130,7 +130,7 @@ struct DeepSessionCoordinatorView: View {
     )
     let isRewardEligible = completionsAfter <= RewardRules.deepSessionDailyLimit
     let heartsAwarded = isRewardEligible ? heartLedger.earn() : 0
-    // Deep Session rewards travel as one pair. If the heart ceiling withholds
+    // DEEP Session rewards travel as one pair. If the heart ceiling withholds
     // this award, sunlight rests too, matching the server contract.
     let sunlightAwarded = heartsAwarded > 0 ? gardenStore.creditSunlight(1) : 0
 
@@ -158,7 +158,7 @@ struct DeepSessionCoordinatorView: View {
 }
 
 #if DEBUG
-#Preview("Deep session practice") {
+#Preview("DEEP Session practice") {
   DeepSessionCoordinatorView(session: DeepSessionLibrary.balancingBreath)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
     .environment(\.practiceStore, MockPracticeStore())

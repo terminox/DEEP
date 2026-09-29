@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Card / tile artwork that shows a remote photograph beneath the Deep palette
+/// Card / tile artwork that shows a remote photograph beneath the DEEP palette
 /// gradient. The gradient is kept as a soft branded wash over the image — so
 /// photo-backed and gradient-only artwork read as one family — and while the
 /// image loads, when there is no URL, or when a load fails, it falls back to the

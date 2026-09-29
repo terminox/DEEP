@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// The Global Pause tab's content home — a stretchy video hero with a content
-/// feed riding up over it (a Deep Session doorway, then server-composed
+/// feed riding up over it (a DEEP Session doorway, then server-composed
 /// shelves and the Explore grid fetched from the backend). Modeled on the
-/// Calm iOS Home reference, themed in the Deep design system. Leaf screens
+/// Calm iOS Home reference, themed in the DEEP design system. Leaf screens
 /// route via the `openCollection` / `openCollectionList` actions the
 /// coordinator injects; this view hosts no navigation container itself.
 struct GlobalPauseHomeView: View {

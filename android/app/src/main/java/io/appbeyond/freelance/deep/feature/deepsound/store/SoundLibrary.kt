@@ -4,7 +4,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.SoundShelf
 import io.appbeyond.freelance.deep.feature.deepsound.model.TrackLyrics
 
 /**
- * The content seam for Deep Sound. Ported from `SoundContentRepository.swift`,
+ * The content seam for DEEP Sound. Ported from `SoundContentRepository.swift`,
  * narrowed to what this port needs so far — the home shelves and a track's
  * lyrics; `pauseHome()` stays on [io.appbeyond.freelance.deep.networking.PauseHomeRepository],
  * which already ships its own `/pause/home` seam.

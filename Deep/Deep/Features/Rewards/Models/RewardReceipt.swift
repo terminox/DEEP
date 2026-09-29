@@ -1,6 +1,6 @@
 import Foundation
 
-/// The reward state one finished practice hands to its ending ritual — a Deep
+/// The reward state one finished practice hands to its ending ritual — a DEEP
 /// Session, a Global Pause, anything that closes on the reward beats.
 ///
 /// Both sides of every change are captured before the first reward screen is
