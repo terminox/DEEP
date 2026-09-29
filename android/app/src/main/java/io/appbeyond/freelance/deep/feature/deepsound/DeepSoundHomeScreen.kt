@@ -107,8 +107,8 @@ private suspend fun loadShelves(library: SoundLibrary, state: MutableState<Shelv
 // MARK: - Screen
 
 /**
- * The Deep Sound home — one scroll combining a stretchy video sky, the Breathe
- * doorway into Deep Session, and the category shelves fetched from the backend.
+ * The DEEP Sound home — one scroll combining a stretchy video sky, the Breathe
+ * doorway into DEEP Session, and the category shelves fetched from the backend.
  *
  * Ported from Deep/Deep/Features/DeepSound/Components/DeepSoundHomeView.swift.
  * The Compose shape of `.collapsibleHomeHeader` and `.heroRefreshable` is two
@@ -290,7 +290,7 @@ private fun ShelvesFailed(onRetry: () -> Unit, modifier: Modifier = Modifier) {
 
 // MARK: - Previews
 
-@Preview(showBackground = true, name = "Deep Sound — Home")
+@Preview(showBackground = true, name = "DEEP Sound — Home")
 @Composable
 private fun DeepSoundHomePreview() {
   DeepTheme {
@@ -304,7 +304,7 @@ private fun DeepSoundHomePreview() {
   }
 }
 
-@Preview(showBackground = true, name = "Deep Sound — Failed")
+@Preview(showBackground = true, name = "DEEP Sound — Failed")
 @Composable
 private fun DeepSoundHomeFailedPreview() {
   DeepTheme {

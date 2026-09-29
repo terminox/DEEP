@@ -168,7 +168,7 @@ private val COLLAPSE_DRAG_DISTANCE = 300.dp
  * The full-screen player. Ported from `Deep/Deep/Features/DeepSound/Components/NowPlayingView.swift`:
  * a large artwork that contracts when paused, a draggable scrubber, transport,
  * volume, and a bottom utility row — Apple Music's Now Playing, retinted to
- * Deep and with softened motion.
+ * DEEP and with softened motion.
  *
  * Two deliberate departures from iOS. The bottom row carries only Lyrics: the
  * AirPlay button has no honest Android counterpart (the output switcher is a
@@ -403,7 +403,7 @@ private fun GrabHandle(onCollapse: () -> Unit) {
 
 /**
  * The square artwork. Playing, it stands full size in a deep bloom; paused, it
- * steps back to 0.84 and the bloom tightens — on Deep's [settle] spring, and
+ * steps back to 0.84 and the bloom tightens — on DEEP's [settle] spring, and
  * not at all under reduced motion, where it simply snaps.
  */
 @Composable

@@ -62,7 +62,7 @@ private const val DEFAULT_LINE = "Take a deep breath.\nWe're preparing your spac
 // MARK: - View
 
 /**
- * Deep's full-screen loading beat: an opaque, calm scene with a centred,
+ * DEEP's full-screen loading beat: an opaque, calm scene with a centred,
  * breathing line of serif text. Shown during whole-app waits — launch,
  * log-in, sign-up. Content-level waits use [SkeletonBlock] /
  * [SkeletonTextLine] instead.

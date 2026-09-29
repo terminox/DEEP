@@ -10,7 +10,7 @@ struct QuizOption: Identifiable, Hashable {
   let palette: ArtworkPalette
 }
 
-/// A single-select onboarding question. The prompt is phrased in Deep's gentle,
+/// A single-select onboarding question. The prompt is phrased in DEEP's gentle,
 /// second-person present-tense voice — an invitation, never a demand.
 struct QuizQuestion: Identifiable, Hashable {
   let id: String
@@ -19,7 +19,7 @@ struct QuizQuestion: Identifiable, Hashable {
 }
 
 extension QuizQuestion {
-  /// The two questions, phrased in Deep's emotional-wellness domain
+  /// The two questions, phrased in DEEP's emotional-wellness domain
   /// (pause · breathe · connect · heal). The Mind Tree picker follows as the
   /// flow's third and final step.
   static let all: [QuizQuestion] = [

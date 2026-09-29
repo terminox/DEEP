@@ -5,7 +5,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTrack
 import io.appbeyond.freelance.deep.feature.deepsound.model.TrackKind
 
 /**
- * Sample Deep Sound content for previews and tests — the two "Sleep" collections
+ * Sample DEEP Sound content for previews and tests — the two "Sleep" collections
  * from `Deep/Deep/Features/DeepSound/Models/SoundLibrary.swift`.
  *
  * Hermetic on purpose: no `audioUrl`, so nothing can stream, and no `imageUrl`,

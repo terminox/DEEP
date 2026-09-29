@@ -23,7 +23,7 @@ import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.moonCream
 
 /**
- * Deep Sound's shared glyphs — the ones both the collection screens and the
+ * DEEP Sound's shared glyphs — the ones both the collection screens and the
  * player reach for (play, the open bookmark) plus the collection screens' own
  * (shuffle, the struck bookmark, the two chevrons). [PlayerIcons] carries the
  * rest of the transport. Drawn in the same hand as

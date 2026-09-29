@@ -238,9 +238,9 @@ dependencies {
 
   implementation(libs.androidx.datastore.preferences)
 
-  // The home hero's looping video and Deep Sound's audio share one player.
+  // The home hero's looping video and DEEP Sound's audio share one player.
   implementation(libs.androidx.media3.exoplayer)
-  // Deep Sound: the session and service that keep audio playing in the
+  // DEEP Sound: the session and service that keep audio playing in the
   // background, and the data source that streams it over our own OkHttp pool.
   implementation(libs.androidx.media3.session)
   implementation(libs.androidx.media3.datasource.okhttp)

@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 
 /**
- * Deep's theme root.
+ * DEEP's theme root.
  *
  * Ported from Deep/Deep/Theme/DeepTheme.swift, which pins
  * `.preferredColorScheme(.light)` everywhere — [DeepColor]'s palette has no

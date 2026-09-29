@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The status-bar mark for Deep Sound's media notification: the ring and dot of
-  the Deep logo, as in ic_launcher_foreground.xml.
+  The status-bar mark for DEEP Sound's media notification: the ring and dot of
+  the DEEP logo, as in ic_launcher_foreground.xml.
 
   Not a copy of that drawable. Status-bar icons are alpha masks — the system
   throws the colour away and keeps only the shape — so this one is pure white,

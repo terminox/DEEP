@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
 // MARK: - Curves (single source of truth)
 
 /**
- * Motion in Deep is always slower than expected. Defaults run 600–900ms against a
+ * Motion in DEEP is always slower than expected. Defaults run 600–900ms against a
  * typical 200–300, and the easing approximates an exhale — slow start, slow end,
  * no overshoot. See DESIGN.md.
  *
@@ -101,7 +101,7 @@ fun <T> settle(): SpringSpec<T> =
 
 /**
  * The breath itself — the exhale curve stretched over a whole breath phase, the
- * one motion in the app allowed to take entire seconds. Drives the Deep Session
+ * one motion in the app allowed to take entire seconds. Drives the DEEP Session
  * orb: 4s in, 6s out.
  */
 fun <T> breath(seconds: Float): TweenSpec<T> =

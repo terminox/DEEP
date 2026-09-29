@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
  * Errors surfaced by the networking layer, ported from `APIError.swift`.
  *
  * [message] carries the backend's gentle, user-facing copy where one exists, and
- * Deep's own where it does not — so a screen shows `error.message` verbatim and
+ * DEEP's own where it does not — so a screen shows `error.message` verbatim and
  * never has to invent a sentence. That is the whole contract: **the message IS
  * the display string.** The technical detail lives beside it, in `detail` or the
  * `cause`, for logs.

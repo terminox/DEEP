@@ -11,7 +11,7 @@ final class MainTabController: UITabBarController {
   private let accountStore: any AccountStore
   private let subscriptionStore: any SubscriptionStore
 
-  /// Backend-backed Deep Sound content, injected into every hosted tab (and the
+  /// Backend-backed DEEP Sound content, injected into every hosted tab (and the
   /// Now Playing lyrics sheet) since the SwiftUI environment can't cross the
   /// UIKit boundary.
   private let soundRepository: any SoundContentRepository
@@ -21,7 +21,7 @@ final class MainTabController: UITabBarController {
   private let sharedPlayer: any SoundPlaying
 
   /// The shared practice journal, heart ledger, and garden, injected into
-  /// every hosted tab: the Deep Session flow presents from inside any tab's
+  /// every hosted tab: the DEEP Session flow presents from inside any tab's
   /// tree and must credit the same journal/ledger/garden the Garden and
   /// Portfolio read.
   private let practiceStore: any PracticeStore
@@ -30,7 +30,7 @@ final class MainTabController: UITabBarController {
   /// The saved sounds, injected into every tab: a sound can be saved from Now
   /// Playing or from any collection, and the You tab must read the same list.
   private let playlistStore: PlaylistStore
-  /// The one day-stamp behind the continuity beat, so a Deep Session and a
+  /// The one day-stamp behind the continuity beat, so a DEEP Session and a
   /// Global Pause on the same day share the single moment.
   private let continuityWitness: ContinuityWitness
   private let languageStore: LanguageStore
@@ -280,7 +280,7 @@ final class MainTabController: UITabBarController {
     systemImage: String
   ) -> UIViewController {
     // Every tab gets the shared player, journal, ledger, garden, and saved
-    // sounds: the Deep Session flow presents itself as a full-screen cover from
+    // sounds: the DEEP Session flow presents itself as a full-screen cover from
     // inside a tab's tree, pauses playback on entry, and records its
     // completion — without these it would reach the environment's throwaway
     // defaults and credit nobody. `subscriptionStore` rides along for the same

@@ -68,7 +68,7 @@ private struct ExploreTile: View {
       PauseCategory(id: "calm", slug: "calm", title: "Calm", collections: SoundLibrary.calm),
       PauseCategory(id: "morning", slug: "morning", title: "Morning", collections: SoundLibrary.morning),
       PauseCategory(id: "sleep", slug: "sleep", title: "Sleep", collections: SoundLibrary.sleep),
-      PauseCategory(id: "deep-kids", slug: "deep-kids", title: "Deep Kids", collections: SoundLibrary.deepKids),
+      PauseCategory(id: "deep-kids", slug: "deep-kids", title: "DEEP Kids", collections: SoundLibrary.deepKids),
     ])
     .padding(.vertical, 24)
   }

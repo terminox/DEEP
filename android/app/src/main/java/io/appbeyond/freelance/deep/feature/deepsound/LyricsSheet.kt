@@ -87,7 +87,7 @@ private sealed interface LyricsLoad {
  * when more than one language exists, and a calm empty line when none do.
  *
  * Ported from Deep/Deep/Features/DeepSound/Components/LyricsSheet.swift. A
- * Material3 [ModalBottomSheet] dressed in Deep's tokens — a moonCream surface
+ * Material3 [ModalBottomSheet] dressed in DEEP's tokens — a moonCream surface
  * with the card radius and a soft lavender grabber, no tonal tint, no scrim
  * rule. The language picker is the app's [DeepChip] rather than iOS's bespoke
  * capsules, which are the same selectable word in a different coat.

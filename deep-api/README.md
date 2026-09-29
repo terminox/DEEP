@@ -1,6 +1,6 @@
 # deep-api
 
-Backend for the Deep app — auth (email/password), onboarding, and Deep Sound content. Fastify + Prisma + Postgres (TypeScript).
+Backend for the DEEP app — auth (email/password), onboarding, and DEEP Sound content. Fastify + Prisma + Postgres (TypeScript).
 
 ## Requirements
 - Node 22+
@@ -33,7 +33,7 @@ with `ALLOW_TIME_OVERRIDE=true`.
 
 Auth (public): `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /me`
 Onboarding: `GET /onboarding/config`, `GET /me/onboarding`, `PUT /me/onboarding`
-Deep Sound (public): `GET /sound/home`, `GET /sound/collections/:id`, `GET /sound/tracks/:id/lyrics?lang=`
+DEEP Sound (public): `GET /sound/home`, `GET /sound/collections/:id`, `GET /sound/tracks/:id/lyrics?lang=`
 Media: `GET /media/audio/:file` (supports HTTP range → streaming)
 Admin (role=ADMIN): `POST /admin/auth/login`; CRUD + `/reorder` for `/admin/categories`,
 `/admin/collections`, `/admin/tracks`; `POST /admin/tracks/:id/audio` (multipart);

@@ -146,7 +146,7 @@ function CollectionsPage() {
         <div>
           <h1>Collections</h1>
           <div className="page-subtitle">
-            Deep Sound collections, grouped by category
+            DEEP Sound collections, grouped by category
           </div>
         </div>
       </div>

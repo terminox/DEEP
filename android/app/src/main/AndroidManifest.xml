@@ -6,7 +6,7 @@
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
   <!--
-    Deep Sound plays on with the screen off and the app in the background, from
+    DEEP Sound plays on with the screen off and the app in the background, from
     a media-playback foreground service that holds a wake lock while it streams.
     No POST_NOTIFICATIONS: a media-session notification is exempt from it.
   -->

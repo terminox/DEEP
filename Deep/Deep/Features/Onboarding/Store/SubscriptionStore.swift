@@ -22,7 +22,7 @@ extension SubscriptionStore {
   }
 }
 
-/// Product identifiers for Deep Pro — must match `Deep.storekit` (and, later,
+/// Product identifiers for DEEP Pro — must match `Deep.storekit` (and, later,
 /// App Store Connect / RevenueCat). `nonisolated` so they read as the plain
 /// compile-time constants they are from any isolation.
 enum DeepProduct {

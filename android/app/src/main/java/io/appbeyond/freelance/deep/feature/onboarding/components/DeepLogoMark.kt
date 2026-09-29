@@ -58,7 +58,7 @@ private const val OUTER_HALO_ALPHA = 0.5f
 private const val HALO_MARGIN = 0.5f
 
 /**
- * The Deep mark — a thin ring with a single dot resting at its centre, the
+ * The DEEP mark — a thin ring with a single dot resting at its centre, the
  * shape the app icon carries. Drawn rather than shipped as a raster so it
  * holds the palette and its glow on its own terms: a crisp ring seated inside
  * its own bloom, cream light over the welcome screen's sunrise.
@@ -172,7 +172,7 @@ private fun Bitmap.withHalo(radius: Float, alpha: Float): Bitmap {
   return result
 }
 
-@Preview(showBackground = true, name = "Deep mark — cream over sunrise, and flat")
+@Preview(showBackground = true, name = "DEEP mark — cream over sunrise, and flat")
 @Composable
 private fun DeepLogoMarkPreview() {
   OnboardingPreviewBackdrop {

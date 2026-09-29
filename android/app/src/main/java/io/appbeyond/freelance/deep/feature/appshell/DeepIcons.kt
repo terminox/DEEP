@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
  * iOS uses SF Symbols. Android's stock equivalent is Material's icon set, and
  * DESIGN.md rules both out for this surface: *"Custom rounded line icons, 1.5pt
  * stroke, soft terminals."* A Material glyph in the tab bar is the fastest way to
- * make Deep look like a different, cheaper product, and the bar frames every
+ * make DEEP look like a different, cheaper product, and the bar frames every
  * screen in the app.
  *
  * So each is a stroked path on a 24dp canvas at 1.5 stroke with round caps and
@@ -43,7 +43,7 @@ object DeepIcons {
     curveTo(16.5f, 7f, 16.5f, 17f, 12f, 21f)
   }
 
-  /** Deep Sound. A waveform, symmetrical so it reads as a breath, not a level meter. */
+  /** DEEP Sound. A waveform, symmetrical so it reads as a breath, not a level meter. */
   val Waveform: ImageVector = lineIcon("DeepWaveform") {
     moveTo(3.5f, 10f); lineTo(3.5f, 14f)
     moveTo(7.75f, 7f); lineTo(7.75f, 17f)

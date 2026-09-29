@@ -81,14 +81,14 @@ private val MENU_GLYPH = 18.dp
 
 /**
  * One saved sound: the artwork of the collection it came from, its title, that
- * collection's name, and how long it runs. The frosted-card list row Deep uses
+ * collection's name, and how long it runs. The frosted-card list row DEEP uses
  * for collections, sized down for a track. Ported from
  * `Deep/Deep/Features/Playlist/Components/PlaylistTrackRow.swift`.
  *
  * Taking a sound out lives in the long-press menu — iOS's `contextMenu`, the
  * same gesture that saved it — so the row itself carries nothing but the
  * sound. TalkBack gets the removal as a custom action instead of a gesture it
- * can't discover. No destructive red on it: Deep has no urgent reds, and taking
+ * can't discover. No destructive red on it: DEEP has no urgent reds, and taking
  * a sound out is one tap from saving it again.
  *
  * iOS also draws a lock for premium sounds here. Android plays everything, so

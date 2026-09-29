@@ -6,7 +6,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.SoundQueueEntry
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * The playback surface the Deep Sound UI depends on.
+ * The playback surface the DEEP Sound UI depends on.
  *
  * Ported from `Deep/Deep/Features/DeepSound/Player/SoundPlaying.swift`. Screens
  * depend on this rather than the concrete [SoundPlayer], so they preview and
@@ -41,7 +41,7 @@ interface SoundPlaying {
   fun togglePlayPause()
 
   /**
-   * Pauses if something is playing; otherwise a no-op. Guided flows (Deep
+   * Pauses if something is playing; otherwise a no-op. Guided flows (DEEP
    * Session) call this on entry — the track stays loaded so the mini player
    * picks up right where the listener left off. A member on iOS, where this is
    * a protocol extension over [togglePlayPause]; a member here so the real

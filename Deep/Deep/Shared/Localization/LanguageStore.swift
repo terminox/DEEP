@@ -38,7 +38,7 @@ final class LanguageStore {
   /// The write happens even when the language is already the one being read,
   /// because until this runs the language is only *matching* the device. Picking
   /// it pins it, so a member who later switches their phone to another language
-  /// keeps reading Deep in the one they chose.
+  /// keeps reading DEEP in the one they chose.
   func select(_ language: AppLanguage) {
     defaults.set(language.rawValue, forKey: AppLanguage.defaultsKey)
     guard language != selection else { return }

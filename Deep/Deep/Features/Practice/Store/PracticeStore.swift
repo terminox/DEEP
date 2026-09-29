@@ -3,7 +3,7 @@ import Observation
 
 /// The user's practice journal: every completed session, and the aggregates
 /// the garden grows from. One shared instance is injected by the shell so a
-/// session finished anywhere — Garden, Deep Sound, Global Pause — lands in the
+/// session finished anywhere — Garden, DEEP Sound, Global Pause — lands in the
 /// same journal.
 @MainActor
 protocol PracticeStore: AnyObject, Observable {

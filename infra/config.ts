@@ -1,4 +1,4 @@
-// Typed, per-stack configuration for the Deep infrastructure. Non-secret values
+// Typed, per-stack configuration for the DEEP infrastructure. Non-secret values
 // live in `Pulumi.<stack>.yaml`; secrets are set encrypted with
 // `pulumi config set --secret deep:<key> <value>` and surfaced here as
 // `pulumi.Output<string>`. The GCP project + region come from the standard

@@ -49,7 +49,7 @@ struct SoundQueueEntry: Hashable {
   let collection: SoundCollection
 }
 
-/// A collection of tracks — Deep Sound's equivalent of an album.
+/// A collection of tracks — DEEP Sound's equivalent of an album.
 /// There is no surfaced creator; a collection stands on its own.
 struct SoundCollection: Identifiable, Hashable, Codable {
   let id: String

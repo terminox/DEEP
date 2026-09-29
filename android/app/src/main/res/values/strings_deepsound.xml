@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Deep Sound: the home, a collection's detail and the lyrics sheet. Copy ported
+  DEEP Sound: the home, a collection's detail and the lyrics sheet. Copy ported
   verbatim from Deep/Deep/Features/DeepSound/Components/*.swift and the matching
   Deep/Localizable.xcstrings keys (quoted beside each entry). Thai lands in
   week 5 as values-th/strings_deepsound.xml.
@@ -8,8 +8,8 @@
 <resources>
 
   <!-- Home (DeepSoundHomeView.swift) -->
-  <!-- "Deep Sound" -->
-  <string name="deepsound_title">Deep Sound</string>
+  <!-- "DEEP Sound" -->
+  <string name="deepsound_title">DEEP Sound</string>
   <!-- "Breathe and listen" -->
   <string name="deepsound_subtitle">Breathe and listen</string>
   <!-- "We couldn't gather the sounds just now." -->

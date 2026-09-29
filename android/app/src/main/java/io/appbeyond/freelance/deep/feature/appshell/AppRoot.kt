@@ -104,8 +104,8 @@ private object Handoff {
  * @param soundPlayer paused as a practice opens: the session plays its own
  *   bell and breath, and a track underneath would talk over both. It stays
  *   loaded, so the mini player picks up where the member left off — iOS's
- *   `pause()` on Deep Session entry.
- * @param soundLibrary / playlistStore handed on to the shell for Deep Sound
+ *   `pause()` on DEEP Session entry.
+ * @param soundLibrary / playlistStore handed on to the shell for DEEP Sound
  *   and the You tab's saved sounds.
  * @param flowContent the onboarding and auth flow. A slot rather than a direct
  *   call so this file does not depend on the flow's wiring.

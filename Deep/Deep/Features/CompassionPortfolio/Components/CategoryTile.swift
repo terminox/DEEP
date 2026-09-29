@@ -6,7 +6,7 @@ import SwiftUI
 ///
 /// The tile is where giving happens now: the cause detail is no longer routed
 /// to, so this card carries the whole act — what the cause is, what has flowed
-/// to it, the share of Deep's giving that follows, and the donate button that
+/// to it, the share of DEEP's giving that follows, and the donate button that
 /// opens the amount sheet through the coordinator's injected `openDonation`
 /// action. The card body itself is not a button; only the capsule acts.
 ///
@@ -28,7 +28,7 @@ struct CategoryTile: View {
     ledger.category(category.id) ?? category
   }
 
-  /// This cause's slice of the pool, and so of the money Deep gives. Read from
+  /// This cause's slice of the pool, and so of the money DEEP gives. Read from
   /// the model's single definition, which the community pool legend above the
   /// shelf reads too — the two say the same number by construction.
   private var share: Double {

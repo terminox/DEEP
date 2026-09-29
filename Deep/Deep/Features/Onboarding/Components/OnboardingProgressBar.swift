@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A slim, continuous progress capsule shown at the top of the quiz. Fills from
 /// `0` to `1` with the signature slow `.exhale` motion. Mirrors the Calm
-/// reference's "1/6" progress affordance, softened to Deep's language (no harsh
+/// reference's "1/6" progress affordance, softened to DEEP's language (no harsh
 /// fraction label by default — progress is reflected, not scored).
 struct OnboardingProgressBar: View {
   /// 0...1 fraction complete.

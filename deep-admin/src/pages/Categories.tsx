@@ -214,7 +214,7 @@ function CategoriesPage() {
         <div>
           <h1>Categories</h1>
           <div className="page-subtitle">
-            Deep Sound shelves, and the Explore grid on Home
+            DEEP Sound shelves, and the Explore grid on Home
           </div>
         </div>
       </div>

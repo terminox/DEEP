@@ -9,7 +9,7 @@
   <string name="onboarding_logo_description">DEEP — peace begins within</string>
   <string name="onboarding_begin">Begin</string>
   <string name="onboarding_try_again">Try again</string>
-  <string name="onboarding_config_failed">We couldn\'t reach Deep just now.</string>
+  <string name="onboarding_config_failed">We couldn\'t reach DEEP just now.</string>
   <!-- %1$s is onboarding_log_in_link, drawn bold and underlined. -->
   <string name="onboarding_have_account">Already have an account? %1$s</string>
   <string name="onboarding_log_in_link">Log in</string>

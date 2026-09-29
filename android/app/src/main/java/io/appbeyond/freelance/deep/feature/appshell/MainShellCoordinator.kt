@@ -143,9 +143,9 @@ data class HomeActions(
  *
  * @param accountStore / onboardingStore the shared stores Settings writes to on
  *   the way out; flipping them is what moves `AppRoot` off this shell.
- * @param language the language Deep reads in, shown on Settings' Language row.
+ * @param language the language DEEP reads in, shown on Settings' Language row.
  * @param soundPlayer the app's one player, shared by every tab and the pill.
- * @param soundLibrary Deep Sound's shelves and lyrics.
+ * @param soundLibrary DEEP Sound's shelves and lyrics.
  * @param playlistStore the member's saved sounds — the You tab's root.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -176,7 +176,7 @@ fun MainShellCoordinator(
   // scroll position — while it is covered by a pushed screen or another tab,
   // the way a SwiftUI NavigationStack keeps its root alive. Without this the
   // root was rebuilt on every back and every tab switch, so opening a
-  // collection from the Deep Kids shelf dropped you back at the top.
+  // collection from the DEEP Kids shelf dropped you back at the top.
   // Keyed by each entry's own id — never by depth, or a screen still fading
   // out and the one pushed in its place would share a key and crash the
   // holder. A popped screen's state is dropped with it.

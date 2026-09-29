@@ -111,7 +111,7 @@ struct ReminderStoreTests {
     await store.enable(goalMetToday: false)
     #expect(store.reminder.isEnabled)
 
-    // Someone turns notifications off for Deep while the app is asleep.
+    // Someone turns notifications off for DEEP while the app is asleep.
     let revoked = MockReminderScheduler(permission: .denied)
     let reopened = ReminderStore(
       scheduler: revoked,

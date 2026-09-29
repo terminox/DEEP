@@ -32,7 +32,7 @@
   <string name="playlist_settings">Settings</string>
   <string name="playlist_empty_title">Nothing saved yet</string>
   <string name="playlist_empty_body">Save a sound while it\'s playing and it\'ll be waiting here.</string>
-  <string name="playlist_explore">Explore Deep Sound</string>
+  <string name="playlist_explore">Explore DEEP Sound</string>
   <string name="playlist_failed">We couldn\'t reach your playlist just now.</string>
   <string name="playlist_try_again">Try again</string>
   <string name="playlist_remove">Remove from playlist</string>

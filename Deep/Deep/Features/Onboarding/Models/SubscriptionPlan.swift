@@ -1,6 +1,6 @@
 import Foundation
 
-/// A purchasable Deep Pro plan, projected from a StoreKit `Product` (or, later,
+/// A purchasable DEEP Pro plan, projected from a StoreKit `Product` (or, later,
 /// a RevenueCat `Package`) so the paywall UI never depends on the store SDK.
 struct SubscriptionPlan: Identifiable, Equatable {
   enum Period: Equatable {

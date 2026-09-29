@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * [AccountStore] backed by the Deep backend. The Android twin of
+ * [AccountStore] backed by the DEEP backend. The Android twin of
  * `APIAccountStore.swift`: this store keeps only the (non-secret) [Account]
  * identity for the UI, mirrored into [cache] so an offline launch can restore
  * the signed-in shell without the network.

@@ -23,19 +23,19 @@
   <string name="placeholder_garden_title">Your practice, growing</string>
   <string name="placeholder_garden_body">One plant that grows alongside you. No streaks to break, nothing to fail.</string>
   <string name="placeholder_compassion_title">Practice turned outward</string>
-  <string name="placeholder_compassion_body">Time spent in Deep earns hearts. Hearts are given to causes.</string>
+  <string name="placeholder_compassion_body">Time spent in DEEP earns hearts. Hearts are given to causes.</string>
   <string name="placeholder_you_title">Your space</string>
-  <string name="placeholder_you_body">The sounds you have kept, and how Deep is set up for you.</string>
+  <string name="placeholder_you_body">The sounds you have kept, and how DEEP is set up for you.</string>
 
   <!-- Home feed -->
   <!-- collapsibleHomeHeader(title:subtitle:) on GlobalPauseHomeView.swift -->
   <string name="home_header_title">Home</string>
   <string name="home_header_subtitle">Take a breath with the world today</string>
   <string name="home_greeting">Pause. Breathe. Connect.</string>
-  <string name="home_failed_title">We could not reach Deep</string>
+  <string name="home_failed_title">We could not reach DEEP</string>
   <string name="home_failed_body">Check your connection, and try again when you are ready.</string>
   <string name="home_retry">Try again</string>
-  <string name="home_session_card_title">Deep Session</string>
+  <string name="home_session_card_title">DEEP Session</string>
   <string name="home_session_card_body">A guided breath, for as long as you have.</string>
   <string name="home_lounge_card_title">Fuku\'s Lounge</string>
   <string name="home_lounge_card_body">The world pauses together.</string>
@@ -43,7 +43,7 @@
   <!-- HomeTile.swift / FeatureCard.swift's play button: "Play %@" -->
   <string name="home_play_collection">Play %1$s</string>
 
-  <!-- Deep Session -->
+  <!-- DEEP Session -->
   <string name="session_begin">Begin</string>
   <string name="session_minutes">min</string>
   <string name="session_pattern">4s in, 6s out, %1$d rounds</string>

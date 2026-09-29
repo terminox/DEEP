@@ -79,7 +79,7 @@ private const val HEADER_BUTTON_BORDER_ALPHA = 0.4f
 private val HEADER_BUTTON_BORDER = 0.5.dp
 
 /**
- * The dialog scrim: plum, not black. A black dim turns Deep's pale atmosphere
+ * The dialog scrim: plum, not black. A black dim turns DEEP's pale atmosphere
  * into a bruise; a light plum wash keeps the room recognisably the same one.
  */
 private const val SCRIM_ALPHA = 0.28f
@@ -93,7 +93,7 @@ private const val DIALOG_BLOOM_FROM_SCALE = 0.92f
 
 /**
  * A Calm-style settings group: an optional whisper of a title above a frosted
- * card of rows. The card *is* the grouping — Deep separates content with
+ * card of rows. The card *is* the grouping — DEEP separates content with
  * whitespace and surfaces, never with rules, so there are no hairlines
  * between the rows.
  *
@@ -266,11 +266,11 @@ data class DialogAction(
 )
 
 /**
- * Deep's confirmation: a frosted card blooming in over a soft plum scrim.
+ * DEEP's confirmation: a frosted card blooming in over a soft plum scrim.
  *
  * Stands in for both iOS presentations Settings uses — the log-out
  * `confirmationDialog` (an action sheet) and the delete `alert`. Android has
- * neither idiom in Deep's register: a stock Material `AlertDialog` arrives on
+ * neither idiom in DEEP's register: a stock Material `AlertDialog` arrives on
  * a black dim with its own surface and tonal buttons. So this is composed from
  * what the app already owns — [frostedCard] for the surface and the frosted
  * chip pill (iOS's "Try again" button) for each action, destructive ones inked

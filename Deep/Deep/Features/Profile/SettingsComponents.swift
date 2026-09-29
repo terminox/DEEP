@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Section
 
 /// A Calm-style settings group: an optional whisper of a title above a frosted
-/// card of rows. The card *is* the grouping — Deep separates content with
+/// card of rows. The card *is* the grouping — DEEP separates content with
 /// whitespace and surfaces, never with rules, so there are no hairlines
 /// between the rows.
 struct SettingsSection<Content: View>: View {

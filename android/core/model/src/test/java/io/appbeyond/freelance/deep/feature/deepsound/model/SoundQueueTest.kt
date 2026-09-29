@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 /**
- * Ported from the transport-rule cases in Deep's `SoundPlayer`/
+ * Ported from the transport-rule cases in DEEP's `SoundPlayer`/
  * `StreamingSoundPlayer` suites — `SoundQueue` is where Android centralises
  * the maths those three iOS players each repeat inline.
  */

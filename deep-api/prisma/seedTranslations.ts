@@ -18,8 +18,8 @@ const CATEGORY_TITLES: Dictionary = {
   Calm: "สงบ",
   Morning: "เช้า",
   Sleep: "หลับ",
-  "Deep Teacher": "ครูแห่งใจ",
-  "Deep Kids": "เด็ก ๆ",
+  "DEEP Teacher": "ครูแห่งใจ",
+  "DEEP Kids": "เด็ก ๆ",
 };
 
 const COLLECTION_TITLES: Dictionary = {

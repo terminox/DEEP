@@ -1,4 +1,4 @@
-# Deep — Design System
+# DEEP — Design System
 
 > *"Pause. Breathe. Connect. Heal — together."*
 
@@ -19,7 +19,7 @@ A soft place in the harsh. A companion app for slowing down, feeling held, and r
 
 ## UX Philosophy
 
-Deep is built around the belief that healing happens in stillness, not stimulation. Every interaction is designed to slow the user's nervous system rather than capture their attention. Where most apps optimize for retention and engagement loops, Deep optimizes for **regulation, presence, and gentle return**.
+DEEP is built around the belief that healing happens in stillness, not stimulation. Every interaction is designed to slow the user's nervous system rather than capture their attention. Where most apps optimize for retention and engagement loops, DEEP optimizes for **regulation, presence, and gentle return**.
 
 **Core principles:**
 
@@ -27,7 +27,7 @@ Deep is built around the belief that healing happens in stillness, not stimulati
 - **Breathe with the user.** The app's rhythm matches the body — slow transitions, generous whitespace, time to land before being asked to act.
 - **Invitation, never demand.** Notifications, prompts, and CTAs are phrased as gentle offerings. The user is never behind, never failing, never owed.
 - **Held, not tracked.** Streaks, scores, and gamification are absent. Progress is reflected back as growth, not performance.
-- **Privacy as care.** What is shared in Deep stays in Deep. The vulnerability of users is treated as sacred, not as data.
+- **Privacy as care.** What is shared in DEEP stays in DEEP. The vulnerability of users is treated as sacred, not as data.
 - **Together, at your pace.** Social features exist but never expose. Connection is opt-in, asynchronous, and protected by design.
 
 The user should leave each session feeling **softer than they arrived.**
@@ -48,7 +48,7 @@ If a design choice cannot be described by one of these words, it likely belongs 
 
 ## Animation Styles
 
-Motion in Deep is **always slower than expected.** The reference is breath, water, and floating particles — never spring-snap, never bounce-and-settle interfaces typical of consumer apps.
+Motion in DEEP is **always slower than expected.** The reference is breath, water, and floating particles — never spring-snap, never bounce-and-settle interfaces typical of consumer apps.
 
 **Timing:**
 - Default duration: **600–900ms** (vs. the typical 200–300ms).
@@ -101,7 +101,7 @@ A two-family system — a soft serif for emotional moments and a humanist sans f
 
 **Display / Serif — `Cormorant Garamond`** (or `Fraunces` as a modern alternative)
 - Used for: the wordmark, hero headlines, affirmations, journal prompts, quotes.
-- Weight: **Light (300)** and **Light Italic** almost exclusively. Bold serifs feel declarative; Deep does not declare.
+- Weight: **Light (300)** and **Light Italic** almost exclusively. Bold serifs feel declarative; DEEP does not declare.
 - Tracking: **+2%** for headlines to let letters breathe.
 - The wordmark "deep" is rendered in lowercase italic, with a lavender→lilac vertical gradient fill.
 
@@ -130,4 +130,4 @@ A two-family system — a soft serif for emotional moments and a humanist sans f
 
 ## In summary
 
-Every pixel of Deep should feel like the moment after a long exhale. If a component, color, or motion would startle a sleeping cat, it does not belong.
+Every pixel of DEEP should feel like the moment after a long exhale. If a component, color, or motion would startle a sleeping cat, it does not belong.

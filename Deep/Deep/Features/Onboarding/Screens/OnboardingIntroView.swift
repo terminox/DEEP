@@ -76,7 +76,7 @@ struct OnboardingIntroView: View {
 
         VStack(spacing: 14) {
           if configState == .failed {
-            Text("We couldn't reach Deep just now.")
+            Text("We couldn't reach DEEP just now.")
               .font(DeepType.caption)
               .foregroundStyle(.driftGrey)
               .multilineTextAlignment(.center)

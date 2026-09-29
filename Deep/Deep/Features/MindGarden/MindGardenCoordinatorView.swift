@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Coordinator view for the Mind Garden flow — the business-specific composition
-/// root. It owns navigation (home → Deep Session threshold) and the one
+/// root. It owns navigation (home → DEEP Session threshold) and the one
 /// presentation this flow raises (the plant picker sheet), and hosts the home
 /// screen — nothing else.
 ///

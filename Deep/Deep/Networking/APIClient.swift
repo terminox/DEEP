@@ -1,6 +1,6 @@
 import Foundation
 
-/// The app's single HTTP seam to the Deep backend. Async/await over `URLSession`,
+/// The app's single HTTP seam to the DEEP backend. Async/await over `URLSession`,
 /// base URL from `AppConfig`, Bearer-token injection from the Keychain, and a
 /// single transparent refresh-then-retry on a 401. Repositories and the auth
 /// store are built on top of this; views never touch it directly.

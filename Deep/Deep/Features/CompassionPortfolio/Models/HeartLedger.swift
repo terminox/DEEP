@@ -120,7 +120,7 @@ final class HeartLedger {
     categories.first { $0.id == id }
   }
 
-  /// Credits hearts earned through practice — a completed Deep Session calls
+  /// Credits hearts earned through practice — a completed DEEP Session calls
   /// this. Only what's left of today's ceiling is credited, so the figure the
   /// portfolio card shows is the whole truth; once the day is full this is a
   /// no-op. Animated so the balance settles softly wherever it's shown.

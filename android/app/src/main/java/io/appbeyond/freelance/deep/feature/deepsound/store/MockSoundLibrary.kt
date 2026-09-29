@@ -41,7 +41,7 @@ class MockSoundLibrary(
  * which saves a few of these tracks. No networking, no audio — just enough
  * shape to make the home, detail and playlist screens feel alive. Deliberately
  * smaller than `SoundLibrary.swift`'s bundled catalogue (three shelves rather
- * than five, a couple of collections each) — this only has to cover Deep
+ * than five, a couple of collections each) — this only has to cover DEEP
  * Sound and Playlist's previews, not stand in for real content.
  */
 object SoundLibraryFixtures {

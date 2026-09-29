@@ -1,4 +1,4 @@
-// Deep GCP infrastructure (Pulumi, TypeScript).
+// DEEP GCP infrastructure (Pulumi, TypeScript).
 //
 // One stack (`production`) → GCP project `deep-production-app`. Provisions
 // Artifact Registry, Cloud SQL Postgres, the private media bucket (FUSE-mounted

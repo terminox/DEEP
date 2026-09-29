@@ -2,7 +2,7 @@
 
 > *"Pause. Breathe. Connect. Heal — together."*
 
-Deep is a companion app for slowing down, feeling held, and reconnecting with self and others. It is built on the belief that healing happens in stillness, not stimulation — so it optimizes for regulation and gentle return rather than engagement.
+DEEP is a companion app for slowing down, feeling held, and reconnecting with self and others. It is built on the belief that healing happens in stillness, not stimulation — so it optimizes for regulation and gentle return rather than engagement.
 
 The app is five tabs — **Global Pause · Sounds · Garden · Portfolio · You** — around one shared idea: a person can stop, breathe, and know they are not doing it alone. One sound player is shared across every tab, and a guided breathing session can be launched from anywhere.
 
@@ -12,7 +12,7 @@ For the design language — colour, motion, typography, the feeling of the thing
 
 ### Global Pause
 
-The world breathing together. Deep holds a synchronized pause at set times each day that anyone, anywhere, can join — the premise being that ten minutes of stillness is different when thousands of people are in it with you.
+The world breathing together. DEEP holds a synchronized pause at set times each day that anyone, anywhere, can join — the premise being that ten minutes of stillness is different when thousands of people are in it with you.
 
 The experience is three surfaces:
 
@@ -45,17 +45,17 @@ The experience is three surfaces:
 *Today:* the lounge, the live session, reflection, and the peace-message feed all run against the backend — schedule, synced clock, presence heartbeats, live participant counts lighting the globe, joins rippling outward, message paging and posting. The lounge's theme music and welcome lines are the open work. For testing, the dev server can time-travel (`scripts/pause-time-travel.sh live|off`, with an optional session to pick when the day holds several): `live` keeps that session's meditation live until switched off, and every client follows through the production code path — no debug code in the app.
 
 
-### Deep Session
+### DEEP Session
 
 The guided breath at the centre of the app. One session is rounds of four seconds in and six seconds out, run for as long as you set it on the threshold before you begin — anywhere from one minute to ten. The long exhale is deliberate: that ratio is the physiological sigh that settles the nervous system.
 
 An orb swells and softens with your breath, a cue reads *breathe in* / *breathe out*, and the round count sits quietly beneath. You can pause and take your time. It ends on *"You're here now"* — never a score.
 
-*Today:* fully working. It presents full-screen over the tab bar, so any tab can offer the same session; the Garden's daily practice card and Deep Sound's Breathe card both open this. One session ships (`balancingBreath`); the model supports any inhale/exhale/round pattern.
+*Today:* fully working. It presents full-screen over the tab bar, so any tab can offer the same session; the Garden's daily practice card and DEEP Sound's Breathe card both open this. One session ships (`balancingBreath`); the model supports any inhale/exhale/round pattern.
 
-### Deep Sound
+### DEEP Sound
 
-Somewhere to land when you don't want to be guided. Collections of soundscapes — an album's worth of tracks each, standing on their own without a creator's name attached — organised across five shelves: **Calm, Morning, Sleep, Deep Teacher, Deep Kids**.
+Somewhere to land when you don't want to be guided. Collections of soundscapes — an album's worth of tracks each, standing on their own without a creator's name attached — organised across five shelves: **Calm, Morning, Sleep, DEEP Teacher, DEEP Kids**.
 
 Start something and it follows you: the player docks into the tab bar as a mini player and expands into a full Now Playing. A sound started here and a sound started in Global Pause are the same player.
 
@@ -72,13 +72,13 @@ Start something and it follows you: the player docks into the tab bar as a mini 
 
 Your practice, reflected back as growth rather than performance. There are no streaks to break and nothing to fail — one chosen plant simply grows alongside you.
 
-You tend a single plant (the oak, for now). Every completed session — a Deep Session or a Global Pause — feeds it growth points, and at gentle thresholds it evolves into its next form: **Oak Seedling → Young Oak → Mature Oak**. The screen greets you with the day's line of encouragement, shows the oak as it stands beside the form it's growing into with the progress between them, and carries today's minutes against a gentle goal inside the practice card.
+You tend a single plant (the oak, for now). Every completed session — a DEEP Session or a Global Pause — feeds it growth points, and at gentle thresholds it evolves into its next form: **Oak Seedling → Young Oak → Mature Oak**. The screen greets you with the day's line of encouragement, shows the oak as it stands beside the form it's growing into with the progress between them, and carries today's minutes against a gentle goal inside the practice card.
 
 *Today:* the layout is built and today's minutes are real, read from the shared practice journal. Growth points are sample state — sessions don't yet bank points and evolution doesn't persist. The Mind Tree picked in onboarding isn't wired in yet either (the garden always shows the oak); connecting both is the open work here.
 
 ### Compassion Portfolio
 
-Where practice turns outward. Time spent in Deep earns hearts; hearts are given to causes; Deep donates real money to real partner organisations in proportion to where the community's hearts have gone.
+Where practice turns outward. Time spent in DEEP earns hearts; hearts are given to causes; DEEP donates real money to real partner organisations in proportion to where the community's hearts have gone.
 
 You hold a balance, choose a cause — Peace & Well-being, Healthcare, Education, and others — and send a heart to it or to a specific project inside it. Each cause names its partner organisation and the share of giving it receives. Field reports come back from the ground so the loop closes: hearts given, lives touched, told plainly.
 
@@ -101,7 +101,7 @@ The questions are invitations, not a form — *"What brings you here today?"* an
 
 Home isn't a tab of its own — it's the root of **Global Pause**, which is deliberate: the world's pause is the first thing you see.
 
-It's one slow scroll. A video sky stretches under the status bar, and the content rides up over it: the DJ Fuku lounge card (the doorway into Fuku's Lounge and the world's pause), a doorway into today's Deep Session, then the content shelves and an explore grid.
+It's one slow scroll. A video sky stretches under the status bar, and the content rides up over it: the DJ Fuku lounge card (the doorway into Fuku's Lounge and the world's pause), a doorway into today's DEEP Session, then the content shelves and an explore grid.
 
 *Today:* the feed is built and navigable; every item opens a detail screen. The shelves below the two fixed cards are composed by the backend.
 
@@ -113,7 +113,7 @@ The **You** tab. Your avatar, your name, how you signed in — and a log out tha
 
 ## Status
 
-Deep is a working prototype of the whole experience, backed by a real API (`deep-api`) where it matters most: the home feed's shelves, the sound library (streamed audio), and all of **Global Pause** — schedule, synced clock, presence, live counts, peace messages — are served by the backend. Onboarding persists locally: whether you finished it, and what you answered.
+DEEP is a working prototype of the whole experience, backed by a real API (`deep-api`) where it matters most: the home feed's shelves, the sound library (streamed audio), and all of **Global Pause** — schedule, synced clock, presence, live counts, peace messages — are served by the backend. Onboarding persists locally: whether you finished it, and what you answered.
 
 Two areas carry known gaps. The **Mind Garden**'s growth points and the **Compassion Portfolio**'s balances are fixture state that nothing writes to — practice feeds today's minutes, but not yet growth points or hearts. And inside **Global Pause**, the lounge's remaining roles — the theme music and the welcome lines — are modelled (the schedule already carries both) but not yet played or shown.
 
@@ -124,4 +124,4 @@ Two areas carry known gaps. The **Mind Garden**'s growth points and the **Compas
 
 ## Premium Feature & In-app Purchases
 
-Subscribed users will have access to premium sounds in Deep Sound and exclusive plants (and theme) in Mind Garden.
+Subscribed users will have access to premium sounds in DEEP Sound and exclusive plants (and theme) in Mind Garden.

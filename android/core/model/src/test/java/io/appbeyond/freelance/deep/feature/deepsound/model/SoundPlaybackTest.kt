@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Ported from the state half of Deep's `SoundPlayer`/`StreamingSoundPlayer`
+ * Ported from the state half of DEEP's `SoundPlayer`/`StreamingSoundPlayer`
  * suites — everything `SoundPlayback` derives from the queue and index alone.
  */
 class SoundPlaybackTest {

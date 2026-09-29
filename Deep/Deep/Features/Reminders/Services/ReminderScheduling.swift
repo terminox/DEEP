@@ -1,7 +1,7 @@
 import Foundation
 import UserNotifications
 
-/// Whether this device will let Deep speak up.
+/// Whether this device will let DEEP speak up.
 enum ReminderPermission: Equatable, Sendable {
   /// Never asked. The prompt is still available.
   case unasked
@@ -26,7 +26,7 @@ protocol ReminderScheduling: Sendable {
   /// Prompts if the system will still prompt; returns the settled state either
   /// way.
   func requestPermission() async -> ReminderPermission
-  /// Replaces Deep's whole reminder queue with exactly these occurrences.
+  /// Replaces DEEP's whole reminder queue with exactly these occurrences.
   func replaceQueue(with occurrences: [ReminderOccurrence]) async
   func clearQueue() async
   /// Identifiers currently queued — the seam QA and tests read the result from.
@@ -37,10 +37,10 @@ protocol ReminderScheduling: Sendable {
 
 /// Backs the reminder with `UNUserNotificationCenter`.
 ///
-/// Deep asks only for `.alert` and `.sound` — no badge, because a count on the
+/// DEEP asks only for `.alert` and `.sound` — no badge, because a count on the
 /// icon is a debt display, and nothing here is owed.
 struct ReminderScheduler: ReminderScheduling {
-  /// Every request Deep owns carries this prefix, so replacing the queue never
+  /// Every request DEEP owns carries this prefix, so replacing the queue never
   /// touches a notification some other feature scheduled later.
   static let identifierPrefix = "deep.reminder."
 

@@ -1,8 +1,8 @@
-# Deep for Android — Roadmap to v1.0.0
+# DEEP for Android — Roadmap to v1.0.0
 
 > *"Pause. Breathe. Connect. Heal — together."* — on a second platform.
 
-Deep ships on iOS today. This document is the route to shipping the same product on Android,
+DEEP ships on iOS today. This document is the route to shipping the same product on Android,
 in eight weeks, with a build in the client's hands at the end of every one of them.
 
 For what the product *is*, see `PRODUCT.md`. For how it should look and move, see `DESIGN.md`.
@@ -31,11 +31,11 @@ Settled before the first line of Kotlin. Recorded here so they are not re-litiga
 
 | Decision | Choice | Why |
 |---|---|---|
-| Stack | Kotlin + Jetpack Compose, native, in `android/` | Deep's whole differentiator is custom motion and custom surfaces. The shared layer between platforms is `deep-api`, not the UI — a cross-platform client would forfeit the ceiling on both and still need native audio and native GL. |
+| Stack | Kotlin + Jetpack Compose, native, in `android/` | DEEP's whole differentiator is custom motion and custom surfaces. The shared layer between platforms is `deep-api`, not the UI — a cross-platform client would forfeit the ceiling on both and still need native audio and native GL. |
 | minSdk | 26 | Reaches ~97% of devices, which matters where the audience is. Everything below is designed to degrade, not to require a newer floor. |
 | Globe renderer | OpenGL ES 3.0 via `GLSurfaceView` | `EarthSurface.metal` is a sphere-SDF raymarch feeding a threshold, ping-pong blur and composite bloom chain. That is a multi-pass pipeline, which GL does natively and AGSL does awkwardly — and AGSL is API 33+, which would raise the floor for the app's signature screen. |
-| Design policy | Deep's design language, Android's mechanics | Identical palette, typography, motion curves, radii, spacing and copy. Navigation, predictive back, edge-to-edge insets, haptics and the media notification follow Android convention. Deep should feel like Deep, and like it belongs on the phone. |
-| App shell | A custom Compose bottom bar wearing Deep's tokens | Not stock Material 3 — the tab bar frames every screen, and stock Material is the fastest way to look like a cheaper product. Not a reproduction of the iOS 26 Liquid Glass bar either; that is an OS affordance, and rebuilding it would cost a week and fight the platform. |
+| Design policy | DEEP's design language, Android's mechanics | Identical palette, typography, motion curves, radii, spacing and copy. Navigation, predictive back, edge-to-edge insets, haptics and the media notification follow Android convention. DEEP should feel like DEEP, and like it belongs on the phone. |
+| App shell | A custom Compose bottom bar wearing DEEP's tokens | Not stock Material 3 — the tab bar frames every screen, and stock Material is the fastest way to look like a cheaper product. Not a reproduction of the iOS 26 Liquid Glass bar either; that is an OS affordance, and rebuilding it would cost a week and fight the platform. |
 | Client delivery | A signed APK each week | No accounts, no review queues, nothing between a finished build and the client's hands. A proper distribution track is a v1.0.0 concern, not a week-one one. |
 
 ---
@@ -44,7 +44,7 @@ Settled before the first line of Kotlin. Recorded here so they are not re-litiga
 
 | Week | Ships | The story | Unblocks |
 |---|---|---|---|
-| 1 | `v0.0.1` | It moves like Deep, and it's talking to our server | Everything — the theme, the shell and the network layer are what every later week plugs into |
+| 1 | `v0.0.1` | It moves like DEEP, and it's talking to our server | Everything — the theme, the shell and the network layer are what every later week plugs into |
 | 2 | `v0.0.2` | Make an account, and the app shapes itself around you | Every authenticated endpoint |
 | 3 | `v0.0.3` | Sound that follows you across the app | The shared player the whole app leans on |
 | 4 | `v0.0.4` | Practice grows something | The earn loop that gives weeks 5 and 6 something to spend |
@@ -53,10 +53,10 @@ Settled before the first line of Kotlin. Recorded here so they are not re-litiga
 | 7 | `v0.0.7` | The globe lands, and the card lifts into the session | Feature parity reached |
 | 8 | `v1.0.0` | Release | — |
 
-### Week 1 — `v0.0.1` · It moves like Deep, and it's talking to our server
+### Week 1 — `v0.0.1` · It moves like DEEP, and it's talking to our server
 
 Week one is not "get something running". Three things sink an eight-week port, and all three are
-decided now: theming left placeheld and done properly later, which never converges because Deep's
+decided now: theming left placeheld and done properly later, which never converges because DEEP's
 identity *is* its atmosphere; the globe left until week six; and the audio model deferred so long
 that every screen is re-laid-out when it arrives.
 
@@ -83,7 +83,7 @@ The mini player's design is settled this week, before week three builds it.
 
 ### Week 3 — `v0.0.3` · Sound that follows you across the app
 
-Deep Sound: the shelves, collection detail, lyrics. Underneath, the real work — Media3, a
+DEEP Sound: the shelves, collection detail, lyrics. Underneath, the real work — Media3, a
 `MediaSessionService`, background playback and a proper media notification. Then the mini player
 docked above the tab bar and the full Now Playing above that.
 
@@ -96,14 +96,14 @@ Decided while building it:
   when signed in — the hearts it earns surface in week 4). The Now Playing volume slider is the
   player's own gain starting at 60%, exactly as iOS, not the system volume.
 - **Android on top of iOS.** Lock-screen and notification controls, audio focus (a call pauses
-  the track) and pausing when headphones are pulled. iOS has none of these for Deep Sound.
+  the track) and pausing when headphones are pulled. iOS has none of these for DEEP Sound.
 - **Divergences, on the record.** Premium sounds play for everyone on Android — no lock, no
   "A premium sound" alert — until Premium itself is in scope. The dead AirPlay button is gone
   from Now Playing, and gone from iOS too. Signing out stops the player and forgets the saved
   sounds, so the next member never finds the last one's track on the lock screen.
 - **Scope pulled in.** The saved-sounds playlist became the You tab's root (as on iOS), Home's
   tiles play their collection and its Explore tiles open a collection list, and Home took the
-  collapsing header and hero pull-to-refresh along with Deep Sound.
+  collapsing header and hero pull-to-refresh along with DEEP Sound.
 
 ### Week 4 — `v0.0.4` · Practice grows something
 
@@ -166,8 +166,8 @@ enough to answer; each gets written up properly as the work reaches it.
   (`frostedCard`) 8dp above `DeepBottomBar`, shown with `AnimatedVisibility` only while a track is
   loaded; it does not move on scroll, and scrolling screens add bottom padding while it shows.
   Tap or swipe up opens Now Playing through a shared-element transform; swipe down or predictive
-  back shrinks it back into the pill. Hidden during a Deep Session and Global Pause live. Chosen
-  over a tray fused into the bar (Android-conventional, but dense against Deep's airy bottom edge)
+  back shrinks it back into the pill. Hidden during a DEEP Session and Global Pause live. Chosen
+  over a tray fused into the bar (Android-conventional, but dense against DEEP's airy bottom edge)
   and over an iOS-26-style collapsing pill (a nested-scroll inset every screen must track —
   close to rebuilding the OS bar). The collapse can still layer on later without undoing this.
   Built in week 3, with one adjustment: the pill rests on the bar's layout edge, because the

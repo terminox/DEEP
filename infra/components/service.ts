@@ -12,7 +12,7 @@ import { mediaBucket } from "./storage";
 // Dedicated runtime identity (never the default compute SA).
 const sa = new gcp.serviceaccount.Account(
   "run-sa",
-  { accountId: "deep-api-run", displayName: "Deep API Cloud Run runtime" },
+  { accountId: "deep-api-run", displayName: "DEEP API Cloud Run runtime" },
   { provider, dependsOn: apis }
 );
 const member = pulumi.interpolate`serviceAccount:${sa.email}`;

@@ -13,7 +13,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import io.appbeyond.freelance.deep.R
 
 /**
- * Who may do what to Deep Sound's session, and how queued items get their audio
+ * Who may do what to DEEP Sound's session, and how queued items get their audio
  * back.
  *
  * No iOS counterpart: `AVPlayer` is owned by the app and `MPRemoteCommandCenter`

@@ -11,7 +11,7 @@ export const repo = new gcp.artifactregistry.Repository(
     repositoryId: "backend",
     format: "DOCKER",
     location: config.region,
-    description: "Deep backend container images",
+    description: "DEEP backend container images",
     // Without these, every build is retained forever. The DELETE must be
     // tagState ANY, not UNTAGGED: images are pushed tagged with a unique short
     // SHA, so a version never becomes untagged and an UNTAGGED-only policy

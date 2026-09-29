@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Project-specific guidance for the Deep iOS app.
+Project-specific guidance for the DEEP iOS app.
 
 ## Code style
 
@@ -27,6 +27,12 @@ Project-specific guidance for the Deep iOS app.
 
 ## Naming
 
+- **The product is "DEEP" — always all caps in anything a person reads.** UI copy, String Catalog
+  keys and translations, accessibility labels, notifications, web copy, docs, and PR text. Never
+  "Deep" or "deep". Feature names carry it too: DEEP Session, DEEP Sound, DEEP Teacher, DEEP Kids,
+  DEEP Premium, DEEP Pro. Code identifiers keep their casing (`DeepSessionView`, the `Deep` module,
+  `deep-kids` slugs), and the ordinary English word is written normally (the "Deep Dark" track,
+  "a deep breath").
 - **Never name types after their role-in-the-pattern.** Do not use `…Protocol` for protocols, nor
   `…Impl` / `…ProtocolImpl` / `…Default` for the concrete conformer. These names convey nothing
   about behaviour — they're a widespread anti-pattern. Name the protocol for the *capability* and

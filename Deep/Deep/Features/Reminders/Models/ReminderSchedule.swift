@@ -9,7 +9,7 @@ import Foundation
 /// the "you are behind" register `DESIGN.md` rules out. So the schedule is a
 /// window of individually dated requests, rebuilt every time the app comes
 /// forward. Eight weeks of them sits comfortably under the cap, and someone
-/// who hasn't opened Deep in eight weeks has a bigger gap than a notification
+/// who hasn't opened DEEP in eight weeks has a bigger gap than a notification
 /// closes.
 ///
 /// Kept free of `UNUserNotificationCenter` on purpose: the date maths is the

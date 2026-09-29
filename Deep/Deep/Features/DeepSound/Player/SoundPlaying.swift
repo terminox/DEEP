@@ -1,7 +1,7 @@
 import SwiftUI
 import Observation
 
-/// The playback surface the Deep Sound UI depends on.
+/// The playback surface the DEEP Sound UI depends on.
 ///
 /// Screens depend on this protocol rather than the concrete `SoundPlayer`, so
 /// they can be previewed and tested against `MockSoundPlayer` with no timers or
@@ -42,7 +42,7 @@ extension SoundPlaying {
   }
 
   /// Pause playback if something is playing; otherwise a no-op. Guided flows
-  /// (Deep Session) call this on entry — the track stays loaded so the mini
+  /// (DEEP Session) call this on entry — the track stays loaded so the mini
   /// player picks up right where the listener left off.
   func pause() {
     if isPlaying { togglePlayPause() }
@@ -50,7 +50,7 @@ extension SoundPlaying {
 }
 
 extension EnvironmentValues {
-  /// The player the Deep Sound flow is driven by. The coordinator injects the
+  /// The player the DEEP Sound flow is driven by. The coordinator injects the
   /// real (or, in previews, mocked) instance; the default is only a fallback.
   @Entry var soundPlayer: any SoundPlaying = SoundPlayer()
 }

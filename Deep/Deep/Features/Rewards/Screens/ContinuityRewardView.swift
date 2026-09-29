@@ -4,7 +4,7 @@ import SwiftUI
 /// streak to defend: the count is continuity witnessed, never a warning.
 struct ContinuityRewardView: View {
   let receipt: RewardReceipt
-  /// How the return is named. A Deep Session credits today ("You returned
+  /// How the return is named. A DEEP Session credits today ("You returned
   /// today"); a Global Pause, which adds no practice day, witnesses the run
   /// instead ("Your rhythm continues").
   let headline: String

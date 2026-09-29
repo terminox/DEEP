@@ -12,7 +12,7 @@ import UIKit
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
-  /// Threaded through for the home feed's Deep Session doorway — a session
+  /// Threaded through for the home feed's DEEP Session doorway — a session
   /// launched from this tab must credit the shared journal, ledger and garden.
   private let practiceStore: any PracticeStore
   private let heartLedger: HeartLedger
@@ -156,7 +156,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
   // MARK: - Routing
 
-  /// Pushes the real Deep Sound collection detail. `subscriptionStore` stays on
+  /// Pushes the real DEEP Sound collection detail. `subscriptionStore` stays on
   /// its environment default here — the same behaviour the Sounds tab has today,
   /// since the SwiftUI environment can't cross the UIKit tab boundary.
   private func showCollection(_ collection: SoundCollection) {
@@ -198,7 +198,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     )
   }
 
-  /// The Deep Session threshold rides the system push like any other leaf, so
+  /// The DEEP Session threshold rides the system push like any other leaf, so
   /// the tab bar, mini player and back chevron stay with it; the practice
   /// itself lifts up over the whole shell from there. The environment is
   /// re-injected because SwiftUI's can't cross the UIKit boundary.
@@ -258,7 +258,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     }
 
     // The session owns its own audio, so the shared player pauses (its track
-    // stays loaded — the mini player resumes where it left off, the Deep
+    // stays loaded — the mini player resumes where it left off, the DEEP
     // Session precedent). A fresh engine per presentation keeps teardown
     // trivially complete.
     player.pause()

@@ -26,7 +26,7 @@ import io.appbeyond.freelance.deep.theme.hush
 private enum class SessionStage { Threshold, Practice }
 
 /**
- * Owns one visit to Deep Session: the threshold, then the practice, then out.
+ * Owns one visit to DEEP Session: the threshold, then the practice, then out.
  *
  * A coordinator in the project's sense — it holds the stage and the chosen
  * length and wires the two screens together, and carries no styling of its own.

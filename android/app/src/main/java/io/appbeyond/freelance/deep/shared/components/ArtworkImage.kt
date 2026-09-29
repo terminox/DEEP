@@ -47,7 +47,7 @@ fun ArtworkImage(
 }
 
 /**
- * The server's palette names, resolved to pairs from Deep's own palette.
+ * The server's palette names, resolved to pairs from DEEP's own palette.
  *
  * Single-hue ramps rather than arbitrary two-colour blends: neighbouring tiles
  * sit side by side in a shelf, and two saturated gradients next to each other

@@ -1,7 +1,7 @@
 // Central Flight is a distribution vehicle, not an environment.
 //
 // Client builds ship under a reusable App ID ("A central place to distribute app to
-// clients") so they can reach TestFlight without touching Deep's own App Store record.
+// clients") so they can reach TestFlight without touching DEEP's own App Store record.
 // Everything about *what the app talks to* — APP_ENV, API_BASE_URL, APP_DISPLAY_NAME and
 // the whole release optimisation profile — is inherited from Prod, unchanged. Only the
 // identity it wears and the way it is signed differ.

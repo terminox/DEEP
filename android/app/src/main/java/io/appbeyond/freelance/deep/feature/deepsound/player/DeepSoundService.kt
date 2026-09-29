@@ -27,7 +27,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.SoundQueue
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
 
 /**
- * Where Deep Sound's audio actually plays: one `ExoPlayer` behind one
+ * Where DEEP Sound's audio actually plays: one `ExoPlayer` behind one
  * `MediaSession`, in a service so it keeps playing with the screen off and the
  * app in the background.
  *

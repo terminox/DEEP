@@ -65,7 +65,7 @@ private const val TRACK_ALPHA = 0.22f
  *
  * Apple Music's behaviour, which Material's `Slider` doesn't have: no thumb,
  * the track thickens while you hold it, and the fill jumps to wherever the
- * finger lands — a zero-distance drag, so a tap is a seek. Timing is Deep's
+ * finger lands — a zero-distance drag, so a tap is a seek. Timing is DEEP's
  * [settle], not the platform's.
  *
  * The drag consumes every pointer change it sees, so a parent's own vertical

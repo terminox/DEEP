@@ -3,7 +3,7 @@ import Observation
 
 /// The account surface the auth screens depend on. Kept UI-framework-agnostic so
 /// screens preview against `PreviewAccountStore` / `MockAccountStore` with no
-/// networking. The real conformer (`APIAccountStore`) talks to the Deep backend
+/// networking. The real conformer (`APIAccountStore`) talks to the DEEP backend
 /// over `APIClient` and keeps the token pair in the Keychain.
 ///
 /// Email/password only for now; the `Account.Method` enum leaves room for Apple
