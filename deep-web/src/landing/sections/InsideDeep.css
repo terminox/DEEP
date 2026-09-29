@@ -1,0 +1,180 @@
+/* Inside DEEP: four chapters beside one pinned iPhone. */
+
+.in {
+  position: relative;
+  isolation: isolate;
+  padding: var(--section-gap) var(--edge);
+}
+
+/* The atmosphere melts into the page at both edges so the section has no seam. */
+.in-atmosphere {
+  z-index: -1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+}
+
+.in-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.in-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: clamp(40px, 6vw, 96px);
+}
+
+/* MARK: Chapters */
+
+.in-chapters {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.in-chapter {
+  min-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Chapters wait in a hush and come forward as the device turns to them. */
+.in-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  opacity: 0.28;
+  transform: translateY(12px);
+  transition:
+    opacity var(--hush) var(--hush-curve),
+    transform var(--hush) var(--hush-curve);
+}
+
+.in-chapter.is-active .in-copy {
+  opacity: 1;
+  transform: none;
+}
+
+.in-heading {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+
+.in-heading em {
+  font-style: italic;
+  color: var(--iris-dusk);
+}
+
+.in-chapter-device {
+  display: none;
+}
+
+/* MARK: The pinned device */
+
+.in-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.in-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(44vw, 620px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(from var(--accent) r g b / 0.85), rgb(from var(--accent) r g b / 0) 100%);
+  filter: blur(20px);
+  opacity: 0;
+  transition: opacity var(--ripple) var(--ripple-curve);
+}
+
+.in-glow.is-active {
+  opacity: 1;
+}
+
+/* The four screens are stacked; the active one fades up over the rest. */
+.in-screen {
+  opacity: 0;
+  scale: 1.04;
+  transition:
+    opacity var(--hush) var(--hush-curve),
+    scale var(--hush) var(--hush-curve);
+}
+
+.in-screen.is-active {
+  opacity: 1;
+  scale: 1;
+}
+
+.in-dots {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.in-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgb(from var(--drift-grey) r g b / 0.35);
+  transition:
+    height var(--drift) var(--exhale),
+    background var(--drift) var(--exhale);
+}
+
+.in-dots span.is-active {
+  height: 22px;
+  background: var(--iris-dusk);
+}
+
+/* MARK: Phones: no pin, one device per chapter. */
+
+@media (max-width: 900px) {
+  .in-body {
+    display: block;
+    margin-top: calc(var(--rhythm) * 2);
+  }
+
+  .in-pin {
+    display: none;
+  }
+
+  .in-chapter {
+    min-height: 0;
+    gap: calc(var(--rhythm) * 1.5);
+    padding-block: calc(var(--rhythm) * 2);
+  }
+
+  .in-copy {
+    opacity: 1;
+    transform: none;
+  }
+
+  .in-chapter-device {
+    display: flex;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .in-copy,
+  .in-screen {
+    transform: none;
+    scale: 1;
+  }
+}
