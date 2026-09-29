@@ -79,7 +79,7 @@ uniform sampler2D uLand;
 
 const float PI = 3.14159265;
 
-// Palette (Deep design system)
+// Palette (DEEP design system)
 const vec3 LAVENDER_MIST = vec3(0.722, 0.655, 0.910);
 const vec3 SOFT_LILAC    = vec3(0.831, 0.773, 0.941);
 const vec3 BLUSH_POWDER  = vec3(0.957, 0.788, 0.831);

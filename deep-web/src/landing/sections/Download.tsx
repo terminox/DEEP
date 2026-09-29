@@ -22,7 +22,7 @@ export default function Download() {
             You’re here now.
           </h2>
           <p className="lede bloom" style={{ '--bloom-delay': '200ms' } as CSSProperties}>
-            Whenever you’d like to come back to this feeling, Deep is waiting on your phone. A breath, a
+            Whenever you’d like to come back to this feeling, DEEP is waiting on your phone. A breath, a
             pause with the world, a plant that grows with you.
           </p>
           <div className="bloom" style={{ '--bloom-delay': '300ms' } as CSSProperties}>

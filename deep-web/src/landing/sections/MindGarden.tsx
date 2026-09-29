@@ -135,7 +135,7 @@ export default function MindGarden() {
       <div className="mg-inner">
         <SectionHead
           eyebrow="Mind Garden"
-          lede="Your practice, reflected back as growth rather than performance. Every Deep Session and every Global Pause brings your plant sunlight, and at gentle thresholds it becomes its next form."
+          lede="Your practice, reflected back as growth rather than performance. Every DEEP Session and every Global Pause brings your plant sunlight, and at gentle thresholds it becomes its next form."
         >
           Grow plants along with <em>yourself</em>
         </SectionHead>

@@ -19,9 +19,8 @@
 }
 
 .ft-wordmark {
-  font-size: 40px;
-  line-height: 1;
-  margin-top: -6px;
+  height: 26px;
+  width: auto;
 }
 
 .ft-manifesto {

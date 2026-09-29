@@ -1,4 +1,4 @@
-/* Deep design tokens for the web. Mirrors the iOS source of truth, Deep/Deep/Theme/DeepTheme.swift. */
+/* DEEP design tokens for the web. Mirrors the iOS source of truth, Deep/Deep/Theme/DeepTheme.swift. */
 
 :root {
   /* MARK: Palette */
@@ -32,9 +32,12 @@
     rgb(from var(--peach-cloud) r g b / 0.3) 100%
   );
 
-  /* MARK: Typography */
-  --serif: 'Cormorant Garamond', 'Fraunces', Georgia, serif;
-  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  /* MARK: Typography
+     The app draws only Apple's system faces (DeepTypography.swift): SF Pro, and New York wherever it
+     asks for `design: .serif`. Apple browsers get those exact faces; Inter and Newsreader are the
+     closest open stand-ins elsewhere (New York itself can't be served as a web font). */
+  --serif: ui-serif, 'New York', 'Newsreader', Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
   --display: 56px;
   --h1: 32px;
   --h2: 24px;
@@ -150,7 +153,8 @@ video {
   margin: 0;
   font-family: var(--serif);
   font-weight: 300;
-  font-size: clamp(40px, 6vw, 72px);
+  /* New York's x-height is far taller than a display Garamond's; this holds the old visual size. */
+  font-size: clamp(36px, 5.2vw, 64px);
   line-height: 1.05;
   letter-spacing: 0.02em;
 }
