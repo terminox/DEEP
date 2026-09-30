@@ -70,10 +70,6 @@ export default function Nav() {
           ))}
         </ul>
 
-        <a className="nav-cta" href="#download">
-          Get the app
-        </a>
-
         <button
           className="nav-toggle"
           type="button"
@@ -97,9 +93,6 @@ export default function Nav() {
             </li>
           ))}
         </ul>
-        <a className="pill" href="#download" onClick={() => setOpen(false)}>
-          Get the app
-        </a>
       </div>
     </nav>
   )
