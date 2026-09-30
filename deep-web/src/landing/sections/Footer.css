@@ -24,12 +24,13 @@
 }
 
 .ft-manifesto {
-  margin: 14px 0 0;
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 300;
-  font-size: 20px;
-  color: var(--drift-grey);
+  margin: 18px 0 0;
+}
+
+/* The hero's traced tagline, set flush left under the mark. */
+.ft-tagline {
+  height: 18px;
+  width: auto;
 }
 
 .ft-cols {
