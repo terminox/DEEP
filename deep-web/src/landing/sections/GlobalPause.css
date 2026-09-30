@@ -1,4 +1,6 @@
-/* Global Pause: the page's one night moment, a giant dark card inset from the moon-cream page. */
+/* Global Pause: the page's one night moment. A dark card inset from the moon-cream page opens to
+   full bleed as it arrives, pins while the pause is told in four beats, and closes again before
+   Inside DEEP. The frame is sticky; the chapters flow over it in normal scroll. */
 
 .gp {
   /* Night-only shades between tokens, as in NightSkyBackground.swift (darkness 0.90 → 0.60). */
@@ -7,25 +9,54 @@
   --gp-ink: var(--moon-cream);
   --gp-ink-soft: rgb(from var(--moon-cream) r g b / 0.72);
   --gp-ink-quiet: rgb(from var(--soft-lilac) r g b / 0.6);
-  --gp-glass: rgb(255 255 255 / 0.06);
+  --gp-glass: rgb(255 255 255 / 0.07);
+  /* The glass the messages sit on is near-opaque, so no star shows through a line of text. */
+  --gp-card-fill: linear-gradient(var(--gp-glass), var(--gp-glass)), rgb(from var(--gp-sky-top) r g b / 0.94);
   --gp-glass-rim: rgb(255 255 255 / 0.12);
-  --gp-globe: clamp(280px, calc(100vw - 48px), 560px);
 
-  padding: var(--section-gap) var(--edge) 0;
+  /* The resting card: inset from the page edge (1400px at most), rounded. */
+  --gp-side: max(var(--edge), calc((100% - 1400px) / 2));
+  --gp-radius: 40px;
+  /* Content keeps clear of the resting card's edge, so nothing sits in the clipped margin. */
+  --gp-pad: calc(var(--gp-side) + clamp(20px, 5vw, 72px));
+  --gp-globe: min(38vw, 54svh, 540px);
+
+  position: relative;
+  margin-top: var(--section-gap);
+  /* The nav jumps here with the card already open: cancels html's scroll-padding-top. */
+  scroll-margin-top: -96px;
 }
 
-.gp-stage {
-  position: relative;
+/* MARK: Frame */
+
+.gp-frame {
+  --gp-rest: 1;
+  --gp-live: 0;
+  position: sticky;
+  top: 0;
+  height: 100lvh;
+}
+
+/* The card's shadow, outside the clip (clip-path would cut a box-shadow off). */
+.gp-frame-shadow {
+  position: absolute;
+  inset: 0 calc(var(--gp-side) * var(--gp-rest));
+  border-radius: calc(var(--gp-radius) * var(--gp-rest));
+  box-shadow: 0 40px 120px rgb(from var(--deep-plum) r g b / 0.22);
+  opacity: var(--gp-rest);
+  pointer-events: none;
+}
+
+/* Only the painted shape changes as the card opens: the frame keeps its full width, so nothing
+   inside reflows and the globe's canvas never resizes mid-scroll. */
+.gp-card {
+  position: absolute;
+  inset: 0;
   isolation: isolate;
   overflow: hidden;
-  max-width: 1400px;
-  min-height: min(100vh, 1000px);
-  margin: 0 auto;
-  padding: clamp(56px, 8vw, 104px) clamp(20px, 5vw, 72px) clamp(48px, 6vw, 88px);
-  border-radius: 40px;
   color: var(--gp-ink);
   background: linear-gradient(180deg, var(--gp-sky-top), var(--gp-sky-bottom));
-  box-shadow: 0 40px 120px rgb(from var(--deep-plum) r g b / 0.22);
+  clip-path: inset(0 calc(var(--gp-side) * var(--gp-rest)) round calc(var(--gp-radius) * var(--gp-rest)));
 }
 
 /* MARK: Sky */
@@ -37,23 +68,29 @@
   pointer-events: none;
 }
 
-/* Stars thin out behind the copy column so no point of light sits on a letter. */
 .gp-stars {
   position: absolute;
   inset: 0;
-}
-
-@media (min-width: 960px) {
-  .gp-stars {
-    -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.3) 0%, rgb(0 0 0 / 0.3) 40%, #000 55%);
-    mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.3) 0%, rgb(0 0 0 / 0.3) 40%, #000 55%);
-  }
+  transition: opacity var(--ripple) var(--ripple-curve);
+  /* Stars thin out behind the copy column so no point of light sits on a letter. */
+  -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.3) 0%, rgb(0 0 0 / 0.3) 45%, #000 58%);
+  mask-image: linear-gradient(90deg, rgb(0 0 0 / 0.3) 0%, rgb(0 0 0 / 0.3) 45%, #000 58%);
 }
 
 .gp-sky-horizon {
   position: absolute;
   inset: 0;
   background: radial-gradient(80% 80% at 50% 110%, rgb(from var(--soft-lilac) r g b / 0.22), transparent 100%);
+  transition: opacity var(--ripple) var(--ripple-curve);
+}
+
+/* The live pause: the room dims around the globe. */
+.gp-frame.is-live .gp-sky-horizon {
+  opacity: 0.4;
+}
+
+.gp-frame.is-live .gp-stars {
+  opacity: 0.7;
 }
 
 .gp-star {
@@ -81,31 +118,119 @@
   }
 }
 
-/* MARK: Layout */
+/* MARK: Grid (shared by the pinned visuals and the flowing chapters, so the columns line up) */
 
-.gp-inner {
-  position: relative;
+.gp-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 40px;
-  max-width: 1200px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: clamp(40px, 6vw, 96px);
+  max-width: calc(1200px + 2 * var(--gp-pad));
+  height: 100%;
   margin: 0 auto;
+  padding-inline: var(--gp-pad);
 }
 
-.gp-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  min-width: 0;
+/* MARK: Visuals */
+
+.gp-visuals {
+  grid-column: 2;
+  position: relative;
 }
 
-.gp-head {
+.gp-visual {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  scale: 1.04;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--hush) var(--hush-curve),
+    scale var(--hush) var(--hush-curve),
+    visibility 0s linear var(--hush);
+}
+
+.gp-visual.is-active {
+  opacity: 1;
+  scale: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.gp-dots {
+  position: absolute;
+  right: calc(clamp(20px, 3vw, 40px) * -1);
+  top: 50%;
+  translate: 0 -50%;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity var(--hush) var(--hush-curve);
+}
+
+.gp-dots.is-shown {
+  opacity: 1;
+}
+
+.gp-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgb(from var(--moon-cream) r g b / 0.22);
+  transition:
+    height var(--drift) var(--exhale),
+    background var(--drift) var(--exhale);
+}
+
+.gp-dots span.is-active {
+  height: 22px;
+  background: var(--lavender-mist);
+}
+
+/* MARK: Chapters */
+
+.gp-chapters {
+  position: relative;
+  z-index: 1;
+  margin: -100lvh 0 0;
+  padding: 0;
+  list-style: none;
+  /* The chapter layer covers the frame; only its words take the pointer, so the globe stays
+     draggable underneath. */
+  pointer-events: none;
+}
+
+.gp-chapter {
+  height: 100lvh;
+}
+
+/* The collapse runway: the card closes while the last phase is still on screen. */
+.gp-chapter--tail {
+  height: 40lvh;
+}
+
+.gp-chapter--intro {
+  display: grid;
+  place-items: center;
+  padding-inline: var(--gp-pad);
+}
+
+.gp-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 18px;
+  max-width: 40em;
+  text-align: center;
+  pointer-events: auto;
 }
 
-.gp-eyebrow {
+.gp-eyebrow,
+.gp-phase-eyebrow {
   color: var(--lavender-mist);
 }
 
@@ -113,7 +238,8 @@
   color: var(--gp-ink);
 }
 
-.gp-headline em {
+.gp-headline em,
+.gp-phase-title em {
   color: var(--lavender-mist);
   background: linear-gradient(180deg, var(--soft-lilac), var(--lavender-mist) 70%, var(--blush-powder));
   -webkit-background-clip: text;
@@ -124,52 +250,274 @@
 
 .gp-lede {
   color: var(--gp-ink-soft);
-  max-width: 30em;
+  max-width: 32em;
 }
 
-/* Phones and tablets: the globe follows the headline, before the live strip and the lounge. */
-@media (max-width: 959px) {
-  .gp-copy {
-    display: contents;
-  }
+.gp-chapter .gp-grid {
+  align-items: center;
+}
 
-  .gp-head {
-    order: 1;
-  }
+/* Phases wait in a hush and come forward as their visual takes the frame (Inside DEEP's .in-copy). */
+.gp-phase {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  pointer-events: auto;
+  opacity: 0.28;
+  transform: translateY(12px);
+  transition:
+    opacity var(--hush) var(--hush-curve),
+    transform var(--hush) var(--hush-curve);
+}
 
-  .gp-globe-slot {
-    order: 2;
-  }
+.gp-chapter.is-active .gp-phase {
+  opacity: 1;
+  transform: none;
+}
 
-  .gp-live {
-    order: 3;
-  }
+.gp-phase-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--gp-ink);
+}
 
-  .gp-fuku {
-    order: 4;
-  }
+.gp-phase-body {
+  color: var(--gp-ink-soft);
+}
 
-  .gp-stars {
-    -webkit-mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.3) 0, rgb(0 0 0 / 0.3) 18%, #000 30%);
-    mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.3) 0, rgb(0 0 0 / 0.3) 18%, #000 30%);
+/* The phone dock is a phones-only reading of the same copy. */
+.gp-dock {
+  display: none;
+}
+
+/* MARK: Countdown */
+
+.gp-when {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.gp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: var(--pill);
+  font-size: var(--micro);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--soft-lilac);
+  background: rgb(from var(--lavender-mist) r g b / 0.14);
+}
+
+.gp-pill--live {
+  color: var(--deep-plum);
+  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
+}
+
+.gp-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--moon-cream);
+  animation: gp-breathe calc(var(--inhale-length) + var(--exhale-length)) var(--exhale) infinite;
+}
+
+.gp-countdown {
+  display: flex;
+  align-items: baseline;
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(40px, 5vw, 60px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--gp-ink);
+}
+
+.gp-countdown-gap {
+  width: 0.5em;
+}
+
+.gp-when-note {
+  margin: 0;
+  font-size: var(--caption);
+  line-height: 1.5;
+  color: var(--gp-ink-quiet);
+}
+
+@keyframes gp-breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  40% {
+    opacity: 1;
   }
 }
 
-@media (min-width: 960px) {
-  .gp-inner {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    align-items: center;
-    gap: 24px;
+/* MARK: Lounge */
+
+.gp-fuku {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: min(100%, 540px, 60svh * 1.25);
+  margin: 0;
+}
+
+.gp-fuku-glow {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 150%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(from var(--lavender-mist) r g b / 0.28), transparent);
+  pointer-events: none;
+}
+
+.gp-fuku-window {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  overflow: hidden;
+  border-radius: var(--card);
+  background: rgb(from var(--lavender-mist) r g b / 0.2);
+  box-shadow:
+    0 0 0 0.5px var(--gp-glass-rim),
+    0 30px 80px rgb(0 0 0 / 0.35);
+}
+
+.gp-fuku-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes gp-dot {
+  to {
+    opacity: 0.4;
   }
+}
+
+.gp-fuku-caption {
+  position: relative;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 17px;
+  color: var(--gp-ink-soft);
+}
+
+/* MARK: Live (GlobalPauseMeditationView.swift) */
+
+.gp-live {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(18px, 3.5svh, 40px);
+}
+
+.gp-live-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.gp-live-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--pill);
+  font-size: var(--micro);
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  color: var(--deep-plum);
+  background: var(--frost);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  backdrop-filter: blur(24px) saturate(1.2);
+  border: 0.5px solid var(--frost-rim);
+}
+
+.gp-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--blush-powder);
+  animation: gp-dot 3s var(--exhale) infinite alternate;
+}
+
+.gp-live-company {
+  margin: 0;
+  font-size: 15px;
+  color: rgb(from var(--moon-cream) r g b / 0.75);
+}
+
+.gp-live-number {
+  display: inline-block;
+  font-variant-numeric: tabular-nums lining-nums;
+  animation: gp-tick var(--bloom) var(--bloom-curve);
+}
+
+@keyframes gp-tick {
+  from {
+    opacity: 0.45;
+  }
+}
+
+/* A capsule, not a rule: moon-cream 0.18 track, lavender → blush fill, scrubbed by the chapter. */
+.gp-live-progress {
+  position: relative;
+  z-index: 1;
+  width: min(320px, 80%);
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--pill);
+  background: rgb(from var(--moon-cream) r g b / 0.18);
+}
+
+.gp-live-progress span {
+  display: block;
+  width: calc(var(--gp-live) * 100%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--lavender-mist), var(--blush-powder));
+}
+
+/* The arrival cascade: capsule, then count, then the line, each with a small lift. */
+.gp-cascade {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--bloom) var(--bloom-curve),
+    transform var(--bloom) var(--bloom-curve);
+}
+
+.gp-visual.is-active .gp-cascade {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(300ms + var(--order, 0) * 120ms);
 }
 
 /* MARK: Globe */
-
-.gp-globe-slot {
-  display: grid;
-  place-items: center;
-  min-width: 0;
-}
 
 .gp-globe {
   position: relative;
@@ -178,7 +526,7 @@
 }
 
 /* The canvas is larger than the orb (a centred crop of the iOS frustum); it overflows the globe
-   box and is clipped only by the stage's rounded corners. */
+   box and is clipped only by the card. */
 .gp-globe-canvas,
 .gp-globe-ripples {
   position: absolute;
@@ -258,16 +606,6 @@
   animation: gp-breathe calc(var(--inhale-length) + var(--exhale-length)) var(--exhale) infinite;
 }
 
-@keyframes gp-breathe {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  40% {
-    opacity: 1;
-  }
-}
-
 /* Without WebGL2: a soft pastel orb with a moon-cream rim. */
 .gp-globe-fallback {
   position: absolute;
@@ -283,231 +621,284 @@
     0 0 60px rgb(from var(--lavender-mist) r g b / 0.3);
 }
 
-/* MARK: Live strip */
+/* MARK: Peace messages (PeaceMessagesSection.swift) */
 
-.gp-live {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px 32px;
-  padding: 22px 26px;
-  border-radius: var(--card);
-  background: var(--gp-glass);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  backdrop-filter: blur(24px) saturate(1.2);
-  border: 0.5px solid var(--gp-glass-rim);
-}
-
-.gp-live-when {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.gp-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px;
-  border-radius: var(--pill);
-  font-size: var(--micro);
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--soft-lilac);
-  background: rgb(from var(--lavender-mist) r g b / 0.14);
-}
-
-.gp-pill--live {
-  color: var(--deep-plum);
-  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
-}
-
-.gp-pill-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--moon-cream);
-  animation: gp-breathe calc(var(--inhale-length) + var(--exhale-length)) var(--exhale) infinite;
-}
-
-.gp-countdown {
-  display: flex;
-  align-items: baseline;
-  margin: 0;
-  font-family: var(--serif);
-  font-weight: 300;
-  font-size: clamp(34px, 4vw, 44px);
-  line-height: 1;
-  letter-spacing: 0.04em;
-  font-variant-numeric: tabular-nums lining-nums;
-  color: var(--gp-ink);
-}
-
-.gp-countdown-gap {
-  width: 0.5em;
-}
-
-.gp-live-note {
-  margin: 0;
-  font-size: var(--caption);
-  line-height: 1.5;
-  color: var(--gp-ink-quiet);
-}
-
-.gp-live-count {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  text-align: right;
-}
-
-.gp-live-number {
-  font-family: var(--serif);
-  font-weight: 300;
-  font-size: clamp(28px, 3vw, 34px);
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums lining-nums;
-  color: var(--blush-powder);
-  animation: gp-tick var(--bloom) var(--bloom-curve);
-}
-
-@keyframes gp-tick {
-  from {
-    opacity: 0.45;
-  }
-}
-
-.gp-live-label {
-  font-size: var(--caption);
-  color: var(--gp-ink-quiet);
-}
-
-@media (max-width: 480px) {
-  .gp-live-count {
-    text-align: left;
-  }
-}
-
-/* MARK: Fuku */
-
-.gp-fuku {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 12px 20px 12px 12px;
-  border-radius: var(--card);
-  background: var(--gp-glass);
-  -webkit-backdrop-filter: blur(24px) saturate(1.2);
-  backdrop-filter: blur(24px) saturate(1.2);
-  border: 0.5px solid var(--gp-glass-rim);
-  max-width: 460px;
-}
-
-.gp-fuku-video {
-  flex: none;
-  width: 104px;
-  aspect-ratio: 5 / 4;
-  object-fit: cover;
-  border-radius: var(--tile);
-  background: rgb(from var(--lavender-mist) r g b / 0.2);
-}
-
-.gp-fuku-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.gp-fuku-kicker {
-  margin: 0;
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 300;
-  font-size: var(--h2);
-  line-height: 1.15;
-  color: var(--gp-ink);
-}
-
-.gp-fuku-line {
-  margin: 0;
-  font-size: var(--caption);
-  line-height: 1.55;
-  color: var(--gp-ink-soft);
-}
-
-/* MARK: Phases */
-
-.gp-phases {
-  position: relative;
+.gp-peace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 36px;
-  max-width: 1200px;
-  margin: clamp(48px, 7vw, 88px) auto 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  width: min(100%, 580px);
+  height: min(86svh, 820px);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+.gp-peace-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: gp-rise 70s linear infinite;
+}
+
+/* The second column rises slower and starts lower, so the two never march in step. */
+.gp-peace-column--1 {
+  padding-top: 90px;
+  animation-duration: 92s;
+}
+
+.gp-visual:not(.is-active) .gp-peace-column {
+  animation-play-state: paused;
+}
+
+/* Each column holds its list twice; one list plus one gap is exactly half the run. */
+@keyframes gp-rise {
+  to {
+    transform: translateY(calc(-50% - 8px));
+  }
+}
+
+.gp-peace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-@media (min-width: 820px) {
-  .gp-phases {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 48px;
-  }
-}
-
-.gp-phase {
+.gp-message {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 22em;
+  padding: 14px;
+  border-radius: var(--tile);
+  background: var(--gp-card-fill);
+  border: 0.5px solid var(--gp-glass-rim);
 }
 
-.gp-phase-time {
-  font-size: var(--micro);
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--lavender-mist);
+.gp-message-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.gp-phase-title {
-  margin: 0;
+/* PeaceMessageAvatar: white into the tint from the top-leading corner, an italic serif initial. */
+.gp-message-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   font-family: var(--serif);
+  font-style: italic;
   font-weight: 300;
-  font-size: var(--h2);
-  line-height: 1.2;
-  letter-spacing: 0.02em;
+  font-size: 15px;
+  color: rgb(from var(--deep-plum) r g b / 0.85);
+  background: radial-gradient(circle 24px at 0 0, rgb(255 255 255 / 0.95) 1px, rgb(from var(--tint) r g b / 0.85));
+  box-shadow:
+    inset 0 0 0 0.6px rgb(255 255 255 / 0.7),
+    0 3px 6px rgb(from var(--tint) r g b / 0.4);
+}
+
+.gp-message-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.gp-message-name {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.3;
   color: var(--gp-ink);
 }
 
-.gp-phase-body {
+.gp-message-place {
+  font-size: var(--micro);
+  line-height: 1.4;
+  color: var(--gp-ink-quiet);
+}
+
+.gp-message-text {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--gp-ink-soft);
 }
 
-/* MARK: Small screens */
+.gp-message-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gp-message-time {
+  flex: 1;
+  font-size: var(--micro);
+  color: var(--gp-ink-quiet);
+}
+
+/* DeepTagLabel, on the night glass. */
+.gp-message-tag {
+  padding: 4px 10px;
+  border-radius: var(--pill);
+  font-size: var(--micro);
+  color: var(--soft-lilac);
+  background: rgb(255 255 255 / 0.08);
+  border: 0.5px solid var(--gp-glass-rim);
+}
+
+/* MARK: Phones: the visual pinned in the upper band, the phase copy docked beneath it. */
+
+@media (max-width: 900px) {
+  .gp {
+    --gp-pad: calc(var(--gp-side) + 20px);
+    /* Where the visual band ends and the docked copy begins. */
+    --gp-dock-top: calc(100svh - 264px);
+    /* The globe gives up whatever the band needs for the LIVE capsule, count, line and a breath of space (~164px). */
+    --gp-globe: min(66vw, var(--gp-dock-top) - 72px - 164px);
+  }
+
+  /* Phones: the thinning moves to the lower band, where the phase copy docks. */
+  .gp-stars {
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 52%, rgb(0 0 0 / 0.3) 62%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 52%, rgb(0 0 0 / 0.3) 62%);
+  }
+
+  .gp-card > .gp-grid {
+    position: absolute;
+    inset: 72px 0 auto;
+    height: calc(var(--gp-dock-top) - 72px);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gp-visuals {
+    grid-column: 1;
+  }
+
+  .gp-dots,
+  .gp-fuku-caption {
+    display: none;
+  }
+
+  .gp-fuku {
+    width: min(100%, (var(--gp-dock-top) - 120px) * 1.25);
+  }
+
+  .gp-peace {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(100%, 380px);
+    height: 100%;
+  }
+
+  .gp-peace-column--1 {
+    display: none;
+  }
+
+  .gp-dock {
+    display: grid;
+    position: absolute;
+    left: var(--gp-pad);
+    right: var(--gp-pad);
+    top: var(--gp-dock-top);
+  }
+
+  .gp-dock-copy {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(12px);
+    visibility: hidden;
+    transition:
+      opacity var(--hush) var(--hush-curve),
+      transform var(--hush) var(--hush-curve),
+      visibility 0s linear var(--hush);
+  }
+
+  .gp-dock-copy.is-active {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    transition-delay: 0s;
+  }
+
+  .gp-dock .gp-phase-title {
+    font-size: 30px;
+  }
+
+  .gp-dock .gp-phase-body {
+    font-size: 16px;
+  }
+
+  /* The flowing phase chapters become scroll spacers: their words live in the dock. */
+  .gp-chapter:not(.gp-chapter--intro) .gp-phase {
+    display: none;
+  }
+}
+
+/* Short phones (iPhone SE, landscape-ish windows): a tighter dock and live stack, so the globe
+   keeps a readable size in the band above the words. */
+@media (max-width: 900px) and (max-height: 700px) {
+  .gp {
+    --gp-dock-top: calc(100svh - 236px);
+    --gp-globe: min(66vw, var(--gp-dock-top) - 72px - 112px);
+  }
+
+  .gp-dock-copy {
+    gap: 8px;
+  }
+
+  .gp-dock .gp-phase-title {
+    font-size: 26px;
+  }
+
+  .gp-dock .gp-phase-body {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .gp-live,
+  .gp-live-head {
+    gap: 10px;
+  }
+
+  .gp-live-capsule {
+    padding: 6px 12px;
+  }
+
+  .gp-live-company {
+    font-size: 13px;
+  }
+}
 
 @media (max-width: 600px) {
   .gp {
-    padding-inline: 10px;
-  }
-
-  .gp-stage {
-    border-radius: 32px;
+    --edge: 10px;
+    --gp-radius: 32px;
   }
 }
+
+/* MARK: Reduced motion: the card rests as a card, crossfades keep only their fade, nothing drifts. */
 
 @media (prefers-reduced-motion: reduce) {
   .gp-star,
   .gp-globe-bloom,
   .gp-pill-dot,
-  .gp-live-number {
+  .gp-live-dot,
+  .gp-live-number,
+  .gp-peace-column {
     animation: none;
+  }
+
+  .gp-visual,
+  .gp-phase,
+  .gp-dock-copy,
+  .gp-cascade {
+    scale: 1;
+    transform: none;
   }
 }

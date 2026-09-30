@@ -42,6 +42,12 @@
   box-shadow: 0 12px 32px rgb(from var(--lavender-mist) r g b / 0.2);
 }
 
+/* Over the night card: a denser frost, so the brand keeps its cream ground on the dark sky. */
+.nav.is-over-night .nav-bar {
+  background: rgb(255 255 255 / 0.86);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.22);
+}
+
 .nav-brand {
   display: flex;
   align-items: center;

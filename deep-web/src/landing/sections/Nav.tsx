@@ -5,13 +5,24 @@ import { LogoMark, Wordmark } from '../components/shared.tsx'
 import { sections } from '../storyOrder.ts'
 import './Nav.css'
 
+/** The bar's vertical centre in the viewport (16px inset + half its height). */
+const NAV_MIDLINE = 46
+
 export default function Nav() {
   const [condensed, setCondensed] = useState(false)
+  const [overNight, setOverNight] = useState(false)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState<string | null>(null)
 
   useEffect(() => {
-    const onScroll = () => setCondensed(window.scrollY > 40)
+    // Over Global Pause's night card the cream frost turns grey and the mark sinks into it, so the
+    // bar thickens its frost for as long as the card sits behind it.
+    const night = document.getElementById('global-pause')
+    const onScroll = () => {
+      setCondensed(window.scrollY > 40)
+      const box = night?.getBoundingClientRect()
+      setOverNight(!!box && box.top <= NAV_MIDLINE && box.bottom >= NAV_MIDLINE)
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
@@ -42,7 +53,7 @@ export default function Nav() {
   }, [open])
 
   return (
-    <nav className={`nav${condensed ? ' is-condensed' : ''}${open ? ' is-open' : ''}`} aria-label="Main">
+    <nav className={`nav${condensed ? ' is-condensed' : ''}${overNight ? ' is-over-night' : ''}${open ? ' is-open' : ''}`} aria-label="Main">
       <div className="nav-bar">
         <a className="nav-brand" href="#top" aria-label="DEEP, back to top" onClick={() => setOpen(false)}>
           <LogoMark size={26} />
