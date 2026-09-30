@@ -30,6 +30,11 @@ const DAMPING = 0.92
 const PITCH_LIMIT = (85 * Math.PI) / 180
 const IDLE_AFTER = 2.0
 const IDLE_DRIFT = 0.08
+/** The live session's arrival: the globe comes in turning faster than its drift, then settles. */
+const ARRIVAL_SPIN = 6
+/** Holds the arrival speed while the globe fades in, so the slowing is seen rather than hidden. */
+const ARRIVAL_HOLD = 1.4
+const REST_TAU = 1.1
 
 // MARK: Glow store tuning (EarthGlowStore.Tuning)
 
@@ -536,6 +541,8 @@ export class GlassGlobe {
   private sparks: Spark[] = []
   private ripples: Ripple[] = []
   private nextJoin = 1.2
+  /** When the globe was asked to come to rest, or null while it drifts freely. */
+  private restingSince: number | null = null
 
   private canvas: HTMLCanvasElement
   private overlay: HTMLCanvasElement
@@ -587,6 +594,17 @@ export class GlassGlobe {
   setActive(active: boolean) {
     this.active = active
     if (active) this.kick()
+  }
+
+  /**
+   * The live meditation: the globe arrives turning, decelerates to rest over a few seconds, and
+   * holds still while people keep sparking in. Turning it off restores the free drift, so the next
+   * arrival plays the deceleration again.
+   */
+  setResting(resting: boolean) {
+    if (resting === (this.restingSince !== null)) return
+    this.restingSince = resting ? this.now() : null
+    this.kick()
   }
 
   destroy() {
@@ -681,7 +699,9 @@ export class GlassGlobe {
 
     const idleFor = t - this.lastInteraction
     if (!this.options.reducedMotion && idleFor > IDLE_AFTER && dt > 0 && !this.lastPointer) {
-      const strength = Math.min(1, (idleFor - IDLE_AFTER) / 1.5)
+      const settling = this.restingSince === null ? 0 : Math.max(0, t - this.restingSince - ARRIVAL_HOLD)
+      const settle = this.restingSince === null ? 1 : ARRIVAL_SPIN * Math.exp(-settling / REST_TAU)
+      const strength = Math.min(1, (idleFor - IDLE_AFTER) / 1.5) * settle
       this.yaw += IDLE_DRIFT * dt * strength
       this.pitch = Math.min(
         Math.max(this.pitch + Math.cos(t * 0.097) * 0.04 * 0.097 * dt * strength, -PITCH_LIMIT),

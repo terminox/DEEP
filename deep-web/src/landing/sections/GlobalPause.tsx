@@ -1,8 +1,11 @@
-// Global Pause: the one dark moment on the page. The iOS glass globe on its night sky, the next
-// shared pause in the visitor's own hour, DJ Fuku's lounge, and the three quiet phases.
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { AmbientVideo, prefersReducedMotion, useBloom, useInView } from '../components/shared.tsx'
-import { GLOBE_FILL, GlassGlobe } from '../components/GlassGlobe.ts'
+// Global Pause: the one dark moment on the page, told as a pause is lived. The night card opens to
+// fill the screen as it arrives, pins, and walks through an evening: the countdown on a bare sky,
+// then DJ Fuku's lounge, the live globe coming to rest, and the peace messages left afterwards.
+// Each phase's copy scrolls past while its own visual crossfades in the pinned frame (Inside
+// DEEP's grammar, on the night sky); the card closes back to a card just before the next section.
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { prefersReducedMotion, useBloom, useInView } from '../components/shared.tsx'
+import { FukuWindow, LiveGlobe, PeaceDrift } from './GlobalPausePhases.tsx'
 import './GlobalPause.css'
 
 // MARK: Schedule
@@ -14,9 +17,9 @@ const MINUTE = 60_000
 const LOUNGE_LEAD = 10 * MINUTE
 const SESSION_LENGTH = 10 * MINUTE
 
-type Phase = 'waiting' | 'lounge' | 'live'
+type SessionPhase = 'waiting' | 'lounge' | 'live'
 
-function sessionState(now: number): { phase: Phase; start: number } {
+function sessionState(now: number): { phase: SessionPhase; start: number } {
   const today = new Date(now)
   today.setUTCHours(LIVE_UTC_HOUR, LIVE_UTC_MINUTE, 0, 0)
   const start = today.getTime()
@@ -27,7 +30,6 @@ function sessionState(now: number): { phase: Phase; start: number } {
 
 const localTime = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
 const bangkokTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' })
-const countFormat = new Intl.NumberFormat()
 const pad = (n: number) => String(n).padStart(2, '0')
 
 function useNow(active: boolean) {
@@ -116,78 +118,9 @@ function NightSky() {
   )
 }
 
-// MARK: Globe
+// MARK: Countdown
 
-function Globe({ onJoin }: { onJoin: () => void }) {
-  const stageRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const overlayRef = useRef<HTMLCanvasElement>(null)
-  const hitRef = useRef<HTMLDivElement>(null)
-  const globeRef = useRef<GlassGlobe | null>(null)
-  const inView = useInView(stageRef, '120px')
-  const [status, setStatus] = useState<'loading' | 'ready' | 'fallback'>('loading')
-  const joinRef = useRef(onJoin)
-  joinRef.current = onJoin
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const overlay = overlayRef.current
-    const hit = hitRef.current
-    if (!canvas || !overlay || !hit) return
-    const globe = GlassGlobe.create(canvas, overlay, {
-      reducedMotion: prefersReducedMotion(),
-      hitTarget: hit,
-      onJoin: () => joinRef.current(),
-      onReady: () => setStatus('ready'),
-    })
-    if (!globe) {
-      setStatus('fallback')
-      return
-    }
-    globeRef.current = globe
-    const observer = new ResizeObserver(([entry]) => globe.resize(entry.contentRect.width))
-    observer.observe(canvas)
-    return () => {
-      observer.disconnect()
-      globe.destroy()
-      globeRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    const globe = globeRef.current
-    if (!globe) return
-    const sync = () => globe.setActive(inView && document.visibilityState === 'visible')
-    sync()
-    document.addEventListener('visibilitychange', sync)
-    return () => document.removeEventListener('visibilitychange', sync)
-  }, [inView, status])
-
-  return (
-    <div
-      ref={stageRef}
-      className={`gp-globe gp-globe--${status}`}
-      style={{ '--gp-fill': GLOBE_FILL } as CSSProperties}
-    >
-      <div className="gp-globe-halo" aria-hidden="true" />
-      <div className="gp-globe-cradle" aria-hidden="true" />
-      <div className="gp-globe-bloom" aria-hidden="true" />
-      {status === 'fallback' && <div className="gp-globe-fallback" aria-hidden="true" />}
-      <canvas ref={canvasRef} className="gp-globe-canvas" aria-hidden="true" />
-      <canvas ref={overlayRef} className="gp-globe-ripples" aria-hidden="true" />
-      <div
-        ref={hitRef}
-        className="gp-globe-hit"
-        role="img"
-        aria-label="A glass globe of the world, softly lit wherever someone is pausing"
-      />
-    </div>
-  )
-}
-
-// MARK: Live strip
-
-function LiveStrip({ count }: { count: number }) {
+function Countdown() {
   const ref = useRef<HTMLDivElement>(null)
   const visible = useInView(ref)
   const now = useNow(visible)
@@ -198,117 +131,237 @@ function LiveStrip({ count }: { count: number }) {
   const s = Math.floor((remaining % MINUTE) / 1000)
 
   return (
-    <div ref={ref} className="gp-live bloom" style={{ '--bloom-delay': '240ms' } as CSSProperties}>
-      <div className="gp-live-when">
-        {phase === 'live' ? (
-          <>
-            <span className="gp-pill gp-pill--live">
-              <span className="gp-pill-dot" aria-hidden="true" />
-              Live now
-            </span>
-            <p className="gp-live-note">The world is pausing. You can still slip in.</p>
-          </>
-        ) : (
-          <>
-            <span className="gp-pill">{phase === 'lounge' ? 'The lounge is open' : 'Next pause'}</span>
-            <p className="gp-countdown" aria-label={`${h} hours ${m} minutes until the next pause`}>
-              <span>{pad(h)}</span>
-              <span className="gp-countdown-gap" aria-hidden="true" />
-              <span>{pad(m)}</span>
-              <span className="gp-countdown-gap" aria-hidden="true" />
-              <span>{pad(s)}</span>
-            </p>
-            <p className="gp-live-note">
-              At {localTime.format(start)} your time, {bangkokTime.format(start)} in Bangkok
-            </p>
-          </>
-        )}
-      </div>
-      <p className="gp-live-count">
-        <span key={count} className="gp-live-number">
-          {countFormat.format(count)}
-        </span>
-        <span className="gp-live-label">people pausing with you</span>
-      </p>
+    <div ref={ref} className="gp-when bloom" style={{ '--bloom-delay': '240ms' } as CSSProperties}>
+      {phase === 'live' ? (
+        <>
+          <span className="gp-pill gp-pill--live">
+            <span className="gp-pill-dot" aria-hidden="true" />
+            Live now
+          </span>
+          <p className="gp-when-note">The world is pausing. You can still slip in.</p>
+        </>
+      ) : (
+        <>
+          <span className="gp-pill">{phase === 'lounge' ? 'The lounge is open' : 'Next pause'}</span>
+          <p className="gp-countdown" aria-label={`${h} hours ${m} minutes until the next pause`}>
+            <span>{pad(h)}</span>
+            <span className="gp-countdown-gap" aria-hidden="true" />
+            <span>{pad(m)}</span>
+            <span className="gp-countdown-gap" aria-hidden="true" />
+            <span>{pad(s)}</span>
+          </p>
+          <p className="gp-when-note">
+            At {localTime.format(start)} your time, {bangkokTime.format(start)} in Bangkok
+          </p>
+        </>
+      )}
     </div>
   )
 }
 
-// MARK: Section
+// MARK: Phases
 
-const phases = [
+type Phase = {
+  /** Minutes from the live start, for the local time in the eyebrow. */
+  offset: number
+  label: string
+  /** The headline, then its italic accent. */
+  title: [string, string]
+  body: string
+}
+
+const phases: Phase[] = [
   {
     offset: -LOUNGE_LEAD,
-    title: 'The lounge opens',
-    body: 'Ten minutes before, DJ Fuku plays you in. The globe turns slowly while people gather from everywhere.',
+    label: 'Fuku’s Lounge',
+    title: ['The lounge', 'opens'],
+    body: 'Ten minutes before, your host DJ Fuku plays you in. The music stays low and the light warm while people gather from everywhere, and a few words of welcome carry you to the start.',
   },
   {
     offset: 0,
-    title: 'Ten minutes of shared stillness',
-    body: 'Everyone hears the same moment. Nothing to pause, nothing to skip, only the pause itself.',
+    label: 'Live',
+    title: ['Ten minutes of', 'shared stillness'],
+    body: 'Everyone hears the same moment. The globe comes to rest, a light wakes wherever someone is pausing, and there is nothing to pause or skip, only the pause itself.',
   },
   {
     offset: SESSION_LENGTH,
-    title: 'A peace message for the world',
+    label: 'Reflection',
+    title: ['A peace message', 'for the world'],
     body: 'Afterwards, you leave a few words for someone you may never meet. They drift through the lounge for others to find.',
   },
 ]
 
+function PhaseCopy({ phase, start }: { phase: Phase; start: number }) {
+  return (
+    <>
+      <p className="eyebrow gp-phase-eyebrow">
+        {localTime.format(start + phase.offset)} · {phase.label}
+      </p>
+      <h3 className="gp-phase-title">
+        {phase.title[0]} <em>{phase.title[1]}</em>
+      </h3>
+      <p className="lede gp-phase-body">{phase.body}</p>
+    </>
+  )
+}
+
+// MARK: Scroll
+
+/** How far the section top travels (in viewport heights) while the card opens to full bleed. */
+const OPEN_RUN = 0.9
+/** How long (in viewport heights) the card spends closing again before it leaves the screen. */
+const CLOSE_RUN = 0.45
+
+/**
+ * Scrubs the card to the scroll. `--gp-rest` is 1 for the resting card and 0 for full bleed: it
+ * opens as the section rises to the top, and closes over the last stretch before the frame
+ * un-pins. `--gp-live` runs 0 → 1 across the live chapter and fills the progress line. Written
+ * straight to the frame's style, so scrolling never re-renders React.
+ */
+function useCardScroll(
+  sectionRef: RefObject<HTMLElement | null>,
+  frameRef: RefObject<HTMLDivElement | null>,
+  liveRef: RefObject<HTMLLIElement | null>,
+) {
+  useEffect(() => {
+    const section = sectionRef.current
+    const frame = frameRef.current
+    if (!section || !frame) return
+    const still = prefersReducedMotion()
+    let raf = 0
+
+    const update = () => {
+      raf = 0
+      const vh = window.innerHeight
+      const box = section.getBoundingClientRect()
+      const opening = smooth(0, vh * OPEN_RUN, box.top)
+      const closing = 1 - smooth(vh, vh * (1 + CLOSE_RUN), box.bottom)
+      frame.style.setProperty('--gp-rest', still ? '1' : Math.max(opening, closing).toFixed(4))
+
+      const live = liveRef.current?.getBoundingClientRect()
+      if (live) {
+        const through = Math.min(1, Math.max(0, (vh / 2 - live.top) / live.height))
+        frame.style.setProperty('--gp-live', through.toFixed(4))
+      }
+    }
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+
+    update()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+    }
+  }, [sectionRef, frameRef, liveRef])
+}
+
+// MARK: Section
+
+const LOUNGE = 1
+const LIVE = 2
+const PEACE = 3
+
 export default function GlobalPause() {
   const ref = useBloom<HTMLElement>()
-  const [count, setCount] = useState(() => 12_400 + Math.floor(Math.random() * 600))
+  const frameRef = useRef<HTMLDivElement>(null)
+  const chaptersRef = useRef<HTMLOListElement>(null)
+  const liveRef = useRef<HTMLLIElement>(null)
   const [start] = useState(() => sessionState(Date.now()).start)
+  // 0 is the intro; 1–3 are the phases.
+  const [active, setActive] = useState(0)
+
+  useCardScroll(ref, frameRef, liveRef)
+
+  // The chapter crossing the viewport's middle line is the one on screen.
+  useEffect(() => {
+    const chapters = chaptersRef.current?.querySelectorAll<HTMLElement>('[data-index]')
+    if (!chapters) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActive(Number((entry.target as HTMLElement).dataset.index))
+        }
+      },
+      { rootMargin: '-50% 0px -50% 0px' },
+    )
+    chapters.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
+  const on = (index: number) => (active === index ? ' is-active' : '')
 
   return (
     <section id="global-pause" ref={ref} className="gp" aria-labelledby="gp-title">
-      <div className="gp-stage">
-        <NightSky />
+      <div ref={frameRef} className={`gp-frame${active === LIVE ? ' is-live' : ''}`}>
+        <div className="gp-frame-shadow" aria-hidden="true" />
+        <div className="gp-card">
+          <NightSky />
 
-        <div className="gp-inner">
-          <div className="gp-copy">
-            <header className="gp-head">
-              <p className="eyebrow gp-eyebrow bloom">Global Pause</p>
-              <h2 id="gp-title" className="headline gp-headline bloom" style={{ '--bloom-delay': '80ms' } as CSSProperties}>
-                Pause with <em>the world.</em>
-              </h2>
-              <p className="lede gp-lede bloom" style={{ '--bloom-delay': '160ms' } as CSSProperties}>
-                Every day, at the same moment, people everywhere stop together for ten minutes. As each
-                person arrives, a light wakes on the globe, until the whole world is quietly glowing with
-                company. The evening pause is 20:40 in Bangkok, with gentler hours added around the day so
-                one always fits yours.
-              </p>
-            </header>
-
-            <LiveStrip count={count} />
-
-            <article className="gp-fuku bloom" style={{ '--bloom-delay': '320ms' } as CSSProperties}>
-              <AmbientVideo name="fuku-intro" className="gp-fuku-video" />
-              <div className="gp-fuku-text">
-                <p className="gp-fuku-kicker">Fuku's Lounge</p>
-                <p className="gp-fuku-line">Your host, DJ Fuku, keeps the music low and the light warm while everyone arrives.</p>
+          <div className="gp-grid">
+            <div className="gp-visuals">
+              <div className={`gp-visual gp-visual--lounge${on(LOUNGE)}`}>
+                <FukuWindow active={active === LOUNGE} />
               </div>
-            </article>
+              <div className={`gp-visual gp-visual--live${on(LIVE)}`}>
+                <LiveGlobe active={active === LIVE} />
+              </div>
+              <div className={`gp-visual gp-visual--peace${on(PEACE)}`}>
+                <PeaceDrift />
+              </div>
+              <div className={`gp-dots${active > 0 ? ' is-shown' : ''}`} aria-hidden="true">
+                {phases.map((phase, i) => (
+                  <span key={phase.label} className={active === i + 1 ? 'is-active' : undefined} />
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="gp-globe-slot bloom" style={{ '--bloom-delay': '120ms' } as CSSProperties}>
-            <Globe onJoin={() => setCount((c) => c + 1)} />
+          {/* Phones: the phase copy holds still in the lower band and crossfades in place, so it
+              never scrolls across the pinned visual. Desktop reads it from the chapters below. */}
+          <div className="gp-dock">
+            {phases.map((phase, i) => (
+              <div key={phase.label} className={`gp-dock-copy${on(i + 1)}`} aria-hidden={active !== i + 1}>
+                <PhaseCopy phase={phase} start={start} />
+              </div>
+            ))}
           </div>
         </div>
-
-        <ol className="gp-phases">
-          {phases.map((phase, i) => (
-            <li
-              key={phase.title}
-              className="gp-phase bloom"
-              style={{ '--bloom-delay': `${120 + i * 120}ms` } as CSSProperties}
-            >
-              <span className="gp-phase-time">{localTime.format(start + phase.offset)}</span>
-              <h3 className="gp-phase-title">{phase.title}</h3>
-              <p className="gp-phase-body">{phase.body}</p>
-            </li>
-          ))}
-        </ol>
       </div>
+
+      <ol className="gp-chapters" ref={chaptersRef}>
+        <li className="gp-chapter gp-chapter--intro" data-index={0}>
+          <header className="gp-intro">
+            <p className="eyebrow gp-eyebrow bloom">Global Pause</p>
+            <h2 id="gp-title" className="headline gp-headline bloom" style={{ '--bloom-delay': '80ms' } as CSSProperties}>
+              Pause with <em>the world.</em>
+            </h2>
+            <p className="lede gp-lede bloom" style={{ '--bloom-delay': '160ms' } as CSSProperties}>
+              Every day, at the same moment, people everywhere stop together for ten minutes. The evening
+              pause is 20:40 in Bangkok, with gentler hours around the day so one always fits yours.
+            </p>
+            <Countdown />
+          </header>
+        </li>
+        {phases.map((phase, i) => (
+          <li
+            key={phase.label}
+            ref={i + 1 === LIVE ? liveRef : undefined}
+            className={`gp-chapter${on(i + 1)}`}
+            data-index={i + 1}
+          >
+            <div className="gp-grid">
+              <div className="gp-phase">
+                <PhaseCopy phase={phase} start={start} />
+              </div>
+            </div>
+          </li>
+        ))}
+        <li className="gp-chapter gp-chapter--tail" aria-hidden="true" />
+      </ol>
     </section>
   )
 }
