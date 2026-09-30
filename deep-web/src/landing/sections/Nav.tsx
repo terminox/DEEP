@@ -59,10 +59,6 @@ export default function Nav() {
           ))}
         </ul>
 
-        <a className="pill pill--compact nav-cta" href="#download">
-          Coming soon
-        </a>
-
         <button
           className="nav-toggle"
           type="button"
@@ -86,9 +82,6 @@ export default function Nav() {
             </li>
           ))}
         </ul>
-        <a className="pill" href="#download" onClick={() => setOpen(false)}>
-          Coming soon
-        </a>
       </div>
     </nav>
   )
