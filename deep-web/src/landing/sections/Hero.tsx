@@ -45,9 +45,6 @@ export default function Hero() {
             and watch your quiet minutes grow into something that helps others.
           </p>
           <div className="hero-actions bloom" style={{ '--bloom-delay': '520ms' } as CSSProperties}>
-            <a className="pill" href="#download">
-              Download DEEP
-            </a>
             <a className="pill pill--ghost" href="#global-pause">
               See how it feels
             </a>
