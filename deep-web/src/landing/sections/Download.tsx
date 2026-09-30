@@ -1,6 +1,7 @@
-// The closing invitation: the atmosphere, one large orb breathing slowly, and the way in.
+// The closing invitation: the atmosphere, one large orb breathing slowly, and word of when DEEP arrives.
+// DEEP isn't on any store yet, so nothing here is a button; store links replace the note at launch.
 import type { CSSProperties } from 'react'
-import { Atmosphere, LogoMark, StoreBadges, useBloom } from '../components/shared.tsx'
+import { Atmosphere, LogoMark, useBloom } from '../components/shared.tsx'
 import './Download.css'
 
 export default function Download() {
@@ -22,12 +23,12 @@ export default function Download() {
             You’re here now.
           </h2>
           <p className="lede bloom" style={{ '--bloom-delay': '200ms' } as CSSProperties}>
-            Whenever you’d like to come back to this feeling, DEEP is waiting on your phone. A breath, a
-            pause with the world, a plant that grows with you.
+            Soon, whenever you’d like to come back to this feeling, DEEP will be waiting on your phone. A
+            breath, a pause with the world, a plant that grows with you.
           </p>
-          <div className="bloom" style={{ '--bloom-delay': '300ms' } as CSSProperties}>
-            <StoreBadges />
-          </div>
+          <p className="dl-soon bloom" style={{ '--bloom-delay': '300ms' } as CSSProperties}>
+            Coming soon to iPhone and Android
+          </p>
         </div>
       </div>
     </section>

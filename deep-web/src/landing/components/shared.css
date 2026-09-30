@@ -20,64 +20,6 @@
   overflow: visible;
 }
 
-/* MARK: Store badges */
-.badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.badges--center {
-  justify-content: center;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 0 24px 0 20px;
-  border-radius: var(--pill);
-  color: var(--deep-plum);
-  text-decoration: none;
-  transition: transform var(--drift) var(--exhale);
-}
-
-.badge:active {
-  transform: scale(0.97);
-}
-
-.badge--store {
-  background: linear-gradient(135deg, var(--lavender-mist), var(--blush-powder));
-  box-shadow: 0 14px 36px rgb(from var(--lavender-mist) r g b / 0.45);
-}
-
-.badge--soon {
-  background: rgb(255 255 255 / 0.5);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 0.5px solid var(--frost-rim);
-  color: var(--drift-grey);
-  cursor: default;
-}
-
-.badge-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-  text-align: left;
-}
-
-.badge-small {
-  font-size: var(--micro);
-  letter-spacing: 0.02em;
-}
-
-.badge-big {
-  font-size: 19px;
-  font-weight: 500;
-}
-
 /* MARK: Atmosphere (AtmosphereBackground.swift) */
 .atmosphere {
   position: absolute;
