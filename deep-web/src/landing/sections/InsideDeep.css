@@ -3,7 +3,9 @@
 .in {
   position: relative;
   isolation: isolate;
-  padding: var(--section-gap) var(--edge);
+  /* No bottom gap: the pinned phone's own slack and the footer's top padding already give the
+     page's last section room to breathe. */
+  padding: var(--section-gap) var(--edge) 0;
 }
 
 /* The atmosphere melts into the page at both edges so the section has no seam. */
