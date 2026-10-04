@@ -4,7 +4,7 @@ One stack, one GCP project:
 
 | Stack | GCP project | Region | DB tier | Cloud Run scaling | URL |
 |---|---|---|---|---|---|
-| `production` | `deep-production-app` | `asia-southeast1` | `db-f1-micro` | 0 → **1 (hard max)** | `*.run.app` (no custom domain yet) |
+| `production` | `graphite-girder-509905-i2` | `asia-southeast1` | `db-f1-micro` | 0 → **1 (hard max)** | `*.run.app` (no custom domain yet) |
 
 **Resources:** Artifact Registry (Docker) · Cloud SQL Postgres 15 (unix-socket only, no public
 clients) · private GCS media bucket FUSE-mounted at `MEDIA_DIR=/media` (uploads + streaming need no
@@ -18,8 +18,8 @@ code changes and survive revisions) · Secret Manager (`DATABASE_URL`, `JWT_SECR
 ## One-time setup
 
 ```bash
-gcloud projects create deep-production-app --name=deep-production
-gcloud billing projects link deep-production-app --billing-account=<billing-account-id>
+# The project (graphite-girder-509905-i2, "DEEP ", org deeppeace.space) is owned by the client;
+# billing is theirs. Deploying needs Owner (or IAM Admin) — the stack creates IAM bindings.
 gcloud auth configure-docker asia-southeast1-docker.pkg.dev --quiet
 
 cd infra && npm install
@@ -33,7 +33,7 @@ pulumi up   # first run deploys a placeholder image so the registry exists befor
 
 ```bash
 # 1. Build + push the backend image (from repo root; Apple Silicon → force amd64).
-REGION=asia-southeast1; PROJECT=deep-production-app; SHA=$(git rev-parse --short HEAD)
+REGION=asia-southeast1; PROJECT=graphite-girder-509905-i2; SHA=$(git rev-parse --short HEAD)
 IMAGE=$REGION-docker.pkg.dev/$PROJECT/backend/api:$SHA
 docker buildx build --platform linux/amd64 -t $IMAGE --push deep-api
 
@@ -58,11 +58,14 @@ clobbered — run it only on a fresh database, via an args override on the migra
 
 ```bash
 gcloud run jobs execute "$(pulumi stack output migrateJob)" \
-  --region asia-southeast1 --project deep-production-app \
+  --region asia-southeast1 --project graphite-girder-509905-i2 \
   --args tsx,prisma/seed.ts --wait
 ```
 
 ## Notes
+
+- **Stack `production-legacy`** is the old `deep-production-app` deployment (offline since
+  2026-09-27, billing unlinked). Its state is kept only for reference; never `pulumi up` it.
 
 - **Secrets** live in Secret Manager and are injected as secret env refs; the backend reads plain
   `process.env` (`src/env.ts` prefers process env over `.env`).
