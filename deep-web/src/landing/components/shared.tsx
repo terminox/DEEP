@@ -1,7 +1,7 @@
 // Shared landing primitives: blooming on scroll, videos that only play in view, the DEEP mark
 // and wordmark. Section files compose these; they never re-implement them.
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
-import { LOCKUP_BOX, TAGLINE_PATH, WORD_BOX, WORD_PATH } from './wordmarkPaths.ts'
+import { LOCKUP_BOX, TAGLINE_BOX, TAGLINE_PATH, WORD_BOX, WORD_PATH } from './wordmarkPaths.ts'
 import './shared.css'
 
 export const prefersReducedMotion = () =>
@@ -151,6 +151,16 @@ export function Wordmark({ className = '', tagline = false }: { className?: stri
     >
       <path fillRule="evenodd" d={WORD_PATH} />
       {tagline && <path fillRule="evenodd" d={TAGLINE_PATH} />}
+    </svg>
+  )
+}
+
+/** "peace begins within." on its own, cropped to its ink so it aligns flush with whatever it sits beside. */
+export function Tagline({ className = '' }: { className?: string }) {
+  const { x, y, width, height } = TAGLINE_BOX
+  return (
+    <svg className={`wordmark ${className}`} viewBox={`${x} ${y} ${width} ${height}`} fill="currentColor" role="img" aria-label="peace begins within.">
+      <path fillRule="evenodd" d={TAGLINE_PATH} />
     </svg>
   )
 }

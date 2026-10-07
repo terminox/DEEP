@@ -10,3 +10,5 @@ export const TAGLINE_PATH = 'M615.7 236.6C615.3 236.8 615.3 237.9 615.3 255C615.
 
 export const WORD_BOX = { width: 797.5, height: 211.3 }
 export const LOCKUP_BOX = { width: 797.5, height: 286.4 }
+/** The tagline's own ink bounds inside the lockup frame, for setting it alone. */
+export const TAGLINE_BOX = { x: 97.6, y: 236.2, width: 614.3, height: 50.2 }

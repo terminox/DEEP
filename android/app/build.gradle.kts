@@ -27,7 +27,7 @@ val devApiHost: String =
 // Deep/Config/Staging.xcconfig and Pilot.xcconfig do: neither staging-api.deep.app
 // nor pilot-api.deep.app was ever stood up. Splitting them later is a one-line
 // change per flavor.
-val cloudRunApi = "https://deep-api-157102552469.asia-southeast1.run.app"
+val cloudRunApi = "https://deep-api-696592457470.asia-southeast1.run.app"
 
 // Release signing, read from a gitignored keystore.properties.
 //

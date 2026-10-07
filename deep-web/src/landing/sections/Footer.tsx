@@ -1,9 +1,9 @@
 // A quiet close. Spacing does the separating; nothing here asks for anything.
-import { LogoMark, Wordmark } from '../components/shared.tsx'
+import { LogoMark, Tagline, Wordmark } from '../components/shared.tsx'
 import { sections } from '../storyOrder.ts'
 import './Footer.css'
 
-const company = ['Privacy', 'Terms', 'Contact', 'Press']
+const company = ['Privacy', 'Terms', 'Contact']
 
 export default function Footer() {
   return (
@@ -14,7 +14,9 @@ export default function Footer() {
             <LogoMark size={30} />
             <Wordmark className="ft-wordmark" />
           </a>
-          <p className="ft-manifesto">Pause. Breathe. Connect. Heal&nbsp;— together.</p>
+          <p className="ft-manifesto">
+            <Tagline className="ft-tagline" />
+          </p>
         </div>
 
         <nav className="ft-cols" aria-label="Footer">
@@ -41,7 +43,7 @@ export default function Footer() {
         </nav>
       </div>
 
-      <p className="ft-fine">© 2026 DEEP. Made slowly, with care.</p>
+      <p className="ft-fine">© 2026 DEEP.</p>
     </footer>
   )
 }
