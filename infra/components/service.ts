@@ -112,7 +112,7 @@ export const service = new gcp.cloudrunv2.Service(
           volumeMounts: [cloudSqlMount, { name: "media", mountPath: "/media" }],
           resources: {
             limits: { cpu: "1", memory: "512Mi" },
-            cpuIdle: config.minInstances === 0 // throttle CPU between requests when scaling to zero
+            cpuIdle: config.cpuIdle // throttle CPU between requests; see config.ts
           },
           // Generous: bootstrapAdmin() talks to the DB before listen(), and a
           // db-f1-micro handshake through the socket proxy on a cold start can
