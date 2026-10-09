@@ -15,4 +15,4 @@ config:
     secure: AAABACO6igD764V+gc9W3Q/+ojD26wjXFMmZm+eaf+kqM1tBMOCV8uY3z1W+Xd+T8y9V+Zsr953657lOYLD/eH6OF9LUo1p7JZfb/DlzNeXFzL+PD6ybHCsRJdjQjIwE
   deep:adminBootstrapPassword:
     secure: AAABAGAqtCgftYF7kENBUft6DwORBTY3Uj7IeixGqKPrshfQ6CHSFKILwCg1dKA03Kid/aqYPVg=
-  deep:image: asia-southeast1-docker.pkg.dev/graphite-girder-509905-i2/backend/api:ffc6fbb
+  deep:image: asia-southeast1-docker.pkg.dev/graphite-girder-509905-i2/backend/api:97ff762
