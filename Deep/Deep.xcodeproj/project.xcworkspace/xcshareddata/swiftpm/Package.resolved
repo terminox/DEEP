@@ -1,0 +1,14 @@
+{
+  "originHash" : "21e8ff0b057d231369accf64246babbddbf6cba54c9d348a9241d5d7e38a1d2a",
+  "pins" : [
+    {
+      "identity" : "dialkit-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mikelikesdesign/dialkit-ios",
+      "state" : {
+        "revision" : "8cb0060a6b385a3d2899889f7af9d9a7a390fa8d"
+      }
+    }
+  ],
+  "version" : 3
+}

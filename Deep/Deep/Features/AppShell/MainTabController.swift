@@ -257,6 +257,29 @@ final class MainTabController: UITabBarController {
   private func presentNowPlaying() {
     guard presentedViewController == nil else { return }
 
+    // THROWAWAY — the full-screen-artwork player lab, Dev builds only. Delete
+    // this fence with `Features/DeepSound/NowPlayingLab/`.
+    #if DEBUG
+    let lab = NowPlayingLabHostingController(rootView: AnyView(EmptyView()))
+    lab.rootView = AnyView(
+      NowPlayingLabHost(
+        onDismiss: { [weak self] in self?.dismiss(animated: true) },
+        onLightStatusBar: { [weak lab] in lab?.lightStatusBar = $0 }
+      )
+      .environment(\.soundPlayer, sharedPlayer)
+      .environment(\.soundContentRepository, soundRepository)
+      .environment(\.playlistStore, playlistStore)
+      .environment(\.imageLoader, imageLoader)
+      .preferredColorScheme(.light)
+    )
+    lab.modalPresentationStyle = .fullScreen
+    lab.preferredTransition = .zoom { [weak self] _ in
+      self?.accessoryHost?.view
+    }
+    present(lab, animated: true)
+    return
+    #endif
+
     let root = NowPlayingView { [weak self] in
       self?.dismiss(animated: true)
     }
