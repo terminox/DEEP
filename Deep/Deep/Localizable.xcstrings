@@ -2071,6 +2071,16 @@
         }
       }
     },
+    "Play" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เล่น"
+          }
+        }
+      }
+    },
     "Play %@" : {
       "localizations" : {
         "th" : {

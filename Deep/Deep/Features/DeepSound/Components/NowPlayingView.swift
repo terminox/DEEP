@@ -1,8 +1,11 @@
 import SwiftUI
 
-/// The full-screen player. Mirrors Apple Music's Now Playing: a large artwork
-/// that contracts when paused, a draggable scrubber, transport, volume, and a
-/// bottom utility row — retinted to DEEP and with softened motion.
+/// The full-screen player. The collection's photograph fills the whole screen,
+/// edge to edge under the status bar, and the player sits over its lower part:
+/// collection, track, scrubber, transport and volume, seated on a plum scrim
+/// and a progressive blur so the photo melts out of focus behind the controls.
+/// Shuffle and Repeat flank the transport, as in Spotify; Lyrics and Save sit
+/// with the title.
 struct NowPlayingView: View {
   @Environment(\.soundPlayer) private var player
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -12,34 +15,35 @@ struct NowPlayingView: View {
   @State private var isScrubbing = false
   @State private var scrubValue: Double = 0
   @State private var showLyrics = false
+  /// Where the artwork's slow drift is heading; flipped under `.drift`.
+  @State private var drifted = false
 
   var body: some View {
     // The whole screen expands from (and collapses back into) the mini bar via
-    // the system zoom transition wired in `PlayerAccessoryView`; this view just lays
-    // out its contents and stays opaque so the morph reads cleanly.
+    // the system zoom transition wired in `MainTabController`; this view just
+    // lays out its contents and stays opaque so the morph reads cleanly.
     ZStack {
-      background
+      artwork
+        .ignoresSafeArea()
 
       VStack(spacing: 0) {
-        grabHandle
-
-        Spacer(minLength: 8)
-
-        artwork
-          .padding(.horizontal, 28)
-
-        Spacer(minLength: 24)
-
-        VStack(spacing: 26) {
-          titleRow
-          scrubber
-          transport
-          volume
-          bottomRow
-        }
-        .padding(.horizontal, 32)
-        .padding(.bottom, 40)
+        scrim(from: .top, peak: 0.36)
+          .frame(height: 180)
+        Spacer()
+        scrim(from: .bottom, peak: 0.4)
+          .frame(height: 520)
       }
+      .ignoresSafeArea()
+      .allowsHitTesting(false)
+
+      VStack(spacing: 0) {
+        closeButton
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.top, 4)
+        Spacer(minLength: 0)
+        controls
+      }
+      .padding(.horizontal, .edge)
     }
     .sheet(isPresented: $showLyrics) {
       if let track = player.currentTrack {
@@ -50,75 +54,110 @@ struct NowPlayingView: View {
     }
   }
 
-  // MARK: - Background
+  // MARK: - Artwork
 
-  private var background: some View {
+  /// The photograph, drifting slowly while a sound plays and settling under a
+  /// soft plum dim on pause.
+  private var artwork: some View {
     ZStack {
-      // Opaque base so the sheet is solid — nothing underneath bleeds through.
-      Color.softLilac
-      LinearGradient(
-        colors: [
-          .softLilac,
-          .lavenderMist.opacity(0.7),
-          .blushPowder.opacity(0.6)
-        ],
-        startPoint: .top,
-        endPoint: .bottom
+      // Opaque base so nothing underneath bleeds through while the photo loads.
+      Color.deepPlum
+      ArtworkImage(
+        url: player.collection?.imageURL,
+        colors: (player.collection?.palette ?? .mist).colors,
+        cornerRadius: 0,
+        bordered: false
       )
-      .overlay(.ultraThinMaterial.opacity(0.4))
+      .scaleEffect(drifted ? 1.08 : 1.02)
+      .overlay(Color.deepPlum.opacity(player.isPlaying ? 0 : 0.2))
+      .animation(.settle, value: player.isPlaying)
     }
-    .ignoresSafeArea()
+    .clipped()
+    .onChange(of: drifts, initial: true) { _, drifts in
+      // Replacing the endless drift with a finite settle is what stops it.
+      withAnimation(drifts ? .drift : .settle) { drifted = drifts }
+    }
+  }
+
+  private var drifts: Bool {
+    player.isPlaying && !reduceMotion
+  }
+
+  /// A plum wash fading out from one edge, to seat moonlit text on any photo.
+  private func scrim(from edge: VerticalEdge, peak: Double) -> some View {
+    let ink = Color.deepPlum.opacity(peak)
+    return LinearGradient(
+      stops: [
+        .init(color: ink, location: 0),
+        .init(color: ink.opacity(0.8), location: 0.5),
+        .init(color: .clear, location: 1)
+      ],
+      startPoint: edge == .top ? .top : .bottom,
+      endPoint: edge == .top ? .bottom : .top
+    )
   }
 
   // MARK: - Pieces
 
-  private var grabHandle: some View {
-    Capsule()
-      .fill(.deepPlum.opacity(0.22))
-      .frame(width: 40, height: 5)
-      .padding(.top, 12)
-      .padding(.bottom, 4)
-      .frame(maxWidth: .infinity)
-      .contentShape(Rectangle())
-      .onTapGesture(perform: onDismiss)
+  /// The onboarding back button's frosted cream circle, here closing the
+  /// player back into the mini bar.
+  private var closeButton: some View {
+    Button(action: onDismiss) {
+      Image(systemName: "chevron.backward")
+        .font(DeepType.sectionTitle)
+        .foregroundStyle(.deepPlum)
+        .frame(width: 40, height: 40)
+        .background(FrostedCardBackground(cornerRadius: .chip))
+        .contentShape(Circle())
+    }
+    .buttonStyle(.softPress)
+    .accessibilityLabel("Close")
   }
 
-  private var artwork: some View {
-    SoundArtwork(
-      palette: player.collection?.palette ?? .mist,
-      imageURL: player.collection?.imageURL,
-      cornerRadius: 22
-    )
-      .aspectRatio(1, contentMode: .fit)
-      .scaleEffect(artworkScale)
-      .shadow(
-        color: .lavenderMist.opacity(player.isPlaying ? 0.45 : 0.22),
-        radius: player.isPlaying ? 34 : 16,
-        x: 0,
-        y: player.isPlaying ? 20 : 10
-      )
-      .animation(reduceMotion ? nil : .settle, value: player.isPlaying)
+  private var controls: some View {
+    VStack(spacing: 18) {
+      titleRow
+      scrubber
+      transport
+      volume
+    }
+    .padding(.bottom, 12)
+    .background(alignment: .top) { controlsBlur }
   }
 
-  private var artworkScale: CGFloat {
-    player.isPlaying ? 1.0 : 0.84
+  /// A progressive blur sized by the controls themselves, so its clear top
+  /// edge always sits just above the collection name whatever the type size,
+  /// running out to both screen edges and down past the home indicator.
+  private var controlsBlur: some View {
+    VariableBlurView(maxBlurRadius: 24, direction: .blurredBottomClearTop)
+      .padding(.top, -28)
+      .padding(.horizontal, -.edge)
+      .ignoresSafeArea(edges: .bottom)
+      .allowsHitTesting(false)
   }
 
   private var titleRow: some View {
-    HStack(alignment: .center) {
-      VStack(alignment: .leading, spacing: 3) {
-        Text(player.currentTrack?.title ?? "")
-          .font(.system(.title3, design: .default, weight: .semibold))
-          .foregroundStyle(.deepPlum)
+    HStack(alignment: .center, spacing: 4) {
+      VStack(alignment: .leading, spacing: 4) {
+        Text((player.collection?.title ?? "").uppercased())
+          .font(DeepType.micro)
+          .tracking(1.6)
+          .foregroundStyle(.moonCream.opacity(0.72))
           .lineLimit(1)
-        Text(player.collection?.title ?? "")
+        Text(player.currentTrack?.title ?? "")
+          .font(.system(.title2, weight: .semibold))
+          .foregroundStyle(.moonCream)
+          .lineLimit(1)
+        Text(player.collection?.subtitle ?? "")
           .font(DeepType.body)
-          .foregroundStyle(.driftGrey)
+          .foregroundStyle(.moonCream.opacity(0.72))
           .lineLimit(1)
       }
-      Spacer()
-      // Saving the sound to the playlist — the screen's one utility control,
-      // in the circle this row has always drawn.
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      // Lyrics — opens the (multi-language) lyrics sheet for the current track.
+      utilityButton("text.quote", isOn: true) { showLyrics = true }
+        .accessibilityLabel("Lyrics")
       if let track = player.currentTrack, let collection = player.collection {
         SaveTrackButton(track: track, collection: collection)
       }
@@ -126,12 +165,14 @@ struct NowPlayingView: View {
   }
 
   private var scrubber: some View {
-    VStack(spacing: 6) {
+    VStack(spacing: 4) {
       SoundSlider(
         value: Binding(
           get: { isScrubbing ? scrubValue : player.progress },
           set: { scrubValue = $0 }
         ),
+        activeColor: .moonCream,
+        trackHeight: 4,
         onEditingChanged: { editing in
           if editing {
             isScrubbing = true
@@ -150,7 +191,7 @@ struct NowPlayingView: View {
       }
       .font(DeepType.caption)
       .monospacedDigit()
-      .foregroundStyle(.driftGrey)
+      .foregroundStyle(.moonCream.opacity(0.72))
     }
   }
 
@@ -159,53 +200,6 @@ struct NowPlayingView: View {
   }
 
   private var transport: some View {
-    HStack(spacing: 44) {
-      transportButton("backward.fill", size: 28) { player.previous() }
-      Button {
-        player.togglePlayPause()
-      } label: {
-        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-          .font(.system(size: 44, weight: .medium))
-          .foregroundStyle(.deepPlum)
-          .frame(width: 64, height: 64)
-          .contentShape(Rectangle())
-      }
-      .buttonStyle(.softPress)
-      transportButton("forward.fill", size: 28) { player.next() }
-    }
-  }
-
-  private func transportButton(
-    _ systemName: String,
-    size: CGFloat,
-    action: @escaping () -> Void
-  ) -> some View {
-    Button(action: action) {
-      Image(systemName: systemName)
-        .font(.system(size: size, weight: .medium))
-        .foregroundStyle(.deepPlum)
-        .frame(width: 56, height: 56)
-        .contentShape(Rectangle())
-    }
-    .buttonStyle(.softPress)
-  }
-
-  private var volume: some View {
-    HStack(spacing: 12) {
-      Image(systemName: "speaker.fill")
-        .font(.footnote)
-        .foregroundStyle(.driftGrey)
-      SoundSlider(
-        value: Binding(get: { player.volume }, set: { player.volume = $0 }),
-        activeColor: .lavenderMist.opacity(0.8)
-      )
-      Image(systemName: "speaker.wave.3.fill")
-        .font(.footnote)
-        .foregroundStyle(.driftGrey)
-    }
-  }
-
-  private var bottomRow: some View {
     HStack {
       utilityButton("shuffle", isOn: player.isShuffled) {
         player.isShuffled.toggle()
@@ -213,7 +207,26 @@ struct NowPlayingView: View {
       .accessibilityLabel("Shuffle")
       .accessibilityValue(player.isShuffled ? "On" : "Off")
 
-      Spacer()
+      Spacer(minLength: 0)
+
+      transportButton("backward.fill") { player.previous() }
+      Button {
+        player.togglePlayPause()
+      } label: {
+        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+          .font(.system(size: 24, weight: .semibold))
+          .foregroundStyle(.deepPlum)
+          .contentTransition(.symbolEffect(.replace))
+          .frame(width: 68, height: 68)
+          .background(Circle().fill(.moonCream))
+          .contentShape(Circle())
+      }
+      .buttonStyle(.softPress)
+      .padding(.horizontal, 12)
+      .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+      transportButton("forward.fill") { player.next() }
+
+      Spacer(minLength: 0)
 
       // Off → all → one, as in Apple Music. Lit whenever a queue will repeat.
       utilityButton(
@@ -224,14 +237,35 @@ struct NowPlayingView: View {
       }
       .accessibilityLabel("Repeat")
       .accessibilityValue(repeatValue)
-
-      Spacer()
-
-      // Lyrics — opens the (multi-language) lyrics sheet for the current track.
-      utilityButton("list.bullet") { showLyrics = true }
-        .accessibilityLabel("Lyrics")
     }
-    .padding(.horizontal, 24)
+  }
+
+  private func transportButton(
+    _ systemName: String,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      Image(systemName: systemName)
+        .font(.system(size: 24, weight: .medium))
+        .foregroundStyle(.moonCream)
+        .frame(width: 52, height: 52)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.softPress)
+  }
+
+  private var volume: some View {
+    HStack(spacing: 12) {
+      Image(systemName: "speaker.fill")
+      SoundSlider(
+        value: Binding(get: { player.volume }, set: { player.volume = $0 }),
+        activeColor: .moonCream.opacity(0.8),
+        trackHeight: 4
+      )
+      Image(systemName: "speaker.wave.3.fill")
+    }
+    .font(.footnote)
+    .foregroundStyle(.moonCream.opacity(0.72))
   }
 
   private var repeatValue: LocalizedStringKey {
@@ -242,8 +276,8 @@ struct NowPlayingView: View {
     }
   }
 
-  /// `isOn` lights a mode control in the transport's plum, the way
-  /// `SaveTrackButton` marks a kept sound; off, it rests in grey.
+  /// `isOn` lights a mode control in full cream, the ink the title wears;
+  /// off, it steps back to the subtitle's softer cream.
   private func utilityButton(
     _ systemName: String,
     isOn: Bool = false,
@@ -251,8 +285,8 @@ struct NowPlayingView: View {
   ) -> some View {
     Button(action: action) {
       Image(systemName: systemName)
-        .font(.system(.body, weight: .medium))
-        .foregroundStyle(isOn ? Color.deepPlum : .driftGrey)
+        .font(.system(size: 18, weight: .medium))
+        .foregroundStyle(isOn ? Color.moonCream : .moonCream.opacity(0.5))
         .contentTransition(.symbolEffect(.replace))
         .frame(width: 44, height: 44)
         .contentShape(Rectangle())

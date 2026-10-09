@@ -39,6 +39,10 @@ final class AppDependencies {
   let pauseRepository: any PauseEventRepository
   let pauseSession: GlobalPauseSession
   let imageLoader: any ImageLoading
+  /// The same disk cache decoded at screen size, for the one photograph that
+  /// fills the whole screen (Now Playing). Kept apart so a full-size decode
+  /// never lands in the shared tile cache's memory.
+  let fullScreenImageLoader: any ImageLoading
   /// Disk cache for the garden's stage hero footage — streamed once, played
   /// from disk on every later launch.
   let videoCache: VideoCache
@@ -83,6 +87,12 @@ final class AppDependencies {
     // shared /media path — see `ImageLoader.cacheKey(for:environmentKey:)`.
     let imageLoader = ImageLoader(environmentKey: config.environment.rawValue)
     self.imageLoader = imageLoader
+    // A full-bleed photo on a 3x phone is ~1200×2600 px; the tile cap of 1280
+    // would stretch it soft. Same directory, so bytes on disk are shared.
+    self.fullScreenImageLoader = ImageLoader(
+      environmentKey: config.environment.rawValue,
+      maxPixelSize: 2800
+    )
 
     // A track played through to its end reports fire-and-forget: a lost
     // report costs at most one heart, and the rules live server-side. The

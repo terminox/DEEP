@@ -126,6 +126,10 @@ extension Animation {
   /// screen-level hand-offs (app root, onboarding routing, DEEP Session
   /// stages, Global Pause phases); micro-feedback keeps `.exhale` / `.bloom`.
   static let hush   = hushCurve.animation
+  /// A photograph breathing on its own — Now Playing's full-screen artwork
+  /// drifting in and out while a sound plays. Slow enough to feel like air,
+  /// not motion; repeats until replaced.
+  static let drift  = Animation.easeInOut(duration: 18).repeatForever(autoreverses: true)
 
   /// The breath itself — the exhale curve stretched over a whole breath phase,
   /// the one motion in the app allowed to take entire seconds. Drives the DEEP
