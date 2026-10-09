@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Shared Mind Garden and reward-ritual components (shared/components/
+  SunlightFact.kt, RewardContinueButton.kt). Kept in their own file while
+  strings.xml is being merged; fold them in with the next pass over it. Keys
+  mirror the iOS catalog entries "Fully grown", "/%@ to %@", "Shows the next
+  part of your session rewards" and "Closes the session and returns to the app".
+-->
+<resources>
+  <!-- The sunlight fact once the plant has no next form. -->
+  <string name="sunlight_fact_fully_grown">Fully grown</string>
+  <!-- Follows the banked sunlight figure: "/700 to Mature Oak". %1$s is the goal, %2$s the next form's name. -->
+  <string name="sunlight_fact_to_next">/%1$s to %2$s</string>
+  <!-- Spoken action for the reward ritual's forward button while more steps remain. -->
+  <string name="reward_continue_hint_next">Shows the next part of your session rewards</string>
+  <!-- Spoken action for the reward ritual's forward button on its last step. -->
+  <string name="reward_continue_hint_final">Closes the session and returns to the app</string>
+</resources>

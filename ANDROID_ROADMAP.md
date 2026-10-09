@@ -111,6 +111,26 @@ Mind Garden, the reward ritual, the practice journal with its offline sync queue
 By Friday a finished session banks sunlight, the plant grows toward its next form, and hearts
 land in a balance. The loop closes.
 
+Decided while building it:
+
+- **Parity, deliberately.** A session that runs to its end is journaled, earns one heart and one
+  sunlight while today holds four or fewer, and opens the ritual: garden, compassion, then the
+  day's rhythm once a day. Leaving early banks nothing. The journal syncs at launch, on every
+  return to the foreground, after sign-in, and on the Garden's pull. A natural end in DEEP Sound
+  feeds the same wallet silently, with no ritual. The wallet is shown only in the ritual until the
+  Compassion tab lands in week 5, exactly as on iOS.
+- **Fixed on Android, invisible to a member.** The journal pushes in batches of 200 (the
+  server's limit, which iOS would trip on a long offline backlog) and never two pushes at once. A
+  garden response with no plant still updates the balance. A plant catalog that fails to load
+  says so and offers a retry instead of an endless skeleton. A response that lands after sign-out
+  is dropped rather than writing the last member's figures back. Log out first offers unsynced
+  practice to the server for up to three seconds, where iOS drops it.
+- **Known and left alone.** A wallet refresh that lands while a heart is being given, followed by
+  that gift being refused, double-counts the gift. Fix it in week 5 with the giving screen.
+  Yesterday's earned-today figure arriving just after midnight is read as today's. Both match iOS.
+- **The device timezone is read at launch.** The server reads it per request, so awards land on
+  the right day either way. Only the app's own "today" waits for a relaunch after a zone change.
+
 ### Week 5 — `v0.0.5` · Give a heart — and the app speaks Thai
 
 The Compassion Portfolio and the donate flow. The You tab, settings, account deletion, and the

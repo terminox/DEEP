@@ -60,6 +60,15 @@ private val Sans = FontFamily(
     FontStyle.Normal,
     variationSettings = weightVariation(500),
   ),
+  // The semibold the reward CTA and the garden's sunlight figure use
+  // (`.weight(.semibold)` on iOS). Declared so a `copy(fontWeight = SemiBold)`
+  // lands on a real 600 instance rather than a synthesised fake bold of 500.
+  Font(
+    R.font.inter_variable,
+    FontWeight.SemiBold,
+    FontStyle.Normal,
+    variationSettings = weightVariation(600),
+  ),
 )
 
 /**
