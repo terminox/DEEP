@@ -13,6 +13,12 @@ final class APIAccountStore: AccountStore {
   private(set) var account: Account?
   private(set) var isRestoring = false
 
+  /// Hears the signed-in DEEP user id whenever it is established (sign-up,
+  /// login, launch) and `nil` whenever it ends (logout, deletion, a rejected
+  /// session). The composition root points it at the subscription store, so
+  /// this store never learns that RevenueCat exists.
+  @ObservationIgnored var identitySink: (@MainActor (String?) -> Void)?
+
   private let client: APIClient
   private let defaults: UserDefaults
 
@@ -38,12 +44,14 @@ final class APIAccountStore: AccountStore {
         client.tokens.clear()
         clearCachedAccount()
         account = nil
+        identitySink?(nil)
       } else {
         // Offline / backend blip: stay signed in on the cached identity (or a
         // quiet placeholder for installs that predate the cache); persisted
         // stores render, and the next refresh confirms with the server.
         account = cachedAccount()
           ?? Account(displayName: "Friend", email: nil, method: .email, appleUserID: nil)
+        if let userID = account?.userID { identitySink?(userID) }
       }
     }
   }
@@ -75,6 +83,7 @@ final class APIAccountStore: AccountStore {
     client.tokens.clear()
     clearCachedAccount()
     account = nil
+    identitySink?(nil)
   }
 
   func deleteAccount() async throws {
@@ -82,12 +91,19 @@ final class APIAccountStore: AccountStore {
     client.tokens.clear()
     clearCachedAccount()
     account = nil
+    identitySink?(nil)
   }
 
   // MARK: - Cached identity
 
+  /// The DEEP user id of the last signed-in account, read straight from the
+  /// cache — available at launch, before `restore()` has asked the server, so
+  /// the subscription store can start out speaking for the right member.
+  var lastKnownUserID: String? { cachedAccount()?.userID }
+
   private func adopt(_ fresh: Account) {
     account = fresh
+    identitySink?(fresh.userID)
     if let data = try? JSONEncoder().encode(fresh) {
       defaults.set(data, forKey: Self.cachedAccountKey)
     }
@@ -103,6 +119,6 @@ final class APIAccountStore: AccountStore {
   }
 
   private static func account(from dto: UserDTO) -> Account {
-    Account(displayName: dto.displayName, email: dto.email, method: .email, appleUserID: nil)
+    Account(displayName: dto.displayName, email: dto.email, method: .email, appleUserID: nil, userID: dto.id)
   }
 }

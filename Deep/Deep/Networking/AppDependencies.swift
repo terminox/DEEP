@@ -50,23 +50,22 @@ final class AppDependencies {
     self.apiClient = client
     self.languageStore = LanguageStore()
     self.reminderStore = ReminderStore()
-    self.accountStore = APIAccountStore(client: client)
+    let accountStore = APIAccountStore(client: client)
+    self.accountStore = accountStore
     self.onboardingStore = OnboardingProgressDefaultsStore()
     self.onboardingRemote = APIOnboardingRemote(client: client)
     #if DEBUG
-    // A simulator launched with `xcrun simctl` never gets the scheme's
-    // `Deep.storekit` configuration, so StoreKit answers with no products at
-    // all and the paywall can only ever show its offline state. This launch
-    // argument swaps in the in-memory store so the whole purchase mechanic —
-    // plans, selection, the welcome beat, the flipped plan chip — is drivable
-    // headlessly. It compiles out of every shipping build.
+    // This launch argument swaps in the in-memory store so the whole purchase
+    // mechanic — plans, selection, the welcome beat, the flipped plan chip — is
+    // drivable without RevenueCat or a network. It compiles out of every
+    // shipping build.
     if ProcessInfo.processInfo.arguments.contains("-DeepMockSubscriptions") {
       self.subscriptionStore = MockSubscriptionStore.free
     } else {
-      self.subscriptionStore = StoreKitSubscriptionStore()
+      self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
     }
     #else
-    self.subscriptionStore = StoreKitSubscriptionStore()
+    self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
     #endif
     self.soundRepository = APISoundContentRepository(client: client)
 
@@ -119,5 +118,21 @@ final class AppDependencies {
       rewards: rewards,
       awardSink: ingestAwards
     )
+  }
+
+  /// RevenueCat, speaking for the DEEP user id from the first moment: it starts
+  /// as the last signed-in member, and follows every sign-in and sign-out after.
+  private static func liveSubscriptionStore(
+    config: AppConfig,
+    accountStore: APIAccountStore
+  ) -> RevenueCatSubscriptionStore {
+    let store = RevenueCatSubscriptionStore(
+      apiKey: config.revenueCatAPIKey,
+      appUserID: accountStore.lastKnownUserID
+    )
+    accountStore.identitySink = { userID in
+      Task { await store.identify(userID: userID) }
+    }
+    return store
   }
 }
