@@ -90,9 +90,13 @@ ok "Wrote Deep/Config/Local.xcconfig"
 # performs; NsdManager is a separate discovery API that OkHttp never consults.
 # So Android gets the LAN IP, and takes the DHCP churn iOS was designed to avoid.
 #
-# The emulator needs neither: it reaches this Mac at 10.0.2.2, which is a
-# constant. That is the Gradle default, so the emulator works on a fresh clone
-# with no setup at all — this file only matters for a physical device.
+# The build allows cleartext to whatever host lands here: app/build.gradle.kts
+# generates the Dev flavor's network security config from it, because a raw IP
+# cannot be listed in a checked-in file ahead of time. The emulator reaches the
+# LAN IP as well, so the APK built from this file works on both.
+#
+# Without this file the build falls back to 10.0.2.2, the emulator's constant
+# route to this Mac, so the emulator also works on a fresh clone with no setup.
 if [ -d "$ROOT/android" ]; then
   iface="$(route -n get default 2>/dev/null | awk '/interface:/{print $2}')"
   lan_ip="$(ipconfig getifaddr "${iface:-en0}" 2>/dev/null || true)"
@@ -109,8 +113,9 @@ if [ -d "$ROOT/android" ]; then
 # Written by scripts/dev-setup.sh — gitignored, per-machine.
 #
 # sdk.dir is Android Studio's. deep.devApiHost is what the Dev flavor's
-# API_BASE_URL is built from, and is only consulted for builds on a physical
-# device — the emulator reaches this Mac at the constant 10.0.2.2:$port.
+# API_BASE_URL and its cleartext allow-list are built from. Both the emulator
+# and a physical device on this Wi-Fi reach it. Delete the line to fall back to
+# 10.0.2.2:$port, the emulator's constant route to this Mac.
 #
 # This is a LAN IP rather than the mDNS name in Local.xcconfig because Android
 # cannot resolve .local names. It is DHCP-assigned, so re-run this script when

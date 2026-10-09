@@ -91,8 +91,15 @@ ordinary lookup an HTTP client performs — `NsdManager` is a separate discovery
 that OkHttp never consults. So Android takes the DHCP churn that the mDNS name was
 chosen to avoid, and the script has to be re-run when this Mac changes address.
 
-Cleartext to that host is permitted by a `network_security_config.xml` that lives
-only in the `dev` source set, so no shipping flavor can merge it.
+Cleartext to that host is permitted by a `network_security_config.xml` that
+`app/build.gradle.kts` generates for the `dev` variants from `deep.devApiHost`. A
+checked-in allow-list cannot name an IP that DHCP hands out, and a host missing
+from it fails silently: every request is refused on the device before it leaves,
+and the app only says it couldn't reach DEEP. No shipping flavor gets the file, and
+only the `dev` manifest points at it.
+
+The emulator reaches the LAN IP too, so the same APK works on both. Delete the
+`deep.devApiHost` line to go back to `10.0.2.2`.
 
 ### Guardrail
 
