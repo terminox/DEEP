@@ -34,6 +34,14 @@ const schema = z.object({
   GEOIP_DB_PATH: z.string().default("./geoip/GeoLite2-City.mmdb"),
   // Only needed to run scripts/geoip-update.sh; never read at request time.
   MAXMIND_LICENSE_KEY: z.string().optional(),
+  // The RevenueCat entitlement identifier that means DEEP Premium.
+  REVENUECAT_ENTITLEMENT_ID: z.string().min(1).default("deep_premium"),
+  // Dev-only: enables POST /dev/premium, which flips a user's DEEP Premium
+  // entitlement without a purchase. Must stay false anywhere real.
+  ALLOW_DEV_ENTITLEMENT: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 });
 
 export const env = schema.parse(process.env);

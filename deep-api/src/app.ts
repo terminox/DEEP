@@ -22,6 +22,7 @@ import { playlistRoutes } from "./routes/playlist.js";
 import { adminRoutes } from "./routes/admin.js";
 import { adminGardenRoutes } from "./routes/adminGarden.js";
 import { adminMediaRoutes } from "./routes/adminMedia.js";
+import { devPremiumRoutes } from "./routes/devPremium.js";
 
 export function buildApp() {
   const app = Fastify({ logger: true, trustProxy: true });
@@ -96,6 +97,8 @@ export function buildApp() {
   app.register(adminRoutes);
   app.register(adminGardenRoutes);
   app.register(adminMediaRoutes);
+  // Registers nothing unless ALLOW_DEV_ENTITLEMENT is on.
+  app.register(devPremiumRoutes);
 
   return app;
 }
