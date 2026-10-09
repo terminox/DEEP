@@ -79,18 +79,22 @@ final class AppDependencies {
     practiceStore.awardSink = ingestAwards
     self.practiceStore = practiceStore
 
+    // Keyed by environment so Dev and Staging artwork can never collide on a
+    // shared /media path — see `ImageLoader.cacheKey(for:environmentKey:)`.
+    let imageLoader = ImageLoader(environmentKey: config.environment.rawValue)
+    self.imageLoader = imageLoader
+
     // A track played through to its end reports fire-and-forget: a lost
-    // report costs at most one heart, and the rules live server-side.
-    self.soundPlayer = StreamingSoundPlayer { track in
+    // report costs at most one heart, and the rules live server-side. The
+    // lock screen's artwork comes through the same image cache the app draws.
+    self.soundPlayer = StreamingSoundPlayer(
+      loadArtwork: { url in try? await imageLoader.image(for: url) }
+    ) { track in
       Task { @MainActor in
         guard let grant = try? await rewards.reportListen(trackId: track.id) else { return }
         ingestAwards(grant)
       }
     }
-
-    // Keyed by environment so Dev and Staging artwork can never collide on a
-    // shared /media path — see `ImageLoader.cacheKey(for:environmentKey:)`.
-    self.imageLoader = ImageLoader(environmentKey: config.environment.rawValue)
     self.videoCache = VideoCache(environmentKey: config.environment.rawValue)
 
     // Global Pause: one synced clock + one app-long phase engine, so the home

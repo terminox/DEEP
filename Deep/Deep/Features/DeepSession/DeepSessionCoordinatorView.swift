@@ -73,7 +73,7 @@ struct DeepSessionCoordinatorView: View {
       // silence. The threshold before it is an ordinary screen in the tab, so
       // the track only stops here. It stays loaded, so the mini player is
       // waiting on return.
-      soundPlayer.pause()
+      soundPlayer.yieldAudio()
       // Warmed a whole practice ahead of the strike — the file loaded and the
       // audio session claimed here — so the bell that ends the practice is not
       // the thing waking the audio stack on the last exhale.

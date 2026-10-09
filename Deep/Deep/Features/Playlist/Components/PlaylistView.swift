@@ -79,10 +79,10 @@ struct PlaylistView: View {
     VStack(spacing: .rhythm) {
       HStack(spacing: 12) {
         SoundActionButton(title: "Play", systemName: "play.fill") {
-          attemptPlay(at: 0)
+          playAll(shuffled: false)
         }
         SoundActionButton(title: "Shuffle", systemName: "shuffle") {
-          attemptPlay(at: Int.random(in: 0..<max(1, entries.count)))
+          playAll(shuffled: true)
         }
       }
 
@@ -177,16 +177,36 @@ struct PlaylistView: View {
     (entry.collection.isPremium || entry.track.isPremium) && !subscriptionStore.isSubscribed
   }
 
+  /// The saved sounds this listener can play, in order. Play, Shuffle and a
+  /// tapped row all queue these, so a run never carries on into a locked one.
+  private var playable: [PlaylistEntry] {
+    entries.filter { !isLocked($0) }
+  }
+
   /// Starts the whole playlist from one sound, so what follows is the rest of
   /// what this listener saved — each entry carrying its own collection, which
   /// is what lets the artwork and the origin line change track by track.
   /// Locked sounds get the same gentle note a collection gives them.
   private func attemptPlay(at index: Int) {
     guard entries.indices.contains(index) else { return }
-    if isLocked(entries[index]) {
+    let entry = entries[index]
+    if isLocked(entry) {
       showPremiumGate = true
     } else {
-      player.play(entries.map(\.queueEntry), at: index)
+      let queue = playable
+      player.play(queue.map(\.queueEntry), at: queue.firstIndex { $0.id == entry.id } ?? 0)
+    }
+  }
+
+  /// Play sets off from the top in order; Shuffle deals the whole playlist in
+  /// a random order.
+  private func playAll(shuffled: Bool) {
+    guard !entries.isEmpty else { return }
+    let queue = playable
+    if queue.isEmpty {
+      showPremiumGate = true
+    } else {
+      player.play(queue.map(\.queueEntry), at: shuffled ? nil : 0, shuffled: shuffled)
     }
   }
 }

@@ -198,9 +198,9 @@ struct GlobalPauseLobbyView: View {
     case .intro:
       // Fuku is talking over his own clip; the track waits its turn.
       radio.stop()
-      soundPlayer.pause()
+      soundPlayer.yieldAudio()
     case .music(let offset):
-      soundPlayer.pause()
+      soundPlayer.yieldAudio()
       let session = globalPauseSession
       radio.liveOffsetProvider = { [weak session] in session?.loungeElapsed ?? 0 }
       guard let url = session.schedule?.lobbyAudioURL else { return }
