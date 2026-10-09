@@ -1,32 +1,36 @@
 import Foundation
 import Observation
 
-/// The single source of truth for playback state across the feature.
-///
-/// There is no real audio yet. A timer simulates progress so the scrubber,
-/// mini-player, and Now Playing artwork all behave like the real thing — the
-/// UI is fully wired and only the audio engine is missing.
+/// A stand-in engine with no audio: a timer simulates progress so the
+/// scrubber, mini-player, and Now Playing artwork behave like the real thing.
+/// The queue rules are the real ones — `SoundQueue` — so it advances, repeats
+/// and shuffles exactly as `StreamingSoundPlayer` does.
 @Observable
 final class SoundPlayer: SoundPlaying {
-  private(set) var queue: [SoundQueueEntry] = []
-  private(set) var index: Int = 0
+  /// No audio here, so every track counts as playable.
+  private(set) var queue = SoundQueue(canPlay: { _ in true })
 
   var isPlaying: Bool = false
   /// Seconds into the current track.
   var elapsed: TimeInterval = 0
   /// 0...1 — purely visual for now.
   var volume: Double = 0.6
+  var repeatMode: RepeatMode {
+    get { queue.repeatMode }
+    set { queue.repeatMode = newValue }
+  }
+  var isShuffled: Bool {
+    get { queue.isShuffled }
+    set { queue.setShuffled(newValue, using: &generator) }
+  }
 
   @ObservationIgnored private var ticker: Timer?
+  @ObservationIgnored private var generator = SystemRandomNumberGenerator()
 
   /// The collection the *current* track came from — constant while a
   /// collection plays, changing track by track through a playlist.
-  var collection: SoundCollection? {
-    queue.indices.contains(index) ? queue[index].collection : nil
-  }
-  var currentTrack: SoundTrack? {
-    queue.indices.contains(index) ? queue[index].track : nil
-  }
+  var collection: SoundCollection? { queue.current?.collection }
+  var currentTrack: SoundTrack? { queue.current?.track }
   var hasTrack: Bool { currentTrack != nil }
   var duration: TimeInterval { currentTrack?.duration ?? 0 }
   var progress: Double {
@@ -36,11 +40,10 @@ final class SoundPlayer: SoundPlaying {
 
   // MARK: - Transport
 
-  func play(_ entries: [SoundQueueEntry], at index: Int) {
-    self.queue = entries
-    self.index = min(max(0, index), max(0, entries.count - 1))
+  func play(_ entries: [SoundQueueEntry], at index: Int?, shuffled: Bool) {
+    queue = queue.replacing(with: entries, startingAt: index, shuffled: shuffled, using: &generator)
     elapsed = 0
-    isPlaying = true
+    isPlaying = hasTrack
     restartTicker()
   }
 
@@ -52,27 +55,28 @@ final class SoundPlayer: SoundPlaying {
 
   func next() {
     guard !queue.isEmpty else { return }
-    index = (index + 1) % queue.count
+    let carriesOn = queue.skipForward()
     elapsed = 0
-    if isPlaying { restartTicker() }
+    isPlaying = isPlaying && carriesOn
+    restartTicker()
   }
 
   /// Apple Music behaviour: restart the track unless we're within the first
   /// few seconds, in which case step to the previous track.
   func previous() {
     guard !queue.isEmpty else { return }
-    if elapsed > 3 {
-      elapsed = 0
-    } else {
-      index = (index - 1 + queue.count) % queue.count
-      elapsed = 0
-    }
-    if isPlaying { restartTicker() }
+    if elapsed <= 3 { queue.skipBack() }
+    elapsed = 0
+    restartTicker()
   }
 
   /// Seek to a 0...1 fraction of the current track.
   func seek(toProgress fraction: Double) {
     elapsed = min(max(0, fraction), 1) * duration
+  }
+
+  func yieldAudio() {
+    pause()
   }
 
   // MARK: - Ticker
@@ -93,8 +97,11 @@ final class SoundPlayer: SoundPlaying {
   private func tick() {
     guard isPlaying else { return }
     elapsed += 0.5
-    if elapsed >= duration {
-      next()
+    guard elapsed >= duration else { return }
+    elapsed = 0
+    if !queue.advanceAfterEnd() {
+      isPlaying = false
+      stopTicker()
     }
   }
 }

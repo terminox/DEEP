@@ -37,13 +37,35 @@ struct CollectionDetailView: View {
     (collection.isPremium || track.isPremium) && !subscriptionStore.isSubscribed
   }
 
+  /// The tracks this listener can play, in order. Play, Shuffle and a tapped
+  /// row all queue these, so a run never carries on into a locked sound.
+  private var playable: [SoundQueueEntry] {
+    collection.tracks
+      .filter { !isLocked($0) }
+      .map { SoundQueueEntry(track: $0, collection: collection) }
+  }
+
   /// Play through the premium gate: locked content shows a gentle note instead.
   private func attemptPlay(at index: Int) {
     guard collection.tracks.indices.contains(index) else { return }
-    if isLocked(collection.tracks[index]) {
+    let track = collection.tracks[index]
+    if isLocked(track) {
       showPremiumGate = true
     } else {
-      player.play(collection, at: index)
+      let queue = playable
+      player.play(queue, at: queue.firstIndex { $0.track.id == track.id } ?? 0)
+    }
+  }
+
+  /// Play sets off from the first track in order; Shuffle deals the whole
+  /// collection in a random order.
+  private func playAll(shuffled: Bool) {
+    guard !collection.tracks.isEmpty else { return }
+    let queue = playable
+    if queue.isEmpty {
+      showPremiumGate = true
+    } else {
+      player.play(queue, at: shuffled ? nil : 0, shuffled: shuffled)
     }
   }
 
@@ -74,11 +96,10 @@ struct CollectionDetailView: View {
   private var actions: some View {
     HStack(spacing: 12) {
       SoundActionButton(title: "Play", systemName: "play.fill") {
-        attemptPlay(at: 0)
+        playAll(shuffled: false)
       }
       SoundActionButton(title: "Shuffle", systemName: "shuffle") {
-        let start = Int.random(in: 0..<max(1, collection.trackCount))
-        attemptPlay(at: start)
+        playAll(shuffled: true)
       }
     }
     .padding(.horizontal, .edge)

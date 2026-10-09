@@ -469,6 +469,17 @@
         }
       }
     },
+    "All" : {
+      "comment" : "Accessibility value: repeat the whole queue.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทั้งหมด"
+          }
+        }
+      }
+    },
     "All %lld hearts" : {
       "localizations" : {
         "th" : {
@@ -1576,6 +1587,17 @@
         }
       }
     },
+    "Lyrics" : {
+      "comment" : "Now Playing: opens the lyrics sheet.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เนื้อเพลง"
+          }
+        }
+      }
+    },
     "Mae Hong Son" : {
       "localizations" : {
         "th" : {
@@ -1836,12 +1858,34 @@
         }
       }
     },
+    "Off" : {
+      "comment" : "Accessibility value: shuffle or repeat is off.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปิด"
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ตกลง"
+          }
+        }
+      }
+    },
+    "On" : {
+      "comment" : "Accessibility value: the shuffle control is on.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิด"
           }
         }
       }
@@ -1882,6 +1926,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ในวันที่คุณฝึกแล้ว ข้อความเตือนจะเงียบไว้"
+          }
+        }
+      }
+    },
+    "One" : {
+      "comment" : "Accessibility value: repeat the current track.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพลงเดียว"
           }
         }
       }
@@ -2126,6 +2181,17 @@
         }
       }
     },
+    "Repeat" : {
+      "comment" : "Now Playing: the repeat control (off, all, one).",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เล่นซ้ำ"
+          }
+        }
+      }
+    },
     "Replanting native canopy across cleared land." : {
       "localizations" : {
         "th" : {
@@ -2342,6 +2408,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "แสดงรางวัลส่วนถัดไปของเซสชัน"
+          }
+        }
+      }
+    },
+    "Shuffle" : {
+      "comment" : "Now Playing: the shuffle on/off control.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สุ่ม"
           }
         }
       }

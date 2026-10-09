@@ -9,32 +9,37 @@ import Observation
 /// its own. Use the static fixtures (`idle`, `playing`) for the common cases.
 @Observable
 final class MockSoundPlayer: SoundPlaying {
-  var queue: [SoundQueueEntry]
-  var index: Int
+  var queue: SoundQueue
   var isPlaying: Bool
   var elapsed: TimeInterval
   var volume: Double
+  /// Whether another feature has taken the audio over since the last play.
+  private(set) var hasYielded = false
+  var repeatMode: RepeatMode {
+    get { queue.repeatMode }
+    set { queue.repeatMode = newValue }
+  }
+  var isShuffled: Bool {
+    get { queue.isShuffled }
+    set { queue.setShuffled(newValue, using: &generator) }
+  }
+
+  @ObservationIgnored private var generator = SystemRandomNumberGenerator()
 
   init(
-    queue: [SoundQueueEntry] = [],
-    index: Int = 0,
+    queue: SoundQueue = SoundQueue(canPlay: { _ in true }),
     isPlaying: Bool = false,
     elapsed: TimeInterval = 0,
     volume: Double = 0.6
   ) {
     self.queue = queue
-    self.index = index
     self.isPlaying = isPlaying
     self.elapsed = elapsed
     self.volume = volume
   }
 
-  var collection: SoundCollection? {
-    queue.indices.contains(index) ? queue[index].collection : nil
-  }
-  var currentTrack: SoundTrack? {
-    queue.indices.contains(index) ? queue[index].track : nil
-  }
+  var collection: SoundCollection? { queue.current?.collection }
+  var currentTrack: SoundTrack? { queue.current?.track }
   var hasTrack: Bool { currentTrack != nil }
   var duration: TimeInterval { currentTrack?.duration ?? 0 }
   var progress: Double {
@@ -42,36 +47,38 @@ final class MockSoundPlayer: SoundPlaying {
     return min(1, max(0, elapsed / duration))
   }
 
-  func play(_ entries: [SoundQueueEntry], at index: Int) {
-    self.queue = entries
-    self.index = min(max(0, index), max(0, entries.count - 1))
+  func play(_ entries: [SoundQueueEntry], at index: Int?, shuffled: Bool) {
+    queue = queue.replacing(with: entries, startingAt: index, shuffled: shuffled, using: &generator)
     elapsed = 0
-    isPlaying = true
+    isPlaying = hasTrack
+    hasYielded = false
   }
 
   func togglePlayPause() {
     guard hasTrack else { return }
     isPlaying.toggle()
+    if isPlaying { hasYielded = false }
   }
 
   func next() {
     guard !queue.isEmpty else { return }
-    index = (index + 1) % queue.count
+    isPlaying = queue.skipForward() && isPlaying
     elapsed = 0
   }
 
   func previous() {
     guard !queue.isEmpty else { return }
-    if elapsed > 3 {
-      elapsed = 0
-    } else {
-      index = (index - 1 + queue.count) % queue.count
-      elapsed = 0
-    }
+    if elapsed <= 3 { queue.skipBack() }
+    elapsed = 0
   }
 
   func seek(toProgress fraction: Double) {
     elapsed = min(max(0, fraction), 1) * duration
+  }
+
+  func yieldAudio() {
+    isPlaying = false
+    hasYielded = true
   }
 }
 

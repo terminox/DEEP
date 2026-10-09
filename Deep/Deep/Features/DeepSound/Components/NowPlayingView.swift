@@ -207,22 +207,59 @@ struct NowPlayingView: View {
 
   private var bottomRow: some View {
     HStack {
+      utilityButton("shuffle", isOn: player.isShuffled) {
+        player.isShuffled.toggle()
+      }
+      .accessibilityLabel("Shuffle")
+      .accessibilityValue(player.isShuffled ? "On" : "Off")
+
       Spacer()
+
+      // Off → all → one, as in Apple Music. Lit whenever a queue will repeat.
+      utilityButton(
+        player.repeatMode == .one ? "repeat.1" : "repeat",
+        isOn: player.repeatMode != .off
+      ) {
+        player.repeatMode = player.repeatMode.next
+      }
+      .accessibilityLabel("Repeat")
+      .accessibilityValue(repeatValue)
+
+      Spacer()
+
       // Lyrics — opens the (multi-language) lyrics sheet for the current track.
       utilityButton("list.bullet") { showLyrics = true }
+        .accessibilityLabel("Lyrics")
     }
     .padding(.horizontal, 24)
   }
 
-  private func utilityButton(_ systemName: String, action: @escaping () -> Void) -> some View {
+  private var repeatValue: LocalizedStringKey {
+    switch player.repeatMode {
+    case .off: "Off"
+    case .all: "All"
+    case .one: "One"
+    }
+  }
+
+  /// `isOn` lights a mode control in the transport's plum, the way
+  /// `SaveTrackButton` marks a kept sound; off, it rests in grey.
+  private func utilityButton(
+    _ systemName: String,
+    isOn: Bool = false,
+    action: @escaping () -> Void
+  ) -> some View {
     Button(action: action) {
       Image(systemName: systemName)
         .font(.system(.body, weight: .medium))
-        .foregroundStyle(.driftGrey)
+        .foregroundStyle(isOn ? Color.deepPlum : .driftGrey)
+        .contentTransition(.symbolEffect(.replace))
         .frame(width: 44, height: 44)
         .contentShape(Rectangle())
     }
     .buttonStyle(.softPress)
+    .animation(.exhale, value: isOn)
+    .animation(.exhale, value: systemName)
   }
 }
 
@@ -235,6 +272,21 @@ struct NowPlayingView: View {
 #Preview("Now Playing — Paused") {
   let player = MockSoundPlayer.playing
   player.isPlaying = false
+  return NowPlayingView {}
+    .environment(\.soundPlayer, player)
+}
+
+#Preview("Now Playing — Shuffle, Repeat One") {
+  let player = MockSoundPlayer.playing
+  player.isShuffled = true
+  player.repeatMode = .one
+  return NowPlayingView {}
+    .environment(\.soundPlayer, player)
+}
+
+#Preview("Now Playing — Repeat All") {
+  let player = MockSoundPlayer.playing
+  player.repeatMode = .all
   return NowPlayingView {}
     .environment(\.soundPlayer, player)
 }

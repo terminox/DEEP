@@ -261,7 +261,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     // stays loaded — the mini player resumes where it left off, the DEEP
     // Session precedent). A fresh engine per presentation keeps teardown
     // trivially complete.
-    player.pause()
+    player.yieldAudio()
     // Fuku hands the room over: the lounge may still be on the stack underneath
     // this presentation, and its set must not play under the meditation.
     loungeRadio.stop()
