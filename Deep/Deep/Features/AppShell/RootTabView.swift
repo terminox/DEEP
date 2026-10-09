@@ -12,6 +12,7 @@ struct RootTabView: UIViewControllerRepresentable {
   let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  let listenReporter: any ListenReporting
   let practiceStore: any PracticeStore
   let heartLedger: HeartLedger
   let gardenStore: GardenStore
@@ -31,6 +32,7 @@ struct RootTabView: UIViewControllerRepresentable {
       subscriptionStore: subscriptionStore,
       soundRepository: soundRepository,
       soundPlayer: soundPlayer,
+      listenReporter: listenReporter,
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       gardenStore: gardenStore,
@@ -55,6 +57,7 @@ struct RootTabView: UIViewControllerRepresentable {
     subscriptionStore: PreviewSubscriptionStore(),
     soundRepository: FixtureSoundContentRepository(),
     soundPlayer: SoundPlayer(),
+    listenReporter: MockListenReporter(),
     practiceStore: MockPracticeStore(),
     heartLedger: .sample,
     gardenStore: .sample,

@@ -17,6 +17,7 @@ struct SettingsView: View {
   @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.subscriptionStore) private var subscriptionStore
   @Environment(\.practiceStore) private var practiceStore
+  @Environment(\.listenReporter) private var listenReporter
   @Environment(\.gardenStore) private var gardenStore
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.continuityWitness) private var continuityWitness
@@ -32,6 +33,8 @@ struct SettingsView: View {
   @State private var restorePhase: RestorePhase = .idle
   @State private var isDeletingAccount = false
   @State private var deleteFailed = false
+  @State private var isLoggingOut = false
+  @State private var showUnsyncedConfirm = false
 
   private enum RestorePhase: Equatable {
     case idle, working, restored, failed
@@ -86,6 +89,14 @@ struct SettingsView: View {
       Button("OK", role: .cancel) {}
     } message: {
       Text("We couldn't delete your account. Please try again in a moment.")
+    }
+    // Logging out empties this phone's journal, so practice the server hasn't
+    // received yet would be lost — the member decides, knowing that.
+    .alert("Some practice hasn't synced yet", isPresented: $showUnsyncedConfirm) {
+      Button("Log out anyway", role: .destructive) {
+        Task { await completeLogOut() }
+      }
+      Button("Stay", role: .cancel) {}
     }
   }
 
@@ -254,8 +265,10 @@ struct SettingsView: View {
       SettingsRow(
         icon: "rectangle.portrait.and.arrow.right",
         title: "Log out",
+        accessory: isLoggingOut ? .progress : .none,
         role: .destructive
       ) {
+        guard !isLoggingOut else { return }
         showLogoutConfirm = true
       }
       SettingsRow(
@@ -271,27 +284,50 @@ struct SettingsView: View {
     }
   }
 
+  /// Gives unsynced practice one last chance to reach the server while the
+  /// session's tokens still work — the journal leaves with the account. If
+  /// it still can't land, the member is asked before anything is lost.
   private func logOut() {
+    guard !isLoggingOut else { return }
+    isLoggingOut = true
     Task {
-      await accountStore.logOut()
-      // Resetting onboarding flips `hasCompletedOnboarding`, which `AppRootView`
-      // observes — together with the now-signed-out state it crossfades back to
-      // the welcome flow. The practice journal, garden, and wallet belong to
-      // the account, so they leave with it — a later sign-up must never open
-      // on this user's plants, balance, or saved sounds.
-      onboardingStore.reset()
-      practiceStore.reset()
-      gardenStore.resetLocalState()
-      heartLedger.resetLocalState()
-      continuityWitness.resetLocalState()
-      playlistStore.resetLocalState()
-      // The nudge is about practice, and practice leaves with the account —
-      // so the queue goes too. The *language* stays: what you read in
-      // belongs to the phone, not to whoever is signed into it.
-      await reminderStore.disable()
+      // Both queues get the same three seconds, side by side.
+      async let practiceSynced = practiceStore.flushPending(timeout: .seconds(3))
+      async let listensSynced = listenReporter.flush(timeout: .seconds(3))
+      let (practiceDone, listensDone) = await (practiceSynced, listensSynced)
+      guard practiceDone && listensDone else {
+        isLoggingOut = false
+        showUnsyncedConfirm = true
+        return
+      }
+      await completeLogOut()
     }
   }
 
+  private func completeLogOut() async {
+    isLoggingOut = true
+    defer { isLoggingOut = false }
+    await accountStore.logOut()
+    // Resetting onboarding flips `hasCompletedOnboarding`, which `AppRootView`
+    // observes — together with the now-signed-out state it crossfades back to
+    // the welcome flow. The practice journal, garden, and wallet belong to
+    // the account, so they leave with it — a later sign-up must never open
+    // on this user's plants, balance, or saved sounds.
+    onboardingStore.reset()
+    practiceStore.reset()
+    listenReporter.reset()
+    gardenStore.resetLocalState()
+    heartLedger.resetLocalState()
+    continuityWitness.resetLocalState()
+    playlistStore.resetLocalState()
+    // The nudge is about practice, and practice leaves with the account —
+    // so the queue goes too. The *language* stays: what you read in
+    // belongs to the phone, not to whoever is signed into it.
+    await reminderStore.disable()
+  }
+
+  /// No flush first, unlike log out: the account and everything it practised
+  /// is being erased, so there is nothing for unsynced practice to reach.
   private func deleteAccount() {
     isDeletingAccount = true
     Task {
@@ -301,6 +337,7 @@ struct SettingsView: View {
         // the in-flight state never needs resetting on success.
         onboardingStore.reset()
         practiceStore.reset()
+        listenReporter.reset()
         gardenStore.resetLocalState()
         heartLedger.resetLocalState()
         continuityWitness.resetLocalState()

@@ -61,7 +61,6 @@ struct DeepSessionCoordinatorView: View {
         if let rewardReceipt {
           RewardRitualView(
             receipt: rewardReceipt,
-            continuityHeadline: "You returned today",
             onFinish: onFinish
           )
           .transition(.softDrift)
@@ -116,7 +115,6 @@ struct DeepSessionCoordinatorView: View {
     let gardenBefore = gardenStore.growth
     let heartBalanceBefore = heartLedger.balance
     let heartsEarnedTodayBefore = heartLedger.heartsEarnedToday
-    let continuityBefore = practiceStore.currentStreakDays
     // Frozen before the ritual runs: whichever practice reaches the beat
     // first today is the one that shows it.
     let continuityWitnessedToday = continuityWitness.hasWitnessedToday
@@ -133,25 +131,35 @@ struct DeepSessionCoordinatorView: View {
     // DEEP Session rewards travel as one pair. If the heart ceiling withholds
     // this award, sunlight rests too, matching the server contract.
     let sunlightAwarded = heartsAwarded > 0 ? gardenStore.creditSunlight(1) : 0
+    let gardenAfter = gardenStore.growth
+    let heartBalanceAfter = heartLedger.balance
+    let heartsEarnedTodayAfter = heartLedger.heartsEarnedToday
 
-    rewardReceipt = RewardReceipt(
-      gardenBefore: gardenBefore,
-      gardenAfter: gardenStore.growth,
-      sunlightAwarded: sunlightAwarded,
-      heartBalanceBefore: heartBalanceBefore,
-      heartBalanceAfter: heartLedger.balance,
-      heartsEarnedTodayBefore: heartsEarnedTodayBefore,
-      heartsEarnedTodayAfter: heartLedger.heartsEarnedToday,
-      heartsAwarded: heartsAwarded,
-      continuityBefore: continuityBefore,
-      continuityAfter: practiceStore.currentStreakDays,
-      continuityWitnessedToday: continuityWitnessedToday
-    )
-
-    // Let the final exhale settle before the first reward blooms in.
+    // Let the final exhale settle before the first reward blooms in — and,
+    // under the same breath, let the journal hydrate, so the rhythm the
+    // ending shows is the account's real one rather than this install's
+    // partial memory (a fresh sign-in would otherwise read 0 → 1).
     completionTask = Task {
-      try? await Task.sleep(for: .seconds(1.0))
+      async let exhale: Void? = try? Task.sleep(for: .seconds(1.0))
+      async let hydrated: Void = practiceStore.awaitHydration(timeout: .seconds(2))
+      _ = await (exhale, hydrated)
       guard !Task.isCancelled else { return }
+      let continuity = practiceStore.continuityTransition()
+      rewardReceipt = RewardReceipt(
+        gardenBefore: gardenBefore,
+        gardenAfter: gardenAfter,
+        sunlightAwarded: sunlightAwarded,
+        heartBalanceBefore: heartBalanceBefore,
+        heartBalanceAfter: heartBalanceAfter,
+        heartsEarnedTodayBefore: heartsEarnedTodayBefore,
+        heartsEarnedTodayAfter: heartsEarnedTodayAfter,
+        heartsAwarded: heartsAwarded,
+        continuityBefore: continuity.before,
+        continuityAfter: continuity.after,
+        continuityWitnessedToday: continuityWitnessedToday,
+        // Never hydrated: the beat rests rather than show a wrong number.
+        continuityKnown: practiceStore.isHydrated
+      )
       withAnimation(.hush) { stage = .completion }
     }
   }

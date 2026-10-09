@@ -46,8 +46,8 @@ struct StreamingSoundPlayerTests {
     let recorder = Recorder()
     // No session claim: it blocks the main thread long enough to starve the
     // real-clock suites running alongside, and playback doesn't need it here.
-    let player = StreamingSoundPlayer(defaults: defaults, activateSession: {}) {
-      recorder.finished.append($0.id)
+    let player = StreamingSoundPlayer(defaults: defaults, activateSession: {}) { track, _ in
+      recorder.finished.append(track.id)
     }
     player.repeatMode = repeatMode
     return (player, recorder)

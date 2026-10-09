@@ -13,12 +13,21 @@ final class APIAccountStore: AccountStore {
   private(set) var account: Account?
   private(set) var isRestoring = false
 
+  /// Runs when the server ends the session without the member logging out —
+  /// the session rejected at launch, or a refresh rejected mid-use. Whatever
+  /// the device still holds for that account (queued listens, unsynced
+  /// practice, the garden, the wallet) must leave with it, exactly as on log
+  /// out, or the next account to sign in here is credited with it.
+  /// `AppDependencies` points this at the same resets `SettingsView` runs.
+  @ObservationIgnored var onSessionEnded: (@MainActor () -> Void)?
+
   private let client: APIClient
   private let defaults: UserDefaults
 
   init(client: APIClient, defaults: UserDefaults = .standard) {
     self.client = client
     self.defaults = defaults
+    client.onSessionRejected = { [weak self] in self?.endRejectedSession() }
   }
 
   /// Called once at launch. If a token pair is present, confirm it with `/me`
@@ -35,8 +44,10 @@ final class APIAccountStore: AccountStore {
       adopt(Self.account(from: me.user))
     } catch {
       if APIClient.isAuthRejection(error) {
-        client.tokens.clear()
-        clearCachedAccount()
+        // A rejected refresh has already ended the session through the
+        // client (and cleared the tokens); anything else — `/me` refusing a
+        // token it never asked to refresh — ends it here.
+        if client.isAuthenticated { endRejectedSession() }
         account = nil
       } else {
         // Offline / backend blip: stay signed in on the cached identity (or a
@@ -82,6 +93,15 @@ final class APIAccountStore: AccountStore {
     client.tokens.clear()
     clearCachedAccount()
     account = nil
+  }
+
+  /// The server has ended the session: forget the tokens and the identity,
+  /// and let the app clear what belonged to the account.
+  private func endRejectedSession() {
+    client.tokens.clear()
+    clearCachedAccount()
+    account = nil
+    onSessionEnded?()
   }
 
   // MARK: - Cached identity

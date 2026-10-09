@@ -12,8 +12,49 @@ private final class FailingPracticeRemote: PracticeRemote {
     throw RemoteFailure()
   }
 
-  func fetchAll() async throws -> [PracticeCompletion] {
+  func fetchAll() async throws -> PracticeLog {
     throw RemoteFailure()
+  }
+}
+
+/// `PracticeRemote` whose calls park until the test opens the gate — the
+/// window in which an account can be signed out under an in-flight sync.
+/// Once opened, later calls pass straight through.
+@MainActor
+private final class GatedPracticeRemote: PracticeRemote {
+  var log = PracticeLog(completions: [])
+  var awards: AwardGrant?
+  private var isGated = true
+  private var parked: [CheckedContinuation<Void, Never>] = []
+  var parkedCount: Int { parked.count }
+
+  func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult {
+    await park()
+    return PracticeSyncResult(synced: completions.map(\.id), awards: awards)
+  }
+
+  func fetchAll() async throws -> PracticeLog {
+    await park()
+    return log
+  }
+
+  private func park() async {
+    guard isGated else { return }
+    await withCheckedContinuation { parked.append($0) }
+  }
+
+  func releaseAll() {
+    isGated = false
+    let waiting = parked
+    parked = []
+    waiting.forEach { $0.resume() }
+  }
+
+  /// Polls until a call has parked (bounded, so a broken test fails).
+  func waitUntilParked() async {
+    for _ in 0..<200 where parked.isEmpty {
+      try? await Task.sleep(for: .milliseconds(5))
+    }
   }
 }
 
@@ -23,16 +64,20 @@ private final class FailingPracticeRemote: PracticeRemote {
 private final class RecordingPracticeRemote: PracticeRemote {
   private(set) var uploadedBatches: [[PracticeCompletion]] = []
   var canned: [PracticeCompletion] = []
+  /// The server's activity days; nil plays an older server without the field.
+  var activityDays: [String]?
   /// Riding every accepted upload, when set — exercises the award sink.
   var awards: AwardGrant?
+  private(set) var fetchCount = 0
 
   func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult {
     uploadedBatches.append(completions)
     return PracticeSyncResult(synced: completions.map(\.id), awards: awards)
   }
 
-  func fetchAll() async throws -> [PracticeCompletion] {
-    canned
+  func fetchAll() async throws -> PracticeLog {
+    fetchCount += 1
+    return PracticeLog(completions: canned, activityDays: activityDays)
   }
 }
 
@@ -244,5 +289,266 @@ struct PracticeDefaultsStoreTests {
       defaults: defaults, remote: MockPracticeRemote(), calendar: Self.calendar, now: { Self.now }
     )
     #expect(store2.completions.isEmpty)
+  }
+
+  // MARK: - Persisted format
+
+  @Test("A journal written by an earlier release still decodes, whole")
+  func oldFormatBlobDecodes() throws {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    // Exactly the shape the previous release persisted: no activity markers,
+    // no server days, no pull stamp. Dates use JSONEncoder's default
+    // (seconds since the reference date).
+    let id = UUID()
+    let completedAt = Self.date(year: 2026, month: 7, day: 22).timeIntervalSinceReferenceDate
+    let blob = """
+    {"completions":[{"id":"\(id.uuidString)","title":"Balancing breath",\
+    "durationSeconds":300,"completedAt":\(completedAt),"isSynced":true}],\
+    "dailyGoalMinutes":15}
+    """
+    defaults.set(try #require(blob.data(using: .utf8)), forKey: Self.journalKey)
+
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: MockPracticeRemote(), calendar: Self.calendar, now: { Self.now }
+    )
+
+    #expect(store.completions.map(\.id) == [id])
+    #expect(store.dailyGoalMinutes == 15)
+    #expect(store.currentStreakDays == 1)
+    // Never pulled under the new format — not hydrated until the next pull.
+    #expect(store.isHydrated == false)
+  }
+
+  // MARK: - Activity markers
+
+  @Test("A track-only day keeps the rhythm, persists, and dedupes")
+  func activityMarkersCountPersistAndDedupe() {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let yesterday = PracticeCompletion(
+      id: UUID(), title: "Balancing breath", durationSeconds: 300,
+      completedAt: Self.date(year: 2026, month: 7, day: 22), isSynced: true
+    )
+    Self.seed([yesterday], in: defaults)
+
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: MockPracticeRemote(), calendar: Self.calendar, now: { Self.now }
+    )
+    #expect(store.continuityTransition() == ContinuityTransition(before: 1, after: 1))
+
+    store.recordActivity(.track, at: Self.now)
+    store.recordActivity(.track, at: Self.now.addingTimeInterval(60))
+    #expect(store.continuityTransition() == ContinuityTransition(before: 1, after: 2))
+    // Minutes stay DEEP Sessions only.
+    #expect(store.minutesToday == 0)
+
+    let relaunched = PracticeDefaultsStore(
+      defaults: defaults, remote: MockPracticeRemote(), calendar: Self.calendar, now: { Self.now }
+    )
+    #expect(relaunched.currentStreakDays == 2)
+
+    relaunched.reset()
+    #expect(relaunched.currentStreakDays == 0)
+  }
+
+  // MARK: - Hydration
+
+  @Test("A pull hydrates the journal and takes the server's activity days")
+  func pullHydratesWithActivityDays() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let remote = RecordingPracticeRemote()
+    remote.activityDays = ["2026-07-21", "2026-07-22"]
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: remote, calendar: Self.calendar, now: { Self.now }
+    )
+    #expect(store.isHydrated == false)
+
+    await store.refresh()
+    #expect(store.isHydrated)
+    #expect(store.currentStreakDays == 2)
+
+    // An older server omits the field — what we had is kept, not forgotten.
+    remote.activityDays = nil
+    await store.refresh()
+    #expect(store.currentStreakDays == 2)
+  }
+
+  @Test("A Thai device's Buddhist calendar still counts the server's activity days")
+  func pullCountsActivityDaysUnderBuddhistCalendar() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    var buddhist = Calendar(identifier: .buddhist)
+    buddhist.timeZone = TimeZone(identifier: "Asia/Bangkok")!
+    buddhist.locale = Locale(identifier: "th_TH")
+    let remote = RecordingPracticeRemote()
+    remote.activityDays = ["2026-07-21", "2026-07-22"]
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: remote, calendar: buddhist, now: { Self.now }
+    )
+
+    await store.refresh()
+    #expect(store.currentStreakDays == 2)
+    store.recordActivity(.track, at: Self.now)
+    #expect(store.continuityTransition() == ContinuityTransition(before: 2, after: 3))
+  }
+
+  @Test("Waiting for hydration starts a pull when none is under way")
+  func awaitHydrationPulls() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let remote = RecordingPracticeRemote()
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: remote, calendar: Self.calendar, now: { Self.now }
+    )
+
+    await store.awaitHydration(timeout: .seconds(2))
+    #expect(store.isHydrated)
+    #expect(remote.fetchCount == 1)
+
+    // Already hydrated — returns at once without another pull.
+    await store.awaitHydration(timeout: .seconds(2))
+    #expect(remote.fetchCount == 1)
+  }
+
+  @Test("Waiting for hydration gives up after its timeout when offline")
+  func awaitHydrationTimesOut() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: FailingPracticeRemote(), calendar: Self.calendar, now: { Self.now }
+    )
+
+    await store.awaitHydration(timeout: .milliseconds(300))
+    #expect(store.isHydrated == false)
+  }
+
+  // MARK: - Account switch
+
+  @Test("A reset during an in-flight pull never resurrects the old account")
+  func resetDuringPullDropsTheResult() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let remote = GatedPracticeRemote()
+    remote.log = PracticeLog(
+      completions: [
+        PracticeCompletion(
+          id: UUID(), title: "Old account", durationSeconds: 300,
+          completedAt: Self.now, isSynced: true
+        ),
+      ],
+      activityDays: ["2026-07-22"]
+    )
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: remote, calendar: Self.calendar, now: { Self.now }
+    )
+
+    let refresh = Task { await store.refresh() }
+    await remote.waitUntilParked()
+    #expect(remote.parkedCount == 1)
+
+    store.reset()
+    remote.releaseAll()
+    await refresh.value
+
+    #expect(store.completions.isEmpty)
+    #expect(store.currentStreakDays == 0)
+    #expect(store.isHydrated == false)
+  }
+
+  @Test("A reset during an in-flight push drops its awards")
+  func resetDuringPushDropsTheAwards() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let pending = PracticeCompletion(
+      id: UUID(), title: "Balancing breath", durationSeconds: 300,
+      completedAt: Self.now, isSynced: false
+    )
+    Self.seed([pending], in: defaults)
+
+    let remote = GatedPracticeRemote()
+    remote.awards = AwardGrant(hearts: 1, sunlight: 1, heartsBalance: 9)
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: remote, calendar: Self.calendar, now: { Self.now }
+    )
+    var received: [AwardGrant] = []
+    store.awardSink = { received.append($0) }
+
+    let refresh = Task { await store.refresh() }
+    await remote.waitUntilParked()
+
+    store.reset()
+    remote.releaseAll()
+    await refresh.value
+
+    #expect(received.isEmpty)
+    #expect(store.completions.isEmpty)
+  }
+
+  // MARK: - Flush before sign-out
+
+  @Test("Flushing offline reports practice still unsynced")
+  func flushPendingOfflineIsFalse() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let pending = PracticeCompletion(
+      id: UUID(), title: "Balancing breath", durationSeconds: 300,
+      completedAt: Self.now, isSynced: false
+    )
+    Self.seed([pending], in: defaults)
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: FailingPracticeRemote(), calendar: Self.calendar, now: { Self.now }
+    )
+
+    #expect(store.hasUnsynced)
+    #expect(await store.flushPending(timeout: .seconds(1)) == false)
+    #expect(store.hasUnsynced)
+  }
+
+  @Test("Flushing online lands everything")
+  func flushPendingOnlineIsTrue() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let pending = PracticeCompletion(
+      id: UUID(), title: "Balancing breath", durationSeconds: 300,
+      completedAt: Self.now, isSynced: false
+    )
+    Self.seed([pending], in: defaults)
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: RecordingPracticeRemote(), calendar: Self.calendar, now: { Self.now }
+    )
+
+    #expect(await store.flushPending(timeout: .seconds(1)))
+    #expect(store.hasUnsynced == false)
+  }
+
+  @Test("Flushing gives up at its timeout when the server never answers")
+  func flushPendingTimesOut() async {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    let pending = PracticeCompletion(
+      id: UUID(), title: "Balancing breath", durationSeconds: 300,
+      completedAt: Self.now, isSynced: false
+    )
+    Self.seed([pending], in: defaults)
+    let remote = GatedPracticeRemote()
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: remote, calendar: Self.calendar, now: { Self.now }
+    )
+
+    #expect(await store.flushPending(timeout: .milliseconds(200)) == false)
+    remote.releaseAll()
   }
 }
