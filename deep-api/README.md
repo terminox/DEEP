@@ -26,12 +26,28 @@ presence only. To exercise the globe without real participants, use
 `scripts/pause-fake-location.sh` (`off` / `fixed` / `scatter` / `drip`) against a server running
 with `ALLOW_TIME_OVERRIDE=true`.
 
+Optional: DEEP Premium truth comes from RevenueCat. Set `REVENUECAT_WEBHOOK_AUTH` (the exact
+`Authorization` header value configured on the webhook in the RevenueCat dashboard) to accept
+`POST /webhooks/revenuecat`, and `REVENUECAT_SECRET_API_KEY` (an `sk_…` key) to enable the
+server-side `POST /me/entitlement/refresh`; without them those two routes answer 503
+`not_configured` and everything else — including `npm test` and the verify scripts — runs as
+normal. `REVENUECAT_ENTITLEMENT_ID` defaults to `deep_premium`; `REVENUECAT_ACCEPT_SANDBOX=true`
+applies sandbox (TestFlight) events, which are otherwise recorded but ignored. Whether a user is
+premium is decided only by `isPremiumNow` in `src/lib/entitlement.ts`, on the real clock. For QA
+without a purchase, `ALLOW_DEV_ENTITLEMENT=true` enables `POST /dev/premium`. See
+`DEVELOPMENT.md` for exercising the webhook locally and against RevenueCat.
+
 > Ports: Postgres is on **5434** (5432/5433 are used by the sibling caregiver/heartlog
 > projects). The API is on **8080**.
 
 ## API surface
 
 Auth (public): `POST /auth/signup`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /me`
+(signup, login and `/me` return `entitlement` beside `user`: `{ active, productId, expiresAt,
+willRenew, periodType, inGracePeriod, store }` — inactive, never missing, for a non-subscriber)
+DEEP Premium: `POST /webhooks/revenuecat` (RevenueCat only; static `Authorization` header),
+`POST /me/entitlement/refresh` (auth; re-reads RevenueCat server-side, one per user per 30s);
+dev only, with `ALLOW_DEV_ENTITLEMENT`: `POST /dev/premium { userId | email, active }`
 Onboarding: `GET /onboarding/config`, `GET /me/onboarding`, `PUT /me/onboarding`
 DEEP Sound (public): `GET /sound/home`, `GET /sound/collections/:id`, `GET /sound/tracks/:id/lyrics?lang=`
 Media: `GET /media/audio/:file` (supports HTTP range → streaming)
@@ -42,4 +58,5 @@ Admin (role=ADMIN): `POST /admin/auth/login`; CRUD + `/reorder` for `/admin/cate
 Auth is JWT access token + rotating refresh session (reuse detection revokes the session).
 
 ## Scripts
-`dev` · `start` · `build` · `typecheck` · `test` · `db:up` · `db:down` · `db:migrate` · `db:reset` · `db:seed` · `geoip:update`
+`dev` · `start` · `build` · `typecheck` · `test` · `db:up` · `db:down` · `db:migrate` · `db:reset` · `db:seed` · `geoip:update` ·
+`verify:safe-publish` · `verify:revenuecat` (both end-to-end against a throwaway `*_verify` database — see the header of each script)

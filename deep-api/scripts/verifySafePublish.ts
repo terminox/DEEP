@@ -342,10 +342,13 @@ async function main() {
     payload: { refs: [`PAUSE_SLOT:${morningId}`] },
   });
   const afterPublish = await scheduleOf();
-  assert.equal(
-    afterPublish.upcoming.length,
-    beforeSchedule.upcoming.length + 1,
-    "publishing adds the session to the app's schedule",
+  // The 48h window holds the new 08:10 session once or twice depending on the
+  // time of day the script runs (before 08:10 Bangkok, today's and tomorrow's
+  // are both still ahead), so count what was added rather than assume one.
+  const added08 = afterPublish.upcoming.length - beforeSchedule.upcoming.length;
+  assert.ok(
+    added08 >= 1 && added08 <= 2,
+    `publishing adds the session to the app's schedule (added ${added08})`,
   );
   assert.equal(
     afterPublish.nextMeditationStartsAt != null,

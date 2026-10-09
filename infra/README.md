@@ -9,7 +9,7 @@ One stack, one GCP project:
 **Resources:** Artifact Registry (Docker) · Cloud SQL Postgres 15 (unix-socket only, no public
 clients) · private GCS media bucket FUSE-mounted at `MEDIA_DIR=/media` (uploads + streaming need no
 code changes and survive revisions) · Secret Manager (`DATABASE_URL`, `JWT_SECRET`,
-`ADMIN_BOOTSTRAP_PASSWORD`) · dedicated runtime SA + least-privilege IAM · Cloud Run v2 service
+`ADMIN_BOOTSTRAP_PASSWORD`, plus optional `REVENUECAT_WEBHOOK_AUTH` / `REVENUECAT_SECRET_API_KEY`) · dedicated runtime SA + least-privilege IAM · Cloud Run v2 service
 (gen2) · one-shot Prisma migrate Job.
 
 **`maxInstances` must stay 1**: Global Pause presence is an in-memory Map
@@ -28,6 +28,30 @@ pulumi config set --secret deep:jwtSecret "$(openssl rand -hex 32)"
 pulumi config set --secret deep:adminBootstrapPassword "$(openssl rand -base64 18)"
 pulumi up   # first run deploys a placeholder image so the registry exists before any push
 ```
+
+### DEEP Premium (RevenueCat) secrets — optional
+
+Both are optional: while unset, `POST /webhooks/revenuecat` and `POST /me/entitlement/refresh`
+answer 503 `not_configured` and everything else runs. Each becomes a Secret Manager secret (and
+an env ref on the service) only once set.
+
+```bash
+# The exact Authorization header value RevenueCat will send. Generate it, then paste the SAME
+# string into RevenueCat → Project settings → Integrations → Webhooks → Authorization header.
+pulumi config set --secret deep:revenuecatWebhookAuth "Bearer $(openssl rand -hex 32)"
+pulumi config get deep:revenuecatWebhookAuth   # copy into the RevenueCat dashboard
+
+# RevenueCat secret API key (sk_…, Project settings → API keys) for server-side refreshes.
+pulumi config set --secret deep:revenuecatSecretApiKey sk_...
+
+pulumi up
+```
+
+Plain (non-secret) config, already defaulted: `deep:revenuecatEntitlementId` (`deep_premium`) and
+`deep:revenuecatAcceptSandbox` (`true` while shipping through TestFlight, since TestFlight
+purchases are sandbox). **At public launch** set `pulumi config set deep:revenuecatAcceptSandbox
+false`, `pulumi up`, and revoke the TestFlight grants in one query
+(`UPDATE subscriptions SET "revokedAt" = now() WHERE environment = 'SANDBOX'`).
 
 ## Deploy
 
@@ -72,8 +96,9 @@ gcloud run jobs execute "$(pulumi stack output migrateJob)" \
   (`https://deep-api-<projectNumber>.<region>.run.app`), computed in `components/service.ts` — the
   service name is pinned to `deep-api` to keep it stable. It is the security boundary for media
   URLs; never remove it.
-- **Prod env deliberately omits** `ALLOW_TIME_OVERRIDE` (dev time-travel routes) and GeoIP config
-  (degrades to country-only presence).
+- **Prod env deliberately omits** `ALLOW_TIME_OVERRIDE` (dev time-travel routes),
+  `ALLOW_DEV_ENTITLEMENT` (dev DEEP Premium flip route) and GeoIP config (degrades to country-only
+  presence).
 - **Artifact Registry cleanup** runs in dry-run mode initially; set `cleanupPolicyDryRun: false`
   in `components/artifactRegistry.ts` once the would-be deletions look right.
 - **Handover to a client** = relink billing + grant them `roles/owner`; nothing in the stack

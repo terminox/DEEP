@@ -205,3 +205,73 @@ Notes:
 - The switch is in-memory: restarting `deep-api` returns to real time.
 - It affects every client of that dev server — handy for watching two
   simulators go live together.
+
+## DEEP Premium
+
+Whether someone is DEEP Premium is decided only on the server, from what
+RevenueCat reports; `GET /me`, login and signup carry it as `entitlement`
+beside `user`.
+
+### Flip it without a purchase
+
+With `ALLOW_DEV_ENTITLEMENT=true` in `deep-api/.env` (it is in `.env.example`;
+the route does not exist otherwise, and must never be set anywhere real):
+
+```bash
+curl -sS -X POST localhost:8080/dev/premium -H 'content-type: application/json' \
+  -d '{"email":"qa-session@deep.test","active":true}'          # non-expiring grant
+curl -sS -X POST localhost:8080/dev/premium -H 'content-type: application/json' \
+  -d '{"email":"qa-session@deep.test","active":true,"expiresInSeconds":120}'  # watch it lapse
+curl -sS -X POST localhost:8080/dev/premium -H 'content-type: application/json' \
+  -d '{"email":"qa-session@deep.test","active":false}'
+```
+
+`userId` works in place of `email`. The app sees the change on its next `/me`.
+
+### Exercise the webhook locally with a fixture
+
+Set a webhook secret in `deep-api/.env` and restart the server:
+
+```bash
+REVENUECAT_WEBHOOK_AUTH="Bearer local-dev-secret"
+REVENUECAT_ACCEPT_SANDBOX=true
+```
+
+Then post one of the captured payloads in `deep-api/test/fixtures/revenuecat/`
+re-aimed at a real user (a fresh event id each time — re-sending the same id
+is, by design, a no-op):
+
+```bash
+cd deep-api
+USER_ID=<a User.id, e.g. from GET /me>
+NOW_MS=$(( $(date +%s) * 1000 ))
+jq --arg u "$USER_ID" --arg id "$(uuidgen)" \
+   --argjson ts "$NOW_MS" --argjson exp "$(( NOW_MS + 30*86400*1000 ))" \
+   '.event.id=$id | .event.app_user_id=$u | .event.event_timestamp_ms=$ts | .event.expiration_at_ms=$exp' \
+   test/fixtures/revenuecat/initial_purchase.json |
+curl -sS -X POST localhost:8080/webhooks/revenuecat \
+  -H 'Authorization: Bearer local-dev-secret' -H 'content-type: application/json' --data-binary @-
+# → {"ok":true,"outcome":"applied"}
+```
+
+Swap in `cancellation.json`, `refund.json`, `billing_issue.json`, … to walk the
+lifecycle. Every delivery lands in the `revenuecat_events` table with its
+outcome (`applied`, `stale`, `unknown_user`, `sandbox_ignored`, `unrecognised`,
+`irrelevant`). `npm run verify:revenuecat` runs the whole rule set end to end
+against a throwaway `deep_verify` database.
+
+### Against the real RevenueCat
+
+1. Expose the local API through a tunnel, e.g. `cloudflared tunnel --url http://localhost:8080`
+   (or `ngrok http 8080`).
+2. RevenueCat dashboard → Project settings → Integrations → **Webhooks**: URL
+   `https://<tunnel-host>/webhooks/revenuecat`, and set the **Authorization header** value to
+   exactly your `REVENUECAT_WEBHOOK_AUTH`. RevenueCat does not sign bodies; this header is the
+   only proof a request came from it, so without it every delivery gets a 401.
+3. Press **Send test event**. It arrives as type `TEST` and is recorded as `irrelevant` with a
+   200 — check the newest row in `revenuecat_events`.
+4. For real sandbox purchases from the app, keep `REVENUECAT_ACCEPT_SANDBOX=true` and make sure the
+   app logs in to RevenueCat with the DEEP `User.id` as its app user id.
+
+`POST /me/entitlement/refresh` additionally needs `REVENUECAT_SECRET_API_KEY`
+(an `sk_…` key); without it that route answers 503 `not_configured`.

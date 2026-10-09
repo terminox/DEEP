@@ -18,7 +18,8 @@
     "test": "node --import tsx --test 'test/**/*.test.ts'",
     "geoip:update": "bash scripts/geoip-update.sh",
     "seed:assets": "bash scripts/copy-garden-assets.sh",
-    "verify:safe-publish": "node --import tsx scripts/verifySafePublish.ts"
+    "verify:safe-publish": "node --import tsx scripts/verifySafePublish.ts",
+    "verify:revenuecat": "node --import tsx scripts/verifyRevenueCatWebhook.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

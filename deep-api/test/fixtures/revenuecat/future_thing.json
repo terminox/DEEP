@@ -1,0 +1,20 @@
+{
+  "api_version": "1.0",
+  "event": {
+    "aliases": ["6f1c2b9e-3d4a-4f5b-8c7d-1e2f3a4b5c6d"],
+    "app_id": "app4f1e2d3c4b",
+    "app_user_id": "6f1c2b9e-3d4a-4f5b-8c7d-1e2f3a4b5c6d",
+    "entitlement_ids": ["deep_premium"],
+    "environment": "PRODUCTION",
+    "event_timestamp_ms": 1791600000000,
+    "expiration_at_ms": 1793491200000,
+    "id": "F0E1D2C3-B4A5-4968-8776-655443322110",
+    "original_app_user_id": "6f1c2b9e-3d4a-4f5b-8c7d-1e2f3a4b5c6d",
+    "period_type": "NORMAL",
+    "product_id": "deep.pro.monthly",
+    "store": "APP_STORE",
+    "subscriber_attributes": {},
+    "type": "FUTURE_THING",
+    "some_field_we_have_never_seen": { "nested": true }
+  }
+}

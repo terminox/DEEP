@@ -22,6 +22,7 @@ import { playlistRoutes } from "./routes/playlist.js";
 import { adminRoutes } from "./routes/admin.js";
 import { adminGardenRoutes } from "./routes/adminGarden.js";
 import { adminMediaRoutes } from "./routes/adminMedia.js";
+import { revenueCatRoutes } from "./routes/revenuecat.js";
 import { devPremiumRoutes } from "./routes/devPremium.js";
 
 export function buildApp() {
@@ -97,6 +98,7 @@ export function buildApp() {
   app.register(adminRoutes);
   app.register(adminGardenRoutes);
   app.register(adminMediaRoutes);
+  app.register(revenueCatRoutes);
   // Registers nothing unless ALLOW_DEV_ENTITLEMENT is on.
   app.register(devPremiumRoutes);
 

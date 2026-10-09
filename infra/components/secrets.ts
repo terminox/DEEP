@@ -31,5 +31,13 @@ function makeSecret(envName: string, value: pulumi.Input<string>): AppSecret {
 export const secrets: AppSecret[] = [
   makeSecret("DATABASE_URL", databaseUrl),
   makeSecret("JWT_SECRET", config.jwtSecret),
-  makeSecret("ADMIN_BOOTSTRAP_PASSWORD", config.adminBootstrapPassword)
+  makeSecret("ADMIN_BOOTSTRAP_PASSWORD", config.adminBootstrapPassword),
+  // Optional RevenueCat secrets: only materialized (and injected) once set, so
+  // a stack without them still deploys and the routes answer 503.
+  ...(config.revenuecatWebhookAuth
+    ? [makeSecret("REVENUECAT_WEBHOOK_AUTH", config.revenuecatWebhookAuth)]
+    : []),
+  ...(config.revenuecatSecretApiKey
+    ? [makeSecret("REVENUECAT_SECRET_API_KEY", config.revenuecatSecretApiKey)]
+    : [])
 ];

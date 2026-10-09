@@ -34,8 +34,25 @@ const schema = z.object({
   GEOIP_DB_PATH: z.string().default("./geoip/GeoLite2-City.mmdb"),
   // Only needed to run scripts/geoip-update.sh; never read at request time.
   MAXMIND_LICENSE_KEY: z.string().optional(),
+  // DEEP Premium (RevenueCat). All optional so local dev, `npm test` and the
+  // verify scripts boot without them; each feature degrades to a 503
+  // `not_configured` rather than failing at startup.
+  //
+  // The exact `Authorization` header value set on the webhook in the
+  // RevenueCat dashboard. Unset → POST /webhooks/revenuecat answers 503.
+  REVENUECAT_WEBHOOK_AUTH: z.string().min(1).optional(),
+  // RevenueCat secret (sk_…) REST key, for POST /me/entitlement/refresh and
+  // transfer reconciliation. Unset → refresh answers 503.
+  REVENUECAT_SECRET_API_KEY: z.string().min(1).optional(),
   // The RevenueCat entitlement identifier that means DEEP Premium.
   REVENUECAT_ENTITLEMENT_ID: z.string().min(1).default("deep_premium"),
+  // Apply SANDBOX webhook events. True while DEEP ships through TestFlight
+  // (TestFlight purchases are sandbox); false from public launch. Ignored
+  // events are still recorded.
+  REVENUECAT_ACCEPT_SANDBOX: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
   // Dev-only: enables POST /dev/premium, which flips a user's DEEP Premium
   // entitlement without a purchase. Must stay false anywhere real.
   ALLOW_DEV_ENTITLEMENT: z

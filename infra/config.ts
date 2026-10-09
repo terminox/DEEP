@@ -36,9 +36,20 @@ export const config = {
   // Admin bootstrap: src/bootstrap.ts upserts this admin account on every boot.
   adminBootstrapEmail: cfg.get("adminBootstrapEmail") ?? "admin@deep.app",
 
+  // DEEP Premium (RevenueCat). The entitlement identifier that means premium,
+  // and whether SANDBOX webhook events are applied — true while DEEP ships
+  // through TestFlight (TestFlight purchases are sandbox); set it false at
+  // public launch.
+  revenuecatEntitlementId: cfg.get("revenuecatEntitlementId") ?? "deep_premium",
+  revenuecatAcceptSandbox: cfg.getBoolean("revenuecatAcceptSandbox") ?? true,
+
   // Secrets (encrypted in the stack file, materialized into Secret Manager).
   jwtSecret: cfg.requireSecret("jwtSecret"),
-  adminBootstrapPassword: cfg.requireSecret("adminBootstrapPassword")
+  adminBootstrapPassword: cfg.requireSecret("adminBootstrapPassword"),
+  // Optional: while unset, the matching deep-api route answers 503
+  // not_configured (see infra/README.md for how to set them).
+  revenuecatWebhookAuth: cfg.getSecret("revenuecatWebhookAuth"),
+  revenuecatSecretApiKey: cfg.getSecret("revenuecatSecretApiKey")
 };
 
 // A provider pinned to the configured project/region so every resource lands in
