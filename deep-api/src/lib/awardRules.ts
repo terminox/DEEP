@@ -1,6 +1,7 @@
 // The pure rules of the hearts/sunlight economy: award values, per-kind and
-// per-day caps, the day-key window for late-synced sessions, pause-attendance
-// coverage, and plant stage derivation. No I/O — everything here is
+// per-day caps, the day-key window for late-synced sessions and listens, the
+// practice days a streak counts, pause-attendance coverage, and plant stage
+// derivation. No I/O — everything here is
 // unit-testable with plain values; the DB half lives in lib/awards.ts.
 import { localDate } from "./pauseSchedule.js";
 
@@ -86,10 +87,78 @@ export function sessionAwardDayKey(
   return localDate(completedAt, timeZone);
 }
 
-/** Presence-beat slack at each edge of the meditation window. */
-export const ATTENDANCE_EDGE_SLACK_MS = 25_000;
-/** Minimum heartbeats for an attendance to count (rules out a single blip). */
-export const ATTENDANCE_MIN_BEATS = 4;
+/**
+ * The dayKey a finished track's award counts against. Clients that report
+ * the moment playback finished (`completedAt`, e.g. a listen queued while
+ * offline) count on that local day, up to 48h back; older clients send no
+ * timestamp, which means "just now" — today in `timeZone`. A `completedAt`
+ * ahead of `now` is a device clock running fast, not a replay: the listen
+ * plainly just happened, so it counts today rather than being dropped. Null —
+ * award withheld — only for a listen more than 48h old.
+ */
+export function listenAwardDayKey(
+  completedAt: Date | undefined,
+  timeZone: string,
+  now: Date,
+): string | null {
+  if (!completedAt || completedAt.getTime() > now.getTime()) return localDate(now, timeZone);
+  return sessionAwardDayKey(completedAt, timeZone, now);
+}
+
+/** An award ledger row, as much of one as `activityDayKeys` needs. */
+export interface ActivityAwardRow {
+  kind: AwardKind;
+  dayKey: string;
+  timezone: string;
+  createdAt: Date;
+}
+
+/**
+ * The user-local days ("YYYY-MM-DD", sorted, unique) on which the member
+ * practised outside a DEEP Session — the days that keep a streak alive
+ * alongside the sessions the app already knows about. A finished track
+ * counts on its dayKey (already user-local); an attended pause on the local
+ * date it was granted in the row's timezone, because its dayKey is the
+ * global Bangkok pauseDate. Other kinds are not practice and are skipped.
+ */
+export function activityDayKeys(
+  rows: ActivityAwardRow[],
+  fallbackTimeZone = "Asia/Bangkok",
+): string[] {
+  const days = new Set<string>();
+  for (const row of rows) {
+    if (row.kind === "TRACK_COMPLETED") {
+      days.add(row.dayKey);
+    } else if (row.kind === "PAUSE_ATTENDED") {
+      const tz = isValidTimeZone(row.timezone) ? row.timezone : fallbackTimeZone;
+      days.add(localDate(row.createdAt, tz));
+    }
+  }
+  return [...days].sort();
+}
+
+// Pause attendance is judged on presence beats (one per heartbeat landing in
+// the meditation window). The numbers are tuned for the 20s beat cadence
+// already-installed builds use, so a member who sat through the meditation
+// earns even when one beat at either edge was dropped or they joined a little
+// late — while a member who left early, or only blipped in, still does not.
+
+/** Share of the meditation the member's evidence must cover. */
+export const COVERAGE_RATIO = 0.75;
+/** How long one beat vouches for presence after it lands (≈ one beat interval). */
+export const BEAT_CREDIT_MS = 20_000;
+/** Longest gap between beats the beat-count floor tolerates. */
+export const MAX_BEAT_GAP_MS = 45_000;
+/** The last beat must land within this of the meditation's end. */
+export const END_SLACK_MS = 45_000;
+/** Beats this soon after the meditation ends still count, clamped to its end. */
+export const TAIL_GRACE_MS = 10_000;
+/**
+ * Beats this soon before the meditation starts still count, clamped to its
+ * start — one 20s beat interval, so the lobby beat just before the start
+ * stands in for a dropped first in-window beat.
+ */
+export const HEAD_GRACE_MS = 20_000;
 
 export interface MeditationWindow {
   startsAt: Date;
@@ -103,27 +172,79 @@ export interface AttendanceSpan {
 }
 
 /**
- * Whether an attendance record covers the meditation window: joined within
- * 25s of the start, still present within 25s of the end, and enough beats in
- * between to prove the app actually stayed.
+ * The fewest beats that can honestly span the required coverage with no gap
+ * longer than MAX_BEAT_GAP_MS (never fewer than 3, which rules out a blip):
+ * 4 for the 132s meditation, 11 for a 10-minute one.
+ */
+export function minAttendanceBeats(window: MeditationWindow): number {
+  const durationMs = window.endsAt.getTime() - window.startsAt.getTime();
+  return Math.max(3, Math.ceil((COVERAGE_RATIO * durationMs) / MAX_BEAT_GAP_MS) + 1);
+}
+
+/**
+ * Whether an attendance record covers the meditation window: enough beats to
+ * prove the app stayed, a last beat near the end, and — crediting the last
+ * beat with BEAT_CREDIT_MS of presence — at least COVERAGE_RATIO of the window
+ * between the first beat and the end of that credit.
  */
 export function attendanceCovers(
   window: MeditationWindow,
   attendance: AttendanceSpan,
 ): boolean {
-  if (attendance.beats < ATTENDANCE_MIN_BEATS) return false;
-  const joinedBy = window.startsAt.getTime() + ATTENDANCE_EDGE_SLACK_MS;
-  const stayedUntil = window.endsAt.getTime() - ATTENDANCE_EDGE_SLACK_MS;
-  return (
-    attendance.firstSeenAt.getTime() <= joinedBy &&
-    attendance.lastSeenAt.getTime() >= stayedUntil
-  );
+  if (attendance.beats < minAttendanceBeats(window)) return false;
+  const start = window.startsAt.getTime();
+  const end = window.endsAt.getTime();
+  const first = attendance.firstSeenAt.getTime();
+  const last = attendance.lastSeenAt.getTime();
+  if (last < end - END_SLACK_MS) return false;
+  const covered = Math.min(end, last + BEAT_CREDIT_MS) - Math.max(start, first);
+  return covered >= COVERAGE_RATIO * (end - start);
+}
+
+/**
+ * The instant a heartbeat at `now` is recorded as attendance evidence: `now`
+ * inside the meditation window; the window's start for a beat up to
+ * HEAD_GRACE_MS before it (the last lobby beat vouches for being there as it
+ * began); the window's end for a beat up to TAIL_GRACE_MS after it (the
+ * closing beat often lands just past the end); and null — not evidence —
+ * otherwise.
+ */
+export function attendanceInstant(window: MeditationWindow, now: Date): Date | null {
+  const t = now.getTime();
+  const start = window.startsAt.getTime();
+  const end = window.endsAt.getTime();
+  if (t < start - HEAD_GRACE_MS) return null;
+  if (t < start) return window.startsAt;
+  if (t <= end) return now;
+  if (t <= end + TAIL_GRACE_MS) return window.endsAt;
+  return null;
 }
 
 /** An occurrence, as much of one as the coverage rule needs to see. */
 export interface AttendableOccurrence {
   slotId: string;
   phases: { key: string; startsAt: Date; endsAt: Date }[];
+}
+
+/**
+ * The occurrence a heartbeat at `now` is evidence for, and the instant it is
+ * recorded at — searched across the given occurrences (a day's) rather than
+ * only the one under way. That matters at the tail: when the feedback phase
+ * is zero-length, the occurrence is over the moment its meditation ends, so
+ * "the current occurrence" has already moved on while the closing beat is
+ * still inside the tail grace.
+ */
+export function attendanceTarget<O extends AttendableOccurrence>(
+  occurrences: O[],
+  now: Date,
+): { occurrence: O; seenAt: Date } | null {
+  for (const occurrence of occurrences) {
+    const meditation = occurrence.phases.find((p) => p.key === "meditation");
+    if (!meditation) continue;
+    const seenAt = attendanceInstant(meditation, now);
+    if (seenAt) return { occurrence, seenAt };
+  }
+  return null;
 }
 
 /**

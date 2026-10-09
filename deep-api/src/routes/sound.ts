@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireAuth } from "../auth/middleware.js";
+import { AWARD_CONFIG, listenAwardDayKey } from "../lib/awardRules.js";
 import { grantAward } from "../lib/awards.js";
 import { requestTimezone, rememberTimezone, userDayKey } from "../lib/clientDay.js";
 import { rewardSnapshot } from "../lib/rewardPayload.js";
@@ -58,8 +59,20 @@ export async function soundRoutes(app: FastifyInstance) {
   // the unique on (user, kind, dayKey, trackId) means the same track earns
   // once per local day, and TRACK_COMPLETED's perDay rule caps distinct
   // tracks — both come back as a non-granted outcome, never an error.
+  //
+  // `completedAt` (optional) is when playback finished on the device, so a
+  // listen retried after a network blip still counts on the day it happened;
+  // older clients omit it and mean "just now". A listen too old (48h) or too
+  // far in the future to place gets `award: null` and `listens: null` — the
+  // track still exists, so it is not an error. `listens` is the day's tally
+  // after this request: the app's "+1 heart" / "today's 3 are in" feedback.
   app.post("/me/sound/listens", { preHandler: requireAuth }, async (req) => {
-    const { trackId } = z.object({ trackId: z.string().min(1) }).parse(req.body);
+    const { trackId, completedAt } = z
+      .object({
+        trackId: z.string().min(1),
+        completedAt: z.string().datetime({ offset: true }).optional(),
+      })
+      .parse(req.body);
     const userId = req.auth!.sub;
 
     // Hidden content earns nothing: same shape as garden.ts rejecting a write
@@ -75,16 +88,34 @@ export async function soundRoutes(app: FastifyInstance) {
     });
     const tz = requestTimezone(req, user?.timezone);
     rememberTimezone(userId, tz, user?.timezone);
-    const dayKey = userDayKey(resolveNow(), tz);
+    const now = resolveNow();
+    const dayKey = listenAwardDayKey(completedAt ? new Date(completedAt) : undefined, tz, now);
 
-    const outcome = await grantAward({
-      userId,
-      kind: "TRACK_COMPLETED",
-      dayKey,
-      sourceId: track.id,
-      timezone: tz,
-    });
-    const snapshot = await rewardSnapshot(userId, dayKey);
-    return { award: serializeAwardOutcome(outcome), ...snapshot };
+    const outcome = dayKey
+      ? await grantAward({
+          userId,
+          kind: "TRACK_COMPLETED",
+          dayKey,
+          sourceId: track.id,
+          timezone: tz,
+        })
+      : null;
+    const listens = dayKey
+      ? {
+          dayKey,
+          earned: await prisma.award.count({
+            where: { userId, kind: "TRACK_COMPLETED", dayKey },
+          }),
+          perDay: AWARD_CONFIG.TRACK_COMPLETED.perDay,
+        }
+      : null;
+    // The wallet's "earned today" always reads against today, whichever day
+    // the listen itself landed on.
+    const snapshot = await rewardSnapshot(userId, userDayKey(now, tz));
+    return {
+      award: outcome ? serializeAwardOutcome(outcome) : null,
+      listens,
+      ...snapshot,
+    };
   });
 }
