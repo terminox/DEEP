@@ -49,6 +49,8 @@ final class MainTabController: UITabBarController {
   /// The shared artwork cache, injected into every hosted tab so all tiles
   /// draw from one memory/disk store.
   private let imageLoader: any ImageLoading
+  /// Screen-size decodes for Now Playing's full-bleed photograph.
+  private let fullScreenImageLoader: any ImageLoading
 
   /// The hero-footage disk cache, injected the same way — nil in previews,
   /// where remote heroes stream without caching.
@@ -100,6 +102,7 @@ final class MainTabController: UITabBarController {
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
     imageLoader: any ImageLoading,
+    fullScreenImageLoader: any ImageLoading,
     videoCache: VideoCache? = nil
   ) {
     self.onboardingStore = onboardingStore
@@ -118,6 +121,7 @@ final class MainTabController: UITabBarController {
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
+    self.fullScreenImageLoader = fullScreenImageLoader
     self.videoCache = videoCache
     super.init(nibName: nil, bundle: nil)
   }
@@ -273,10 +277,10 @@ final class MainTabController: UITabBarController {
     .environment(\.listenReporter, listenReporter)
     .environment(\.soundContentRepository, soundRepository)
     .environment(\.playlistStore, playlistStore)
-    .environment(\.imageLoader, imageLoader)
+    .environment(\.imageLoader, fullScreenImageLoader)
     .preferredColorScheme(.light)
 
-    let host = UIHostingController(rootView: root)
+    let host = LightStatusBarHostingController(rootView: root)
     host.modalPresentationStyle = .fullScreen
     host.preferredTransition = .zoom { [weak self] _ in
       self?.accessoryHost?.view

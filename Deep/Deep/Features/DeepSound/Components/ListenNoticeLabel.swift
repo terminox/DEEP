@@ -8,6 +8,9 @@ import SwiftUI
 struct ListenNoticeLabel: View {
   let notice: ListenNotice
   var font: Font = DeepType.micro
+  /// The message's colour — plum on DEEP's pale surfaces, cream over Now
+  /// Playing's photograph.
+  var ink: Color = .deepPlum
   /// The mini player's tight line: today's hearts read as a count ("3/3
   /// hearts today") rather than the sentence Now Playing has room for. The
   /// full sentence is still what VoiceOver hears (`ListenReporter`).
@@ -25,7 +28,7 @@ struct ListenNoticeLabel: View {
         .foregroundStyle(.blushPowder)
       Text(message)
         .font(font)
-        .foregroundStyle(.deepPlum)
+        .foregroundStyle(ink)
         .lineLimit(1)
     }
   }

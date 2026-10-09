@@ -84,6 +84,7 @@ struct AppRootView: View {
           pauseSession: deps.pauseSession,
           pauseRepository: deps.pauseRepository,
           imageLoader: deps.imageLoader,
+          fullScreenImageLoader: deps.fullScreenImageLoader,
           videoCache: deps.videoCache
         )
         .ignoresSafeArea()

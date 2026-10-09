@@ -23,6 +23,7 @@ struct RootTabView: UIViewControllerRepresentable {
   let pauseSession: GlobalPauseSession
   let pauseRepository: any PauseEventRepository
   let imageLoader: any ImageLoading
+  let fullScreenImageLoader: any ImageLoading
   let videoCache: VideoCache?
 
   func makeUIViewController(context: Context) -> MainTabController {
@@ -43,6 +44,7 @@ struct RootTabView: UIViewControllerRepresentable {
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
       imageLoader: imageLoader,
+      fullScreenImageLoader: fullScreenImageLoader,
       videoCache: videoCache
     )
   }
@@ -71,6 +73,7 @@ struct RootTabView: UIViewControllerRepresentable {
     ),
     pauseRepository: FixturePauseEventRepository(),
     imageLoader: FixtureImageLoader(),
+    fullScreenImageLoader: FixtureImageLoader(),
     videoCache: nil
   )
   .ignoresSafeArea()
