@@ -1,6 +1,5 @@
 import Testing
 import Foundation
-import StoreKit
 @testable import Deep
 
 /// The one price-and-trial recipe both store conformers must share: a monthly
@@ -109,18 +108,5 @@ struct SubscriptionPlanFormattingTests {
     // sentence about money.
     #expect(SubscriptionPlanFormatting.trialDays(count: 1, unit: .month) == nil)
     #expect(SubscriptionPlanFormatting.trialDays(count: 1, unit: .year) == nil)
-  }
-
-  // MARK: - StoreKit narrowing
-
-  @Test("StoreKit's period units narrow to ours one for one")
-  func storeKitUnitsNarrow() {
-    #expect(StoreKitSubscriptionStore.unit(.day) == .day)
-    #expect(StoreKitSubscriptionStore.unit(.week) == .week)
-    #expect(StoreKitSubscriptionStore.unit(.month) == .month)
-    #expect(StoreKitSubscriptionStore.unit(.year) == .year)
-    // The `@unknown default` arm can't be reached from a test — StoreKit's
-    // enum has no case to hand it. It exists so a future OS adding one degrades
-    // to the shortest trial rather than failing to compile.
   }
 }

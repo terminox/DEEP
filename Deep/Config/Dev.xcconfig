@@ -17,6 +17,14 @@ DEV_API_HOST = localhost:8080
 // `$()` keeps xcconfig from reading `//` as a comment.
 API_BASE_URL = http:/$()/$(DEV_API_HOST)
 
+// ---- RevenueCat ----
+// The DEEP Premium project's Test Store key: purchases are simulated by
+// RevenueCat itself, so the whole flow — plans, buying, the entitlement flipping,
+// the webhook — runs on a simulator with no App Store Connect products at all.
+// A public SDK key, safe to commit. Never copy it into a release environment:
+// RevenueCat crashes a release build that carries a Test Store key.
+REVENUECAT_API_KEY = test_riWvcLkFtmCvaxzRrfVhYDSItVV
+
 // ---- Debug build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf
 ENABLE_TESTABILITY = YES

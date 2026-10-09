@@ -37,7 +37,8 @@ struct LegalLinks: Equatable, Sendable {
 /// Read-only, typed projection of the per-environment build configuration.
 ///
 /// Values arrive from the active `.xcconfig` → `Config/Info.plist` (`APIBaseURL`,
-/// `AppEnvironment`, `TermsURL`, `PrivacyURL`) and are read once at launch. This
+/// `AppEnvironment`, `TermsURL`, `PrivacyURL`, `RevenueCatAPIKey`) and are read
+/// once at launch. This
 /// mirrors the `DeepTheme` token pattern: one source of truth, surfaced as
 /// first-class typed values — never a bag of stringly-typed lookups scattered
 /// across the app.
@@ -45,6 +46,9 @@ struct AppConfig {
   let environment: AppEnvironment
   let apiBaseURL: URL
   let legal: LegalLinks
+  /// RevenueCat's public SDK key, or nil when this environment has none — which
+  /// the subscription store reads as "not subscribed", never as a crash.
+  let revenueCatAPIKey: String?
 
   /// The configuration baked into this build. Injected at the composition roots.
   static let current = AppConfig()
@@ -64,6 +68,10 @@ struct AppConfig {
       terms: Self.url(bundle, "TermsURL") ?? LegalLinks.placeholder.terms,
       privacy: Self.url(bundle, "PrivacyURL") ?? LegalLinks.placeholder.privacy
     )
+
+    let key = (bundle.object(forInfoDictionaryKey: "RevenueCatAPIKey") as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    self.revenueCatAPIKey = key?.isEmpty == false ? key : nil
   }
 
   /// An Info.plist string read as a URL. xcconfig values are unquoted, so a
