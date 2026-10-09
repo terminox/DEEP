@@ -11,14 +11,16 @@ import retrofit2.http.POST
  * the server keys the award to the member's *local* day, so the report must
  * carry `X-Device-Timezone` and the bearer token like any other DEEP request.
  *
- * The reply is an award outcome plus a rewards snapshot. It is discarded for
- * now — the heart ledger and garden it would reconcile, which iOS feeds it to
- * through `ingestAwards` (`AppDependencies.swift`), are not ported yet.
+ * The reply is the award outcome plus the shared `{ wallet, plant }` tail
+ * ([AwardResponseDto]). `ApiTrackListenReporter` folds it into one grant and
+ * hands it to the shared award ingest, so the heart ledger and the garden
+ * reconcile to the server's absolutes — iOS's `reportListen` → `ingestAwards`
+ * (`AppDependencies.swift`).
  */
 interface SoundListensService {
 
   @POST("me/sound/listens")
-  suspend fun report(@Body body: ListenRequest)
+  suspend fun report(@Body body: ListenRequest): AwardResponseDto
 }
 
 @Serializable

@@ -1,30 +1,44 @@
 package io.appbeyond.freelance.deep.feature.mindgarden.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * A plant from the admin-managed catalog — the thing sunlight grows. The
  * user's selected plant plus its banked sunlight derive [GardenGrowth];
  * unselected plants keep their own sunlight and resume where they left off.
  *
- * Ported from Deep/Deep/Features/MindGarden/Models/Plant.swift. `imageURL`
- * and `palette` (picker card art) stay on the iOS side, same reasoning as
- * [PlantStage]'s dropped portrait fields — presentation/networking concerns,
- * not the pure growth derivation this module carries.
+ * Ported from Deep/Deep/Features/MindGarden/Models/Plant.swift. [palette]
+ * stays the server's raw name (`ArtworkPalette` is a UI type on both
+ * platforms); the UI maps it, falling back to mist for anything unknown.
+ * `@Serializable` for the garden store's persisted blob — see [PlantStage].
  */
+@Serializable
 data class Plant(
   val id: String,
   val name: String,
   val tagline: String,
+  /** Picker card art. */
+  val imageUrl: String? = null,
+  /** The artwork palette's raw name, e.g. "mist", "bloom", "veil". */
+  val palette: String = DEFAULT_PALETTE,
   /** The growth ladder in evolution order; thresholds strictly increasing
    * from 0. Validated server-side; the derivation tolerates anything. */
   val stages: List<PlantStage>,
 ) {
   companion object {
+    /** The palette a plant without one (or with an unknown one) reads as. */
+    const val DEFAULT_PALETTE = "mist"
+
     /** The oak as the seed data defines it (Seedling 0 / Young 200 / Mature
-     * 700, the cumulative reading of the old 200/500 ladder). */
+     * 700, the cumulative reading of the old 200/500 ladder). Mascot art and
+     * hero video come from the server in the live app, so the fixture's stay
+     * null — the garden home falls back to the bundled mature-oak loop (see
+     * [GardenHeroMedia]). */
     val oakFixture = Plant(
       id = "oak",
       name = "Oak",
       tagline = "Steady, patient strength",
+      palette = "mist",
       stages = listOf(
         PlantStage(id = "oak-stage-0", name = "Oak Seedling", threshold = 0),
         PlantStage(id = "oak-stage-1", name = "Young Oak", threshold = 200),
@@ -36,6 +50,7 @@ data class Plant(
       id = "sakura",
       name = "Sakura",
       tagline = "Beauty in every passing season",
+      palette = "bloom",
       stages = listOf(
         PlantStage(id = "sakura-stage-0", name = "Sakura Sprout", threshold = 0),
         PlantStage(id = "sakura-stage-1", name = "Budding Sakura", threshold = 150),
@@ -48,6 +63,7 @@ data class Plant(
       id = "lotus",
       name = "Lotus",
       tagline = "Calm rising from still water",
+      palette = "veil",
       stages = listOf(
         PlantStage(id = "lotus-stage-0", name = "Lotus Seed", threshold = 0),
         PlantStage(id = "lotus-stage-1", name = "Rising Lotus", threshold = 250),

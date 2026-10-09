@@ -147,6 +147,11 @@ data class HomeActions(
  * @param soundPlayer the app's one player, shared by every tab and the pill.
  * @param soundLibrary DEEP Sound's shelves and lyrics.
  * @param playlistStore the member's saved sounds — the You tab's root.
+ * @param flushPracticeJournal / resetRewardsState the rewards side of
+ *   Settings' log out and account deletion, handed straight through.
+ * @param homeContent / gardenContent the Home and Mind Garden roots. Slots, so
+ *   the shell carries none of their stores; each is handed the same
+ *   [HomeActions] — the Garden's daily practice card opens a DEEP Session.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -157,9 +162,12 @@ fun MainShellCoordinator(
   soundPlayer: SoundPlaying,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
+  flushPracticeJournal: suspend () -> Unit,
+  resetRewardsState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   onOpenDeepSession: (DeepSession) -> Unit = {},
   homeContent: @Composable (actions: HomeActions) -> Unit = {},
+  gardenContent: @Composable (actions: HomeActions) -> Unit = {},
 ) {
   var selected by rememberSaveable { mutableStateOf(DeepTab.Home) }
 
@@ -301,7 +309,7 @@ fun MainShellCoordinator(
                       onOpenCollection = { push(DeepTab.Sounds, DeepRoute.Collection(it)) },
                       onOpenDeepSession = onOpenDeepSession,
                     )
-                    DeepTab.Garden -> TabPlaceholderScreen(DeepTab.Garden)
+                    DeepTab.Garden -> gardenContent(homeActions)
                     DeepTab.Compassion -> TabPlaceholderScreen(DeepTab.Compassion)
                     DeepTab.You -> PlaylistScreen(
                       playlistStore = playlistStore,
@@ -315,6 +323,8 @@ fun MainShellCoordinator(
                     accountStore = accountStore,
                     onboardingStore = onboardingStore,
                     language = language,
+                    flushPracticeJournal = flushPracticeJournal,
+                    resetRewardsState = resetRewardsState,
                     onBack = { pop(DeepTab.You) },
                   )
 
@@ -476,6 +486,8 @@ private fun MainShellCoordinatorPreview() {
       soundPlayer = remember { MockSoundPlayer.playing() },
       soundLibrary = remember { MockSoundLibrary.loaded },
       playlistStore = MockPlaylistStore.sample,
+      flushPracticeJournal = {},
+      resetRewardsState = {},
       homeContent = { TabPlaceholderScreen(DeepTab.Home) },
     )
   }

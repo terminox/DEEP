@@ -19,6 +19,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
@@ -94,9 +97,10 @@ private object Handoff {
  * Everything stateful arrives as a parameter — `MainActivity` is the one place
  * that reads `AppDependencies` — so the preview runs on mocks.
  *
- * Deviation from iOS: every destination crossfades on [hush]. iOS brings the
- * flow in on a `softDrift` whose veil is a blur, and `Modifier.blur` is a no-op
- * below API 31; `SoftDrift` is not ported yet.
+ * Deviation from iOS: every root destination crossfades on [hush]. iOS brings
+ * the flow in on a `softDrift` whose veil is a blur; `SoftDrift` now exists in
+ * `shared/transition/SoftDrift.kt`, but the root hand-offs have not been moved
+ * onto it, so they keep the plain crossfade.
  *
  * @param awaitOnboardingLoaded suspends until [onboardingStore]'s first real
  *   load has landed, so a persisted "onboarding complete" is never missed for
@@ -107,6 +111,14 @@ private object Handoff {
  *   `pause()` on DEEP Session entry.
  * @param soundLibrary / playlistStore handed on to the shell for DEEP Sound
  *   and the You tab's saved sounds.
+ * @param syncRewards pulls the garden and wallet and syncs the practice
+ *   journal (`AppDependencies.syncRewards`). Called as the shell is composed —
+ *   which covers both a restored launch and a fresh sign-in or sign-up — and
+ *   on every process foreground while it stays composed: iOS's `bootstrap()`,
+ *   `.flow → .main` and scene-phase `.active` seams in one place.
+ * @param flushPracticeJournal / resetRewardsState the rewards side of every
+ *   exit, handed on to Settings, and the reset is also run here when the
+ *   server rejects a restored session.
  * @param flowContent the onboarding and auth flow. A slot rather than a direct
  *   call so this file does not depend on the flow's wiring.
  */
@@ -120,9 +132,13 @@ fun AppRoot(
   soundPlayer: SoundPlaying,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
+  syncRewards: () -> Unit,
+  flushPracticeJournal: suspend () -> Unit,
+  resetRewardsState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   flowContent: @Composable () -> Unit = {},
   homeContent: @Composable (actions: HomeActions) -> Unit = {},
+  gardenContent: @Composable (actions: HomeActions) -> Unit = {},
   deepSessionContent: @Composable (session: DeepSession, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
 ) {
@@ -173,6 +189,7 @@ fun AppRoot(
             if (TokenRefresher.isAuthRejection(rejected)) {
               accountStore.logOut()
               onboardingStore.reset()
+              resetRewardsState()
             }
           } catch (_: Exception) {
             // A local write that failed: keep what is on disk and carry on.
@@ -217,19 +234,33 @@ fun AppRoot(
         when (target) {
           RootPhase.Restoring -> Box(Modifier.fillMaxSize())
           RootPhase.Flow -> flowContent()
-          RootPhase.Main -> MainShellCoordinator(
-            accountStore = accountStore,
-            onboardingStore = onboardingStore,
-            language = language,
-            soundPlayer = soundPlayer,
-            soundLibrary = soundLibrary,
-            playlistStore = playlistStore,
-            homeContent = homeContent,
-            onOpenDeepSession = {
-              soundPlayer.pause()
-              runningSession = it
-            },
-          )
+          RootPhase.Main -> {
+            // The process's ON_START, not the activity's: a rotation or a
+            // language change recreates the activity without the member ever
+            // leaving. ON_START is replayed as the observer registers, so this
+            // one effect also fires as the shell first composes — once per
+            // entry into Main, whether from the launch beat or a fresh sign-in,
+            // and never twice at cold start.
+            LifecycleEventEffect(Lifecycle.Event.ON_START, ProcessLifecycleOwner.get()) {
+              syncRewards()
+            }
+            MainShellCoordinator(
+              accountStore = accountStore,
+              onboardingStore = onboardingStore,
+              language = language,
+              soundPlayer = soundPlayer,
+              soundLibrary = soundLibrary,
+              playlistStore = playlistStore,
+              flushPracticeJournal = flushPracticeJournal,
+              resetRewardsState = resetRewardsState,
+              homeContent = homeContent,
+              gardenContent = gardenContent,
+              onOpenDeepSession = {
+                soundPlayer.pause()
+                runningSession = it
+              },
+            )
+          }
         }
       }
 
@@ -251,7 +282,13 @@ fun AppRoot(
         exit = fadeOut(hush()),
       ) {
         if (session != null) {
-          deepSessionContent(session) { runningSession = null }
+          // Opaque, as iOS's full-screen cover is. Every stage paints its own
+          // translucent atmosphere and they crossfade, so without this the
+          // shell showed through at mid-fade — the Garden's hero and cards
+          // ghosting behind the practice as it gave way to the reward ritual.
+          Box(Modifier.fillMaxSize().background(Color.moonCream)) {
+            deepSessionContent(session) { runningSession = null }
+          }
         }
       }
     }
@@ -270,6 +307,9 @@ private fun AppRootPreview() {
     soundPlayer = MockSoundPlayer.idle(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
+    syncRewards = {},
+    flushPracticeJournal = {},
+    resetRewardsState = {},
     homeContent = { TabPlaceholderScreen(DeepTab.Home) },
   )
 }
@@ -286,6 +326,9 @@ private fun AppRootFirstLaunchPreview() {
     soundPlayer = MockSoundPlayer.idle(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
-    flowContent = { TabPlaceholderScreen(DeepTab.Garden) },
+    syncRewards = {},
+    flushPracticeJournal = {},
+    resetRewardsState = {},
+    flowContent = { TabPlaceholderScreen(DeepTab.Compassion) },
   )
 }

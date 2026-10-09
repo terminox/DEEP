@@ -107,21 +107,33 @@ private const val FOOTER_ALPHA = 0.8f
  *   are not ported for the same reason.
  * - **The plan chip always reads "Free plan"** — no subscription store exists
  *   to ask. iOS's "Checking…" state has nothing to check.
- * - **Log out resets onboarding only.** iOS also clears the practice journal,
- *   garden, ledger, playlist and reminder queue; none of those stores exist on
- *   Android yet. Each must join both exits below as it lands.
+ * - **Both exits reset onboarding and the rewards stores** (practice journal,
+ *   garden, heart ledger, continuity day — [resetRewardsState]); the playlist
+ *   and the player are cleared by `AppDependencies`' account watcher. iOS
+ *   also clears its reminder queue, which Android does not have yet. A store
+ *   that lands later must join both exits below.
+ * - **DIVERGENCE: log out first offers the practice journal's unsynced
+ *   sessions to the server** ([flushPracticeJournal], at most three seconds),
+ *   while the token still works. iOS drops them. Account deletion skips it —
+ *   the server is about to delete the sessions anyway.
  *
  * The back control is our own frosted chevron. On iOS that choice would cost
  * the interactive edge-swipe pop; on Android system back is independent of the
  * control and pops the You tab's stack in `MainShellCoordinator`.
  *
  * @param language the language DEEP currently reads in, named by its endonym.
+ * @param flushPracticeJournal best-effort push of unsynced practice, run
+ *   before log out ends the session.
+ * @param resetRewardsState forgets the member's rewards state, run after
+ *   either exit succeeds.
  */
 @Composable
 fun SettingsScreen(
   accountStore: AccountStore,
   onboardingStore: OnboardingProgressStore,
   language: AppLanguage,
+  flushPracticeJournal: suspend () -> Unit,
+  resetRewardsState: suspend () -> Unit,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -135,16 +147,22 @@ fun SettingsScreen(
 
   // Both exits run NonCancellable. Signing out flips the root phase, which
   // retires this whole shell (and this screen's scope) as it crossfades away;
-  // the onboarding reset after it must still land, or a later launch would
-  // reopen a signed-out member on a "completed" onboarding.
+  // the resets after it must still land, or a later launch would reopen a
+  // signed-out member on a "completed" onboarding, or the next member on the
+  // last one's garden.
   fun logOut() {
     scope.launch {
       withContext(NonCancellable) {
+        // While the token still works: unsynced practice reaches the server
+        // instead of being dropped with the journal. Bounded, so a dead
+        // network delays the log out by seconds at most.
+        flushPracticeJournal()
         accountStore.logOut()
         // Resetting onboarding flips `hasCompletedOnboarding`, which AppRoot
         // observes — together with the now signed-out state it crossfades back
         // to the welcome flow.
         onboardingStore.reset()
+        resetRewardsState()
       }
     }
   }
@@ -158,6 +176,7 @@ fun SettingsScreen(
           // Same exit as log out; the shell crossfades to the welcome flow, so
           // the in-flight state never needs resetting on success.
           onboardingStore.reset()
+          resetRewardsState()
         } catch (cancelled: CancellationException) {
           throw cancelled
         } catch (_: Exception) {
@@ -405,6 +424,8 @@ private fun SettingsScreenPreview() {
         accountStore = MockAccountStore.emailUser,
         onboardingStore = MockOnboardingProgressStore.fresh,
         language = AppLanguage.English,
+        flushPracticeJournal = {},
+        resetRewardsState = {},
         onBack = {},
       )
     }
@@ -420,6 +441,8 @@ private fun SettingsScreenSignedOutPreview() {
         accountStore = MockAccountStore.signedOut,
         onboardingStore = MockOnboardingProgressStore.fresh,
         language = AppLanguage.Thai,
+        flushPracticeJournal = {},
+        resetRewardsState = {},
         onBack = {},
       )
     }

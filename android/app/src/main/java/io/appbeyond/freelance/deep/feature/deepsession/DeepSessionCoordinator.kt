@@ -11,6 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,22 +20,40 @@ import androidx.compose.ui.tooling.preview.Preview
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSessionLength
+import io.appbeyond.freelance.deep.feature.rewards.model.RewardReceipt
+import io.appbeyond.freelance.deep.feature.rewards.screens.RewardRitualScreen
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.hush
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
-/** The two stages of a practice. */
-private enum class SessionStage { Threshold, Practice }
+/** The stages of a practice: the threshold, the breath, and what it grew. */
+private sealed interface SessionStage {
+  data object Threshold : SessionStage
+  data object Practice : SessionStage
+  data class Completion(val receipt: RewardReceipt) : SessionStage
+}
 
 /**
- * Owns one visit to DEEP Session: the threshold, then the practice, then out.
+ * Owns one visit to DEEP Session: the threshold, then the practice, then the
+ * reward ritual, then out.
  *
  * A coordinator in the project's sense — it holds the stage and the chosen
- * length and wires the two screens together, and carries no styling of its own.
+ * length and wires the three screens together (threshold, practice, reward ritual), and carries no styling of its own.
  *
  * The chime is created here rather than inside [DeepSessionScreen] so it can be
  * warmed before the practice starts and can finish ringing after the practice
  * screen has gone. The bell outliving its screen is the whole reason the iOS
  * version owns it outside the presentation too.
+ *
+ * Only a practice that runs to its end is recorded — leaving early closes the
+ * visit with nothing banked, as iOS's `finishSession` is reached only from
+ * `.finished`. The completion is recorded once, through [onComplete], and the
+ * ritual it returns replaces the practice on the same `hush` crossfade.
+ *
+ * @param onComplete records the finished practice and returns what it earned
+ *   (`PracticeRewards.complete`). Null — previews — closes on finish instead.
+ * @param onWitnessContinuity stamps today's continuity beat as the ritual shows it.
  */
 @Composable
 fun DeepSessionCoordinator(
@@ -42,9 +61,13 @@ fun DeepSessionCoordinator(
   onFinish: () -> Unit,
   modifier: Modifier = Modifier,
   chime: ChimePlaying? = null,
+  onComplete: (suspend (title: String, durationSeconds: Int) -> RewardReceipt)? = null,
+  onWitnessContinuity: suspend () -> Unit = {},
 ) {
   val context = LocalContext.current
-  var stage by remember { mutableStateOf(SessionStage.Threshold) }
+  val scope = rememberCoroutineScope()
+  var stage by remember { mutableStateOf<SessionStage>(SessionStage.Threshold) }
+  var didRecord by remember { mutableStateOf(false) }
   var minutes by remember { mutableStateOf(readMinutes(context)) }
 
   val resolvedChime = remember(chime) { chime ?: ChimePlayer(context) }
@@ -67,6 +90,11 @@ fun DeepSessionCoordinator(
   // composed later still and takes over once the breath begins.
   BackHandler(enabled = stage == SessionStage.Threshold) { onFinish() }
 
+  // The journal names the practice itself, not the card that opened it: iOS
+  // records `DeepSessionLibrary.balancingBreath`'s title, and a member's pulled
+  // history mixes both platforms' rows. One practice ships, so it is named here.
+  val journalTitle = stringResource(R.string.deepsound_balancing_breath_title)
+
   AnimatedContent(
     targetState = stage,
     transitionSpec = { fadeIn(hush()) togetherWith fadeOut(hush()) },
@@ -84,11 +112,32 @@ fun DeepSessionCoordinator(
         onBegin = { stage = SessionStage.Practice },
       )
 
-      SessionStage.Practice -> DeepSessionScreen(
-        session = titled.lasting(minutes),
-        onFinished = onFinish,
-        onLeave = onFinish,
-        chime = resolvedChime,
+      SessionStage.Practice -> {
+        val practice = titled.lasting(minutes)
+        DeepSessionScreen(
+          session = practice,
+          onFinished = {
+            val record = onComplete
+            if (record == null) {
+              onFinish()
+            } else if (!didRecord) {
+              didRecord = true
+              scope.launch {
+                val seconds = (practice.duration.inWholeMilliseconds / 1000.0).roundToInt()
+                stage = SessionStage.Completion(record(journalTitle, seconds))
+              }
+            }
+          },
+          onLeave = onFinish,
+          chime = resolvedChime,
+        )
+      }
+
+      is SessionStage.Completion -> RewardRitualScreen(
+        receipt = current.receipt,
+        continuityHeadline = stringResource(R.string.reward_continuity_headline_returned),
+        onWitnessContinuity = onWitnessContinuity,
+        onFinish = onFinish,
       )
     }
   }

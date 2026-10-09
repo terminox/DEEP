@@ -56,11 +56,11 @@ android {
     minSdk = 26
     targetSdk = 36
 
-    // Week three of eight. The versionCode scheme is still open — iOS stamps Unix
+    // Week four of eight. The versionCode scheme is still open — iOS stamps Unix
     // epoch seconds, which does not survive the port because versionCode is a
     // signed 32-bit int that can never decrease on a store track.
-    versionCode = 3
-    versionName = "0.0.3"
+    versionCode = 4
+    versionName = "0.0.4"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -221,6 +221,9 @@ dependencies {
   implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.runtime.compose)
+  // Process-wide foreground: the rewards sync re-pulls the garden and the
+  // practice journal on every return to the app, not on every activity start.
+  implementation(libs.androidx.lifecycle.process)
 
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.graphics)

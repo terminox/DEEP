@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The reward ritual (feature/rewards/screens/): garden, compassion and
+  continuity steps. Verbatim from Deep/Deep/Features/Rewards/Screens/, with
+  plurals wherever iOS picks between a singular and a plural.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <!-- The ritual's forward button, and its label on the closing step. -->
+  <string name="reward_continue">Continue</string>
+  <string name="reward_carry_this_calm">Carry this calm</string>
+
+  <!-- Continuity headlines a caller passes in: a DEEP Session credits today; a Global Pause witnesses the run. -->
+  <string name="reward_continuity_headline_returned">You returned today</string>
+  <string name="reward_continuity_headline_continues">Your rhythm continues</string>
+
+  <!-- Garden step. -->
+  <string name="reward_garden_eyebrow">MIND GARDEN</string>
+  <string name="reward_garden_title_grew">Your garden grew</string>
+  <string name="reward_garden_title_resting">Your garden is resting</string>
+  <string name="reward_garden_title_catching_up">Growth is on its way</string>
+  <!-- "+1 sunlight" — sunlight is uncountable, so no plural. -->
+  <string name="reward_garden_sunlight_awarded" tools:ignore="PluralsCandidate">+%1$d sunlight</string>
+  <!-- Shared by the garden and compassion steps when the day's cap is reached. -->
+  <string name="reward_today_full">Today is full</string>
+  <!-- "241 of 700 to Young Oak": %1$s and %2$s are grouped figures. -->
+  <string name="reward_garden_progress">%1$s of %2$s to %3$s</string>
+  <string name="reward_garden_progress_fully_grown">%1$s sunlight, fully grown</string>
+  <string name="reward_garden_catching_up_title">Your garden is catching up</string>
+  <string name="reward_garden_catching_up_body">Your practice is safely remembered</string>
+  <string name="reward_garden_summary_catching_up">Your garden is catching up. Your practice is safely remembered.</string>
+  <!-- "Young Oak. 1 sunlight received." -->
+  <string name="reward_garden_summary_awarded" tools:ignore="PluralsCandidate">%1$s. %2$d sunlight received.</string>
+  <string name="reward_garden_summary_full">%1$s. Today is full.</string>
+
+  <!-- Compassion step. -->
+  <string name="reward_compassion_eyebrow">COMPASSION</string>
+  <string name="reward_compassion_title_carried">Kindness carried forward</string>
+  <string name="reward_compassion_title_full">A full day</string>
+  <plurals name="reward_compassion_awarded">
+    <item quantity="one">+%d heart</item>
+    <item quantity="other">+%d hearts</item>
+  </plurals>
+  <!-- %s is the grouped balance, "1,204". -->
+  <plurals name="reward_compassion_balance">
+    <item quantity="one">%s heart ready to give</item>
+    <item quantity="other">%s hearts ready to give</item>
+  </plurals>
+  <!-- "3 of 30 received today": %1$s is the grouped tally, %2$d the daily ceiling. -->
+  <string name="reward_compassion_today" tools:ignore="PluralsCandidate">%1$s of %2$d received today</string>
+  <plurals name="reward_compassion_received">
+    <item quantity="one">%d heart received</item>
+    <item quantity="other">%d hearts received</item>
+  </plurals>
+  <!-- "1 heart received. 13 hearts ready to give." — %1$s reward_compassion_received, %2$s reward_compassion_balance. -->
+  <string name="reward_compassion_summary_awarded">%1$s. %2$s.</string>
+  <!-- %1$s is reward_compassion_balance. -->
+  <string name="reward_compassion_summary_full">Today is full. %1$s.</string>
+
+  <!-- Continuity step. -->
+  <string name="reward_continuity_eyebrow">YOUR RHYTHM</string>
+  <!-- Sits under the large day count, which carries the number itself. -->
+  <plurals name="reward_continuity_days">
+    <item quantity="one">day of returning</item>
+    <item quantity="other">days of returning</item>
+  </plurals>
+  <string name="reward_continuity_enough">Each return is enough</string>
+  <!-- "You returned today. 7 days of returning. Each return is enough." %1$s is the headline. -->
+  <plurals name="reward_continuity_summary">
+    <item quantity="one">%1$s. %2$d day of returning. Each return is enough.</item>
+    <item quantity="other">%1$s. %2$d days of returning. Each return is enough.</item>
+  </plurals>
+</resources>

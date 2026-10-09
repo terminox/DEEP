@@ -122,6 +122,20 @@ val exhaleEasing: Easing get() = DeepCurve.ExhaleEasing
  */
 const val BREATHE_FLOOR_MILLIS = 900L
 
+/**
+ * How long a confirmed choice stays on screen as "done" before its sheet leaves
+ * — long enough to be read as an acknowledgement, short enough not to stall.
+ * The plant picker holds its "Growing …" bar this long (iOS's 0.5s).
+ */
+const val CONFIRMATION_HOLD_MILLIS = 500L
+
+/**
+ * How long a card blooms in before the numbers on it start to move, so the
+ * eye has landed before anything counts. Each reward ritual step waits this
+ * long after its entrance (iOS's `Task.sleep(for: .milliseconds(350))`).
+ */
+const val ENTRANCE_HOLD_MILLIS = 350L
+
 // MARK: - Travel
 
 /**
@@ -135,6 +149,14 @@ const val BREATHE_FLOOR_MILLIS = 900L
  * `slideInVertically { Dp.drift.roundToPx() }`.
  */
 val Dp.Companion.drift: Dp get() = 16.dp
+
+/**
+ * The breath of blur at the fully-veiled ends of the soft drift — the content
+ * resolving into focus as it settles. Ported from `SoftDrift.veil` (6pt).
+ * Only drawn where a real blur exists (API 31+), and never under reduced
+ * motion.
+ */
+val Dp.Companion.veil: Dp get() = 6.dp
 
 @Suppress("unused")
 private val springSentinel = Spring.StiffnessMedium

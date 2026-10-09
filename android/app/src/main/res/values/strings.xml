@@ -20,8 +20,6 @@
        "coming soon", which reads as an apology. -->
   <string name="placeholder_sounds_title">Somewhere to land</string>
   <string name="placeholder_sounds_body">Collections of soundscapes, and a player that follows you across the app.</string>
-  <string name="placeholder_garden_title">Your practice, growing</string>
-  <string name="placeholder_garden_body">One plant that grows alongside you. No streaks to break, nothing to fail.</string>
   <string name="placeholder_compassion_title">Practice turned outward</string>
   <string name="placeholder_compassion_body">Time spent in DEEP earns hearts. Hearts are given to causes.</string>
   <string name="placeholder_you_title">Your space</string>

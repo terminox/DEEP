@@ -3,11 +3,11 @@ package io.appbeyond.freelance.deep.auth
 /**
  * The access/refresh pair one session is made of.
  *
- * Deliberately not `@Serializable`: this module has no serialization plugin, and
- * the wire shape is a separate type in `:app` that the transport maps into this
- * one. Keeping them apart is what stops a rename on the backend from reaching
- * the refresh logic — and what lets the logic below be tested with no JSON, no
- * Android and no server.
+ * Deliberately not `@Serializable`: the wire shape is a separate type in `:app`
+ * that the transport maps into this one (this module serializes only its own
+ * local store blobs). Keeping them apart is what stops a rename on the backend
+ * from reaching the refresh logic — and what lets the logic below be tested with
+ * no JSON, no Android and no server.
  */
 data class TokenPair(
   val access: String,
