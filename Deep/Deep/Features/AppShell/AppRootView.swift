@@ -73,6 +73,7 @@ struct AppRootView: View {
           subscriptionStore: deps.subscriptionStore,
           soundRepository: deps.soundRepository,
           soundPlayer: deps.soundPlayer,
+          listenReporter: deps.listenReporter,
           practiceStore: deps.practiceStore,
           heartLedger: deps.heartLedger,
           gardenStore: deps.gardenStore,
@@ -118,15 +119,17 @@ struct AppRootView: View {
     .environment(\.subscriptionStore, deps.subscriptionStore)
     .environment(\.soundContentRepository, deps.soundRepository)
     .environment(\.practiceStore, deps.practiceStore)
+    .environment(\.listenReporter, deps.listenReporter)
     .environment(\.heartLedger, deps.heartLedger)
     .environment(\.gardenStore, deps.gardenStore)
     .environment(\.playlistStore, deps.playlistStore)
     .environment(\.imageLoader, deps.imageLoader)
     .environment(\.videoCache, deps.videoCache)
     .task { await bootstrap() }
-    // Returning to the foreground retries the practice journal's offline
-    // queue, picks up sessions recorded on other installs, and re-pulls the
-    // garden (plant + sunlight + wallet) and the saved sounds from the server.
+    // Returning to the foreground retries the practice journal's and the
+    // listen reporter's offline queues, picks up sessions recorded on other
+    // installs, and re-pulls the garden (plant + sunlight + wallet) and the
+    // saved sounds from the server.
     .onChange(of: scenePhase) { _, phase in
       guard phase == .active, didRestore else { return }
       // The reminder queue is a rolling eight-week window of individually
@@ -140,9 +143,11 @@ struct AppRootView: View {
       Task {
         async let garden: Void = deps.gardenStore.refresh()
         async let playlist: Void = deps.playlistStore.refresh()
+        async let listens: Void = deps.listenReporter.flush()
         await deps.practiceStore.refresh()
         await garden
         await playlist
+        await listens
         // Practice may have arrived from another install, settling whether
         // today's goal is met — so the window is rebuilt on the fresh answer.
         await rescheduleReminder()
@@ -160,9 +165,11 @@ struct AppRootView: View {
       Task {
         async let garden: Void = deps.gardenStore.refresh()
         async let playlist: Void = deps.playlistStore.refresh()
+        async let listens: Void = deps.listenReporter.flush()
         await deps.practiceStore.refresh()
         await garden
         await playlist
+        await listens
       }
     }
   }
@@ -188,6 +195,8 @@ struct AppRootView: View {
       async let refreshed: Void = deps.practiceStore.refresh()
       async let gardenRefreshed: Void = deps.gardenStore.refresh()
       async let playlistRefreshed: Void = deps.playlistStore.refresh()
+      // Listens finished offline (or cut off by a kill) go out on launch.
+      async let listensFlushed: Void = deps.listenReporter.flush()
       if let profile = try? await deps.onboardingRemote.fetchProfile() {
         deps.onboardingStore.hydrate(
           quizAnswers: profile.quizAnswers,
@@ -198,6 +207,7 @@ struct AppRootView: View {
       await refreshed
       await gardenRefreshed
       await playlistRefreshed
+      await listensFlushed
     }
     _ = await floor
     // The staged send-off: text exhales in place, the destination surfaces

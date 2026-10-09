@@ -5,6 +5,7 @@ import SwiftUI
 /// bottom utility row — retinted to DEEP and with softened motion.
 struct NowPlayingView: View {
   @Environment(\.soundPlayer) private var player
+  @Environment(\.listenReporter) private var listenReporter
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var onDismiss: () -> Void
 
@@ -98,6 +99,7 @@ struct NowPlayingView: View {
         y: player.isPlaying ? 20 : 10
       )
       .animation(reduceMotion ? nil : .settle, value: player.isPlaying)
+      .heartBurst(for: listenReporter.notice)
   }
 
   private var artworkScale: CGFloat {
@@ -111,10 +113,7 @@ struct NowPlayingView: View {
           .font(.system(.title3, design: .default, weight: .semibold))
           .foregroundStyle(.deepPlum)
           .lineLimit(1)
-        Text(player.collection?.title ?? "")
-          .font(DeepType.body)
-          .foregroundStyle(.driftGrey)
-          .lineLimit(1)
+        subtitle
       }
       Spacer()
       // Saving the sound to the playlist — the screen's one utility control,
@@ -123,6 +122,25 @@ struct NowPlayingView: View {
         SaveTrackButton(track: track, collection: collection)
       }
     }
+  }
+
+  /// The collection's name — giving way, for a few seconds, to a listen's
+  /// heart when one lands (the mini player's swap, at this screen's size).
+  private var subtitle: some View {
+    ZStack(alignment: .leading) {
+      if let notice = listenReporter.notice {
+        ListenNoticeLabel(notice: notice, font: DeepType.body)
+          .id(notice.id)
+          .transition(.opacity)
+      } else {
+        Text(player.collection?.title ?? "")
+          .font(DeepType.body)
+          .foregroundStyle(.driftGrey)
+          .lineLimit(1)
+          .transition(.opacity)
+      }
+    }
+    .animation(.exhale, value: listenReporter.notice)
   }
 
   private var scrubber: some View {
@@ -267,6 +285,18 @@ struct NowPlayingView: View {
 #Preview("Now Playing — Playing") {
   NowPlayingView {}
     .environment(\.soundPlayer, MockSoundPlayer.playing)
+}
+
+#Preview("Now Playing — Heart earned") {
+  NowPlayingView {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .environment(\.listenReporter, MockListenReporter.earned)
+}
+
+#Preview("Now Playing — Today's hearts in") {
+  NowPlayingView {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .environment(\.listenReporter, MockListenReporter.dayComplete)
 }
 
 #Preview("Now Playing — Paused") {

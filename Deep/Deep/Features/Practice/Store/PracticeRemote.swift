@@ -9,14 +9,25 @@ struct PracticeSyncResult {
   let awards: AwardGrant?
 }
 
+/// The server's practice log for the signed-in user: every DEEP Session, plus
+/// the days other practice kept the rhythm (sounds listened to their end,
+/// counted Global Pauses) as "YYYY-MM-DD" keys in the member's own calendar.
+/// `activityDays` is nil when an older server didn't send the field — distinct
+/// from an empty list, which is a real answer.
+struct PracticeLog {
+  var completions: [PracticeCompletion]
+  var activityDays: [String]? = nil
+}
+
 /// The backend seam for practice: offer completed sessions up, pull the full
 /// log back down. The store depends on this protocol so previews and tests run
 /// against `MockPracticeRemote`.
 protocol PracticeRemote: AnyObject {
   /// Uploads completions; the result carries the accepted ids and any awards.
   func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult
-  /// The server's whole log for the signed-in user, already marked synced.
-  func fetchAll() async throws -> [PracticeCompletion]
+  /// The server's whole log for the signed-in user, sessions already marked
+  /// synced.
+  func fetchAll() async throws -> PracticeLog
 }
 
 /// Hermetic default for previews — accepts everything, remembers nothing,
@@ -25,12 +36,16 @@ protocol PracticeRemote: AnyObject {
 final class MockPracticeRemote: PracticeRemote {
   /// Handed back on every upload — tests set this to exercise the award sink.
   var awards: AwardGrant?
+  /// Handed back on every fetch.
+  var activityDays: [String]?
 
   func upload(_ completions: [PracticeCompletion]) async throws -> PracticeSyncResult {
     PracticeSyncResult(synced: completions.map(\.id), awards: awards)
   }
 
-  func fetchAll() async throws -> [PracticeCompletion] { [] }
+  func fetchAll() async throws -> PracticeLog {
+    PracticeLog(completions: [], activityDays: activityDays)
+  }
 }
 
 /// Real implementation over `APIClient`.
@@ -61,9 +76,9 @@ final class APIPracticeRemote: PracticeRemote {
     )
   }
 
-  func fetchAll() async throws -> [PracticeCompletion] {
+  func fetchAll() async throws -> PracticeLog {
     let dto: PracticeSessionsResponseDTO = try await client.request("/me/practice/sessions")
-    return dto.sessions.compactMap { session in
+    let completions: [PracticeCompletion] = dto.sessions.compactMap { session in
       guard let id = UUID(uuidString: session.id),
             let completedAt = Self.date(from: session.completedAt)
       else { return nil }
@@ -75,6 +90,7 @@ final class APIPracticeRemote: PracticeRemote {
         isSynced: true
       )
     }
+    return PracticeLog(completions: completions, activityDays: dto.activityDays)
   }
 
   // MARK: - Dates

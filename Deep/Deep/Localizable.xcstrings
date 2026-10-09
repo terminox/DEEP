@@ -24,8 +24,192 @@
         }
       }
     },
+    "%@ hearts ready to give" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "มีหัวใจพร้อมมอบ %@ ดวง"
+          }
+        }
+      }
+    },
+    "%lld hearts received" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ได้รับหัวใจ %lld ดวง"
+          }
+        }
+      }
+    },
+    "%lld of %lld received today" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld received today"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้ได้รับ %1$lld จาก %2$lld ดวง"
+          }
+        }
+      }
+    },
+    "%@ of %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@ to %3$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ จาก %2$@ สู่ %3$@"
+          }
+        }
+      }
+    },
+    "%lld sunlight received" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ได้รับแสงแดด %lld"
+          }
+        }
+      }
+    },
+    "%@ sunlight, fully grown" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แสงแดด %@ เติบโตเต็มที่แล้ว"
+          }
+        }
+      }
+    },
+    "%lld/%lld hearts today" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld hearts today"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้ครบ %1$lld/%2$lld หัวใจ"
+          }
+        }
+      }
+    },
+    "+%lld hearts" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld หัวใจ"
+          }
+        }
+      }
+    },
+    "+%lld sunlight" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%lld แสงแดด"
+          }
+        }
+      }
+    },
+    "+1 heart" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+1 heart"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+1 หัวใจ"
+          }
+        }
+      }
+    },
     "-%@" : {
       "shouldTranslate" : false
+    },
+    "1 heart ready to give" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "มีหัวใจพร้อมมอบ 1 ดวง"
+          }
+        }
+      }
+    },
+    "1 heart received" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ได้รับหัวใจ 1 ดวง"
+          }
+        }
+      }
+    },
+    "Growth is on its way" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การเติบโตกำลังมาถึง"
+          }
+        }
+      }
+    },
+    "Today is full" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้ได้รับครบแล้ว"
+          }
+        }
+      }
+    },
+    "Your garden grew" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สวนของคุณเติบโตขึ้น"
+          }
+        }
+      }
+    },
+    "Your garden is resting" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สวนของคุณกำลังพักผ่อน"
+          }
+        }
+      }
     },
     "“%@”" : {
       "shouldTranslate" : false
@@ -1577,6 +1761,22 @@
         }
       }
     },
+    "Log out anyway" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log out anyway"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ออกจากระบบต่อ"
+          }
+        }
+      }
+    },
     "Log out of DEEP?" : {
       "localizations" : {
         "th" : {
@@ -2473,6 +2673,22 @@
         }
       }
     },
+    "Some practice hasn't synced yet" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some practice hasn't synced yet"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การฝึกบางส่วนยังไม่ได้ซิงค์"
+          }
+        }
+      }
+    },
     "Someone I love" : {
       "localizations" : {
         "th" : {
@@ -2529,6 +2745,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "อยู่ต่อ"
+          }
+        }
+      }
+    },
+    "Stay through the meditation to receive hearts" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stay through the meditation to receive hearts"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อยู่จนจบการทำสมาธิเพื่อรับหัวใจ"
           }
         }
       }
@@ -2735,6 +2967,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "วันนี้เต็มแล้ว"
+          }
+        }
+      }
+    },
+    "Today's %lld sound hearts are in" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today's %lld sound hearts are in"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้ได้รับหัวใจจากการฟังครบ %lld ดวงแล้ว"
           }
         }
       }
@@ -2993,6 +3241,38 @@
         }
       }
     },
+    "You earned 1 heart for listening" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You earned 1 heart for listening"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณได้รับ 1 หัวใจจากการฟัง"
+          }
+        }
+      }
+    },
+    "You returned today" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You returned today"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้คุณกลับมาแล้ว"
+          }
+        }
+      }
+    },
     "You'll start fresh from the welcome flow. What you've shared stays safe." : {
       "localizations" : {
         "th" : {
@@ -3069,6 +3349,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "จังหวะของคุณ"
+          }
+        }
+      }
+    },
+    "Your rhythm continues" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your rhythm continues"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จังหวะของคุณยังคงอยู่"
           }
         }
       }

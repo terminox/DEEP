@@ -38,7 +38,7 @@ struct CompassionRewardView: View {
             .font(DeepType.micro)
             .tracking(.microTracking)
             .foregroundStyle(.driftGrey)
-          Text(receipt.heartsAwarded > 0 ? "Kindness carried forward" : "A full day")
+          Text(title)
             .font(DeepType.displayTitle)
             .foregroundStyle(.deepPlum)
             .multilineTextAlignment(.center)
@@ -85,11 +85,18 @@ struct CompassionRewardView: View {
       .accessibilityHidden(true)
 
       VStack(spacing: 7) {
-        Text(rewardLine)
-          .font(DeepType.displayTitle)
-          .foregroundStyle(receipt.heartsAwarded > 0 ? .duskRose : .deepPlum)
+        // Absent while the night's award is still on its way: nothing to
+        // promise, and the day isn't full.
+        if let rewardLine {
+          Text(rewardLine)
+            // The explanation is a sentence, not a figure — it reads at body
+            // size, like the balance line beneath it.
+            .font(receipt.explainsMissedAttendance ? DeepType.body : DeepType.displayTitle)
+            .foregroundStyle(receipt.heartsAwarded > 0 ? .duskRose : .deepPlum)
+            .multilineTextAlignment(.center)
+        }
 
-        Text(balanceLine)
+        Text(Self.balanceLine(displayedBalance))
           .font(DeepType.body)
           .foregroundStyle(.deepPlum)
           .contentTransition(.numericText(value: Double(displayedBalance)))
@@ -114,28 +121,65 @@ struct CompassionRewardView: View {
     Double(displayedToday) / Double(HeartLedger.dailyEarnCeiling)
   }
 
-  private var rewardLine: String {
-    guard receipt.heartsAwarded > 0 else { return "Today is full" }
-    let unit = receipt.heartsAwarded == 1 ? "heart" : "hearts"
-    return "+\(receipt.heartsAwarded) \(unit)"
+  private var title: String {
+    if receipt.heartsAwarded > 0 {
+      return String(localized: "Kindness carried forward", bundle: .app, locale: .app)
+    }
+    // A pause night the server didn't count — or hasn't answered for yet —
+    // is not a full day: say so honestly rather than blame the ceiling.
+    if receipt.explainsMissedAttendance || receipt.awaitsAttendanceAward {
+      return String(localized: "Thank you for pausing", bundle: .app, locale: .app)
+    }
+    return String(localized: "A full day", bundle: .app, locale: .app)
   }
 
-  private var balanceLine: String {
-    displayedBalance == 1
-      ? "1 heart ready to give"
-      : "\(displayedBalance.formatted()) hearts ready to give"
+  /// The line under the motif; nil while the night's award is still unknown.
+  private var rewardLine: String? {
+    if receipt.explainsMissedAttendance {
+      return String(localized: "Stay through the meditation to receive hearts", bundle: .app, locale: .app)
+    }
+    if receipt.awaitsAttendanceAward { return nil }
+    guard receipt.heartsAwarded > 0 else {
+      return String(localized: "Today is full", bundle: .app, locale: .app)
+    }
+    return receipt.heartsAwarded == 1
+      ? String(localized: "+1 heart", bundle: .app, locale: .app)
+      : String(localized: "+\(receipt.heartsAwarded) hearts", bundle: .app, locale: .app)
+  }
+
+  private static func balanceLine(_ balance: Int) -> String {
+    balance == 1
+      ? String(localized: "1 heart ready to give", bundle: .app, locale: .app)
+      : String(
+        localized: "\(balance.formatted(.number.locale(.app))) hearts ready to give",
+        bundle: .app,
+        locale: .app
+      )
   }
 
   private var todayLine: String {
-    "\(displayedToday.formatted()) of \(HeartLedger.dailyEarnCeiling) received today"
+    String(
+      localized: "\(displayedToday) of \(HeartLedger.dailyEarnCeiling) received today",
+      bundle: .app,
+      locale: .app
+    )
   }
 
   private var accessibilitySummary: String {
+    let balance = Self.balanceLine(receipt.heartBalanceAfter)
     if receipt.heartsAwarded > 0 {
-      let unit = receipt.heartsAwarded == 1 ? "heart" : "hearts"
-      return "\(receipt.heartsAwarded) \(unit) received. \(receipt.heartBalanceAfter) hearts ready to give."
+      let received = receipt.heartsAwarded == 1
+        ? String(localized: "1 heart received", bundle: .app, locale: .app)
+        : String(localized: "\(receipt.heartsAwarded) hearts received", bundle: .app, locale: .app)
+      return "\(received). \(balance)."
     }
-    return "Today is full. \(receipt.heartBalanceAfter) hearts ready to give."
+    if let rewardLine, receipt.explainsMissedAttendance {
+      return "\(title). \(rewardLine). \(balance)."
+    }
+    if let rewardLine {
+      return "\(rewardLine). \(balance)."
+    }
+    return "\(title). \(balance)."
   }
 
   private func playEntrance() async {
@@ -186,4 +230,22 @@ struct CompassionRewardView: View {
 
 #Preview("Compassion reward — pause night") {
   CompassionRewardView(receipt: .pauseNight, buttonTitle: "Continue", onContinue: {})
+}
+
+#Preview("Compassion reward — pause claim on its way") {
+  CompassionRewardView(
+    receipt: .pausePending,
+    buttonTitle: "Carry this calm",
+    isFinal: true,
+    onContinue: {}
+  )
+}
+
+#Preview("Compassion reward — pause missed") {
+  CompassionRewardView(
+    receipt: .pauseMissed,
+    buttonTitle: "Carry this calm",
+    isFinal: true,
+    onContinue: {}
+  )
 }

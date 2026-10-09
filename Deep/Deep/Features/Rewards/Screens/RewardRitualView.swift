@@ -11,8 +11,6 @@ struct RewardRitualView: View {
   }
 
   let receipt: RewardReceipt
-  /// How the continuity beat names the return. See `ContinuityRewardView`.
-  var continuityHeadline = "You returned today"
   /// The label on the tap that ends the ritual.
   var finalButtonTitle = "Carry this calm"
   /// Whether the ritual paints its own atmosphere. False when an owner spans a
@@ -63,7 +61,6 @@ struct RewardRitualView: View {
       case .continuity:
         ContinuityRewardView(
           receipt: receipt,
-          headline: continuityHeadline,
           buttonTitle: finalButtonTitle,
           onFinish: finish
         )
@@ -118,9 +115,11 @@ struct RewardRitualView: View {
 }
 
 #Preview("Reward sequence — pause night") {
-  RewardRitualView(
-    receipt: .pauseNight,
-    continuityHeadline: "Your rhythm continues"
-  )
-  .environment(\.continuityWitness, .unwitnessed)
+  RewardRitualView(receipt: .pauseNight)
+    .environment(\.continuityWitness, .unwitnessed)
+}
+
+#Preview("Reward sequence — pause missed") {
+  RewardRitualView(receipt: .pauseMissed)
+    .environment(\.continuityWitness, .witnessed)
 }
