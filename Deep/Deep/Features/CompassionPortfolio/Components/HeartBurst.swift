@@ -9,6 +9,10 @@ import SwiftUI
 /// by skipping the float; the haptic still fires.
 private struct HeartBurstModifier: ViewModifier {
   let trigger: Int
+  /// False when the caller feels the moment through its own haptic — see
+  /// `heartHaptic(for:)`, which keeps a listen's heart to one tap however
+  /// many surfaces bloom it.
+  let haptic: Bool
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var rise: CGFloat = 0
   @State private var scale: CGFloat = 0.6
@@ -26,7 +30,7 @@ private struct HeartBurstModifier: ViewModifier {
           .offset(y: rise)
           .allowsHitTesting(false)
       }
-      .sensoryFeedback(.impact(weight: .light), trigger: trigger)
+      .sensoryFeedback(.impact(weight: .light), trigger: trigger) { _, _ in haptic }
       .onChange(of: trigger) {
         guard trigger > 0 else { return }
         if reduceMotion {
@@ -46,9 +50,16 @@ private struct HeartBurstModifier: ViewModifier {
 }
 
 extension View {
-  /// Blooms a heart out of this view whenever `trigger` increments.
-  func heartBurst(trigger: Int) -> some View {
-    modifier(HeartBurstModifier(trigger: trigger))
+  /// Blooms a heart out of this view whenever `trigger` increments — with
+  /// its light haptic unless `haptic` is false.
+  func heartBurst(trigger: Int, haptic: Bool = true) -> some View {
+    modifier(HeartBurstModifier(trigger: trigger, haptic: haptic))
+  }
+
+  /// The burst's light haptic alone, each time `trigger` increments — for a
+  /// surface too tight to show the bloom but still worth feeling.
+  func heartBurstHaptic(trigger: Int) -> some View {
+    sensoryFeedback(.impact(weight: .light), trigger: trigger)
   }
 }
 

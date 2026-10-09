@@ -14,11 +14,26 @@ import Observation
 @Observable
 final class PracticeDefaultsStore: PracticeStore {
   private static let key = "deep.practice.journal"
+  /// How far back local activity markers are kept — the server's
+  /// `activityDays` window, so the two always cover the same ground.
+  private static let activityRetentionDays = 400
 
   /// The persisted shape — journal entries plus the gentle daily goal.
+  ///
+  /// Every field added after the first release MUST be optional (synthesized
+  /// `Codable` then decodes a missing key as nil): a blob that fails to decode
+  /// falls back to `.fresh`, which would silently wipe an existing member's
+  /// whole journal — and their rhythm with it.
   private struct PracticeState: Codable {
     var completions: [PracticeCompletion]
     var dailyGoalMinutes: Int
+    /// Days kept by tracks and counted pauses, marked on this install.
+    var activities: [PracticeActivity]?
+    /// The server's activity days as last pulled ("YYYY-MM-DD").
+    var remoteActivityDays: [String]?
+    /// When the server's log was last pulled for this account; nil until the
+    /// first pull lands — the journal isn't hydrated before then.
+    var lastPulledAt: Date?
 
     static let fresh = PracticeState(completions: [], dailyGoalMinutes: 10)
   }
@@ -30,6 +45,13 @@ final class PracticeDefaultsStore: PracticeStore {
   /// Awards settled by a practice sync land here — `AppDependencies` points
   /// this at the shared ingest closure so the ledger and garden reconcile.
   @ObservationIgnored var awardSink: (@MainActor (AwardGrant) -> Void)?
+
+  /// Bumped by `reset()`. A push or pull that started under an earlier
+  /// generation belongs to the signed-out account, so its answer is dropped
+  /// rather than merged into the next account's journal.
+  @ObservationIgnored private var generation = 0
+  /// The pull `awaitHydration` started, so waiting twice never pulls twice.
+  @ObservationIgnored private var hydrationPull: Task<Void, Never>?
 
   private let defaults: UserDefaults
   private let remote: any PracticeRemote
@@ -58,17 +80,33 @@ final class PracticeDefaultsStore: PracticeStore {
 
   var completions: [PracticeCompletion] { state.completions }
   var dailyGoalMinutes: Int { state.dailyGoalMinutes }
+  var isHydrated: Bool { state.lastPulledAt != nil }
+  var hasUnsynced: Bool { state.completions.contains { !$0.isSynced } }
 
   var minutesToday: Int {
     PracticeMath.minutesToday(in: state.completions, calendar: calendar, now: now())
   }
 
   var currentStreakDays: Int {
-    PracticeMath.currentStreakDays(in: state.completions, calendar: calendar, now: now())
+    PracticeMath.currentStreakDays(days: practiceDays, calendar: calendar, now: now())
   }
 
   var longestStreakDays: Int {
-    PracticeMath.longestStreakDays(in: state.completions, calendar: calendar)
+    PracticeMath.longestStreakDays(days: practiceDays, calendar: calendar)
+  }
+
+  func continuityTransition() -> ContinuityTransition {
+    PracticeMath.continuityTransition(days: practiceDays, calendar: calendar, now: now())
+  }
+
+  /// Every day the rhythm counts: sessions, local markers, and server days.
+  private var practiceDays: Set<Date> {
+    PracticeMath.practiceDays(
+      completions: state.completions,
+      activities: state.activities ?? [],
+      remoteDays: state.remoteActivityDays ?? [],
+      calendar: calendar
+    )
   }
 
   func recordCompletion(of session: DeepSession) {
@@ -87,12 +125,64 @@ final class PracticeDefaultsStore: PracticeStore {
     Task { await pushUnsynced() }
   }
 
+  func recordActivity(_ kind: PracticeActivity.Kind, at date: Date) {
+    var activities = state.activities ?? []
+    // One marker per kind per day is all the rhythm reads.
+    guard !activities.contains(where: {
+      $0.kind == kind && calendar.isDate($0.at, inSameDayAs: date)
+    }) else { return }
+    activities.append(PracticeActivity(kind: kind, at: date))
+    if let cutoff = calendar.date(byAdding: .day, value: -Self.activityRetentionDays, to: now()) {
+      activities.removeAll { $0.at < cutoff }
+    }
+    withAnimation(.exhale) {
+      state.activities = activities
+    }
+  }
+
   func refresh() async {
     await pushUnsynced()
     await pullRemote()
   }
 
+  func awaitHydration(timeout: Duration) async {
+    guard !isHydrated else { return }
+    if hydrationPull == nil {
+      hydrationPull = Task { [weak self] in
+        await self?.pullRemote()
+        self?.hydrationPull = nil
+      }
+    }
+    let tick = Duration.milliseconds(100)
+    var waited = Duration.zero
+    while !isHydrated, waited < timeout {
+      try? await Task.sleep(for: tick)
+      guard !Task.isCancelled else { return }
+      waited += tick
+    }
+  }
+
+  func flushPending(timeout: Duration) async -> Bool {
+    guard hasUnsynced else { return true }
+    // Unstructured so a push outliving the timeout still lands (and marks its
+    // entries synced) rather than being torn down mid-request.
+    let push = Task { await pushUnsynced() }
+    let deadline = Task {
+      try? await Task.sleep(for: timeout)
+    }
+    let finished = Task {
+      await push.value
+      deadline.cancel()
+    }
+    await deadline.value
+    finished.cancel()
+    return !hasUnsynced
+  }
+
   func reset() {
+    generation += 1
+    hydrationPull?.cancel()
+    hydrationPull = nil
     state = .fresh
   }
 
@@ -104,7 +194,10 @@ final class PracticeDefaultsStore: PracticeStore {
   private func pushUnsynced() async {
     let pending = state.completions.filter { !$0.isSynced }
     guard !pending.isEmpty else { return }
-    guard let result = try? await remote.upload(pending) else { return }
+    let generation = self.generation
+    guard let result = try? await remote.upload(pending),
+          generation == self.generation
+    else { return }
 
     let acceptedIDs = Set(result.synced)
     var completions = state.completions
@@ -121,15 +214,27 @@ final class PracticeDefaultsStore: PracticeStore {
   }
 
   /// Merges the server's log into the journal by id — entries recorded on
-  /// other installs arrive here. Errors are swallowed; the local journal is
-  /// already whole.
+  /// other installs arrive here — and takes its activity days. Errors are
+  /// swallowed; the local journal is already whole.
   private func pullRemote() async {
-    guard let fetched = try? await remote.fetchAll() else { return }
-    let known = Set(state.completions.map(\.id))
-    let unseen = fetched.filter { !known.contains($0.id) }
-    guard !unseen.isEmpty else { return }
-    state.completions = (state.completions + unseen)
-      .sorted { $0.completedAt < $1.completedAt }
+    let generation = self.generation
+    guard let log = try? await remote.fetchAll(),
+          generation == self.generation
+    else { return }
+
+    var next = state
+    let known = Set(next.completions.map(\.id))
+    let unseen = log.completions.filter { !known.contains($0.id) }
+    if !unseen.isEmpty {
+      next.completions = (next.completions + unseen)
+        .sorted { $0.completedAt < $1.completedAt }
+    }
+    // An older server omits the field — keep what we had rather than forget.
+    if let days = log.activityDays {
+      next.remoteActivityDays = days
+    }
+    next.lastPulledAt = now()
+    state = next
   }
 
   // MARK: - Persistence

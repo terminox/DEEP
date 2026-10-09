@@ -8,6 +8,7 @@ import SwiftUI
 /// with the title.
 struct NowPlayingView: View {
   @Environment(\.soundPlayer) private var player
+  @Environment(\.listenReporter) private var listenReporter
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   var onDismiss: () -> Void
 
@@ -148,12 +149,10 @@ struct NowPlayingView: View {
           .font(.system(.title2, weight: .semibold))
           .foregroundStyle(.moonCream)
           .lineLimit(1)
-        Text(player.collection?.subtitle ?? "")
-          .font(DeepType.body)
-          .foregroundStyle(.moonCream.opacity(0.72))
-          .lineLimit(1)
+        subtitle
       }
       .frame(maxWidth: .infinity, alignment: .leading)
+      .heartBurst(for: listenReporter.notice)
 
       // Lyrics — opens the (multi-language) lyrics sheet for the current track.
       utilityButton("text.quote", isOn: true) { showLyrics = true }
@@ -162,6 +161,25 @@ struct NowPlayingView: View {
         SaveTrackButton(track: track, collection: collection)
       }
     }
+  }
+
+  /// The collection's subtitle — giving way, for a few seconds, to a listen's
+  /// heart when one lands (the mini player's swap, at this screen's size).
+  private var subtitle: some View {
+    ZStack(alignment: .leading) {
+      if let notice = listenReporter.notice {
+        ListenNoticeLabel(notice: notice, font: DeepType.body, ink: .moonCream)
+          .id(notice.id)
+          .transition(.opacity)
+      } else {
+        Text(player.collection?.subtitle ?? "")
+          .font(DeepType.body)
+          .foregroundStyle(.moonCream.opacity(0.72))
+          .lineLimit(1)
+          .transition(.opacity)
+      }
+    }
+    .animation(.exhale, value: listenReporter.notice)
   }
 
   private var scrubber: some View {
@@ -301,6 +319,18 @@ struct NowPlayingView: View {
 #Preview("Now Playing — Playing") {
   NowPlayingView {}
     .environment(\.soundPlayer, MockSoundPlayer.playing)
+}
+
+#Preview("Now Playing — Heart earned") {
+  NowPlayingView {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .environment(\.listenReporter, MockListenReporter.earned)
+}
+
+#Preview("Now Playing — Today's hearts in") {
+  NowPlayingView {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .environment(\.listenReporter, MockListenReporter.dayComplete)
 }
 
 #Preview("Now Playing — Paused") {

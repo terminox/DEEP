@@ -22,6 +22,8 @@ final class AppDependencies {
   let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  /// The durable queue between finished tracks and the hearts they earn.
+  let listenReporter: any ListenReporting
   let practiceStore: any PracticeStore
   /// The reward backend shared by every award producer and both stores.
   let rewardsRemote: any RewardsRemote
@@ -54,7 +56,8 @@ final class AppDependencies {
     self.apiClient = client
     self.languageStore = LanguageStore()
     self.reminderStore = ReminderStore()
-    self.accountStore = APIAccountStore(client: client)
+    let accountStore = APIAccountStore(client: client)
+    self.accountStore = accountStore
     self.onboardingStore = OnboardingProgressDefaultsStore()
     self.onboardingRemote = APIOnboardingRemote(client: client)
     self.subscriptionStore = StoreKitSubscriptionStore()
@@ -94,16 +97,23 @@ final class AppDependencies {
       maxPixelSize: 2800
     )
 
-    // A track played through to its end reports fire-and-forget: a lost
-    // report costs at most one heart, and the rules live server-side. The
-    // lock screen's artwork comes through the same image cache the app draws.
+    // A track played through to its end is queued durably and reported with
+    // its finish time, so a dropped connection never costs the heart; the
+    // rules themselves live server-side.
+    let listenReporter = ListenReporter(
+      report: { trackId, completedAt in
+        try await rewards.reportListen(trackId: trackId, completedAt: completedAt)
+      },
+      practiceStore: practiceStore
+    )
+    listenReporter.awardSink = ingestAwards
+    self.listenReporter = listenReporter
+    // The lock screen's artwork comes through the same image cache the app
+    // draws.
     self.soundPlayer = StreamingSoundPlayer(
       loadArtwork: { url in try? await imageLoader.image(for: url) }
-    ) { track in
-      Task { @MainActor in
-        guard let grant = try? await rewards.reportListen(trackId: track.id) else { return }
-        ingestAwards(grant)
-      }
+    ) { track, finishedAt in
+      listenReporter.record(trackId: track.id, finishedAt: finishedAt)
     }
     self.videoCache = VideoCache(environmentKey: config.environment.rawValue)
 
@@ -117,7 +127,29 @@ final class AppDependencies {
       clock: clock,
       repository: pauseRepository,
       rewards: rewards,
-      awardSink: ingestAwards
+      awardSink: ingestAwards,
+      // A pause the server counted keeps the day in the member's rhythm.
+      activitySink: { date in practiceStore.recordActivity(.pause, at: date) }
     )
+
+    // A session the server ended (rejected at launch, or its refresh refused)
+    // is a log out the member didn't ask for: everything the device held for
+    // the account leaves with it, mirroring `SettingsView.completeLogOut()`,
+    // so queued listens and unsynced practice can never be credited to the
+    // next account that signs in here. An outage never reaches this.
+    let onboardingStore = self.onboardingStore
+    let continuityWitness = self.continuityWitness
+    let playlistStore = self.playlistStore
+    let reminderStore = self.reminderStore
+    accountStore.onSessionEnded = {
+      onboardingStore.reset()
+      practiceStore.reset()
+      listenReporter.reset()
+      garden.resetLocalState()
+      ledger.resetLocalState()
+      continuityWitness.resetLocalState()
+      playlistStore.resetLocalState()
+      Task { await reminderStore.disable() }
+    }
   }
 }

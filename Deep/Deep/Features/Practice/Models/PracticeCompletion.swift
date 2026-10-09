@@ -12,3 +12,19 @@ struct PracticeCompletion: Identifiable, Codable, Equatable {
   let completedAt: Date
   var isSynced: Bool
 }
+
+/// A practice that keeps the day in the member's rhythm without being a DEEP
+/// Session — a sound listened to its end, or a Global Pause the server counted.
+/// Only the day matters: these never add minutes or session awards, they just
+/// mark that the member returned. The server keeps its own record of both
+/// (`activityDays` on the practice log); these local markers carry the day
+/// until that record has been pulled.
+struct PracticeActivity: Codable, Equatable {
+  enum Kind: String, Codable {
+    case track
+    case pause
+  }
+
+  let kind: Kind
+  let at: Date
+}

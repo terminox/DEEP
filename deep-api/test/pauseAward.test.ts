@@ -1,7 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ATTENDANCE_MIN_BEATS, coveredOccurrence } from "../src/lib/awardRules.js";
-import { occurrencesOn, type PauseSlotTimes, type PauseTiming } from "../src/lib/pauseSchedule.js";
+import { coveredOccurrence, minAttendanceBeats } from "../src/lib/awardRules.js";
+import {
+  meditationWindow,
+  occurrencesOn,
+  type PauseSlotTimes,
+  type PauseTiming,
+} from "../src/lib/pauseSchedule.js";
 
 // Which of a day's occurrences a member's presence actually covers.
 //
@@ -28,12 +33,14 @@ const EVENING: PauseSlotTimes = {
 
 const PAUSE_DATE = "2026-08-27";
 const TODAY = occurrencesOn(TIMING, [MORNING, EVENING], PAUSE_DATE);
+// Both slots meditate for the same 600s, so they share one beat floor.
+const MIN_BEATS = minAttendanceBeats(meditationWindow(TODAY[0]!));
 
 // Bangkok is UTC+7. The morning meditation runs 01:10Z-01:20Z, the evening
 // 13:40Z-13:50Z.
 const at = (iso: string) => new Date(iso);
 
-function span(slotId: string, firstSeenAt: string, lastSeenAt: string, beats = ATTENDANCE_MIN_BEATS) {
+function span(slotId: string, firstSeenAt: string, lastSeenAt: string, beats = MIN_BEATS) {
   return { slotId, firstSeenAt: at(firstSeenAt), lastSeenAt: at(lastSeenAt), beats };
 }
 
@@ -89,7 +96,7 @@ test("an occurrence with no evidence at all is not covered", () => {
 
 test("too few beats never covers, however wide the span", () => {
   const covered = coveredOccurrence(TODAY, [
-    span("morning", "2026-08-27T01:10:00Z", "2026-08-27T01:20:00Z", ATTENDANCE_MIN_BEATS - 1),
+    span("morning", "2026-08-27T01:10:00Z", "2026-08-27T01:20:00Z", MIN_BEATS - 1),
   ]);
   assert.equal(covered, null);
 });

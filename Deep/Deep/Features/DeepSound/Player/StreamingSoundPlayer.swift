@@ -16,6 +16,11 @@ import UIKit
 /// Track duration comes from the backend model (reliable and instant); the
 /// scrubber's `elapsed` is driven by a periodic time observer. Configured for
 /// background audio (see `UIBackgroundModes` in Info.plist).
+///
+/// `isPlaying` is kept honest against everything that stops audio behind the
+/// UI's back: an interruption (a call, Siri, an alarm) pauses it and — when
+/// the system says so — resumes it; headphones coming out pause it; an item
+/// that fails is skipped, or the player stops with a fresh item ready.
 @MainActor
 @Observable
 final class StreamingSoundPlayer: SoundPlaying {
@@ -58,6 +63,8 @@ final class StreamingSoundPlayer: SoundPlaying {
   /// Tracks in a row that failed to load — once it covers the whole queue,
   /// nothing in it can play and the player stops rather than spinning.
   @ObservationIgnored private var consecutiveFailures = 0
+  /// Set when an interruption paused playback the listener had running, so
+  /// its end may pick the track back up. Cleared by any play / pause choice.
   @ObservationIgnored private var resumesAfterInterruption = false
   @ObservationIgnored private var observers: [NSObjectProtocol] = []
   @ObservationIgnored private var timeObserver: Any?
@@ -68,10 +75,10 @@ final class StreamingSoundPlayer: SoundPlaying {
   @ObservationIgnored private let defaults: UserDefaults
   @ObservationIgnored private let remoteControls: SoundRemoteControls
 
-  /// Fired when a track plays through to its natural end — the reward seam.
-  /// `AppDependencies` points this at the listen report; skips and manual
-  /// nexts never fire it.
-  @ObservationIgnored private let trackFinished: (@MainActor (SoundTrack) -> Void)?
+  /// Fired when a track plays through to its natural end, with the moment it
+  /// finished — the reward seam. `AppDependencies` points this at the listen
+  /// reporter; skips, manual nexts and failed items never fire it.
+  @ObservationIgnored private let trackFinished: (@MainActor (SoundTrack, Date) -> Void)?
 
   /// The collection the *current* track came from — constant while a
   /// collection plays, changing track by track through a playlist.
@@ -91,7 +98,7 @@ final class StreamingSoundPlayer: SoundPlaying {
     defaults: UserDefaults = .standard,
     activateSession: @escaping () -> Void = StreamingSoundPlayer.activatePlaybackSession,
     loadArtwork: @escaping (URL) async -> UIImage? = { _ in nil },
-    trackFinished: (@MainActor (SoundTrack) -> Void)? = nil
+    trackFinished: (@MainActor (SoundTrack, Date) -> Void)? = nil
   ) {
     self.defaults = defaults
     self.activateSession = activateSession
@@ -109,11 +116,13 @@ final class StreamingSoundPlayer: SoundPlaying {
   func play(_ entries: [SoundQueueEntry], at index: Int?, shuffled: Bool) {
     queue = queue.replacing(with: entries, startingAt: index, shuffled: shuffled, using: &generator)
     consecutiveFailures = 0
+    resumesAfterInterruption = false
     loadCurrent(autoplay: true)
   }
 
   func togglePlayPause() {
     guard hasTrack else { return }
+    resumesAfterInterruption = false
     if isPlaying {
       isPlaying = false
       player.pause()
@@ -224,7 +233,7 @@ final class StreamingSoundPlayer: SoundPlaying {
     // the player has moved on since.
     guard let item = item as? TrackItem, item.owner == ObjectIdentifier(self) else { return }
     consecutiveFailures = 0
-    trackFinished?(item.track)
+    trackFinished?(item.track, .now)
 
     // An item from before a reload: nothing to catch up.
     guard item === currentItem else { return }
@@ -331,48 +340,41 @@ final class StreamingSoundPlayer: SoundPlaying {
     observers.append(center.addObserver(
       forName: AVAudioSession.interruptionNotification, object: session, queue: .main
     ) { [weak self] note in
-      let info = note.userInfo
-      let type = (info?[AVAudioSessionInterruptionTypeKey] as? UInt)
-        .flatMap(AVAudioSession.InterruptionType.init)
-      let options = (info?[AVAudioSessionInterruptionOptionKey] as? UInt)
-        .map(AVAudioSession.InterruptionOptions.init) ?? []
-      MainActor.assumeIsolated { self?.interrupted(type, options: options) }
+      guard let event = SoundSessionEvent(interruption: note.userInfo) else { return }
+      MainActor.assumeIsolated { self?.handle(event) }
     })
     observers.append(center.addObserver(
       forName: AVAudioSession.routeChangeNotification, object: session, queue: .main
     ) { [weak self] note in
-      let reason = (note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt)
-        .flatMap(AVAudioSession.RouteChangeReason.init)
-      // Headphones out: the system has already paused the player.
-      guard reason == .oldDeviceUnavailable else { return }
-      MainActor.assumeIsolated {
-        guard let self, self.isPlaying else { return }
-        self.isPlaying = false
-        self.publishNowPlaying()
-      }
+      guard let event = SoundSessionEvent(routeChange: note.userInfo) else { return }
+      MainActor.assumeIsolated { self?.handle(event) }
     })
   }
 
-  /// A call or Siri took the audio. The system pauses the player; the UI
-  /// follows, and playback comes back if the system says it should.
-  private func interrupted(
-    _ type: AVAudioSession.InterruptionType?,
-    options: AVAudioSession.InterruptionOptions
-  ) {
-    switch type {
-    case .began:
-      resumesAfterInterruption = isPlaying
-      if isPlaying {
-        isPlaying = false
+  /// A call or Siri took the audio, or the headphones came out. The system
+  /// has already silenced the player; the UI follows, and playback comes back
+  /// after an interruption if the system says it should.
+  private func handle(_ event: SoundSessionEvent) {
+    switch event.response(isPlaying: isPlaying, resumesAfterInterruption: resumesAfterInterruption) {
+    case .pause(let remember):
+      resumesAfterInterruption = remember
+      isPlaying = false
+      player.pause()
+      publishNowPlaying()
+    case .resume:
+      resumesAfterInterruption = false
+      guard hasTrack else { return }
+      // The interruption deactivated the session; take it back.
+      try? AVAudioSession.sharedInstance().setActive(true)
+      if currentItem == nil {
+        loadCurrent(autoplay: true)
+      } else {
+        startPlayback()
         publishNowPlaying()
       }
-    case .ended:
-      defer { resumesAfterInterruption = false }
-      guard resumesAfterInterruption, options.contains(.shouldResume), hasTrack else { return }
-      try? AVAudioSession.sharedInstance().setActive(true)
-      startPlayback()
-      publishNowPlaying()
-    default:
+    case .forget:
+      resumesAfterInterruption = false
+    case .ignore:
       break
     }
   }
@@ -419,5 +421,64 @@ final class StreamingSoundPlayer: SoundPlaying {
     let session = AVAudioSession.sharedInstance()
     try? session.setCategory(.playback, mode: .default)
     try? session.setActive(true)
+  }
+}
+
+// MARK: - Audio-session decisions
+
+/// An audio-session event the player answers, parsed from the system's
+/// notification payload. Pure, so the decisions are testable without audio.
+enum SoundSessionEvent: Equatable {
+  /// Another app (a call, Siri, an alarm) took the audio.
+  case interruptionBegan
+  /// The interruption is over; `shouldResume` is the system's suggestion.
+  case interruptionEnded(shouldResume: Bool)
+  /// The route playback was on went away (headphones out, Bluetooth gone).
+  case routeLost
+
+  /// What the player does about it.
+  enum Response: Equatable {
+    /// Stop claiming to play; `remember` keeps the right to resume.
+    case pause(remember: Bool)
+    case resume
+    /// Drop any remembered resume.
+    case forget
+    case ignore
+  }
+
+  init?(interruption userInfo: [AnyHashable: Any]?) {
+    guard let raw = userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+          let type = AVAudioSession.InterruptionType(rawValue: raw)
+    else { return nil }
+    switch type {
+    case .began:
+      self = .interruptionBegan
+    case .ended:
+      let options = (userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt)
+        .map(AVAudioSession.InterruptionOptions.init(rawValue:)) ?? []
+      self = .interruptionEnded(shouldResume: options.contains(.shouldResume))
+    @unknown default:
+      return nil
+    }
+  }
+
+  init?(routeChange userInfo: [AnyHashable: Any]?) {
+    guard let raw = userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+          AVAudioSession.RouteChangeReason(rawValue: raw) == .oldDeviceUnavailable
+    else { return nil }
+    self = .routeLost
+  }
+
+  func response(isPlaying: Bool, resumesAfterInterruption: Bool) -> Response {
+    switch self {
+    case .interruptionBegan:
+      // Only playback the listener had running earns a resume.
+      return isPlaying ? .pause(remember: true) : .forget
+    case .interruptionEnded(let shouldResume):
+      return shouldResume && resumesAfterInterruption ? .resume : .forget
+    case .routeLost:
+      // Apple's rule: audio never jumps to the speaker when headphones leave.
+      return isPlaying ? .pause(remember: false) : .ignore
+    }
   }
 }

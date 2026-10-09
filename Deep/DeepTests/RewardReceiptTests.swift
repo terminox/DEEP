@@ -71,4 +71,37 @@ struct RewardReceiptTests {
     #expect(receipt.heartsAwarded == 6)
     #expect(receipt.sunlightAwarded == 6)
   }
+
+  @Test("New flags default to a known rhythm and an attended night")
+  func flagsDefault() {
+    #expect(RewardReceipt.sample.continuityKnown)
+    #expect(RewardReceipt.sample.attendanceMissed == false)
+    #expect(RewardReceipt.sample.explainsMissedAttendance == false)
+  }
+
+  @Test("An unknown rhythm hides the beat on an otherwise unwitnessed day")
+  func unknownContinuityHidesTheBeat() {
+    let receipt = RewardReceipt(
+      gardenBefore: nil,
+      gardenAfter: nil,
+      sunlightAwarded: 0,
+      heartBalanceBefore: 2,
+      heartBalanceAfter: 3,
+      heartsEarnedTodayBefore: 0,
+      heartsEarnedTodayAfter: 1,
+      heartsAwarded: 1,
+      continuityBefore: 0,
+      continuityAfter: 1,
+      continuityWitnessedToday: false,
+      continuityKnown: false
+    )
+
+    #expect(receipt.showsContinuity == false)
+  }
+
+  @Test("The missed-pause fixture explains its empty night")
+  func pauseMissedExplains() {
+    #expect(RewardReceipt.pauseMissed.explainsMissedAttendance)
+    #expect(RewardReceipt.pauseReturn.returnedToday)
+  }
 }

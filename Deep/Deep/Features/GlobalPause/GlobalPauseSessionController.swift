@@ -507,12 +507,12 @@ final class GlobalPauseSessionController: UIViewController {
       garden: gardenStore.growth,
       heartBalance: heartLedger.balance,
       heartsEarnedToday: heartLedger.heartsEarnedToday,
-      continuityDays: practiceStore.currentStreakDays,
       continuityWitnessedToday: continuityWitness.hasWitnessedToday
     )
 
     // Claim tonight's attendance award as reflection begins — always; the
-    // server judges eligibility, so an ineligible claim resolves to nothing.
+    // server judges eligibility, so an ineligible claim resolves to no grant
+    // (and the ending explains why).
     session.claimPauseAward()
 
     // A leave confirmation still up when the meditation ends would strand the
@@ -528,6 +528,9 @@ final class GlobalPauseSessionController: UIViewController {
         .environment(\.globalPauseSession, session)
         .environment(\.heartLedger, heartLedger)
         .environment(\.gardenStore, gardenStore)
+        // The ending reads the rhythm from the journal once the claim settles;
+        // without this it would silently reach the mock default.
+        .environment(\.practiceStore, practiceStore)
         .environment(\.continuityWitness, continuityWitness)
         .environment(\.accountStore, accountStore)
         .environment(\.imageLoader, imageLoader)

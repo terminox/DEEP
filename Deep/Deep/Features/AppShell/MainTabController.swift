@@ -19,6 +19,10 @@ final class MainTabController: UITabBarController {
   /// One player shared across the tabs, so a sound started in Global Pause and
   /// a sound started in Sounds drive the same bottom accessory and Now Playing.
   private let sharedPlayer: any SoundPlaying
+  /// The listen reporter behind the player chrome's heart notices — injected
+  /// into the accessory, Now Playing, and every hosted tab (sign-out flushes
+  /// it from the You tab).
+  private let listenReporter: any ListenReporting
 
   /// The shared practice journal, heart ledger, and garden, injected into
   /// every hosted tab: the DEEP Session flow presents from inside any tab's
@@ -87,6 +91,7 @@ final class MainTabController: UITabBarController {
     subscriptionStore: any SubscriptionStore,
     soundRepository: any SoundContentRepository,
     soundPlayer: any SoundPlaying,
+    listenReporter: any ListenReporting,
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
@@ -105,6 +110,7 @@ final class MainTabController: UITabBarController {
     self.subscriptionStore = subscriptionStore
     self.soundRepository = soundRepository
     self.sharedPlayer = soundPlayer
+    self.listenReporter = listenReporter
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
@@ -231,8 +237,11 @@ final class MainTabController: UITabBarController {
   /// child of this controller so it participates in the view-controller
   /// hierarchy (traits, appearance callbacks) like any other tab chrome.
   private func makeAccessoryHost() -> PlayerAccessoryHostingController {
-    let host = PlayerAccessoryHostingController(player: sharedPlayer, imageLoader: imageLoader) {
-      [weak self] in
+    let host = PlayerAccessoryHostingController(
+      player: sharedPlayer,
+      listenReporter: listenReporter,
+      imageLoader: imageLoader
+    ) { [weak self] in
       self?.presentNowPlaying()
     }
     addChild(host)
@@ -265,6 +274,7 @@ final class MainTabController: UITabBarController {
       self?.dismiss(animated: true)
     }
     .environment(\.soundPlayer, sharedPlayer)
+    .environment(\.listenReporter, listenReporter)
     .environment(\.soundContentRepository, soundRepository)
     .environment(\.playlistStore, playlistStore)
     .environment(\.imageLoader, fullScreenImageLoader)
@@ -300,6 +310,7 @@ final class MainTabController: UITabBarController {
         self?.selectedIndex = Tab.sounds.rawValue
       }
       .environment(\.soundPlayer, sharedPlayer)
+      .environment(\.listenReporter, listenReporter)
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.subscriptionStore, subscriptionStore)
       .environment(\.practiceStore, practiceStore)

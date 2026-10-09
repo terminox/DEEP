@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { requireAuth } from "../auth/middleware.js";
-import { sessionAwardDayKey } from "../lib/awardRules.js";
+import { activityDayKeys, sessionAwardDayKey } from "../lib/awardRules.js";
 import { grantAward } from "../lib/awards.js";
 import { requestTimezone, rememberTimezone, userDayKey } from "../lib/clientDay.js";
 import { rewardSnapshot } from "../lib/rewardPayload.js";
@@ -16,6 +16,9 @@ const sessionSchema = z.object({
   durationSeconds: z.number().int().positive(),
   completedAt: z.string().datetime(),
 });
+
+/** How far back GET /me/practice/sessions reports activity days. */
+const ACTIVITY_DAYS_WINDOW_MS = 400 * 24 * 60 * 60 * 1000;
 
 const postSchema = z.object({
   sessions: z.array(sessionSchema).max(200),
@@ -111,12 +114,30 @@ export async function practiceRoutes(app: FastifyInstance) {
     };
   });
 
+  // `activityDays` are the user-local days with practice that is not a DEEP
+  // Session — a finished track or an attended Global Pause, read off the
+  // award ledger — so a streak counts any practice, not just sessions.
   app.get("/me/practice/sessions", { preHandler: requireAuth }, async (req) => {
-    const sessions = await prisma.practiceSession.findMany({
-      where: { userId: req.auth!.sub },
-      orderBy: { completedAt: "desc" },
-      take: 1000,
-    });
-    return { sessions: sessions.map(serializeSession) };
+    const userId = req.auth!.sub;
+    const since = new Date(resolveNow().getTime() - ACTIVITY_DAYS_WINDOW_MS);
+    const [sessions, activityAwards] = await Promise.all([
+      prisma.practiceSession.findMany({
+        where: { userId },
+        orderBy: { completedAt: "desc" },
+        take: 1000,
+      }),
+      prisma.award.findMany({
+        where: {
+          userId,
+          kind: { in: ["TRACK_COMPLETED", "PAUSE_ATTENDED"] },
+          createdAt: { gte: since },
+        },
+        select: { kind: true, dayKey: true, timezone: true, createdAt: true },
+      }),
+    ]);
+    return {
+      sessions: sessions.map(serializeSession),
+      activityDays: activityDayKeys(activityAwards),
+    };
   });
 }
