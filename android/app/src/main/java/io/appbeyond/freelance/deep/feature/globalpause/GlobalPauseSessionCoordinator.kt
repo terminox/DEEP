@@ -83,9 +83,10 @@ import java.util.Locale
  * the session is a live, shared moment ("The world keeps breathing — you can
  * rejoin while it's live.").
  *
- * The Android half of iOS's `GlobalPauseSessionController`. Its globe arrival
- * (a minute's turn landing on the member) and the card lift are week 7's; the
- * seams are [LocalGlobeRendering] and [currentCardLift].
+ * The Android half of iOS's `GlobalPauseSessionController`. The globe — its
+ * arrival turn onto the member, its lights, sparks and touch — is the
+ * renderer's ([LocalGlobeRendering]); the card lift that brings the backdrop
+ * in, and flies it home, is [currentCardLift]'s.
  *
  * @param visibility the presentation's scope, for the card lift's target.
  * @param snapshot / receipt the books for the ending (`PauseNightRewards`).
@@ -161,7 +162,11 @@ fun GlobalPauseSessionCoordinator(
     session.state.value.myLocation?.let(scene::enqueueOwnJoin)
   }
 
-  LightStatusBarIcons(enabled = phase is GlobalPauseVisit.Phase.Meditating || phase == GlobalPauseVisit.Phase.Arriving)
+  // Light icons over the night — flipped as the lift lands, not while the
+  // card is still rising over the cream lounge (iOS `viewDidAppear`).
+  LightStatusBarIcons(
+    enabled = revealed && (phase is GlobalPauseVisit.Phase.Meditating || phase == GlobalPauseVisit.Phase.Arriving),
+  )
 
   BackHandler(enabled = phase !is GlobalPauseVisit.Phase.Rewarding && phase != GlobalPauseVisit.Phase.Finished) {
     when (phase) {
@@ -199,8 +204,10 @@ fun GlobalPauseSessionCoordinator(
       )
     }
 
+    // The close button surfaces with the overlay, once the lift has landed —
+    // never over the lounge's own back chevron while the card is rising.
     AnimatedVisibility(
-      visible = meditating != null || phase == GlobalPauseVisit.Phase.Arriving,
+      visible = revealed && (meditating != null || phase == GlobalPauseVisit.Phase.Arriving),
       enter = fadeIn(hush()),
       exit = fadeOut(tween(CHROME_FADE_MILLIS)),
       modifier = Modifier
@@ -222,7 +229,8 @@ fun GlobalPauseSessionCoordinator(
       enter = fadeIn(tween(ENDING_FADE_MILLIS, easing = hush<Float>().easing)),
       exit = fadeOut(hush()),
     ) {
-      Box(Modifier.fillMaxSize().background(Color.moonCream)) {
+      // While the cream covers the backdrop, leaving is a fade, not a flight.
+      Box(with(lift) { Modifier.cardLiftCover() }.fillMaxSize().background(Color.moonCream)) {
         AtmosphereBackground()
         AnimatedContent(
           targetState = phase,

@@ -9,6 +9,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 // MARK: - Curves (single source of truth)
 
@@ -50,6 +55,39 @@ private object DeepCurve {
    */
   const val SettleDampingRatio = 0.78f
   const val SettleStiffness = 130.5f
+
+  /*
+   * The card lift, iOS `GlobalPauseCardLiftTransition`: a calm rise
+   * (response 0.60, dampingFraction 0.90 — it should glide, not spring) and a
+   * critically damped return (0.45, 1.0) that eases exactly onto the card.
+   * Played as a tween along the spring's own step response, so the rise can
+   * wait out the chrome's pre-fade with a start delay a spring has no slot for.
+   * Each runs until the response is within 0.2% of rest.
+   */
+  val LiftEasing = SpringEasing(response = 0.60f, dampingFraction = 0.90f, seconds = 0.70f)
+  const val LiftMillis = 700
+  val LandEasing = SpringEasing(response = 0.45f, dampingFraction = 1.0f, seconds = 0.60f)
+  const val LandMillis = 600
+}
+
+/**
+ * A spring's step response from rest, as an easing: `x(t)` for a unit-mass
+ * spring of SwiftUI-style [response] and [dampingFraction], sampled over
+ * [seconds] and normalised to land exactly on 1.
+ */
+private class SpringEasing(response: Float, dampingFraction: Float, private val seconds: Float) : Easing {
+  private val omega = 2.0 * PI / response
+  private val zeta = dampingFraction.toDouble()
+  private val end = raw(seconds.toDouble())
+
+  private fun raw(t: Double): Double = if (zeta >= 1.0) {
+    1.0 - (1.0 + omega * t) * exp(-omega * t)
+  } else {
+    val damped = omega * sqrt(1.0 - zeta * zeta)
+    1.0 - exp(-zeta * omega * t) * (cos(damped * t) + zeta / sqrt(1.0 - zeta * zeta) * sin(damped * t))
+  }
+
+  override fun transform(fraction: Float): Float = (raw(fraction * seconds.toDouble()) / end).toFloat()
 }
 
 // MARK: - Motion
@@ -106,6 +144,17 @@ fun <T> settle(): SpringSpec<T> =
  */
 fun <T> breath(seconds: Float): TweenSpec<T> =
   tween(durationMillis = (seconds * 1000).toInt(), easing = DeepCurve.ExhaleEasing)
+
+/**
+ * The Global Pause card rising into the session — a glide along a calm
+ * spring. [delayMillis] holds it while the card's chrome pre-fades.
+ */
+fun <T> lift(delayMillis: Int = 0): TweenSpec<T> =
+  tween(durationMillis = DeepCurve.LiftMillis, delayMillis = delayMillis, easing = DeepCurve.LiftEasing)
+
+/** The session's backdrop flying home onto the card — critically damped. */
+fun <T> land(): TweenSpec<T> =
+  tween(durationMillis = DeepCurve.LandMillis, easing = DeepCurve.LandEasing)
 
 /** The breath's easing alone, for sampling where the animation runs. */
 val breathEasing: Easing get() = DeepCurve.ExhaleEasing

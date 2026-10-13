@@ -90,4 +90,7 @@
   <!-- The pause night's ending -->
   <string name="reward_pause_missed">Stay through the meditation to receive hearts</string>
   <string name="reward_pause_thanks">Thank you for pausing</string>
+
+  <!-- The globe (week 7) -->
+  <string name="pause_globe_a11y">Interactive globe showing where people are pausing</string>
 </resources>

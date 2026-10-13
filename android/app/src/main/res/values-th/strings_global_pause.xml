@@ -85,4 +85,7 @@
   <!-- The pause night's ending -->
   <string name="reward_pause_missed">อยู่จนจบการทำสมาธิเพื่อรับหัวใจ</string>
   <string name="reward_pause_thanks">ขอบคุณที่หยุดพัก</string>
+
+  <!-- The globe (week 7) -->
+  <string name="pause_globe_a11y">ลูกโลกแบบโต้ตอบ แสดงตำแหน่งที่ผู้คนกำลังหยุดพัก</string>
 </resources>

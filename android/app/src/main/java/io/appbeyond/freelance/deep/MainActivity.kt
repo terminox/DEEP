@@ -26,7 +26,13 @@ import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseLobbyScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseSessionCoordinator
 import io.appbeyond.freelance.deep.feature.globalpause.audio.GlobalPauseAudioPlayer
+import io.appbeyond.freelance.deep.feature.globalpause.EarthCardLift
+import io.appbeyond.freelance.deep.feature.globalpause.LocalGlobalPauseCardLift
+import io.appbeyond.freelance.deep.feature.globalpause.globe.EarthGlobeRendering
+import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeFlight
 import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeScene
+import io.appbeyond.freelance.deep.feature.globalpause.globe.LocalGlobeRendering
+import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 import io.appbeyond.freelance.deep.networking.LocalVideoCache
@@ -94,10 +100,20 @@ class MainActivity : ComponentActivity() {
     setContent {
       val language by dependencies.languageStore.selection.collectAsStateWithLifecycle()
       // One globe for the whole app, so the lounge card and the live session
-      // draw the same one — what week 7's card lift moves between them.
+      // draw the same one — what the card lift moves between them.
       val globeScene = remember { GlobeScene() }
+      // The Earth and the lift share one flight: the lift drives it, the
+      // session's globe rides it. Reduced motion keeps the crossfade.
+      val globeFlight = remember { GlobeFlight() }
+      val globeRendering = remember { EarthGlobeRendering(globeFlight) }
+      val reduceMotion = rememberReduceMotion()
+      val cardLift = remember(reduceMotion) { EarthCardLift(globeFlight, reduceMotion) }
       val pause by dependencies.globalPause.state.collectAsStateWithLifecycle()
-      CompositionLocalProvider(LocalVideoCache provides videoCache) {
+      CompositionLocalProvider(
+        LocalVideoCache provides videoCache,
+        LocalGlobeRendering provides globeRendering,
+        LocalGlobalPauseCardLift provides cardLift,
+      ) {
         AppRoot(
           accountStore = dependencies.accountStore,
           onboardingStore = dependencies.onboardingStore,
