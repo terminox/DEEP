@@ -186,4 +186,53 @@ class ReminderStoreTest {
     assertEquals(21, nextMember.reminder.hour)
     assertEquals(0, nextMember.reminder.minute)
   }
+
+  @Test
+  @DisplayName("once today's nudge has posted, a later time the same day arms tomorrow (B22)")
+  fun postedTodayArmsTomorrow() = runTest {
+    // `now` is 08:00. The nudge was set for 07:30 and has just gone out.
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.markPosted(now.toLocalDate())
+
+    store.setTime(hour = 9, minute = 0, goalMetToday = false)
+
+    val first = scheduler.queue.first()
+    assertEquals(now.toLocalDate().plusDays(1), first.toLocalDate(), "Not a second nudge at 09:00 today.")
+    assertEquals(9, first.hour)
+
+    // The foreground rebuild agrees.
+    store.reschedule(goalMetToday = false)
+    assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
+  }
+
+  @Test
+  @DisplayName("a nudge posted yesterday leaves today's later time armed")
+  fun postedYesterdayKeepsToday() = runTest {
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.markPosted(now.toLocalDate().minusDays(1))
+
+    store.setTime(hour = 9, minute = 0, goalMetToday = false)
+
+    assertEquals(now.toLocalDate(), scheduler.queue.first().toLocalDate())
+  }
+
+  @Test
+  @DisplayName("the posted day survives a relaunch, and an account exit forgets it")
+  fun postedDayPersists() = runTest {
+    val blob = InMemoryBlobStore()
+    val store = store(MockReminderScheduler(ReminderPermission.Granted), blob)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.markPosted(now.toLocalDate())
+
+    val relaunched = store(MockReminderScheduler(ReminderPermission.Granted), blob)
+    relaunched.restore()
+    assertTrue(relaunched.reminder.postedOn(now.toLocalDate()))
+
+    relaunched.reset()
+    assertFalse(relaunched.reminder.postedOn(now.toLocalDate()))
+  }
 }
