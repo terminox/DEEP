@@ -3,6 +3,7 @@ package io.appbeyond.freelance.deep.feature.practice.store
 import io.appbeyond.freelance.deep.feature.practice.model.ContinuityTransition
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeCompletion
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
+import io.appbeyond.freelance.deep.shared.persistence.BlobStoring
 import io.appbeyond.freelance.deep.shared.persistence.GatedBlobStore
 import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
 import io.appbeyond.freelance.deep.shared.persistence.StoreJson
@@ -38,6 +39,23 @@ private class FailingPracticeRemote : PracticeRemote {
  * awards, optionally parks every call on [gate], and hands back a canned
  * server log for [pull].
  */
+/** A blob whose reads park on [readGate] — a cold DataStore read in flight. */
+private class ReadGatedBlobStore(initial: String?) : BlobStoring {
+  @Volatile
+  private var value: String? = initial
+
+  val readGate = CompletableDeferred<Unit>()
+
+  override suspend fun read(): String? {
+    readGate.await()
+    return value
+  }
+
+  override suspend fun write(value: String?) {
+    this.value = value
+  }
+}
+
 private class RecordingPracticeRemote(
   var grant: AwardGrant? = null,
   var canned: List<PracticeCompletion> = emptyList(),
@@ -349,6 +367,55 @@ class PracticeJournalTest {
     assertEquals(1, remote.uploadedBatches.size, "The old account's second batch must never go up.")
     assertEquals(1, received.size)
     assertTrue(journal.completions.isEmpty())
+  }
+
+  @Test
+  @DisplayName("A signed-out member's minutes never reach the next member, live or after a relaunch")
+  fun resetLeavesNothingForTheNextMember() = runTest {
+    val blob = InMemoryBlobStore()
+    val journal = journal(MockPracticeRemote(), blob)
+    journal.record("Balancing breath", durationSeconds = 11 * 60)
+    assertEquals(11, journal.minutesToday())
+
+    journal.reset()
+    assertEquals(0, journal.minutesToday())
+
+    // A cold start (the force-stop in QA round 3) reads the disk, not memory.
+    val relaunched = journal(MockPracticeRemote(), blob)
+    relaunched.restore()
+    assertEquals(0, relaunched.minutesToday())
+    assertTrue(relaunched.completions.isEmpty())
+  }
+
+  @Test
+  @DisplayName("A restore still reading the disk when the reset lands can't bring the old journal back")
+  fun lateRestoreCannotUndoReset() = runTest {
+    val blob = ReadGatedBlobStore(
+      StoreJson.encodeToString(
+        PracticeJournal.State.serializer(),
+        PracticeJournal.State(
+          completions = listOf(
+            PracticeCompletion(UUID.randomUUID(), "Balancing breath", 11 * 60, now, isSynced = true),
+          ),
+        ),
+      ),
+    )
+    val journal = PracticeJournal(MockPracticeRemote(), blob, clock, zone)
+
+    // The launch warm-up is still reading the previous member's blob…
+    val warming = launch { journal.restore() }
+    runCurrent()
+    // …when the sign-out resets the journal.
+    val resetting = launch { journal.reset() }
+    runCurrent()
+    blob.readGate.complete(Unit)
+    warming.join()
+    resetting.join()
+
+    assertEquals(0, journal.minutesToday())
+    val relaunched = PracticeJournal(MockPracticeRemote(), blob, clock, zone)
+    relaunched.restore()
+    assertEquals(0, relaunched.minutesToday())
   }
 
   @Test

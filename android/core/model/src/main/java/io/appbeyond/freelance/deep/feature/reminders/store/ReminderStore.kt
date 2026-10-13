@@ -175,7 +175,7 @@ class ReminderStore(
         write(reminder.copy(isEnabled = false))
         return@mutate
       }
-      pushQueue(goalMetToday)
+      pushQueue(goalMetToday, keepDue = true)
     }
   }
 
@@ -196,12 +196,27 @@ class ReminderStore(
     }
   }
 
-  private suspend fun pushQueue(goalMetToday: Boolean) {
+  /**
+   * Rebuilds the system queue from now.
+   *
+   * @param keepDue keep an occurrence whose minute has passed but whose
+   *   delivery window ([ReminderSchedule.deliveryWindow]) hasn't, unless its
+   *   day already had its nudge. The alarm is inexact: at 01:56 a 01:55 nudge
+   *   may still be pending, and rebuilding strictly after now replaced it with
+   *   tomorrow's — opening DEEP inside the window cost the member today's
+   *   nudge (QA round 3, B24). Only the lifecycle rebuild ([reschedule])
+   *   keeps it; an explicit change of setting ([enable], [setTime]) never
+   *   fires a minute already behind the member.
+   */
+  private suspend fun pushQueue(goalMetToday: Boolean, keepDue: Boolean = false) {
     val now = ZonedDateTime.ofInstant(clock.instant(), zone())
-    // Today is done either way: practised, or already nudged once.
-    val skipToday = goalMetToday || reminder.postedOn(now.toLocalDate())
-    scheduler.replaceQueue(
-      ReminderSchedule.occurrences(after = now, reminder = reminder, goalMetToday = skipToday)
-    )
+    val from = if (keepDue) now.minus(ReminderSchedule.deliveryWindow) else now
+    val today = now.toLocalDate()
+    val queue = ReminderSchedule
+      .occurrences(after = from, reminder = reminder, goalMetToday = false, limit = ReminderSchedule.horizon + 2)
+      // A day is done either way: practised today, or already nudged once.
+      .filterNot { (goalMetToday && it.toLocalDate() == today) || reminder.postedOn(it.toLocalDate()) }
+      .take(ReminderSchedule.horizon)
+    scheduler.replaceQueue(queue)
   }
 }

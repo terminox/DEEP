@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.reminders.model
 
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZonedDateTime
@@ -39,6 +40,14 @@ import java.time.ZonedDateTime
 object ReminderSchedule {
   /** How many future occurrences to keep queued. */
   const val horizon = 56
+
+  /**
+   * How late the system may deliver an occurrence: Android arms the nudge as
+   * an inexact alarm in a window this long from the chosen minute (the
+   * shortest window `setWindow` honours). An occurrence inside it may not
+   * have fired yet; see `ReminderStore.reschedule`.
+   */
+  val deliveryWindow: Duration = Duration.ofMinutes(10)
 
   /**
    * The next [limit] firing times after [after].

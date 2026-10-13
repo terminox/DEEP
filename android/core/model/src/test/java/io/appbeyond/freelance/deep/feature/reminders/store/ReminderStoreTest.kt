@@ -235,4 +235,81 @@ class ReminderStoreTest {
     relaunched.reset()
     assertFalse(relaunched.reminder.postedOn(now.toLocalDate()))
   }
+
+  // MARK: - B24: the delivery window
+
+  @Test
+  @DisplayName("opening the app inside the delivery window keeps today's undelivered nudge (B24)")
+  fun rebuildInsideWindowKeepsToday() = runTest {
+    // `now` is 08:00; the 07:55 nudge is armed and may still be pending.
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.setTime(hour = 7, minute = 55, goalMetToday = false)
+
+    store.reschedule(goalMetToday = false)
+
+    val first = scheduler.queue.first()
+    assertEquals(now.toLocalDate(), first.toLocalDate(), "Not pushed to tomorrow by a foreground.")
+    assertEquals(7, first.hour)
+    assertEquals(55, first.minute)
+    assertEquals(now.toLocalDate().plusDays(1), scheduler.queue[1].toLocalDate())
+    assertEquals(ReminderSchedule.horizon, scheduler.queue.size)
+  }
+
+  @Test
+  @DisplayName("past the delivery window, a rebuild moves on to tomorrow")
+  fun rebuildPastWindowMovesOn() = runTest {
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.setTime(hour = 7, minute = 45, goalMetToday = false)
+
+    store.reschedule(goalMetToday = false)
+
+    assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
+  }
+
+  @Test
+  @DisplayName("inside the window, a nudge already posted or a practised day is not kept")
+  fun rebuildInsideWindowHonoursTheDay() = runTest {
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.setTime(hour = 7, minute = 55, goalMetToday = false)
+
+    store.reschedule(goalMetToday = true)
+    assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
+
+    store.markPosted(now.toLocalDate())
+    store.reschedule(goalMetToday = false)
+    assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
+  }
+
+  @Test
+  @DisplayName("choosing a minute just behind now arms tomorrow, never an instant nudge")
+  fun setTimeBehindNowArmsTomorrow() = runTest {
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(goalMetToday = false, prompt = prompt)
+
+    store.setTime(hour = 7, minute = 58, goalMetToday = false)
+
+    assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
+  }
+
+  @Test
+  @DisplayName("a nudge delivered past midnight is booked to its own evening, and that evening alone")
+  fun lateNudgeBooksItsOwnDay() = runTest {
+    // An evening nudge whose delivery slipped past midnight: the receiver books
+    // yesterday. Tonight's occurrence must still be armed.
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.markPosted(now.toLocalDate().minusDays(1))
+
+    store.reschedule(goalMetToday = false)
+
+    assertEquals(now.toLocalDate(), scheduler.queue.first().toLocalDate())
+  }
 }
