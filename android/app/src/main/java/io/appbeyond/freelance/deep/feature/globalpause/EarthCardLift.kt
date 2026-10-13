@@ -93,7 +93,9 @@ class EarthCardLift(
     }
     DisposableEffect(Unit) { onDispose { flight.reset() } }
     val tracked = onGloballyPositioned { flight.backdropBounds = it.unclippedRectInRoot() }
-    if (reduceMotion) return tracked
+    // The cut, too, waits for the session's first frame: the lounge holds
+    // until then, rather than an empty night with no globe (QA round 1, B17).
+    if (reduceMotion) return tracked.graphicsLayer { alpha = if (flight.sessionReady) 1f else PREPARING_ALPHA }
 
     // Decided once, as the presentation begins: no card on screen to lift
     // from means a plain fade in place.

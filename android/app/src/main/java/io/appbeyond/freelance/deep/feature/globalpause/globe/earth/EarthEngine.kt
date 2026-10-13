@@ -153,7 +153,15 @@ internal class EarthEngine private constructor(private val appContext: Context) 
     }
   }
 
+  /**
+   * A view has a texture to draw into, sized to the pixels rendered. Arrives
+   * once per texture: a window stop (Home, lock) keeps the texture and its
+   * EGL surface, so nothing is re-sent on return — which is why the view
+   * keeps the texture's size equal to its own (see [EarthGlobeView]).
+   */
   fun surfaceAvailable(target: EarthTarget, texture: SurfaceTexture, width: Int, height: Int) = post {
+    // Never draw a new texture through a surface made for an old one.
+    if (target.texture != null && target.texture !== texture) dropSurface(target)
     target.texture = texture
     target.width = width
     target.height = height
@@ -168,8 +176,9 @@ internal class EarthEngine private constructor(private val appContext: Context) 
   }
 
   /**
-   * The view's surface is going (scrolled away, backgrounded, navigated off).
-   * The view returns false from `onSurfaceTextureDestroyed`, so the texture
+   * The view's surface is going (scrolled away, navigated off, detached —
+   * not backgrounded: a window stop drops only the view's layer). The view
+   * returns false from `onSurfaceTextureDestroyed`, so the texture
    * is released HERE — after its EGL surface is gone — and the UI thread
    * never blocks on the render thread.
    */

@@ -74,6 +74,7 @@ import io.appbeyond.freelance.deep.theme.moonCream
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import java.util.Locale
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -166,7 +167,13 @@ private fun EarthGlobe(engine: EarthEngine, flight: GlobeFlight, scene: GlobeSce
       engine.beginSession()
     }
     DisposableEffect(engine) { onDispose { engine.endSession() } }
-    LaunchedEffect(target) { target.firstFrame.collect { flight.sessionReady = it } }
+    // Latched: the lift waits for this surface's first frame once. A surface
+    // rebuilt mid-sit (a lost context) must not drop the backdrop back to
+    // invisible and flash the lounge through the session.
+    LaunchedEffect(target) {
+      target.firstFrame.first { it }
+      flight.sessionReady = true
+    }
   }
 
   val description = stringResource(R.string.pause_globe_a11y)

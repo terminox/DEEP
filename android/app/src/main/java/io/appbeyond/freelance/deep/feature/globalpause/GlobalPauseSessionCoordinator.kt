@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -224,8 +225,16 @@ fun GlobalPauseSessionCoordinator(
 
     // The ending: one opaque atmosphere for the reflection and the ritual,
     // faded in slowly over the meditation — longer than `hush`, as iOS's 1.5s.
+    // Finishing from it, the cream stays up on its last screen while the whole
+    // presentation fades: fading it as well would uncover the night sky and
+    // the session's last globe frame beneath, ghosting them over the lounge
+    // (QA round 1, B6) — and would swap the ritual back to the reflection.
+    val ending = phase.takeIf { it == GlobalPauseVisit.Phase.Reflecting || it is GlobalPauseVisit.Phase.Rewarding }
+    val heldEnding = remember { mutableStateOf<GlobalPauseVisit.Phase?>(null) }
+    SideEffect { if (ending != null) heldEnding.value = ending }
+    val shownEnding = ending ?: heldEnding.value.takeIf { phase == GlobalPauseVisit.Phase.Finished }
     AnimatedVisibility(
-      visible = phase == GlobalPauseVisit.Phase.Reflecting || phase is GlobalPauseVisit.Phase.Rewarding,
+      visible = shownEnding != null,
       enter = fadeIn(tween(ENDING_FADE_MILLIS, easing = hush<Float>().easing)),
       exit = fadeOut(hush()),
     ) {
@@ -233,7 +242,7 @@ fun GlobalPauseSessionCoordinator(
       Box(with(lift) { Modifier.cardLiftCover() }.fillMaxSize().background(Color.moonCream)) {
         AtmosphereBackground()
         AnimatedContent(
-          targetState = phase,
+          targetState = shownEnding ?: GlobalPauseVisit.Phase.Reflecting,
           contentKey = { it is GlobalPauseVisit.Phase.Rewarding },
           transitionSpec = { fadeIn(hush()) togetherWith fadeOut(hush()) },
           label = "pause-ending",
