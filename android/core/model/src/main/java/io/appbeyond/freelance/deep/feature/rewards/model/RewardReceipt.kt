@@ -3,6 +3,7 @@ package io.appbeyond.freelance.deep.feature.rewards.model
 import io.appbeyond.freelance.deep.feature.globalpause.model.GlobalPauseRewardSnapshot
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenGrowth
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
+import io.appbeyond.freelance.deep.feature.practice.model.ContinuityTransition
 
 /**
  * The reward state one finished practice hands to its ending ritual — a DEEP
@@ -31,12 +32,39 @@ data class RewardReceipt(
   /** Whether an earlier practice today already witnessed the rhythm — the one
    * day-stamp `ContinuityWitness` keeps for every feature. */
   val continuityWitnessedToday: Boolean,
+  /** Whether the continuity figures can be trusted. False while a Global Pause
+   * claim is unanswered: whether tonight keeps the day isn't known yet, so the
+   * beat rests rather than show a rhythm that may be about to move. */
+  val continuityKnown: Boolean = true,
+  /** A Global Pause night earned no attendance hearts because the member
+   * wasn't present through the meditation — the ending says so rather than
+   * calling the day full. */
+  val attendanceMissed: Boolean = false,
+  /** A Global Pause night's claim had no answer yet when the ending was
+   * composed. Whether hearts are coming is unknown, so the ending neither
+   * promises them nor calls the day full. */
+  val attendancePending: Boolean = false,
 ) {
   /** The rhythm is noticed once a day, and only when there is a rhythm to
    * notice: a member with no returning days behind them meets the beat on the
    * day it first means something. */
   val showsContinuity: Boolean
-    get() = !continuityWitnessedToday && continuityAfter > 0
+    get() = continuityKnown && !continuityWitnessedToday && continuityAfter > 0
+
+  /** Whether the ending should explain the missing hearts: nothing came, and
+   * the reason is the night's attendance rather than the day's ceiling. */
+  val explainsMissedAttendance: Boolean
+    get() = attendanceMissed && heartsAwarded == 0
+
+  /** Whether the night's award is still on its way with nothing else in hand:
+   * the reward lines rest (no "+N", no "Today is full"). */
+  val awaitsAttendanceAward: Boolean
+    get() = attendancePending && rewardsAreFull
+
+  /** Whether today's practice is what extended the rhythm — the beat names it
+   * a return ("You returned today") rather than a continuation. */
+  val returnedToday: Boolean
+    get() = continuityAfter > continuityBefore
 
   val gardenIsCatchingUp: Boolean
     get() = gardenAfter == null
@@ -51,7 +79,9 @@ data class RewardReceipt(
      * the garden, so the "after" side is simply what those stores now hold —
      * the grants are only read for what this night actually gave.
      *
-     * Continuity is witnessed, not moved: a pause night adds no practice day.
+     * The rhythm comes from the journal as the ending composes: a counted pause
+     * that is the day's first practice moves it on by one, anything else leaves
+     * it where it stands. While the claim is still unanswered the beat rests.
      */
     fun pauseNight(
       before: GlobalPauseRewardSnapshot,
@@ -59,6 +89,10 @@ data class RewardReceipt(
       gardenAfter: GardenGrowth?,
       heartBalanceAfter: Int,
       heartsEarnedTodayAfter: Int,
+      continuity: ContinuityTransition,
+      continuityKnown: Boolean = true,
+      attendanceMissed: Boolean = false,
+      attendancePending: Boolean = false,
     ): RewardReceipt = RewardReceipt(
       gardenBefore = before.garden,
       gardenAfter = gardenAfter,
@@ -68,9 +102,12 @@ data class RewardReceipt(
       heartsEarnedTodayBefore = before.heartsEarnedToday,
       heartsEarnedTodayAfter = heartsEarnedTodayAfter,
       heartsAwarded = awards.sumOf { it.hearts },
-      continuityBefore = before.continuityDays,
-      continuityAfter = before.continuityDays,
+      continuityBefore = continuity.before,
+      continuityAfter = continuity.after,
       continuityWitnessedToday = before.continuityWitnessedToday,
+      continuityKnown = continuityKnown && !attendancePending,
+      attendanceMissed = attendanceMissed,
+      attendancePending = attendancePending,
     )
 
     // Fixtures — previews and tests only; nothing at runtime reads these.
@@ -176,6 +213,16 @@ data class RewardReceipt(
       continuityBefore = 7,
       continuityAfter = 7,
       continuityWitnessedToday = true,
+    )
+
+    /** A night the server judged missed — joined late or left early. */
+    val pauseMissed = pauseRested.copy(continuityWitnessedToday = false, attendanceMissed = true)
+
+    /** A night whose claim was still unanswered as the ending composed. */
+    val pausePending = pauseRested.copy(
+      continuityWitnessedToday = false,
+      continuityKnown = false,
+      attendancePending = true,
     )
   }
 }

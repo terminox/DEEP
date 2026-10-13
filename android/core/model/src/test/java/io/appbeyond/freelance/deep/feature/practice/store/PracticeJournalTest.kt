@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.practice.store
 
+import io.appbeyond.freelance.deep.feature.practice.model.ContinuityTransition
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeCompletion
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.shared.persistence.GatedBlobStore
@@ -13,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -389,5 +391,40 @@ class PracticeJournalTest {
 
     assertEquals(listOf(grant), received)
     assertTrue(journal.completions.single().isSynced)
+  }
+
+  // MARK: - Global Pause days
+
+  @Test
+  @DisplayName("An attended pause keeps the day: the rhythm moves on, with no minutes")
+  fun pauseDayKeepsTheRhythm() = runTest {
+    val yesterday = now.minus(Duration.ofDays(1))
+    val journal = journal(FailingPracticeRemote(), seeded(listOf(pending(at = yesterday, synced = true))))
+    journal.restore()
+    assertEquals(ContinuityTransition(1, 1), journal.continuityTransition())
+
+    journal.recordPauseDay(now)
+    assertEquals(ContinuityTransition(1, 2), journal.continuityTransition())
+    assertEquals(2, journal.currentStreakDays())
+    // A pause night is not a session: no minutes, no completion.
+    assertEquals(0, journal.minutesToday())
+    assertEquals(0, journal.completionsToday())
+
+    // One marker a day, and it survives a relaunch.
+    journal.recordPauseDay(now)
+    val blob = InMemoryBlobStore()
+    val again = journal(FailingPracticeRemote(), blob)
+    again.recordPauseDay(now)
+    assertEquals(listOf("2026-07-23"), again.state.value.pauseDays)
+    assertEquals(listOf("2026-07-23"), journal(FailingPracticeRemote(), blob).also { it.restore() }.state.value.pauseDays)
+  }
+
+  @Test
+  @DisplayName("A reset forgets the pause days with everything else")
+  fun resetForgetsPauseDays() = runTest {
+    val journal = journal(FailingPracticeRemote())
+    journal.recordPauseDay(now)
+    journal.reset()
+    assertEquals(0, journal.currentStreakDays())
   }
 }

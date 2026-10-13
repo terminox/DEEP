@@ -1,6 +1,7 @@
 package io.appbeyond.freelance.deep.feature.practice.store
 
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenState
+import io.appbeyond.freelance.deep.feature.practice.model.ContinuityTransition
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeCompletion
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeMath
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
@@ -18,6 +19,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.util.UUID
 
@@ -62,6 +65,12 @@ class PracticeJournal(
     val completions: List<PracticeCompletion> = emptyList(),
     /** The gentle daily goal, in minutes. */
     val dailyGoalMinutes: Int = DEFAULT_DAILY_GOAL_MINUTES,
+    /**
+     * Local days ("YYYY-MM-DD", always ISO — never a localized calendar) an
+     * attended Global Pause kept in the rhythm. A pause night is not a
+     * session, so it adds no minutes and no completion; it only keeps the day.
+     */
+    val pauseDays: List<String> = emptyList(),
   )
 
   private val _state = MutableStateFlow(State())
@@ -102,9 +111,16 @@ class PracticeJournal(
 
   fun completionsToday(): Int = PracticeMath.completionsToday(completions, zone, clock)
 
-  fun currentStreakDays(): Int = PracticeMath.currentStreakDays(completions, zone, clock)
+  fun currentStreakDays(): Int = PracticeMath.currentStreakDays(completions, zone, clock, pauseDays())
 
-  fun longestStreakDays(): Int = PracticeMath.longestStreakDays(completions, zone)
+  fun longestStreakDays(): Int = PracticeMath.longestStreakDays(completions, zone, pauseDays())
+
+  /** The rhythm across today's boundary — what a pause night's ending reads. */
+  fun continuityTransition(): ContinuityTransition =
+    PracticeMath.continuityTransition(completions, zone, clock, pauseDays())
+
+  private fun pauseDays(): Set<LocalDate> =
+    _state.value.pauseDays.mapNotNullTo(HashSet()) { runCatching { LocalDate.parse(it) }.getOrNull() }
 
   /** The garden's practice card, projected from the journal as it stands. */
   fun gardenState(): GardenState = GardenState(
@@ -156,6 +172,32 @@ class PracticeJournal(
       persist()
     }
     return completion
+  }
+
+  /**
+   * Keeps [at]'s local day in the rhythm — the server counted tonight's Global
+   * Pause attendance. One marker a day is all the rhythm reads; markers older
+   * than [PAUSE_DAY_RETENTION_DAYS] are dropped as a new one lands.
+   *
+   * Ported from iOS's `recordActivity(.pause, at:)`. Local only: the server
+   * keeps its own record of the attendance.
+   */
+  suspend fun recordPauseDay(at: Instant) {
+    restore()
+    val day = LocalDate.ofInstant(at, zone)
+    val changed = synchronized(lock) {
+      val state = _state.value
+      val key = day.toString()
+      if (key in state.pauseDays) return@synchronized false
+      val cutoff = LocalDate.ofInstant(clock.instant(), zone).minusDays(PAUSE_DAY_RETENTION_DAYS)
+      val kept = state.pauseDays.filter { existing ->
+        runCatching { !LocalDate.parse(existing).isBefore(cutoff) }.getOrDefault(false)
+      }
+      touched = true
+      _state.value = state.copy(pauseDays = kept + key)
+      true
+    }
+    if (changed) persist()
   }
 
   /**
@@ -281,5 +323,9 @@ class PracticeJournal(
 
     /** deep-api's per-request ceiling on `POST /me/practice/sessions`. */
     const val MAX_PUSH_BATCH = 200
+
+    /** How long an attended pause's day marker is kept — well past any rhythm
+     * the garden shows. */
+    const val PAUSE_DAY_RETENTION_DAYS = 400L
   }
 }

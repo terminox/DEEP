@@ -29,6 +29,21 @@ interface HttpStatusCarrying {
 }
 
 /**
+ * A failure the network caused — offline, a timeout, a dead host — rather than
+ * an answer from the server. The one kind worth retrying on a backoff: the
+ * Global Pause claim retries these and nothing else, because any answer at all
+ * (granted, ineligible, an HTTP error, an expired session) is final.
+ *
+ * The transport's own error type in `:app` implements it; a plain
+ * [java.io.IOException] counts too.
+ */
+interface TransportFailure
+
+/** Whether [error] is the network's fault rather than the server's answer. */
+fun isTransportFailure(error: Throwable): Boolean =
+  error is TransportFailure || error is java.io.IOException
+
+/**
  * The session is over: the server refused the refresh token itself, there was
  * nothing stored to refresh with, or the session the refresh started from was
  * replaced or signed out while it was in flight.
