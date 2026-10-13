@@ -29,7 +29,8 @@ import java.util.Locale
  * - **API 33+:** [LocaleManager.setApplicationLocales]. The system persists
  *   it, recreates the activity, and lists DEEP's languages in its own
  *   per-app language settings (`generateLocaleConfig`). A choice made there
- *   is read back at launch and adopted here, so the two never disagree.
+ *   is read back at launch ([load]) and whenever the activity is created or
+ *   the reminder posts ([adoptSystemChoice]), so the two never disagree.
  * - **API 26–32:** `MainActivity` wraps its base context in [localized] and
  *   recreates itself when [selection] changes; [localized] also serves the
  *   reminder receiver, which posts outside any activity.
@@ -78,9 +79,29 @@ class LanguageStore(
     _selection.value = language
   }
 
-  /** [base] re-configured to read in the current selection — for contexts the
-   * per-app locale doesn't reach below API 33 (the activity, the receiver). */
-  fun localized(base: Context): Context = localized(base, _selection.value)
+  /**
+   * Adopts a language picked in the system's per-app language settings while
+   * DEEP's process was alive. That change recreates the activity (so the UI
+   * reads in it at once) but never re-runs [load], so the selection — which
+   * drives the reminder's copy and `Accept-Language` — kept the old one (QA
+   * round 1, B7). `MainActivity` calls this as it is created; [localized]
+   * calls it before the reminder posts. A no-op below API 33, where DEEP's
+   * own picker is the only way in.
+   */
+  fun adoptSystemChoice() {
+    val system = systemPerAppLanguage() ?: return
+    if (system == _selection.value) return
+    persist(system)
+    _selection.value = system
+  }
+
+  /** [base] re-configured to read in the language DEEP reads in now — for
+   * contexts the per-app locale doesn't reach below API 33 (the activity), and
+   * the reminder receiver, which posts outside any activity. */
+  fun localized(base: Context): Context {
+    adoptSystemChoice()
+    return localized(base, _selection.value)
+  }
 
   private fun persist(language: AppLanguage) {
     scope.launch { runCatching { blob.write(language.rawValue) } }

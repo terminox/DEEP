@@ -32,6 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
@@ -223,8 +225,11 @@ fun MainShellCoordinator(
 
   // One stack per tab, so switching away and back returns you where you were —
   // and so system back unwinds the tab you are actually looking at.
-  var nextEntryId by remember { mutableLongStateOf(DeepTab.entries.size.toLong()) }
-  val stacks: Map<DeepTab, SnapshotStateList<StackEntry>> = remember {
+  // Saveable, so an activity recreate — the one a language switch causes,
+  // above all — returns the member to the screen they were on (QA round 1,
+  // B9: Settings → Language used to drop back to the You tab's root).
+  var nextEntryId by rememberSaveable { mutableLongStateOf(DeepTab.entries.size.toLong()) }
+  val stacks: Map<DeepTab, SnapshotStateList<StackEntry>> = rememberSaveable(saver = TabStacksSaver) {
     DeepTab.entries.associateWith { tab ->
       listOf(StackEntry(tab.ordinal.toLong(), DeepRoute.Root)).toMutableStateList()
     }
@@ -528,6 +533,57 @@ private fun MiniPlayerDock(
  * two screens.
  */
 private data class StackEntry(val id: Long, val route: DeepRoute)
+
+/**
+ * The tab stacks across an activity recreate. Each tab saves as one string of
+ * `id route` lines. The routes that carry only an id round-trip; a collection
+ * or a collection list carries its whole payload, so a stack is cut just below
+ * the first of those — the member lands on the screen that pushed it.
+ */
+private val TabStacksSaver: Saver<Map<DeepTab, SnapshotStateList<StackEntry>>, Any> = listSaver(
+  save = { stacks ->
+    DeepTab.entries.map { tab ->
+      stacks.getValue(tab)
+        .map { entry -> entry.route.savedKey()?.let { "${entry.id} $it" } }
+        .takeWhile { it != null }
+        .joinToString("\n")
+    }
+  },
+  restore = { saved ->
+    DeepTab.entries.mapIndexed { index, tab ->
+      val entries = saved.getOrNull(index).orEmpty()
+        .lineSequence()
+        .mapNotNull { line ->
+          val id = line.substringBefore(' ').toLongOrNull() ?: return@mapNotNull null
+          routeOf(line.substringAfter(' '))?.let { StackEntry(id, it) }
+        }
+        .toList()
+        .ifEmpty { listOf(StackEntry(tab.ordinal.toLong(), DeepRoute.Root)) }
+      tab to entries.toMutableStateList()
+    }.toMap()
+  },
+)
+
+private const val CAUSE_PREFIX = "cause:"
+
+/** This route as a saved key, or null when it can't be rebuilt from one. */
+private fun DeepRoute.savedKey(): String? = when (this) {
+  DeepRoute.Root -> "root"
+  DeepRoute.Settings -> "settings"
+  DeepRoute.Language -> "language"
+  DeepRoute.DailyReminder -> "reminder"
+  is DeepRoute.CompassionCause -> CAUSE_PREFIX + causeId
+  is DeepRoute.Collection, is DeepRoute.CollectionList -> null
+}
+
+private fun routeOf(key: String): DeepRoute? = when {
+  key == "root" -> DeepRoute.Root
+  key == "settings" -> DeepRoute.Settings
+  key == "language" -> DeepRoute.Language
+  key == "reminder" -> DeepRoute.DailyReminder
+  key.startsWith(CAUSE_PREFIX) -> DeepRoute.CompassionCause(key.removePrefix(CAUSE_PREFIX))
+  else -> null
+}
 
 private const val PLAYER_KEY = "now-playing"
 private const val ARTWORK_KEY = "now-playing-artwork"
