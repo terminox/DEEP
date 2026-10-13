@@ -157,6 +157,10 @@ fun GardenRewardStep(
     when {
       receipt.gardenIsCatchingUp -> R.string.reward_garden_title_catching_up
       receipt.sunlightAwarded > 0 -> R.string.reward_garden_title_grew
+      // A pause night the server didn't count — or hasn't answered for yet —
+      // thanks the member for the pause they did take rather than call the
+      // garden resting.
+      receipt.explainsMissedAttendance || receipt.awaitsAttendanceAward -> R.string.reward_pause_thanks
       else -> R.string.reward_garden_title_resting
     },
   )
@@ -241,16 +245,16 @@ private fun GrowthCopy(receipt: RewardReceipt, growth: GardenGrowth, sunlight: I
     Crossfade(targetState = growth.stage.name, animationSpec = bloom(), label = "reward-stage-name") { name ->
       Text(name, style = DeepType.displayTitle, color = Color.deepPlum, textAlign = TextAlign.Center)
     }
-    Text(
-      if (awarded) {
-        stringResource(R.string.reward_garden_sunlight_awarded, receipt.sunlightAwarded)
-      } else {
-        stringResource(R.string.reward_today_full)
-      },
-      style = REWARD_LINE_STYLE,
-      color = if (awarded) Color.sunbeam else Color.driftGrey,
-      textAlign = TextAlign.Center,
-    )
+    // Absent while the night's award is still on its way: nothing to promise,
+    // and the day isn't full.
+    gardenRewardLine(receipt)?.let { line ->
+      Text(
+        line,
+        style = REWARD_LINE_STYLE,
+        color = if (awarded) Color.sunbeam else Color.driftGrey,
+        textAlign = TextAlign.Center,
+      )
+    }
     Text(progressLine, style = PROGRESS_STYLE, color = Color.driftGrey, textAlign = TextAlign.Center)
   }
 }
@@ -299,14 +303,25 @@ private fun CatchingUp() {
   }
 }
 
+/** The line under the stage name; null while a pause night's award is unknown. */
+@Composable
+private fun gardenRewardLine(receipt: RewardReceipt): String? = when {
+  receipt.sunlightAwarded > 0 -> stringResource(R.string.reward_garden_sunlight_awarded, receipt.sunlightAwarded)
+  receipt.explainsMissedAttendance -> stringResource(R.string.reward_pause_missed)
+  receipt.awaitsAttendanceAward -> null
+  else -> stringResource(R.string.reward_today_full)
+}
+
 /** The card in one sentence — always the settled truth, never a mid-count figure. */
 @Composable
 private fun gardenSummary(receipt: RewardReceipt): String {
   val growth = receipt.gardenAfter ?: return stringResource(R.string.reward_garden_summary_catching_up)
-  return if (receipt.sunlightAwarded > 0) {
-    stringResource(R.string.reward_garden_summary_awarded, growth.stage.name, receipt.sunlightAwarded)
-  } else {
-    stringResource(R.string.reward_garden_summary_full, growth.stage.name)
+  return when {
+    receipt.sunlightAwarded > 0 ->
+      stringResource(R.string.reward_garden_summary_awarded, growth.stage.name, receipt.sunlightAwarded)
+    receipt.explainsMissedAttendance || receipt.awaitsAttendanceAward ->
+      listOfNotNull(growth.stage.name, gardenRewardLine(receipt)).joinToString(". ")
+    else -> stringResource(R.string.reward_garden_summary_full, growth.stage.name)
   }
 }
 
@@ -356,4 +371,10 @@ private fun GardenRewardLargeTypePreview() {
 @Composable
 private fun GardenRewardPauseNightPreview() {
   GardenStepPreview(RewardReceipt.pauseNight)
+}
+
+@Preview(showBackground = true, name = "Garden — pause missed")
+@Composable
+private fun GardenRewardPauseMissedPreview() {
+  GardenStepPreview(RewardReceipt.pauseMissed)
 }

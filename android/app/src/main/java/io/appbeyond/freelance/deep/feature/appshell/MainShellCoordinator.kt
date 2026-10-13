@@ -108,6 +108,9 @@ sealed interface DeepRoute {
    */
   data class CompassionCause(val causeId: String) : DeepRoute
 
+  /** Fuku's Lounge, pushed from Home's lounge card — iOS's `openFukuLounge`. */
+  data object FukuLounge : DeepRoute
+
   /** A collection's tracks — pushed from Sounds' shelves or a Home list. */
   data class Collection(val collection: SoundCollection) : DeepRoute
 
@@ -127,6 +130,7 @@ sealed interface DeepRoute {
 data class HomeActions(
   val openDeepSession: (DeepSession) -> Unit,
   val openCollectionList: (title: String, collections: List<SoundCollection>) -> Unit,
+  val openFukuLounge: () -> Unit = {},
 )
 
 /**
@@ -197,6 +201,11 @@ data class PreferenceActions(
  *   [HomeActions] — the Garden's daily practice card opens a DEEP Session.
  * @param compassionContent the Compassion root, handed the (parked) way into a
  *   cause's detail; [compassionCauseContent] draws that detail.
+ * @param fukuLoungeContent Fuku's Lounge, pushed on Home's stack, handed the
+ *   way into the live session ([onOpenGlobalPause]) and back.
+ * @param miniPlayerSuppressed true while a practice covers the shell — a DEEP
+ *   Session or the live Global Pause (settled in week 2): the pill leaves
+ *   rather than wait under the cover.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -217,6 +226,9 @@ fun MainShellCoordinator(
   gardenContent: @Composable (actions: HomeActions) -> Unit = {},
   compassionContent: @Composable (openCause: (String) -> Unit) -> Unit = {},
   compassionCauseContent: @Composable (causeId: String, onBack: () -> Unit) -> Unit = { _, _ -> },
+  onOpenGlobalPause: () -> Unit = {},
+  fukuLoungeContent: @Composable (onJoin: () -> Unit, onBack: () -> Unit) -> Unit = { _, _ -> },
+  miniPlayerSuppressed: Boolean = false,
 ) {
   val reminderState by reminderStore.state.collectAsStateWithLifecycle()
   var selected by rememberSaveable { mutableStateOf(DeepTab.Home) }
@@ -262,6 +274,7 @@ fun MainShellCoordinator(
       openCollectionList = { title, collections ->
         push(DeepTab.Home, DeepRoute.CollectionList(title, collections))
       },
+      openFukuLounge = { push(DeepTab.Home, DeepRoute.FukuLounge) },
     )
   }
 
@@ -269,6 +282,8 @@ fun MainShellCoordinator(
   // arrives or leaves — not on every play/pause or volume change.
   val playback = soundPlayer.playback.collectAsStateWithLifecycle()
   val hasTrack by remember { derivedStateOf { playback.value.hasTrack } }
+  val suppressed by rememberUpdatedState(miniPlayerSuppressed)
+  val showsPill by remember { derivedStateOf { hasTrack && !suppressed } }
 
   // `false` is the pill, `true` is Now Playing.
   val expansion = remember { SeekableTransitionState(false) }
@@ -331,7 +346,7 @@ fun MainShellCoordinator(
   }
 
   val flingThreshold = with(LocalDensity.current) { FLING_VELOCITY.toPx() }
-  val clearance: Dp = if (hasTrack) MiniPlayerPillHeight + PILL_GAP else 0.dp
+  val clearance: Dp = if (showsPill) MiniPlayerPillHeight + PILL_GAP else 0.dp
 
   SharedTransitionLayout(modifier.fillMaxSize()) {
     Box(Modifier.fillMaxSize()) {
@@ -399,6 +414,8 @@ fun MainShellCoordinator(
 
                   is DeepRoute.CompassionCause -> compassionCauseContent(route.causeId) { pop(tab) }
 
+                  DeepRoute.FukuLounge -> fukuLoungeContent(onOpenGlobalPause) { pop(tab) }
+
                   is DeepRoute.Collection -> CollectionDetailScreen(
                     collection = route.collection,
                     player = soundPlayer,
@@ -420,7 +437,7 @@ fun MainShellCoordinator(
           // The pill: in only while a track is loaded, and out of the way while
           // it has grown into Now Playing.
           MiniPlayerDock(
-            visible = hasTrack,
+            visible = showsPill,
             transition = transition,
             modifier = Modifier.align(Alignment.BottomCenter),
           ) {

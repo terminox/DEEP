@@ -3,6 +3,7 @@ package io.appbeyond.freelance.deep.feature.appshell
 import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -25,6 +26,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
+import io.appbeyond.freelance.deep.feature.globalpause.currentCardLift
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
 import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
@@ -130,6 +132,9 @@ private object Handoff {
  *   and its (parked) cause detail, handed on to the shell.
  * @param flowContent the onboarding and auth flow. A slot rather than a direct
  *   call so this file does not depend on the flow's wiring.
+ * @param fukuLoungeContent Fuku's Lounge, handed on to the shell; its live card
+ *   opens [globalPauseContent] over everything, while [canJoinGlobalPause]
+ *   says the meditation is live.
  */
 @Composable
 fun AppRoot(
@@ -153,6 +158,10 @@ fun AppRoot(
   compassionContent: @Composable (openCause: (String) -> Unit) -> Unit = {},
   compassionCauseContent: @Composable (causeId: String, onBack: () -> Unit) -> Unit = { _, _ -> },
   deepSessionContent: @Composable (session: DeepSession, onFinish: () -> Unit) -> Unit =
+    { _, _ -> },
+  fukuLoungeContent: @Composable (onJoin: () -> Unit, onBack: () -> Unit) -> Unit = { _, _ -> },
+  canJoinGlobalPause: () -> Boolean = { false },
+  globalPauseContent: @Composable (visibility: AnimatedVisibilityScope, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
 ) {
   var restored by remember { mutableStateOf(false) }
@@ -226,9 +235,15 @@ fun AppRoot(
   // outside the presentation: the practice's closing bell rings for several
   // seconds and has to outlive the screen being dismissed.
   var runningSession by remember { mutableStateOf<DeepSession?>(null) }
+  // The live Global Pause, presented over the shell the same way.
+  var pauseOpen by remember { mutableStateOf(false) }
   LaunchedEffect(phase) {
-    if (phase != RootPhase.Main) runningSession = null
+    if (phase != RootPhase.Main) {
+      runningSession = null
+      pauseOpen = false
+    }
   }
+  val lift = currentCardLift
 
   DeepTheme {
     Box(modifier.fillMaxSize().background(Color.moonCream)) {
@@ -276,6 +291,18 @@ fun AppRoot(
                 soundPlayer.pause()
                 runningSession = it
               },
+              // Only while the meditation is live — outside it the card rests,
+              // its caption already carrying the countdown. The session owns
+              // its own audio, so the shared player pauses (its track stays
+              // loaded for the mini player to resume), as iOS's yieldAudio.
+              onOpenGlobalPause = {
+                if (!pauseOpen && canJoinGlobalPause()) {
+                  soundPlayer.pause()
+                  pauseOpen = true
+                }
+              },
+              fukuLoungeContent = fukuLoungeContent,
+              miniPlayerSuppressed = runningSession != null || pauseOpen,
             )
           }
         }
@@ -307,6 +334,17 @@ fun AppRoot(
             deepSessionContent(session) { runningSession = null }
           }
         }
+      }
+
+      // The live Global Pause, over the whole shell. Its presentation is the
+      // card lift's seam (`GlobalPauseCardLift`): a crossfade this week, the
+      // card becoming the session's backdrop in week 7.
+      AnimatedVisibility(
+        visible = pauseOpen,
+        enter = lift.enter,
+        exit = lift.exit,
+      ) {
+        globalPauseContent(this) { pauseOpen = false }
       }
     }
   }

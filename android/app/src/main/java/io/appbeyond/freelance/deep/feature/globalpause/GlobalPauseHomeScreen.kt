@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
+import io.appbeyond.freelance.deep.feature.globalpause.components.DJFukuLoungeCard
 import io.appbeyond.freelance.deep.networking.CategoryDto
 import io.appbeyond.freelance.deep.networking.CollectionDto
 import io.appbeyond.freelance.deep.networking.PauseHomeDto
@@ -75,6 +76,8 @@ import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.softPress
 import io.appbeyond.freelance.deep.theme.tile
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /** What one load of the home feed produced. */
 sealed interface HomeState {
@@ -90,6 +93,10 @@ sealed interface HomeState {
  * riding up over it. The two fixed cards come first — the doorway into the
  * world's pause, and the doorway into today's breath — and the server-composed
  * shelves follow.
+ *
+ * `v0.0.6` makes the first card live: DJ Fuku's Lounge, with its ON AIR badge
+ * burning while the nightly set runs, and the pull re-resolves the pause
+ * schedule alongside the feed.
  *
  * `v0.0.1` carried the hero, both cards and the first shelf. `v0.0.2` renders
  * every section the server sends, in server order — including the
@@ -122,6 +129,9 @@ fun GlobalPauseHomeScreen(
   refreshKey: Any? = null,
   onPlayCollection: (SoundCollection) -> Unit = {},
   onOpenCollectionList: (title: String, collections: List<SoundCollection>) -> Unit = { _, _ -> },
+  isFukuOnAir: Boolean = false,
+  onOpenFukuLounge: () -> Unit = {},
+  onRefreshPause: suspend () -> Unit = {},
 ) {
   var state by remember { mutableStateOf<HomeState>(HomeState.Loading) }
   var attempt by remember { mutableStateOf(0) }
@@ -146,7 +156,14 @@ fun GlobalPauseHomeScreen(
 
   HeroRefreshable(
     pull = pull,
-    onRefresh = { load() },
+    // Feed content and the pause schedule refresh together; the schedule
+    // fetch also re-syncs the clock, so dev time travel lands here too.
+    onRefresh = {
+      coroutineScope {
+        launch { onRefreshPause() }
+        load()
+      }
+    },
     modifier = modifier,
   ) {
     Box(
@@ -184,7 +201,7 @@ fun GlobalPauseHomeScreen(
                 .padding(horizontal = Dp.edge),
               verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-              LoungeCard()
+              DJFukuLoungeCard(isOnAir = isFukuOnAir, onOpen = onOpenFukuLounge)
               DeepSessionEntryCard(onOpen = onOpenDeepSession)
             }
           }
@@ -228,28 +245,6 @@ fun GlobalPauseHomeScreen(
         }
       }
     }
-  }
-}
-
-@Composable
-private fun LoungeCard(modifier: Modifier = Modifier) {
-  Column(
-    modifier
-      .fillMaxWidth()
-      .frostedCard()
-      .padding(20.dp),
-    verticalArrangement = Arrangement.spacedBy(6.dp),
-  ) {
-    Text(
-      stringResource(R.string.home_lounge_card_title),
-      style = DeepType.displayTitle,
-      color = Color.deepPlum,
-    )
-    Text(
-      stringResource(R.string.home_lounge_card_body),
-      style = DeepType.body,
-      color = Color.driftGrey,
-    )
   }
 }
 
