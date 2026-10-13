@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_refresh.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+  <string name="refresh_action">รีเฟรช</string>
+  <string name="refresh_in_progress">กำลังรีเฟรช</string>
+</resources>

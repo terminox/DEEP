@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_rewards.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+  Thai has only the "other" plural category, so each <plurals> carries just that item.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <!-- The ritual's forward button, and its label on the closing step. -->
+  <string name="reward_continue">ต่อไป</string> <!-- no iOS Thai -->
+  <string name="reward_carry_this_calm">พาความสงบนี้ไปด้วย</string> <!-- no iOS Thai -->
+
+  <!-- Continuity headlines. -->
+  <string name="reward_continuity_headline_returned">วันนี้คุณกลับมาแล้ว</string>
+  <string name="reward_continuity_headline_continues">จังหวะของคุณยังคงอยู่</string>
+
+  <!-- Garden step. -->
+  <string name="reward_garden_eyebrow">สวนแห่งใจ</string>
+  <string name="reward_garden_title_grew">สวนของคุณเติบโตขึ้น</string>
+  <string name="reward_garden_title_resting">สวนของคุณกำลังพักผ่อน</string>
+  <string name="reward_garden_title_catching_up">การเติบโตกำลังมาถึง</string>
+  <string name="reward_garden_sunlight_awarded" tools:ignore="PluralsCandidate">+%1$d แสงแดด</string>
+  <string name="reward_today_full">วันนี้ได้รับครบแล้ว</string>
+  <string name="reward_garden_progress">%1$s จาก %2$s สู่ %3$s</string>
+  <string name="reward_garden_progress_fully_grown">แสงแดด %1$s เติบโตเต็มที่แล้ว</string>
+  <string name="reward_garden_catching_up_title">สวนของคุณกำลังตามให้ทัน</string>
+  <string name="reward_garden_catching_up_body">การฝึกของคุณถูกจดจำไว้อย่างปลอดภัย</string>
+  <string name="reward_garden_summary_catching_up">สวนของคุณกำลังตามให้ทัน การฝึกของคุณถูกจดจำไว้อย่างปลอดภัย</string> <!-- no iOS Thai -->
+  <string name="reward_garden_summary_awarded" tools:ignore="PluralsCandidate">%1$s ได้รับแสงแดด %2$d</string> <!-- no iOS Thai -->
+  <string name="reward_garden_summary_full">%1$s วันนี้ได้รับครบแล้ว</string> <!-- no iOS Thai -->
+
+  <!-- Compassion step. -->
+  <string name="reward_compassion_eyebrow">ความเมตตา</string>
+  <string name="reward_compassion_title_carried">ความเมตตาที่ส่งต่อ</string>
+  <string name="reward_compassion_title_full">เต็มหนึ่งวัน</string>
+  <plurals name="reward_compassion_awarded">
+    <item quantity="other">+%d หัวใจ</item>
+  </plurals>
+  <plurals name="reward_compassion_balance">
+    <item quantity="other">มีหัวใจพร้อมมอบ %s ดวง</item>
+  </plurals>
+  <string name="reward_compassion_today" tools:ignore="PluralsCandidate">วันนี้ได้รับ %1$s จาก %2$d ดวง</string>
+  <plurals name="reward_compassion_received">
+    <item quantity="other">ได้รับหัวใจ %d ดวง</item>
+  </plurals>
+  <!-- %1$s reward_compassion_received, %2$s reward_compassion_balance. -->
+  <string name="reward_compassion_summary_awarded">%1$s %2$s</string> <!-- no iOS Thai -->
+  <!-- %1$s is reward_compassion_balance. -->
+  <string name="reward_compassion_summary_full">วันนี้ได้รับครบแล้ว %1$s</string> <!-- no iOS Thai -->
+
+  <!-- Continuity step. -->
+  <string name="reward_continuity_eyebrow">จังหวะของคุณ</string>
+  <plurals name="reward_continuity_days">
+    <item quantity="other">วันแห่งการกลับมา</item>
+  </plurals>
+  <string name="reward_continuity_enough">การกลับมาแต่ละครั้งก็เพียงพอแล้ว</string>
+  <!-- %1$s is the headline. -->
+  <plurals name="reward_continuity_summary">
+    <item quantity="other">%1$s %2$d วันแห่งการกลับมา การกลับมาแต่ละครั้งก็เพียงพอแล้ว</item> <!-- no iOS Thai -->
+  </plurals>
+</resources>

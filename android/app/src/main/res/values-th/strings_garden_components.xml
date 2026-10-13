@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_garden_components.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+  <string name="sunlight_fact_fully_grown">เติบโตเต็มที่</string>
+  <string name="sunlight_fact_to_next">/%1$s ถึง %2$s</string>
+  <string name="reward_continue_hint_next">แสดงรางวัลส่วนถัดไปของเซสชัน</string>
+  <string name="reward_continue_hint_final">ปิดเซสชันและกลับสู่แอป</string>
+</resources>
