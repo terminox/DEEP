@@ -62,11 +62,11 @@ android {
     minSdk = 26
     targetSdk = 36
 
-    // Week four of eight. The versionCode scheme is still open — iOS stamps Unix
+    // Week five of eight. The versionCode scheme is still open — iOS stamps Unix
     // epoch seconds, which does not survive the port because versionCode is a
     // signed 32-bit int that can never decrease on a store track.
-    versionCode = 4
-    versionName = "0.0.4"
+    versionCode = 5
+    versionName = "0.0.5"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -145,6 +145,14 @@ android {
 
   packaging {
     resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+  }
+
+  // The per-app language (API 33+) lists the locales DEEP ships: generated
+  // from the values-xx folders, with res/resources.properties naming the
+  // default folder's locale. That is what puts English and ไทย in the
+  // system's per-app language settings beside the in-app picker.
+  androidResources {
+    generateLocaleConfig = true
   }
 }
 

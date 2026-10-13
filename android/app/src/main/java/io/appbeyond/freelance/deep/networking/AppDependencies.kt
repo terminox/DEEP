@@ -2,6 +2,9 @@ package io.appbeyond.freelance.deep.networking
 
 import android.content.Context
 import android.util.Log
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.auth.TokenStoring
 import io.appbeyond.freelance.deep.config.AppConfig
@@ -28,7 +31,10 @@ import io.appbeyond.freelance.deep.feature.rewards.PracticeRewards
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.store.ContinuityWitness
 import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
+import io.appbeyond.freelance.deep.feature.reminders.AlarmReminderScheduler
+import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
+import io.appbeyond.freelance.deep.shared.localization.LanguageStore
 import io.appbeyond.freelance.deep.shared.persistence.DataStoreBlobStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -66,15 +72,28 @@ class AppDependencies(context: Context) {
   val config: AppConfig = AppConfig
 
   /**
-   * The language every screen and every server-authored string reads in.
-   *
-   * Device state rather than account state, so it outlives a log out — the same
-   * reason iOS keeps `LanguageStore` outside the account. Seeded from the
-   * device and held in memory for now; a persisted picker replaces this line
-   * without touching anything that reads it.
+   * Process-lifetime scope for work that must outlive any single screen —
+   * [onboardingStore]'s eager DataStore load, the fire-and-forget listen
+   * reports, the rewards sync, gifts of hearts, and the stores' writes.
+   * `SupervisorJob` so a failure in one can never cancel another.
    */
-  @Volatile
-  var language: AppLanguage = AppLanguage.deviceMatched()
+  private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+  /**
+   * The member's language choice, persisted in `deep.language` and applied
+   * through the per-app locale API. Device state rather than account state,
+   * so it outlives a log out — the same reason iOS keeps `LanguageStore`
+   * outside the account. Read synchronously here, as the process starts, so
+   * the first frame is already in the chosen language.
+   */
+  val languageStore: LanguageStore = LanguageStore(
+    context = context.applicationContext,
+    blob = DataStoreBlobStore(context.applicationContext, "deep.language"),
+    scope = appScope,
+  ).also { it.load() }
+
+  /** The language every screen and every server-authored string reads in. */
+  val language: AppLanguage get() = languageStore.selection.value
 
   /** The token pair, encrypted at rest. The only secret this app keeps. */
   val tokens: TokenStoring = KeystoreTokenStore(context.applicationContext)
@@ -112,14 +131,6 @@ class AppDependencies(context: Context) {
   val pauseHome: PauseHomeRepository =
     PauseHomeRepository(retrofit.create(PauseHomeService::class.java))
 
-  /**
-   * Process-lifetime scope for work that must outlive any single screen —
-   * [onboardingStore]'s eager DataStore load, the fire-and-forget listen
-   * reports, and the rewards sync. `SupervisorJob` so a failure in one can
-   * never cancel another.
-   */
-  private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
   // Week two: accounts and onboarding. Both `accountStore` and
   // `onboardingRemote` ride the same Retrofit and the same token store as
   // `pauseHome` above — signing in rotates the pair `http`'s authenticator
@@ -137,7 +148,7 @@ class AppDependencies(context: Context) {
    * previous member's onboarding answers are reset exactly as Settings resets
    * them on a voluntary log out, so whoever signs in next starts clean. Since
    * week four the same exit also forgets their garden, hearts, journal and
-   * continuity day ([resetRewardsState]); the stores it reaches are built
+   * continuity day ([resetAccountState]); the stores it reaches are built
    * below, and the callback can only run long after construction.
    */
   val accountStore: AccountStore = ApiAccountStore(
@@ -147,7 +158,7 @@ class AppDependencies(context: Context) {
     cache = AccountCache(context.applicationContext),
     onInvoluntarySignOut = {
       onboardingProgressStore.reset()
-      resetRewardsState()
+      resetAccountState()
     },
   )
 
@@ -247,7 +258,7 @@ class AppDependencies(context: Context) {
    * stores already drop late responses by generation, but a grant arrives
    * through *another* store's generation (the journal's) or none at all (a
    * listen report), so without this check a reply settling just after
-   * [resetRewardsState] would write the last member's balance and sunlight
+   * [resetAccountState] would write the last member's balance and sunlight
    * onto a signed-out device.
    */
   val ingestAwards: suspend (AwardGrant) -> Unit = { grant ->
@@ -292,6 +303,75 @@ class AppDependencies(context: Context) {
     ingestAwards = ingestAwards,
   )
 
+  // Week five: giving, the daily reminder, and the language picker (above).
+
+  /**
+   * Gives hearts to a cause, on [appScope] so the donate sheet's exit (or a
+   * tab switch) can never cut a gift off between its optimistic move and its
+   * settle. The ledger books it at once; the POST follows.
+   */
+  fun giveHearts(amount: Int, causeId: String, projectId: String?) {
+    launchQuietly("hearts spend") { heartLedger.send(amount, causeId, projectId) }
+  }
+
+  /**
+   * The daily reminder, persisted in `deep.reminder` and armed through
+   * [AlarmReminderScheduler]. A property of this phone rather than the
+   * account, but switched off by every exit ([resetAccountState]): the nudge
+   * is about practice, and practice leaves with the account.
+   */
+  val reminderStore: ReminderStore = ReminderStore(
+    scheduler = AlarmReminderScheduler(context.applicationContext),
+    blob = DataStoreBlobStore(context.applicationContext, "deep.reminder"),
+    clock = clock,
+    zone = { ZoneId.systemDefault() },
+  )
+
+  /** Whether today's practice goal is already met — the one fact the reminder
+   * store deliberately doesn't know. */
+  private suspend fun goalMetToday(): Boolean {
+    practiceJournal.restore()
+    return practiceJournal.minutesToday() >= practiceJournal.dailyGoalMinutes
+  }
+
+  /**
+   * Rebuilds the reminder against today's practice — iOS's
+   * `rescheduleReminder()`, run on every foreground and as the app leaves it
+   * (so a practice finished just now quiets today's nudge), and by the boot
+   * and clock receivers.
+   */
+  suspend fun rescheduleReminder() {
+    reminderStore.reschedule(goalMetToday = goalMetToday())
+  }
+
+  /** [rescheduleReminder] fire-and-forget, for lifecycle seams. */
+  fun rescheduleReminderQuietly() {
+    launchQuietly("reminder reschedule") { rescheduleReminder() }
+  }
+
+  /** Turns the reminder on — the screen supplies the permission [prompt]. */
+  suspend fun enableReminder(prompt: suspend () -> Boolean) =
+    reminderStore.enable(goalMetToday = goalMetToday(), prompt = prompt)
+
+  /** A new clock face for the reminder. */
+  suspend fun setReminderTime(hour: Int, minute: Int) =
+    reminderStore.setTime(hour, minute, goalMetToday = goalMetToday())
+
+  /**
+   * Adopts a language. The view tree recreates in it (the per-app locale);
+   * the server-authored content the process holds is refetched in it, since
+   * `Accept-Language` follows the choice from the next request on. The
+   * reminder needs nothing: it resolves its words as it fires.
+   */
+  fun selectLanguage(selected: AppLanguage) {
+    val changed = selected != language
+    languageStore.select(selected)
+    if (!changed) return
+    syncRewards()
+    launchQuietly("playlist reload") { playlistStore.load() }
+    launchQuietly("sound shelves reload") { soundLibrary.shelves() }
+  }
+
   private val isSignedIn: Boolean get() = accountStore.account.value != null
 
   /**
@@ -332,9 +412,10 @@ class AppDependencies(context: Context) {
   }
 
   /**
-   * Forgets everything the rewards stores hold for the signed-out member —
+   * Forgets everything the account's stores hold for the signed-out member —
    * journal, garden, hearts, the continuity day — on disk and in memory, so
-   * the next member never inherits any of it. Every exit calls this: Settings'
+   * the next member never inherits any of it, and switches the daily reminder
+   * off (as iOS's log out and delete both do). Every exit calls this: Settings'
    * log out and account deletion, the server ending a session
    * ([accountStore]'s involuntary sign-out), `AppRoot`'s rejected launch
    * restore, and the account watcher below. Idempotent, so the overlap is
@@ -342,12 +423,16 @@ class AppDependencies(context: Context) {
    * still in flight for the old member is dropped by each store's generation
    * stamp when it lands.
    */
-  suspend fun resetRewardsState() {
+  suspend fun resetAccountState() {
     withContext(NonCancellable) {
       practiceJournal.reset()
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
       continuityWitness.resetLocalState()
+      // The nudge is about practice, and practice leaves with the account —
+      // so the alarm goes too. The *language* stays: what you read in belongs
+      // to the phone, not to whoever is signed into it.
+      reminderStore.disable()
     }
   }
 
@@ -372,6 +457,18 @@ class AppDependencies(context: Context) {
     launchQuietly("practice restore") { practiceJournal.restore() }
     launchQuietly("continuity restore") { continuityWitness.restore() }
 
+    // The reminder window rolls forward on every return to the app, and
+    // rebuilds as the app leaves it so a practice finished just now quiets
+    // today's nudge — iOS's scene-phase `.active` reschedule, plus the exit.
+    // The process lifecycle, not an activity's: a rotation or a language
+    // change recreates the activity without the member leaving.
+    ProcessLifecycleOwner.get().lifecycle.addObserver(
+      object : DefaultLifecycleObserver {
+        override fun onStart(owner: LifecycleOwner) = rescheduleReminderQuietly()
+        override fun onStop(owner: LifecycleOwner) = rescheduleReminderQuietly()
+      },
+    )
+
     // A member signing out takes their queue, their saved sounds and their
     // rewards state with them: the next person on this phone must not find
     // the last one's track in the mini player, on the lock screen, or in the
@@ -389,7 +486,7 @@ class AppDependencies(context: Context) {
           if (ListenRules.shouldClearPlayer(before, after)) {
             soundPlayer.clear()
             playlistStore.resetLocalState()
-            resetRewardsState()
+            resetAccountState()
           }
           before = after
         }

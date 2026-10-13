@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_compassion.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+  Thai has only the "other" plural category, so each <plurals> carries just that item.
+-->
+<resources>
+
+  <!-- Home -->
+  <string name="compassion_title">ความเมตตา</string>
+  <string name="compassion_subtitle">เปลี่ยนการฝึกให้เป็นการให้</string>
+
+  <!-- Portfolio card -->
+  <string name="compassion_my_hearts">หัวใจของฉัน</string>
+  <string name="compassion_to_give">%1$s พร้อมมอบ</string>
+  <string name="compassion_all_given">มอบไปหมดแล้ว</string>
+  <string name="compassion_no_hearts_yet">ยังไม่มีหัวใจ</string>
+  <!-- Quoted to keep the leading space: the figure is drawn before it. -->
+  <string name="compassion_given_suffix">" ที่มอบไป"</string>
+  <string name="compassion_today_suffix">" จาก %1$d วันนี้"</string>
+  <string name="compassion_today_full">วันนี้เต็มแล้ว</string>
+  <plurals name="compassion_summary_can_give"> <!-- no iOS Thai -->
+    <item quantity="other">มีหัวใจพร้อมมอบ %1$d ดวง</item>
+  </plurals>
+  <string name="compassion_summary_none_left">ไม่มีหัวใจเหลือให้มอบแล้ว</string> <!-- no iOS Thai -->
+  <string name="compassion_summary_given">มอบไปแล้ว %1$d ดวง</string> <!-- no iOS Thai -->
+  <plurals name="compassion_summary_today_full"> <!-- no iOS Thai -->
+    <item quantity="other">วันนี้ได้รับครบแล้ว %1$d ดวง</item>
+  </plurals>
+  <plurals name="compassion_summary_today"> <!-- no iOS Thai -->
+    <item quantity="other">วันนี้ได้รับหัวใจ %1$d จาก %2$d ดวง</item>
+  </plurals>
+
+  <!-- Community pool -->
+  <string name="compassion_community_pool">กองรวมของชุมชน</string>
+  <string name="compassion_people_reached_across">ส่งถึงผู้คน %1$s คน ใน %2$d ด้าน</string>
+  <string name="compassion_hearts_pooled">หัวใจที่รวมกัน</string>
+
+  <!-- Causes shelf -->
+  <string name="compassion_causes_title">ที่ที่หัวใจของคุณไปถึง</string> <!-- no iOS Thai -->
+  <string name="compassion_causes_subtitle">ส่งหัวใจให้ด้านที่คุณเลือก แล้วเราจะบริจาคจริงในนามของคุณ</string> <!-- no iOS Thai -->
+  <string name="compassion_hearts_compact">%1$s หัวใจ</string>
+  <string name="compassion_of_giving">ของการให้</string>
+  <string name="compassion_donate_hearts">บริจาคหัวใจ</string>
+  <string name="compassion_donate_hearts_to">บริจาคหัวใจให้ %1$s</string>
+  <string name="compassion_tile_facts">รวมหัวใจแล้ว %1$s ดวง %2$d เปอร์เซ็นต์ของการให้</string> <!-- no iOS Thai -->
+
+  <!-- Field reports -->
+  <string name="compassion_from_the_field">จากพื้นที่จริง</string> <!-- no iOS Thai -->
+
+  <!-- Donate sheet -->
+  <string name="donate_hearts_you_hold">จาก %1$s หัวใจที่คุณมี</string>
+  <string name="donate_amount_label">หัวใจที่จะบริจาค</string>
+  <string name="donate_amount_value">%1$d จาก %2$d</string>
+  <string name="donate_all">ทั้งหมด</string>
+  <string name="donate_all_hearts">ทั้งหมด %1$d หัวใจ</string>
+  <plurals name="donate_amount_hearts">
+    <item quantity="other">%1$d หัวใจ</item>
+  </plurals>
+  <plurals name="donate_action_to">
+    <item quantity="other">บริจาค %1$d หัวใจให้ %2$s</item>
+  </plurals>
+  <string name="donate_no_hearts">ยังไม่มีหัวใจให้มอบ</string>
+  <string name="donate_today_full">วันนี้ได้รับครบแล้ว — พรุ่งนี้มีเพิ่มอีก</string> <!-- no iOS Thai -->
+  <string name="donate_practice_earns">ฝึกฝนเพื่อรับเพิ่ม</string>
+  <string name="donate_delete">ลบ</string>
+  <string name="donate_hold_to_clear">กดค้างเพื่อล้าง</string>
+  <plurals name="compassion_rollback">
+    <item quantity="other">ส่งหัวใจ %1$s ดวงไม่สำเร็จ — หัวใจกลับคืนสู่ยอดของคุณแล้ว</item> <!-- no iOS Thai -->
+  </plurals>
+
+  <!-- Cause detail (parked, as on iOS) -->
+  <string name="compassion_back">ย้อนกลับ</string>
+  <string name="compassion_people_reached">ผู้คนที่ส่งถึง</string> <!-- no iOS Thai -->
+  <string name="compassion_share_of_giving">สัดส่วนของการให้</string> <!-- no iOS Thai -->
+  <string name="compassion_projects_title">โครงการในด้านนี้</string> <!-- no iOS Thai -->
+  <string name="compassion_your_part">ส่วนของคุณ</string>
+  <string name="compassion_your_part_none">ยังไม่มีหัวใจที่นี่ — ดวงแรกรอให้คุณเป็นผู้ส่ง</string> <!-- no iOS Thai -->
+  <plurals name="compassion_your_part_sent">
+    <item quantity="other">คุณส่งหัวใจให้ด้านนี้แล้ว %1$s ดวง</item> <!-- no iOS Thai -->
+  </plurals>
+  <string name="compassion_send_a_heart">ส่งหัวใจ</string>
+  <string name="compassion_send_a_heart_to">ส่งหัวใจให้ %1$s</string>
+  <string name="compassion_hearts_left">เหลือ %1$s</string>
+  <string name="compassion_practice_earns_more">ฝึกฝนเพื่อรับเพิ่ม</string>
+  <string name="compassion_balance_chip">หัวใจของฉัน</string>
+  <string name="compassion_project_hearts">%1$s หัวใจ</string>
+  <string name="compassion_project_funded">ระดมทุนแล้ว %1$d%%</string>
+  <string name="compassion_project_progress">ระดมทุนแล้ว %1$d เปอร์เซ็นต์</string>
+  <string name="compassion_partner_organisation">องค์กรพันธมิตร</string>
+  <string name="compassion_partner_since">ตั้งแต่ %1$s</string> <!-- no iOS Thai -->
+  <string name="compassion_partner_visit">ไปที่ %1$s</string>
+
+  <!-- Catalogue: causes -->
+  <string name="cause_peace_name">สันติภาพและความเป็นอยู่ที่ดี</string>
+  <string name="cause_peace_tagline">ใจที่สงบขึ้น โลกที่อ่อนโยนขึ้น</string>
+  <string name="cause_peace_partner">มูลนิธิวี-พีซ</string>
+  <string name="cause_peace_partner_blurb">อาสาสมัครที่บ่มเพาะความเมตตาและความเข้าใจระหว่างกันผ่านการฝึกสติ</string>
+  <string name="cause_healthcare_name">สุขภาพ</string>
+  <string name="cause_healthcare_tagline">ดูแลสุขภาพและความเป็นอยู่</string>
+  <string name="cause_healthcare_partner">มูลนิธิรามาธิบดี</string>
+  <string name="cause_healthcare_partner_blurb">สนับสนุนการเข้าถึงการรักษาและการดูแลทางการแพทย์สำหรับผู้ที่ต้องการมากที่สุด</string>
+  <string name="cause_education_name">การศึกษา</string>
+  <string name="cause_education_tagline">เสริมพลังความคิด สร้างวันพรุ่งนี้</string>
+  <string name="cause_education_partner">วันบุดดิสต์</string>
+  <string name="cause_education_partner_blurb">จุดประกายปัญญา สติ และการเรียนรู้ด้วยความเมตตาให้เด็กทุกคน</string>
+  <string name="cause_nature_name">ธรรมชาติ</string>
+  <string name="cause_nature_tagline">ปกป้องธรรมชาติเพื่อคนรุ่นต่อไป</string>
+  <string name="cause_nature_partner">มูลนิธิสืบนาคะเสถียร</string>
+  <string name="cause_nature_partner_blurb">อนุรักษ์ผืนป่าและสัตว์ป่า เพื่อให้ธรรมชาติคงอยู่ถึงคนรุ่นหลัง</string>
+  <string name="cause_community_name">ชุมชน</string>
+  <string name="cause_community_tagline">ชุมชนที่เข้มแข็ง อนาคตที่สดใส</string>
+  <string name="cause_community_partner">มูลนิธิทูเกทเธอร์</string>
+  <string name="cause_community_partner_blurb">สร้างชุมชนที่เข้มแข็งด้วยการดูแลร่วมกันและมือของคนในพื้นที่</string>
+  <string name="cause_scope_global">ทั่วโลก</string>
+  <string name="cause_scope_thailand">ประเทศไทย</string>
+
+  <!-- Catalogue: projects -->
+  <string name="project_peace_light_title">แสงแห่งสันติ</string>
+  <string name="project_peace_light_blurb">การรวมตัวจุดเทียน ด้วยความตั้งใจร่วมกันเพื่อความสงบ</string>
+  <string name="project_peace_meditation_title">วันสมาธิโลก</string>
+  <string name="project_peace_meditation_blurb">ช่วงหยุดพักทั่วโลกพร้อมกัน ฤดูกาลละหนึ่งครั้ง</string>
+  <string name="project_peace_circle_title">วงสันติ</string>
+  <string name="project_peace_circle_blurb">วงเล็ก ๆ ในท้องถิ่น ที่เรียนรู้การรับฟังและคืนดี</string>
+  <string name="project_health_clinic_title">คลินิกเคลื่อนที่</string>
+  <string name="project_health_clinic_blurb">นำการรักษาไปสู่ชุมชนห่างไกลด้วยรถ</string>
+  <string name="project_health_surgery_title">ผ่าตัดหัวใจเด็ก</string>
+  <string name="project_health_surgery_blurb">สนับสนุนการรักษาที่เปลี่ยนชีวิตเด็ก</string>
+  <string name="project_health_mental_title">การดูแลสุขภาพใจ</string>
+  <string name="project_health_mental_blurb">การเข้าถึงการปรึกษาและสุขภาวะทางใจ</string>
+  <string name="project_edu_art_title">ศิลปะเจริญสติสำหรับเด็ก</string>
+  <string name="project_edu_art_blurb">บ่มเพาะความคิดสร้างสรรค์ ความสงบ และสมาธิผ่านงานศิลปะ</string>
+  <string name="project_edu_learning_title">เรียนรู้ตลอดชีวิต</string>
+  <string name="project_edu_learning_blurb">หนังสือและสื่อการเรียนสำหรับเด็กที่ขาดแคลน</string>
+  <string name="project_edu_scholarship_title">โครงการทุนการศึกษา</string>
+  <string name="project_edu_scholarship_blurb">สนับสนุนนักเรียนที่มีความสามารถให้ไปถึงความฝัน</string>
+  <string name="project_nature_forest_title">ฟื้นผืนป่า</string>
+  <string name="project_nature_forest_blurb">ปลูกไม้พื้นถิ่นคืนบนผืนดินที่ถูกแผ้วถาง</string>
+  <string name="project_nature_water_title">สายน้ำสะอาด</string>
+  <string name="project_nature_water_blurb">ปกป้องต้นน้ำที่หมู่บ้านพึ่งพา</string>
+  <string name="project_nature_wildlife_title">เขตพักพิงสัตว์ป่า</string>
+  <string name="project_nature_wildlife_blurb">ถิ่นอาศัยปลอดภัยสำหรับสัตว์ที่ใกล้สูญพันธุ์</string>
+  <string name="project_community_elderly_title">ดูแลผู้สูงวัย</string>
+  <string name="project_community_elderly_blurb">เพื่อนคู่คิดและการดูแลสำหรับผู้ที่อยู่ลำพัง</string>
+  <string name="project_community_meals_title">มื้ออาหารร่วมกัน</string>
+  <string name="project_community_meals_blurb">อาหารอุ่น ๆ สำหรับครอบครัวในช่วงเวลายากลำบาก</string>
+  <string name="project_community_shelter_title">ที่พักพิงปลอดภัย</string>
+  <string name="project_community_shelter_blurb">ที่ซุกหัวนอนและการเริ่มต้นใหม่สำหรับผู้ประสบวิกฤต</string>
+
+  <!-- Catalogue: field reports -->
+  <string name="report_clinic_title">คลินิกเคลื่อนที่ไปถึงแม่ฮ่องสอน</string>
+  <string name="report_clinic_blurb">ชาวบ้าน 320 คนได้รับการตรวจสุขภาพและยาตลอดสามวันบนดอย</string>
+  <string name="report_clinic_location">แม่ฮ่องสอน</string>
+  <string name="report_forest_title">ปลูกกล้าไม้ 12,000 ต้น</string>
+  <string name="report_forest_blurb">อาสาสมัครฟื้นผืนป่าพื้นถิ่น 40 ไร่ ก่อนฤดูฝน</string>
+  <string name="report_forest_location">เชียงใหม่</string>
+  <string name="report_scholarship_title">มอบทุนการศึกษาใหม่ 18 ทุน</string>
+  <string name="report_scholarship_blurb">นักเรียนจากต่างจังหวัดเริ่มภาคเรียนแรกในมหาวิทยาลัย</string>
+  <string name="report_scholarship_location">ทั่วประเทศ</string>
+  <string name="report_meals_title">แบ่งปันอาหาร 5,000 มื้อในเดือนนี้</string>
+  <string name="report_meals_blurb">ครัวชุมชนดูแลอาหารให้ครอบครัวตลอดฤดูน้ำหลาก</string>
+  <string name="report_meals_location">อยุธยา</string>
+
+</resources>

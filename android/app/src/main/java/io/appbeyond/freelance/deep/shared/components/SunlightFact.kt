@@ -1,12 +1,5 @@
 package io.appbeyond.freelance.deep.shared.components
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,16 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,7 +26,6 @@ import io.appbeyond.freelance.deep.feature.appshell.DeepIcons
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.driftGrey
 import io.appbeyond.freelance.deep.theme.edge
-import io.appbeyond.freelance.deep.theme.exhale
 import io.appbeyond.freelance.deep.theme.frostedCard
 import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.sunbeam
@@ -150,14 +136,7 @@ fun SunlightFact(
 
 // MARK: - Rolling figure
 
-/**
- * A grouped integer whose digits roll individually when it changes — up and in
- * as it grows, down as it shrinks — the Android stand-in for SwiftUI's
- * `.contentTransition(.numericText())`. Digits are keyed from the right, so
- * "240" → "1,240" rolls the units, tens and hundreds in place and the new
- * thousands simply arrive. Under reduced motion the change is a plain
- * crossfade. Read as one value by TalkBack, not digit by digit.
- */
+/** A grouped integer rolling digit by digit — [RollingText] over [formatFigure]. */
 @Composable
 private fun RollingFigure(
   value: Int,
@@ -165,34 +144,7 @@ private fun RollingFigure(
   color: Color,
   modifier: Modifier = Modifier,
 ) {
-  val reduceMotion = rememberReduceMotion()
-  val text = formatFigure(value)
-  val previous = remember { mutableIntStateOf(value) }
-  val rising = value >= previous.intValue
-  SideEffect { previous.intValue = value }
-
-  Row(modifier.clearAndSetSemantics { contentDescription = text }) {
-    text.forEachIndexed { index, char ->
-      key(text.length - index) {
-        AnimatedContent(
-          targetState = char,
-          transitionSpec = {
-            if (reduceMotion) {
-              fadeIn(exhale()) togetherWith fadeOut(exhale())
-            } else {
-              val from = if (rising) 1 else -1
-              (slideInVertically(exhale()) { it * from } + fadeIn(exhale()))
-                .togetherWith(slideOutVertically(exhale()) { -it * from } + fadeOut(exhale()))
-                .using(SizeTransform(clip = true))
-            }
-          },
-          label = "rolling-digit",
-        ) { digit ->
-          Text(text = digit.toString(), style = style, color = color)
-        }
-      }
-    }
-  }
+  RollingText(text = formatFigure(value), value = value.toFloat(), style = style, color = color, modifier = modifier)
 }
 
 /** The app locale's grouped integer — iOS's `.formatted()`. */

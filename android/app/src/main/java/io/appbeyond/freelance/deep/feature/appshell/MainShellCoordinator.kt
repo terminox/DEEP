@@ -64,7 +64,15 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.MockAccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.playlist.PlaylistScreen
+import io.appbeyond.freelance.deep.feature.profile.LanguageScreen
 import io.appbeyond.freelance.deep.feature.profile.SettingsScreen
+import io.appbeyond.freelance.deep.feature.reminders.DailyReminderScreen
+import io.appbeyond.freelance.deep.feature.reminders.store.MockReminderScheduler
+import io.appbeyond.freelance.deep.feature.reminders.store.ReminderPermission
+import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
+import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
+import java.time.Clock
+import java.time.ZoneId
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
@@ -85,12 +93,20 @@ import kotlinx.coroutines.launch
 sealed interface DeepRoute {
   data object Root : DeepRoute
 
-  /**
-   * The system settings, pushed onto the You tab's stack. iOS's
-   * `YouCoordinatorView` also routes `.language` and `.dailyReminder` from
-   * here; on Android those rows are UI only for now, so they have no route.
-   */
+  /** The system settings, pushed onto the You tab's stack. */
   data object Settings : DeepRoute
+
+  /** The language picker, pushed from Settings — iOS's `.language`. */
+  data object Language : DeepRoute
+
+  /** The daily reminder, pushed from Settings — iOS's `.dailyReminder`. */
+  data object DailyReminder : DeepRoute
+
+  /**
+   * A cause in full, on the Compassion tab's stack. **Parked**, as iOS parks
+   * `openCategory`: nothing pushes it while giving happens on the cause cards.
+   */
+  data class CompassionCause(val causeId: String) : DeepRoute
 
   /** A collection's tracks — pushed from Sounds' shelves or a Home list. */
   data class Collection(val collection: SoundCollection) : DeepRoute
@@ -112,6 +128,29 @@ data class HomeActions(
   val openDeepSession: (DeepSession) -> Unit,
   val openCollectionList: (title: String, collections: List<SoundCollection>) -> Unit,
 )
+
+/**
+ * What Settings' two preference screens can ask of the app: adopt a language,
+ * and switch or re-time the daily reminder. A value, so the shell's shape
+ * doesn't grow a lambda per action.
+ */
+@Immutable
+data class PreferenceActions(
+  val selectLanguage: (AppLanguage) -> Unit,
+  val enableReminder: suspend (prompt: suspend () -> Boolean) -> ReminderPermission,
+  val setReminderTime: suspend (hour: Int, minute: Int) -> Unit,
+  val disableReminder: suspend () -> Unit,
+) {
+  companion object {
+    /** Does nothing — previews. */
+    val none = PreferenceActions(
+      selectLanguage = {},
+      enableReminder = { ReminderPermission.Granted },
+      setReminderTime = { _, _ -> },
+      disableReminder = {},
+    )
+  }
+}
 
 /**
  * The tab shell: five tabs, each with **its own back stack**, over one bottom
@@ -143,15 +182,21 @@ data class HomeActions(
  *
  * @param accountStore / onboardingStore the shared stores Settings writes to on
  *   the way out; flipping them is what moves `AppRoot` off this shell.
- * @param language the language DEEP reads in, shown on Settings' Language row.
+ * @param language the language DEEP reads in, shown on Settings' Language row
+ *   and checked on the picker.
+ * @param reminderStore the daily reminder's settings, for Settings' row and
+ *   the reminder screen.
+ * @param preferences the language and reminder actions those screens take.
  * @param soundPlayer the app's one player, shared by every tab and the pill.
  * @param soundLibrary DEEP Sound's shelves and lyrics.
  * @param playlistStore the member's saved sounds — the You tab's root.
- * @param flushPracticeJournal / resetRewardsState the rewards side of
+ * @param flushPracticeJournal / resetAccountState the rewards side of
  *   Settings' log out and account deletion, handed straight through.
  * @param homeContent / gardenContent the Home and Mind Garden roots. Slots, so
  *   the shell carries none of their stores; each is handed the same
  *   [HomeActions] — the Garden's daily practice card opens a DEEP Session.
+ * @param compassionContent the Compassion root, handed the (parked) way into a
+ *   cause's detail; [compassionCauseContent] draws that detail.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -159,16 +204,21 @@ fun MainShellCoordinator(
   accountStore: AccountStore,
   onboardingStore: OnboardingProgressStore,
   language: AppLanguage,
+  reminderStore: ReminderStore,
+  preferences: PreferenceActions,
   soundPlayer: SoundPlaying,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
   flushPracticeJournal: suspend () -> Unit,
-  resetRewardsState: suspend () -> Unit,
+  resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   onOpenDeepSession: (DeepSession) -> Unit = {},
   homeContent: @Composable (actions: HomeActions) -> Unit = {},
   gardenContent: @Composable (actions: HomeActions) -> Unit = {},
+  compassionContent: @Composable (openCause: (String) -> Unit) -> Unit = {},
+  compassionCauseContent: @Composable (causeId: String, onBack: () -> Unit) -> Unit = { _, _ -> },
 ) {
+  val reminderState by reminderStore.state.collectAsStateWithLifecycle()
   var selected by rememberSaveable { mutableStateOf(DeepTab.Home) }
 
   // One stack per tab, so switching away and back returns you where you were —
@@ -310,7 +360,9 @@ fun MainShellCoordinator(
                       onOpenDeepSession = onOpenDeepSession,
                     )
                     DeepTab.Garden -> gardenContent(homeActions)
-                    DeepTab.Compassion -> TabPlaceholderScreen(DeepTab.Compassion)
+                    DeepTab.Compassion -> compassionContent { causeId ->
+                      push(DeepTab.Compassion, DeepRoute.CompassionCause(causeId))
+                    }
                     DeepTab.You -> PlaylistScreen(
                       playlistStore = playlistStore,
                       player = soundPlayer,
@@ -323,10 +375,29 @@ fun MainShellCoordinator(
                     accountStore = accountStore,
                     onboardingStore = onboardingStore,
                     language = language,
+                    reminder = reminderState.reminder,
                     flushPracticeJournal = flushPracticeJournal,
-                    resetRewardsState = resetRewardsState,
+                    resetAccountState = resetAccountState,
+                    onOpenLanguage = { push(DeepTab.You, DeepRoute.Language) },
+                    onOpenReminder = { push(DeepTab.You, DeepRoute.DailyReminder) },
                     onBack = { pop(DeepTab.You) },
                   )
+
+                  DeepRoute.Language -> LanguageScreen(
+                    selection = language,
+                    onSelect = preferences.selectLanguage,
+                    onBack = { pop(DeepTab.You) },
+                  )
+
+                  DeepRoute.DailyReminder -> DailyReminderScreen(
+                    store = reminderStore,
+                    enable = preferences.enableReminder,
+                    setTime = preferences.setReminderTime,
+                    disable = preferences.disableReminder,
+                    onBack = { pop(DeepTab.You) },
+                  )
+
+                  is DeepRoute.CompassionCause -> compassionCauseContent(route.causeId) { pop(tab) }
 
                   is DeepRoute.Collection -> CollectionDetailScreen(
                     collection = route.collection,
@@ -483,11 +554,15 @@ private fun MainShellCoordinatorPreview() {
       accountStore = MockAccountStore.emailUser,
       onboardingStore = MockOnboardingProgressStore.fresh,
       language = AppLanguage.English,
+      reminderStore = remember {
+        ReminderStore(MockReminderScheduler(), InMemoryBlobStore(), Clock.systemDefaultZone()) { ZoneId.systemDefault() }
+      },
+      preferences = PreferenceActions.none,
       soundPlayer = remember { MockSoundPlayer.playing() },
       soundLibrary = remember { MockSoundLibrary.loaded },
       playlistStore = MockPlaylistStore.sample,
       flushPracticeJournal = {},
-      resetRewardsState = {},
+      resetAccountState = {},
       homeContent = { TabPlaceholderScreen(DeepTab.Home) },
     )
   }

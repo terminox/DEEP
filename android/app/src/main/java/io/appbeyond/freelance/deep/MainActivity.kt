@@ -1,5 +1,7 @@
 package io.appbeyond.freelance.deep
 
+import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,7 +10,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import io.appbeyond.freelance.deep.feature.appshell.AppRoot
+import io.appbeyond.freelance.deep.feature.appshell.PreferenceActions
+import io.appbeyond.freelance.deep.feature.compassion.CompassionCategoryScreen
+import io.appbeyond.freelance.deep.feature.compassion.CompassionCoordinator
+import io.appbeyond.freelance.deep.feature.compassion.rememberCompassionContent
 import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionCoordinator
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.player.play
@@ -19,6 +26,8 @@ import io.appbeyond.freelance.deep.networking.LocalVideoCache
 import io.appbeyond.freelance.deep.networking.VideoCache
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 
 /**
  * The single activity. Everything above this is Compose.
@@ -32,30 +41,66 @@ import kotlinx.coroutines.coroutineScope
  */
 class MainActivity : ComponentActivity() {
 
+  /**
+   * Below API 33 the per-app locale doesn't exist, so the activity reads in the
+   * chosen language by wrapping its own base context (`LanguageStore`); from 33
+   * the system has already applied it.
+   */
+  override fun attachBaseContext(newBase: Context) {
+    val dependencies = (newBase.applicationContext as? DeepApplication)?.dependencies
+    val localized = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && dependencies != null) {
+      dependencies.languageStore.localized(newBase)
+    } else {
+      newBase
+    }
+    super.attachBaseContext(localized)
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     installSplashScreen()
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
 
     val dependencies = (application as DeepApplication).dependencies
+
+    // Below API 33 a new language means a new base context: recreate, as the
+    // system does itself from 33 when the per-app locale changes.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+      val chosen = dependencies.languageStore.selection.value
+      lifecycleScope.launch {
+        dependencies.languageStore.selection
+          .drop(1)
+          .collect { if (it != chosen) recreate() }
+      }
+    }
+
+    val preferences = PreferenceActions(
+      selectLanguage = dependencies::selectLanguage,
+      enableReminder = dependencies::enableReminder,
+      setReminderTime = dependencies::setReminderTime,
+      disableReminder = { dependencies.reminderStore.disable() },
+    )
     // Remote stage footage fills this as it plays, so the Garden's hero loops
     // from disk on every visit after the first — iOS's `VideoCache`.
     val videoCache = VideoCache.shared(this, dependencies.http.mediaClient)
 
     setContent {
+      val language by dependencies.languageStore.selection.collectAsStateWithLifecycle()
       CompositionLocalProvider(LocalVideoCache provides videoCache) {
         AppRoot(
           accountStore = dependencies.accountStore,
           onboardingStore = dependencies.onboardingStore,
           onboardingRemote = dependencies.onboardingRemote,
           awaitOnboardingLoaded = dependencies::awaitOnboardingLoaded,
-          language = dependencies.language,
+          language = language,
+          reminderStore = dependencies.reminderStore,
+          preferences = preferences,
           soundPlayer = dependencies.soundPlayer,
           soundLibrary = dependencies.soundLibrary,
           playlistStore = dependencies.playlistStore,
           syncRewards = dependencies::syncRewards,
           flushPracticeJournal = dependencies::flushPracticeJournal,
-          resetRewardsState = dependencies::resetRewardsState,
+          resetAccountState = dependencies::resetAccountState,
           flowContent = {
             OnboardingCoordinator(
               accountStore = dependencies.accountStore,
@@ -100,6 +145,26 @@ class MainActivity : ComponentActivity() {
                 }
               },
             )
+          },
+          compassionContent = { openCause ->
+            CompassionCoordinator(
+              ledger = dependencies.heartLedger,
+              give = dependencies::giveHearts,
+              // One pull refreshes the garden, and the wallet rides it.
+              onRefresh = { dependencies.gardenStore.refresh() },
+              onOpenCause = openCause,
+            )
+          },
+          compassionCauseContent = { causeId, onBack ->
+            val cause = rememberCompassionContent().cause(causeId)
+            if (cause != null) {
+              CompassionCategoryScreen(
+                cause = cause,
+                ledger = dependencies.heartLedger,
+                give = dependencies::giveHearts,
+                onBack = onBack,
+              )
+            }
           },
           deepSessionContent = { session, onFinish ->
             DeepSessionCoordinator(
