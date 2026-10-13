@@ -212,7 +212,7 @@ class GlobalPauseSession(
    */
   fun onForeground() {
     isInBackground = false
-    scope.launch { refreshSchedule() }
+    scope.launch { start() }
     if (isInSession && pollJob == null) startPolling()
   }
 

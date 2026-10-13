@@ -61,6 +61,17 @@
       </intent-filter>
     </service>
 
+    <!--
+      Holds the process up while the Global Pause meditation plays, so it keeps
+      playing (and the presence heartbeats keep beating) with the phone locked,
+      as iOS's background audio does. No media session: the meditation has no
+      transport to offer. Started only from the session screen.
+    -->
+    <service
+        android:name=".feature.globalpause.audio.GlobalPauseService"
+        android:exported="false"
+        android:foregroundServiceType="mediaPlayback" />
+
     <!-- The daily reminder's alarm: posts the nudge, arms tomorrow's. -->
     <receiver
         android:name=".feature.reminders.ReminderAlarmReceiver"

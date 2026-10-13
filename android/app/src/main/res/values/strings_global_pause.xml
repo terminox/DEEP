@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Global Pause: Fuku's Lounge, the card, the live meditation, the reflection.
+  Ported from iOS Deep/Deep/Localizable.xcstrings. "Global Pause" stays in
+  English in every language, as the iOS Thai copy keeps it.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+  <!-- Home: the lounge card -->
+  <string name="pause_lounge_card_title">DJ Fuku\'s Lounge</string>
+  <string name="pause_lounge_card_body">Listen to live music and pause with the world</string>
+  <string name="pause_lounge_card_a11y">Fuku\'s Lounge — lo-fi while the world gathers to pause</string>
+  <string name="pause_lounge_card_a11y_on_air">Fuku\'s Lounge, on air — lo-fi while the world gathers to pause</string>
+
+  <!-- The ON AIR and LIVE badges -->
+  <string name="pause_on_air_badge">ON AIR</string>
+  <string name="pause_on_air">On air</string>
+  <string name="pause_on_air_muted">On air, muted</string>
+  <string name="pause_on_air_mute_hint">Mutes Fuku\'s set</string>
+  <string name="pause_on_air_unmute_hint">Unmutes Fuku\'s set</string>
+  <string name="pause_live_badge">LIVE</string>
+  <string name="pause_live_spoken">Live</string>
+
+  <!-- Fuku's Lounge -->
+  <string name="pause_lounge_title">Fuku\'s Lounge</string>
+  <string name="pause_messages_title">Peace messages</string>
+  <!-- A message, in curly quotes. -->
+  <string name="pause_message_quoted">“%1$s”</string>
+  <string name="pause_message_a11y_from">from %1$s</string>
+  <string name="pause_message_a11y_says">says: %1$s</string>
+  <string name="pause_message_a11y_tagged">tagged %1$s</string>
+
+  <!-- The Global Pause card -->
+  <string name="pause_card_title">Global Pause</string>
+  <string name="pause_card_resting">Breathe with the world, together</string>
+  <string name="pause_card_live_caption">The world is pausing</string>
+  <string name="pause_card_join">Join now</string>
+  <!-- Minutes and seconds to the meditation, zero-padded: "Live in 13:44". -->
+  <string name="pause_card_countdown">Live in %1$02d:%2$02d</string>
+  <!-- Spoken: the card's title, then its caption. -->
+  <string name="pause_card_a11y">%1$s. %2$s.</string>
+  <!-- When the next pause begins, in the member's own clock. -->
+  <string name="pause_schedule_today">Today · %1$s</string>
+  <string name="pause_schedule_tomorrow">Tomorrow · %1$s</string>
+
+  <!-- The live meditation -->
+  <string name="pause_meditation_live">LIVE · Worldwide</string>
+  <string name="pause_meditation_live_a11y">Live meditation in progress</string>
+  <plurals name="pause_company">
+    <item quantity="one">%1$s person is pausing with you</item>
+    <item quantity="other">%1$s people are pausing with you</item>
+  </plurals>
+  <string name="pause_meditation_progress_a11y" tools:ignore="PluralsCandidate">Meditation %1$d percent through</string>
+  <string name="pause_continent_americas">Americas</string>
+  <string name="pause_continent_americas_spoken">the Americas</string>
+  <string name="pause_continent_europe">Europe</string>
+  <string name="pause_continent_africa">Africa</string>
+  <string name="pause_continent_asia">Asia</string>
+  <string name="pause_continent_oceania">Oceania</string>
+  <string name="pause_continent_antarctica">Antarctica</string>
+  <!-- "1,842 in the Americas" -->
+  <string name="pause_continent_count_a11y">%1$s in %2$s</string>
+  <string name="pause_continents_a11y">Pausing now: %1$s</string>
+  <string name="pause_session_close">Close</string>
+  <string name="pause_leave_title">Leave your session?</string>
+  <string name="pause_leave_message">The world keeps breathing — you can rejoin while it\'s live.</string>
+  <string name="pause_leave_confirm">Leave</string>
+  <string name="pause_leave_stay">Keep breathing</string>
+
+  <!-- The reflection -->
+  <string name="pause_reflection_eyebrow">PEACE MESSAGE</string>
+  <string name="pause_reflection_title">Thank you for pausing</string>
+  <string name="pause_reflection_tag_prompt">What were you holding?</string>
+  <string name="pause_composer_placeholder">What did tonight hold for you?</string>
+  <string name="pause_composer_friend">Friend</string>
+  <string name="pause_reflection_note_signed_out">Sign in from the You tab to leave a message.</string>
+  <string name="pause_reflection_note_limit">Three messages a day is plenty. Rest now.</string>
+  <string name="pause_reflection_note_failed">Your message couldn\'t be sent just now.</string>
+  <string name="pause_intention_peace">Peace</string>
+  <string name="pause_intention_healing">Healing</string>
+  <string name="pause_intention_gratitude">Gratitude</string>
+  <string name="pause_intention_someone_i_love">Someone I love</string>
+  <string name="pause_intention_other">Other</string>
+
+  <!-- The meditation's ongoing notification, while it plays -->
+  <string name="pause_channel_name">Global Pause</string>
+  <string name="pause_notification_title">Global Pause</string>
+  <string name="pause_notification_body">The world, breathing together</string>
+
+  <!-- The pause night's ending -->
+  <string name="reward_pause_missed">Stay through the meditation to receive hearts</string>
+  <string name="reward_pause_thanks">Thank you for pausing</string>
+</resources>

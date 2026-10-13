@@ -3,6 +3,8 @@ package io.appbeyond.freelance.deep.feature.globalpause.store
 import io.appbeyond.freelance.deep.feature.globalpause.model.GlobalPauseRewardSnapshot
 import io.appbeyond.freelance.deep.feature.rewards.model.RewardReceipt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +49,7 @@ class GlobalPauseVisit(
   private val session: GlobalPauseSession,
   private val audio: GlobalPauseAudioPlaying,
   private val scope: CoroutineScope,
-  private val snapshot: () -> GlobalPauseRewardSnapshot,
+  private val snapshot: suspend () -> GlobalPauseRewardSnapshot,
   private val receipt: suspend (before: GlobalPauseRewardSnapshot) -> RewardReceipt,
 ) {
 
@@ -75,7 +77,7 @@ class GlobalPauseVisit(
   private val _isPreparing = MutableStateFlow(false)
   val isPreparing: StateFlow<Boolean> = _isPreparing.asStateFlow()
 
-  private var before: GlobalPauseRewardSnapshot? = null
+  private var before: Deferred<GlobalPauseRewardSnapshot>? = null
   private var completed = false
   private var tornDown = false
   private val watchers = mutableListOf<Job>()
@@ -119,9 +121,11 @@ class GlobalPauseVisit(
     watchers.forEach { it.cancel() }
     watchers.clear()
 
-    // The books as they stand right now, before the claim moves them.
-    before = snapshot()
-    session.claimPauseAward()
+    // The books as they stand right now, before the claim moves them — so the
+    // claim goes out only once they're frozen.
+    before = scope.async {
+      snapshot().also { session.claimPauseAward() }
+    }
     _phase.value = Phase.Reflecting
 
     // The meditation is over; presence goes once the claim's closing beat has
@@ -137,9 +141,10 @@ class GlobalPauseVisit(
    * claim still in flight land, then compose the ritual.
    */
   suspend fun continueToRewards() {
-    val frozen = before ?: return
     if (_phase.value != Phase.Reflecting || _isPreparing.value) return
+    val pending = before ?: return
     _isPreparing.value = true
+    val frozen = pending.await()
     session.settlePauseAward()
     val composed = receipt(frozen)
     _isPreparing.value = false
