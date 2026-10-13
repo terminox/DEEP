@@ -1,12 +1,16 @@
 package io.appbeyond.freelance.deep.networking
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
+import androidx.annotation.RawRes
+import androidx.core.net.toUri
 import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.auth.TokenStoring
+import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.config.AppConfig
 import io.appbeyond.freelance.deep.feature.compassion.store.HeartLedger
 import io.appbeyond.freelance.deep.feature.deepsound.model.ListenRules
@@ -15,6 +19,10 @@ import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.TrackListenReporting
 import io.appbeyond.freelance.deep.feature.deepsound.store.ApiSoundLibrary
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
+import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
+import io.appbeyond.freelance.deep.feature.globalpause.store.GlobalPauseSession
+import io.appbeyond.freelance.deep.feature.globalpause.store.PauseEventRemote
+import io.appbeyond.freelance.deep.feature.globalpause.store.PresenceIdStore
 import io.appbeyond.freelance.deep.feature.mindgarden.store.GardenStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountCache
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
@@ -27,6 +35,7 @@ import io.appbeyond.freelance.deep.feature.playlist.store.ApiPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistCache
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.feature.practice.store.PracticeJournal
+import io.appbeyond.freelance.deep.feature.rewards.PauseNightRewards
 import io.appbeyond.freelance.deep.feature.rewards.PracticeRewards
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.store.ContinuityWitness
@@ -34,6 +43,7 @@ import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
 import io.appbeyond.freelance.deep.feature.reminders.AlarmReminderScheduler
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
+import io.appbeyond.freelance.deep.shared.localization.DeviceRegion
 import io.appbeyond.freelance.deep.shared.localization.LanguageStore
 import io.appbeyond.freelance.deep.shared.persistence.DataStoreBlobStore
 import kotlinx.coroutines.CancellationException
@@ -49,6 +59,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.time.Clock
+import java.time.Duration
 import java.time.ZoneId
 
 /**
@@ -334,11 +345,12 @@ class AppDependencies(context: Context) {
     zone = { ZoneId.systemDefault() },
   )
 
-  /** Whether today's practice goal is already met — the one fact the reminder
-   * store deliberately doesn't know. */
-  private suspend fun goalMetToday(): Boolean {
+  /** Whether today already counts as practised — the goal met, or a Global
+   * Pause sat ([PracticeJournal.reminderRestsToday]). The one fact the
+   * reminder store deliberately doesn't know; every evaluation reads it. */
+  private suspend fun practisedToday(): Boolean {
     practiceJournal.restore()
-    return practiceJournal.minutesToday() >= practiceJournal.dailyGoalMinutes
+    return practiceJournal.reminderRestsToday()
   }
 
   /**
@@ -348,7 +360,7 @@ class AppDependencies(context: Context) {
    * and clock receivers.
    */
   suspend fun rescheduleReminder() {
-    reminderStore.reschedule(goalMetToday = goalMetToday())
+    reminderStore.reschedule(practisedToday = practisedToday())
   }
 
   /** [rescheduleReminder] fire-and-forget, for lifecycle seams. */
@@ -358,17 +370,18 @@ class AppDependencies(context: Context) {
 
   /** Turns the reminder on — the screen supplies the permission [prompt]. */
   suspend fun enableReminder(prompt: suspend () -> Boolean) =
-    reminderStore.enable(goalMetToday = goalMetToday(), prompt = prompt)
+    reminderStore.enable(practisedToday = practisedToday(), prompt = prompt)
 
   /** A new clock face for the reminder. */
   suspend fun setReminderTime(hour: Int, minute: Int) =
-    reminderStore.setTime(hour, minute, goalMetToday = goalMetToday())
+    reminderStore.setTime(hour, minute, practisedToday = practisedToday())
 
   /**
    * Adopts a language. The view tree recreates in it (the per-app locale);
    * the server-authored content the process holds is refetched in it, since
    * `Accept-Language` follows the choice from the next request on. The
-   * reminder needs nothing: it resolves its words as it fires.
+   * reminder needs nothing: it resolves its words as it fires (iOS
+   * reschedules here only because it bakes the words into each request).
    */
   fun selectLanguage(selected: AppLanguage) {
     val changed = selected != language
@@ -378,6 +391,60 @@ class AppDependencies(context: Context) {
     launchQuietly("playlist reload") { playlistStore.load() }
     launchQuietly("sound shelves reload") { soundLibrary.shelves() }
   }
+
+  // Week six: Global Pause. The engine is app-lifetime, like iOS's — the
+  // Home card and the lounge need tonight's schedule long before a session is
+  // ever opened — and runs on the main thread, as the `@MainActor` original
+  // does, so it never needs a lock. Its clock is synced off every pause
+  // response, so dev time travel moves the whole feature at once.
+
+  /** The server's clock, as the pause reads it. */
+  val pauseClock: SyncedClock = SyncedClock()
+
+  private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+  /** The live event routes (`/pause/…`) and `/me/pause/award`. */
+  val pauseEvents: PauseEventRemote =
+    ApiPauseEventRemote(retrofit.create(PauseEventService::class.java), pauseClock)
+
+  /** One anonymous presence id per install, in `deep.pause`. */
+  private val presenceIds = PresenceIdStore(DataStoreBlobStore(context.applicationContext, "deep.pause"))
+
+  /**
+   * The live pause. Its settled awards go through the one [ingestAwards], and
+   * a night the server counted keeps the day in the practice journal — unless
+   * the member has signed out meanwhile.
+   */
+  val globalPause: GlobalPauseSession = GlobalPauseSession(
+    clock = pauseClock,
+    remote = pauseEvents,
+    scope = mainScope,
+    presenceId = presenceIds::id,
+    // The device's region, not the in-app language's: a member reading in
+    // Thai on an English-region phone is pausing from where the phone is.
+    countryIso = { DeviceRegion.isoCode(context.applicationContext) },
+    introDuration = { bundledDuration(context.applicationContext, R.raw.fuku_intro) },
+    awardSink = { grant -> ingestAwards(grant) },
+    // An eligible claim keeps the day in the rhythm and rests today's
+    // reminder at once (iOS PR #62). Stamped with the device's clock, as iOS
+    // stamps `Date.now`: the pause clock follows the server, and a
+    // time-travelled server would file the sit under the wrong day.
+    activitySink = { _ ->
+      if (isSignedIn) {
+        practiceJournal.recordPauseDay(clock.instant())
+        rescheduleReminderQuietly()
+      }
+    },
+  )
+
+  /** The books a pause night's ending reads. */
+  val pauseNightRewards: PauseNightRewards = PauseNightRewards(
+    session = globalPause,
+    journal = practiceJournal,
+    ledger = heartLedger,
+    garden = gardenStore,
+    witness = continuityWitness,
+  )
 
   private val isSignedIn: Boolean get() = accountStore.account.value != null
 
@@ -472,8 +539,17 @@ class AppDependencies(context: Context) {
     // change recreates the activity without the member leaving.
     ProcessLifecycleOwner.get().lifecycle.addObserver(
       object : DefaultLifecycleObserver {
-        override fun onStart(owner: LifecycleOwner) = rescheduleReminderQuietly()
-        override fun onStop(owner: LifecycleOwner) = rescheduleReminderQuietly()
+        override fun onStart(owner: LifecycleOwner) {
+          rescheduleReminderQuietly()
+          // Also the launch: registering replays ON_START. Re-resolves the
+          // schedule (and so the clock) and resumes a session's live poll.
+          globalPause.onForeground()
+        }
+
+        override fun onStop(owner: LifecycleOwner) {
+          rescheduleReminderQuietly()
+          globalPause.onBackground()
+        }
       },
     )
 
@@ -508,3 +584,24 @@ class AppDependencies(context: Context) {
     const val PRACTICE_FLUSH_TIMEOUT_MILLIS = 3_000L
   }
 }
+
+/**
+ * How long a bundled clip runs, read off the file — so the lounge's intro
+ * hand-off never drifts from the footage the way a typed constant does the
+ * first time it's recut. Zero when it can't be read, which the broadcast
+ * reads as "no intro".
+ */
+private suspend fun bundledDuration(context: Context, @RawRes resource: Int): Duration =
+  withContext(Dispatchers.IO) {
+    val retriever = MediaMetadataRetriever()
+    try {
+      retriever.setDataSource(context, "android.resource://${context.packageName}/$resource".toUri())
+      retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+        ?.let(Duration::ofMillis) ?: Duration.ZERO
+    } catch (unreadable: RuntimeException) {
+      Log.w("AppDependencies", "Could not read a bundled clip's length", unreadable)
+      Duration.ZERO
+    } finally {
+      retriever.release()
+    }
+  }

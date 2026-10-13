@@ -7,6 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -20,6 +23,10 @@ import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionCoordinator
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.player.play
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
+import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseLobbyScreen
+import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseSessionCoordinator
+import io.appbeyond.freelance.deep.feature.globalpause.audio.GlobalPauseAudioPlayer
+import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeScene
 import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 import io.appbeyond.freelance.deep.networking.LocalVideoCache
@@ -91,6 +98,10 @@ class MainActivity : ComponentActivity() {
 
     setContent {
       val language by dependencies.languageStore.selection.collectAsStateWithLifecycle()
+      // One globe for the whole app, so the lounge card and the live session
+      // draw the same one — what week 7's card lift moves between them.
+      val globeScene = remember { GlobeScene() }
+      val pause by dependencies.globalPause.state.collectAsStateWithLifecycle()
       CompositionLocalProvider(LocalVideoCache provides videoCache) {
         AppRoot(
           accountStore = dependencies.accountStore,
@@ -126,6 +137,9 @@ class MainActivity : ComponentActivity() {
               onPlayCollection = { dependencies.soundPlayer.play(it) },
               onOpenCollectionList = actions.openCollectionList,
               refreshKey = account?.id,
+              isFukuOnAir = pause.isFukuOnAir,
+              onOpenFukuLounge = actions.openFukuLounge,
+              onRefreshPause = dependencies.globalPause::start,
             )
           },
           gardenContent = { actions ->
@@ -177,6 +191,34 @@ class MainActivity : ComponentActivity() {
               onFinish = onFinish,
               onComplete = dependencies.practiceRewards::complete,
               onWitnessContinuity = dependencies.practiceRewards::witnessContinuity,
+            )
+          },
+          fukuLoungeContent = { onJoin, onBack ->
+            GlobalPauseLobbyScreen(
+              session = dependencies.globalPause,
+              scene = globeScene,
+              fetchMessages = dependencies.pauseEvents::messages,
+              soundPlayer = dependencies.soundPlayer,
+              onJoin = onJoin,
+              onBack = onBack,
+            )
+          },
+          canJoinGlobalPause = { dependencies.globalPause.state.value.isMeditationLive },
+          globalPauseContent = { visibility, onFinish ->
+            val context = LocalContext.current
+            val audio = remember { GlobalPauseAudioPlayer(context.applicationContext, dependencies.http.mediaClient) }
+            DisposableEffect(audio) { onDispose { audio.release() } }
+            val account by dependencies.accountStore.account.collectAsStateWithLifecycle()
+            GlobalPauseSessionCoordinator(
+              session = dependencies.globalPause,
+              scene = globeScene,
+              audio = audio,
+              snapshot = dependencies.pauseNightRewards::snapshot,
+              receipt = dependencies.pauseNightRewards::receipt,
+              witnessContinuity = dependencies.pauseNightRewards::witnessContinuity,
+              memberName = account?.displayName,
+              onFinish = onFinish,
+              visibility = visibility,
             )
           },
         )

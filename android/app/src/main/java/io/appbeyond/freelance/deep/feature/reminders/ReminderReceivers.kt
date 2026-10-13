@@ -41,7 +41,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
           store.markPosted(day)
         }
         // Strictly after now, so this arms tomorrow's occurrence.
-        store.reschedule(goalMetToday = false)
+        store.reschedule(practisedToday = false)
       } catch (unexpected: Exception) {
         Log.w(TAG, "Reminder alarm failed", unexpected)
       } finally {

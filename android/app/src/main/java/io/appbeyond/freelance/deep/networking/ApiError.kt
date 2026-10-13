@@ -1,6 +1,7 @@
 package io.appbeyond.freelance.deep.networking
 
 import io.appbeyond.freelance.deep.auth.HttpStatusCarrying
+import io.appbeyond.freelance.deep.auth.TransportFailure
 import kotlinx.serialization.Serializable
 
 /**
@@ -46,7 +47,8 @@ sealed class DeepApiException(
     DeepApiException(
       "We couldn't reach DEEP just now. Check your connection and try again.",
       cause,
-    )
+    ),
+    TransportFailure
 
   /** Response body didn't match the expected shape. */
   class Decoding(val detail: String, cause: Throwable? = null) :

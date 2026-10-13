@@ -62,11 +62,11 @@ android {
     minSdk = 26
     targetSdk = 36
 
-    // Week five of eight. The versionCode scheme is still open — iOS stamps Unix
+    // Week six of eight. The versionCode scheme is still open — iOS stamps Unix
     // epoch seconds, which does not survive the port because versionCode is a
     // signed 32-bit int that can never decrease on a store track.
-    versionCode = 5
-    versionName = "0.0.5"
+    versionCode = 6
+    versionName = "0.0.6"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
