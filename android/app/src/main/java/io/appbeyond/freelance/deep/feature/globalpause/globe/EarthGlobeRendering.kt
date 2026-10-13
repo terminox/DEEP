@@ -167,11 +167,12 @@ private fun EarthGlobe(engine: EarthEngine, flight: GlobeFlight, scene: GlobeSce
       engine.beginSession()
     }
     DisposableEffect(engine) { onDispose { engine.endSession() } }
-    // Latched: the lift waits for this surface's first frame once. A surface
-    // rebuilt mid-sit (a lost context) must not drop the backdrop back to
-    // invisible and flash the lounge through the session.
+    // The lift (and the reduced-motion cut) waits until this globe's first
+    // frame is on screen, not merely drawn. Latched: a surface rebuilt
+    // mid-sit (a lost context) must not drop the backdrop back to invisible
+    // and flash the lounge through the session.
     LaunchedEffect(target) {
-      target.firstFrame.first { it }
+      target.presented.first { it }
       flight.sessionReady = true
     }
   }

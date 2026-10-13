@@ -130,7 +130,10 @@ internal class EarthGlobeView(
       return false
     }
 
-    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
+    /** Called as the view latches a frame into the draw that shows it: presented, not just submitted. */
+    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {
+      if (!target.presented.value) target.presented.value = true
+    }
   }
 }
 

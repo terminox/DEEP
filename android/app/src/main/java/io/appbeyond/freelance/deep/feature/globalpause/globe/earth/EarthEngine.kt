@@ -42,7 +42,7 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * Threading: every field below the public API is confined to the render
  * thread. The UI thread talks to it only by posting ([post]); what the UI
- * reads back — [status], [ripples], [reveals], a target's `firstFrame`, the
+ * reads back — [status], [ripples], [reveals], the
  * [orientation] snapshot — is published thread-safely.
  *
  * Lifecycle: the context is built when the first globe attaches and released
@@ -301,7 +301,6 @@ internal class EarthEngine private constructor(private val appContext: Context) 
     if (surface != null) egl?.destroySurface(surface)
     target.eglSurface = null
     target.texture = null
-    target.firstFrame.value = false
   }
 
   private fun renderable(target: EarthTarget): Boolean =
@@ -338,7 +337,6 @@ internal class EarthEngine private constructor(private val appContext: Context) 
         continue
       }
       target.lastFrameNanos = frameTimeNanos
-      if (!target.firstFrame.value) target.firstFrame.value = true
     }
     core.makeIdleCurrent()
   }
@@ -425,7 +423,6 @@ internal class EarthEngine private constructor(private val appContext: Context) 
       if (contextAlive) renderer?.releaseTargets(target.gpu) else target.gpu.allocated = false
       if (surface != null && core != null) core.destroySurface(surface)
       target.eglSurface = null
-      target.firstFrame.value = false
     }
     if (contextAlive) runCatching { renderer?.release() }
     renderer = null
@@ -463,7 +460,8 @@ internal class EarthEngine private constructor(private val appContext: Context) 
 
 /**
  * One `TextureView` the engine draws into. Created and owned by the view;
- * every mutable field is touched only on the render thread.
+ * every mutable field is touched only on the render thread, except
+ * [presented], which the view publishes.
  */
 internal class EarthTarget(
   /** 60 fps for the live session's globe, 30 for the resting card's. */
@@ -479,6 +477,11 @@ internal class EarthTarget(
   var lastFrameNanos = 0L
   val gpu = EarthRenderer.Targets()
 
-  /** True once a frame has been presented on the current surface. */
-  val firstFrame = MutableStateFlow(false)
+  /**
+   * True once the view has latched a frame from this target onto the screen
+   * (`onSurfaceTextureUpdated`, on the UI thread). Not the engine's swap: a
+   * swapped buffer reaches the screen a frame or more later, so a gate that
+   * opened on the swap showed one frame of night with no globe (QA B17).
+   */
+  val presented = MutableStateFlow(false)
 }
