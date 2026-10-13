@@ -8,8 +8,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,12 +24,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
@@ -101,6 +105,7 @@ fun GlobalPauseCard(
   val title = stringResource(R.string.pause_card_title)
   val joinLabel = stringResource(R.string.pause_card_join)
   val spoken = stringResource(R.string.pause_card_a11y, title, caption)
+  val join by rememberUpdatedState(onJoin)
 
   Box(
     modifier
@@ -108,12 +113,7 @@ fun GlobalPauseCard(
       .height(CARD_HEIGHT)
       .then(if (isLive) Modifier.softPress() else Modifier)
       .clip(RoundedCornerShape(Dp.card))
-      .clickable(
-        enabled = isLive,
-        interactionSource = remember { MutableInteractionSource() },
-        indication = null,
-        onClick = onJoin,
-      )
+      .then(if (isLive) Modifier.pointerInput(Unit) { detectStillTap { join() } } else Modifier)
       .clearAndSetSemantics {
         contentDescription = spoken
         if (isLive) {
@@ -318,5 +318,29 @@ private fun GlobalPauseCardLivePreview() {
       onJoin = {},
       modifier = Modifier.padding(Dp.edge),
     )
+  }
+}
+
+/**
+ * A tap that a drag never turns into. `clickable` fires on any lift inside the
+ * bounds that no one consumed — and a sideways swipe across the card is
+ * consumed by nothing (the feed scrolls vertically, the card globe ignores
+ * drags), so it joined the session (QA round 1, B11). Here the gesture ends
+ * the moment the finger travels past touch slop or a parent claims the
+ * movement, and only a lift short of both counts.
+ */
+private suspend fun PointerInputScope.detectStillTap(onTap: () -> Unit) {
+  awaitEachGesture {
+    val down = awaitFirstDown()
+    while (true) {
+      val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+      if (change.isConsumed) return@awaitEachGesture
+      if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) return@awaitEachGesture
+      if (change.changedToUp()) {
+        change.consume()
+        onTap()
+        return@awaitEachGesture
+      }
+    }
   }
 }

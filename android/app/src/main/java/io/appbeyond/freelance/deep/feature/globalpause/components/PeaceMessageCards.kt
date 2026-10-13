@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -39,6 +41,7 @@ import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessage
 import io.appbeyond.freelance.deep.feature.globalpause.store.FixturePauseEventRemote
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.DeepTagLabel
+import io.appbeyond.freelance.deep.shared.localization.AppFormat
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.blushPowder
@@ -52,6 +55,7 @@ import io.appbeyond.freelance.deep.theme.skyWash
 import io.appbeyond.freelance.deep.theme.tile
 import java.time.Instant
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 
 /*
  * The parts a peace message is made of, shared by the card in Fuku's Lounge
@@ -170,16 +174,26 @@ fun PeaceMessageCard(message: PeaceMessage, intentions: List<Intention>, modifie
   }
 }
 
-/** "5 minutes ago", in the member's language — iOS's `.relative(presentation: .named)`. */
+/**
+ * "5 minutes ago", in the member's language — iOS's `.relative(presentation:
+ * .named)`. Under a minute (or a post stamped a moment ahead of this device's
+ * clock) it reads "Now" rather than "0 minutes ago", and the label re-reads
+ * the clock each time the age crosses a whole minute, so a card left on
+ * screen keeps counting (QA round 1, B18).
+ */
 @Composable
 private fun relativeAgo(at: Instant): String {
-  // Read per composition, so a card scrolled back to reads its age as now.
-  LocalConfiguration.current
-  return DateUtils.getRelativeTimeSpanString(
-    at.toEpochMilli(),
-    System.currentTimeMillis(),
-    DateUtils.MINUTE_IN_MILLIS,
-  ).toString()
+  val locale = LocalConfiguration.current.locales[0]
+  val posted = at.toEpochMilli()
+  val now by produceState(System.currentTimeMillis(), posted) {
+    while (true) {
+      val age = (value - posted).coerceAtLeast(0L)
+      delay(DateUtils.MINUTE_IN_MILLIS - age % DateUtils.MINUTE_IN_MILLIS)
+      value = System.currentTimeMillis()
+    }
+  }
+  if (now - posted < DateUtils.MINUTE_IN_MILLIS) return AppFormat.now(locale)
+  return DateUtils.getRelativeTimeSpanString(posted, now, DateUtils.MINUTE_IN_MILLIS).toString()
 }
 
 @Preview(showBackground = true, name = "Peace message")

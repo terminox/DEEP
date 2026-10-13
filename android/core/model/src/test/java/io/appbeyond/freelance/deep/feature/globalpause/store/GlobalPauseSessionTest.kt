@@ -4,6 +4,7 @@ import io.appbeyond.freelance.deep.feature.globalpause.model.GlobalPauseCardStat
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseJoinPoint
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseLiveSnapshot
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseSchedule
+import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -118,6 +119,54 @@ class GlobalPauseSessionTest {
       session.start()
       advance(Duration.ofSeconds(30))
       assertEquals(1, remote.scheduleCalls)
+    }
+
+    @Test
+    @DisplayName("A meditation ending on the device's clock is confirmed with the server once")
+    fun meditationEndIsConfirmedOnce() = runTest {
+      val remote = ScriptedRemote(
+        listOf(Result.success(occurrence(meditationIn = Duration.ofMinutes(-1), nextIn = Duration.ofHours(12)))),
+      )
+      val session = pauseSession(remote)
+
+      session.start()
+      assertTrue(session.state.value.isMeditationLive)
+      advance(Duration.ofMinutes(8))
+      assertEquals(1, remote.scheduleCalls, "Nothing to ask while the meditation runs.")
+
+      advance(Duration.ofMinutes(1).plusSeconds(1))
+      assertFalse(session.state.value.isMeditationLive)
+      assertEquals(2, remote.scheduleCalls, "The end is confirmed at once, not when the feedback phase runs out.")
+
+      advance(Duration.ofMinutes(5))
+      assertEquals(2, remote.scheduleCalls, "Once — the feedback phase is not polled.")
+    }
+
+    @Test
+    @DisplayName("The dev time-travel loop is followed on every wrap, not only the first")
+    fun everyTimeTravelWrapIsFollowed() = runTest {
+      val clock = SyncedClock(SchedulerClock(testScheduler))
+      val schedule = occurrence(meditationIn = Duration.ZERO, nextIn = Duration.ofHours(12))
+      val meditationStart = now
+      // The server's loop: every schedule read lands 2s into the meditation.
+      val remote = object : PauseEventRemote by FixturePauseEventRemote() {
+        var scheduleCalls = 0
+        override suspend fun schedule(): PauseSchedule {
+          scheduleCalls += 1
+          clock.sync(meditationStart.plusSeconds(2))
+          return schedule
+        }
+      }
+      val session = pauseSession(remote, clock = clock)
+
+      session.start()
+      repeat(3) { wrap ->
+        assertTrue(session.state.value.isMeditationLive, "Live on pass ${wrap + 1}")
+        advance(Duration.ofMinutes(10))
+        assertTrue(session.state.value.isMeditationLive, "Back on LIVE after wrap ${wrap + 1}")
+        assertEquals(GlobalPauseCardState.Live, session.state.value.cardState)
+      }
+      assertEquals(4, remote.scheduleCalls)
     }
 
     @Test
@@ -351,6 +400,30 @@ class GlobalPauseSessionTest {
       advanceUntil { session.state.value.pauseAward != null }
       assertEquals(listOf("beat:$PRESENCE_ID"), remote.presenceLog)
       assertEquals(1, remote.pauseClaimAttempts)
+    }
+
+    @Test
+    @DisplayName("No heartbeat follows the claim's closing beat")
+    fun noBeatAfterTheClaim() = runTest {
+      val remote = liveRemote()
+      val session = pauseSession(remote)
+
+      session.enterSession()
+      advance(Duration.ofSeconds(9))
+      assertEquals(1, remote.presenceLog.count { it.startsWith("beat:") })
+
+      session.claimPauseAward()
+      advanceUntil { session.state.value.pauseAward != null }
+      assertEquals(2, remote.presenceLog.count { it.startsWith("beat:") }, "The closing beat…")
+
+      // Past the loop's next 10s tick, and the one after.
+      advance(Duration.ofSeconds(25))
+      assertEquals(2, remote.presenceLog.count { it.startsWith("beat:") }, "…is the last one.")
+      assertTrue(session.isInSession, "Still in session until the visit leaves.")
+
+      session.leaveSession()
+      advance(Duration.ofMillis(1))
+      assertEquals("leave:$PRESENCE_ID", remote.presenceLog.last())
     }
 
     @Test

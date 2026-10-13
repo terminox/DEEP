@@ -3,6 +3,7 @@ package io.appbeyond.freelance.deep.feature.globalpause
 import android.view.TextureView
 import androidx.annotation.OptIn
 import androidx.annotation.RawRes
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,8 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -32,10 +35,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.AudioAttributes
@@ -81,6 +88,7 @@ import io.appbeyond.freelance.deep.theme.driftGrey
 import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
+import io.appbeyond.freelance.deep.theme.settle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -176,6 +184,7 @@ fun GlobalPauseLobbyScreen(
   val (pull, nestedScroll) = rememberHeroPull(listState)
   val bottomInset = Dp.rhythm * 2 + LocalMiniPlayerClearance.current
   val shown = PeaceMessageFeed.displayed(feedState.messages, pause.postedMessage)
+  val intentions = localizedIntentions(pause.schedule?.intentions)
 
   // Pages append as the last card comes into view.
   val lastId by rememberUpdatedState(shown.lastOrNull()?.id)
@@ -258,7 +267,7 @@ fun GlobalPauseLobbyScreen(
         items(shown, key = { it.id }) { message ->
           PeaceMessageCard(
             message = message,
-            intentions = pause.schedule?.intentions.orEmpty(),
+            intentions = intentions,
             modifier = Modifier
               .offset(y = -HERO_OVERLAP)
               .padding(horizontal = Dp.edge, vertical = 6.dp),
@@ -274,7 +283,24 @@ fun GlobalPauseLobbyScreen(
         }
       }
 
-      LoungeTopBar(onBack = onBack, modifier = Modifier.align(Alignment.TopCenter))
+      // The feed reaches the title once the hero's foot (less the overlap the
+      // first message rides up into) passes under the bar.
+      val density = LocalDensity.current
+      var barHeight by remember { mutableIntStateOf(0) }
+      val scrolledUnder by remember {
+        derivedStateOf {
+          val hero = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "hero" }
+          val reach = barHeight + with(density) { HERO_OVERLAP.roundToPx() }
+          hero == null || hero.offset + hero.size < reach
+        }
+      }
+      LoungeTopBar(
+        onBack = onBack,
+        scrolledUnder = scrolledUnder,
+        modifier = Modifier
+          .align(Alignment.TopCenter)
+          .onSizeChanged { barHeight = it.height },
+      )
     }
   }
 }
@@ -283,15 +309,37 @@ fun GlobalPauseLobbyScreen(
  * The back chevron and the room's name, over a cream veil — Android's answer
  * to iOS's progressive blur under the inline title: there is no backdrop blur
  * below API 31, and the hero's art is bright.
+ *
+ * Over the hero the veil is a light wash. Once the feed is [scrolledUnder]
+ * the title it firms into a near-opaque seat that holds through the title's
+ * line and fades only in a tail below it — at the old wash's density the
+ * messages' text read straight through the title (QA round 1, B10).
  */
 @Composable
-private fun LoungeTopBar(onBack: () -> Unit, modifier: Modifier = Modifier) {
+private fun LoungeTopBar(onBack: () -> Unit, scrolledUnder: Boolean, modifier: Modifier = Modifier) {
+  val firmness by animateFloatAsState(
+    targetValue = if (scrolledUnder) 1f else 0f,
+    animationSpec = settle(),
+    label = "lounge-veil",
+  )
   Box(
     modifier
       .fillMaxWidth()
-      .background(Brush.verticalGradient(listOf(Color.moonCream.copy(alpha = 0.75f), Color.Transparent)))
+      .drawBehind {
+        val tailStart = (1f - VEIL_TAIL.toPx() / size.height).coerceIn(0f, 1f)
+        val top = lerp(VEIL_REST_TOP_ALPHA, VEIL_FIRM_TOP_ALPHA, firmness)
+        val seat = lerp(VEIL_REST_SEAT_ALPHA, VEIL_FIRM_SEAT_ALPHA, firmness)
+        drawRect(
+          Brush.verticalGradient(
+            0f to Color.moonCream.copy(alpha = top),
+            tailStart to Color.moonCream.copy(alpha = seat),
+            1f to Color.Transparent,
+          ),
+        )
+      }
       .statusBarsPadding()
-      .padding(horizontal = Dp.edge, vertical = 8.dp),
+      .padding(horizontal = Dp.edge)
+      .padding(top = 8.dp, bottom = 8.dp + VEIL_TAIL),
     contentAlignment = Alignment.Center,
   ) {
     HeaderIconButton(
@@ -371,6 +419,16 @@ private val FukuClip.rawResource: Int
   }
 
 private val HERO_OVERLAP = 80.dp
+
+/** The fade below the lounge title, so the veil never ends in an edge. */
+private val VEIL_TAIL = 20.dp
+
+// The lounge veil's cream, at the top edge and at the title's foot: a wash
+// over the hero at rest, a seat for the title with the feed beneath it.
+private const val VEIL_REST_TOP_ALPHA = 0.75f
+private const val VEIL_REST_SEAT_ALPHA = 0.12f
+private const val VEIL_FIRM_TOP_ALPHA = 0.96f
+private const val VEIL_FIRM_SEAT_ALPHA = 0.9f
 
 @Preview(showBackground = true, name = "Fuku's Lounge")
 @Composable

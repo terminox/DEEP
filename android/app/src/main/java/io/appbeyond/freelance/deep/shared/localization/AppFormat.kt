@@ -1,6 +1,7 @@
 package io.appbeyond.freelance.deep.shared.localization
 
 import android.icu.text.CompactDecimalFormat
+import android.icu.text.DisplayContext
 import android.icu.text.NumberFormat
 import android.icu.text.RelativeDateTimeFormatter
 import android.icu.util.ULocale
@@ -61,6 +62,15 @@ object AppFormat {
     )
     return 'H' in pattern || 'k' in pattern
   }
+
+  /** The moment itself, named — "Now" / "ขณะนี้" — for an age under a minute. */
+  fun now(locale: Locale): String =
+    RelativeDateTimeFormatter.getInstance(
+      ULocale.forLocale(locale),
+      null,
+      RelativeDateTimeFormatter.Style.LONG,
+      DisplayContext.CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE,
+    ).format(RelativeDateTimeFormatter.Direction.PLAIN, RelativeDateTimeFormatter.AbsoluteUnit.NOW)
 
   /**
    * How long ago, named — "yesterday", "6 days ago", "last week", "2 weeks

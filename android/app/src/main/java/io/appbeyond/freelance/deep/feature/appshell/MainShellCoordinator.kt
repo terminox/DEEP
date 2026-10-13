@@ -589,6 +589,7 @@ private fun DeepRoute.savedKey(): String? = when (this) {
   DeepRoute.Settings -> "settings"
   DeepRoute.Language -> "language"
   DeepRoute.DailyReminder -> "reminder"
+  DeepRoute.FukuLounge -> "lounge"
   is DeepRoute.CompassionCause -> CAUSE_PREFIX + causeId
   is DeepRoute.Collection, is DeepRoute.CollectionList -> null
 }
@@ -598,6 +599,7 @@ private fun routeOf(key: String): DeepRoute? = when {
   key == "settings" -> DeepRoute.Settings
   key == "language" -> DeepRoute.Language
   key == "reminder" -> DeepRoute.DailyReminder
+  key == "lounge" -> DeepRoute.FukuLounge
   key.startsWith(CAUSE_PREFIX) -> DeepRoute.CompassionCause(key.removePrefix(CAUSE_PREFIX))
   else -> null
 }
