@@ -1,5 +1,7 @@
 package io.appbeyond.freelance.deep.feature.compassion.store
 
+import io.appbeyond.freelance.deep.feature.compassion.model.CompassionCatalog
+import io.appbeyond.freelance.deep.feature.compassion.model.CompassionPool
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.model.RewardRules
 import io.appbeyond.freelance.deep.feature.rewards.model.WalletSummary
@@ -18,33 +20,51 @@ import java.util.UUID
 
 /**
  * The member's hearts: how many they hold, how many they have given and
- * where, and how much of today's earning ceiling is left.
+ * where, how much of today's earning ceiling is left — and the community's
+ * pooled totals the Compassion tab draws beside them.
  *
  * Ported from Deep/Deep/Features/CompassionPortfolio/Models/HeartLedger.swift.
  * The day maths reads [clock] in [zone] rather than `Calendar.current`, so the
  * day boundary follows the member's timezone and a test can pin it. Persists
  * nothing (parity): the first garden/wallet fetch hydrates it.
  *
- * Not ported yet: the community side of iOS's ledger — the compassion
- * categories' and projects' pooled `heartsShared` totals, `peopleReached`,
- * `causesSupported`, field reports. Those need the Compassion catalog, which
- * arrives with week 5; until then [send] moves only this member's own books
- * ([State.givenByCategory] is the per-user spread).
+ * The community side ([State.pool]) is seeded from [CompassionCatalog] and
+ * climbs only with this device's own sends, exactly as iOS's
+ * `categories[i].heartsShared` does: the server reports no pooled totals.
+ * A refused send takes its hearts back out of the pool; a reset leaves the
+ * pool alone, because it is app content, not account state.
+ *
+ * **How a spend is booked.** The ledger keeps two things apart: the
+ * *confirmed books* — the last absolutes the server sent, plus local credits —
+ * and the *unsettled spends*, optimistic gifts whose POST has not answered.
+ * What the member sees is the books less the unsettled spends. A spend that
+ * succeeds adopts the server's absolutes as the new books; one that is refused
+ * simply leaves the unsettled list, so its hearts reappear without any
+ * arithmetic of their own.
+ *
+ * That split is the week-4 carry-over's fix. iOS (and Android until v0.0.5)
+ * kept one set of figures: a wallet refresh landing mid-gift overwrote them
+ * with server truth — which cannot include a gift the server then refuses —
+ * and the rollback added the gift back on top, counting it twice until the
+ * next refresh. Here a refresh replaces only the books, the unsettled gift is
+ * still subtracted from what shows, and a refusal removes it once. The same
+ * holds for an award's absolutes ([apply]) arriving mid-gift.
+ *
+ * The one cost: a refresh that the server answered *after* committing the gift
+ * already counts it, so until the gift's own response lands (moments later)
+ * the balance reads that gift short. A brief undercount, corrected by the
+ * gift's own answer, instead of a lasting overcount — and if that answer is
+ * lost in transit, the books are already right.
  *
  * Every spend is stamped with a generation; one that settles after
  * [resetLocalState] is dropped, so a previous account's wallet never lands on
- * the next one. Spends go to the server one at a time, and a spend's absolute
- * snapshot is only adopted once no other optimistic spend is still waiting,
- * so an older snapshot can never overwrite a newer optimistic send.
+ * the next one. Spends go to the server one at a time, so each response's
+ * snapshot covers every earlier spend and none of the later ones still queued.
  *
- * Known, at iOS parity (not fixed here):
- * - A [hydrate] that lands while a spend is in flight already includes that
- *   spend; if the server then refuses it, the rollback re-adds the amount on
- *   top of the hydrated figures and double-counts until the next hydrate. The
- *   spend UI arrives in week 5 — fix then with pending-delta tracking.
- * - A wallet or grant whose `earnedToday` was computed for yesterday but lands
- *   just after midnight is labelled with today's date (the tally day is taken
- *   from the device clock on arrival), exactly as iOS does.
+ * Known, at iOS parity (not fixed here): a wallet or grant whose `earnedToday`
+ * was computed for yesterday but lands just after midnight is labelled with
+ * today's date (the tally day is taken from the device clock on arrival),
+ * exactly as iOS does.
  */
 class HeartLedger(
   private val remote: RewardsRemote?,
@@ -54,6 +74,7 @@ class HeartLedger(
   heartsGiven: Int = 0,
   heartsEarnedToday: Int = 0,
   givenByCategory: Map<String, Int> = emptyMap(),
+  pool: CompassionPool = CompassionCatalog.launchPool,
 ) {
 
   /** A spend the server refused after the optimistic decrement had already
@@ -72,6 +93,8 @@ class HeartLedger(
     val tallyDay: LocalDate,
     /** Hearts this member has sent, by compassion category id. */
     val givenByCategory: Map<String, Int>,
+    /** The community's pooled hearts, per cause and per project. */
+    val pool: CompassionPool = CompassionPool.empty,
     /** Set when a spend was rolled back; cleared by the next send or
      * [clearSpendFailure]. */
     val spendFailure: SpendFailure? = null,
@@ -85,9 +108,35 @@ class HeartLedger(
     /** Hearts [today] can still hand over. */
     fun heartsRemainingOn(today: LocalDate): Int = maxOf(0, dailyEarnCeiling - heartsEarnedOn(today))
 
+    /** Whether [today] has given everything it has. */
+    fun isFullOn(today: LocalDate): Boolean = heartsRemainingOn(today) == 0
+
     /** Hearts this member has sent to one cause. */
     fun heartsGiven(categoryId: String): Int = givenByCategory[categoryId] ?: 0
+
+    /** Distinct causes this member has contributed to. */
+    val causesSupported: Int get() = givenByCategory.count { it.value > 0 }
   }
+
+  /** The confirmed figures: the server's last absolutes, plus local credits. */
+  private data class Books(
+    val balance: Int,
+    val heartsGiven: Int,
+    val givenByCategory: Map<String, Int>,
+  )
+
+  /** One optimistic spend whose POST has not answered yet. */
+  private class PendingSpend(
+    val generation: Long,
+    val amount: Int,
+    val categoryId: String,
+    val projectId: String?,
+  )
+
+  private var books = Books(balance, heartsGiven, givenByCategory)
+
+  /** Guarded by [lock]; in send order. */
+  private val unsettled = mutableListOf<PendingSpend>()
 
   private val _state = MutableStateFlow(
     State(
@@ -96,18 +145,16 @@ class HeartLedger(
       earnedTally = minOf(heartsEarnedToday, dailyEarnCeiling),
       tallyDay = today(),
       givenByCategory = givenByCategory,
+      pool = pool,
     )
   )
 
   val state: StateFlow<State> = _state.asStateFlow()
 
-  /** Guards every write to [_state] and [generation]. */
+  /** Guards every write to [_state], [books], [unsettled] and [generation]. */
   private val lock = Any()
 
   private var generation = 0L
-
-  /** Optimistic spends not yet settled. Guarded by [lock]. */
-  private var unsettledSpends = 0
 
   /** One spend on the wire at a time, so responses settle in send order. */
   private val spendLock = Mutex()
@@ -129,6 +176,10 @@ class HeartLedger(
   /** Hearts this member has sent to one cause. */
   fun heartsGiven(categoryId: String): Int = _state.value.heartsGiven(categoryId)
 
+  /** The local day the ledger reads "today" as — for screens that derive
+   * [State.heartsEarnedOn] from a collected state. */
+  fun today(): LocalDate = LocalDate.ofInstant(clock.instant(), zone)
+
   // MARK: - Earning
 
   /**
@@ -147,29 +198,32 @@ class HeartLedger(
       _state.value = current
       return@synchronized 0
     }
-    _state.value = current.copy(balance = current.balance + credited, earnedTally = current.earnedTally + credited)
+    books = books.copy(balance = books.balance + credited)
+    _state.value = current.copy(earnedTally = current.earnedTally + credited).withBooks()
     credited
   }
 
   /**
    * Adopts the server's absolute wallet figures — the garden fetch feeds this
    * through `GardenStore.heartsChanged`. The per-cause spread is server truth
-   * unless the server sent none while local sends exist.
+   * unless the server sent none while local sends exist. Gifts still in
+   * flight stay subtracted from what shows (see the class note).
    */
   fun hydrate(wallet: WalletSummary) {
     synchronized(lock) {
-      val current = _state.value
-      _state.value = current.copy(
+      books = Books(
         balance = wallet.heartsBalance,
         heartsGiven = wallet.heartsGiven,
-        earnedTally = minOf(wallet.earnedToday, dailyEarnCeiling),
-        tallyDay = today(),
-        givenByCategory = if (wallet.givenByCategory.isNotEmpty() || current.givenByCategory.isEmpty()) {
+        givenByCategory = if (wallet.givenByCategory.isNotEmpty() || books.givenByCategory.isEmpty()) {
           wallet.givenByCategory
         } else {
-          current.givenByCategory
+          books.givenByCategory
         },
       )
+      _state.value = _state.value.copy(
+        earnedTally = minOf(wallet.earnedToday, dailyEarnCeiling),
+        tallyDay = today(),
+      ).withBooks()
     }
   }
 
@@ -184,9 +238,9 @@ class HeartLedger(
       var next = _state.value
       val balanceNow = grant.heartsBalance
       if (balanceNow != null) {
-        next = next.copy(balance = balanceNow)
+        books = books.copy(balance = balanceNow)
       } else if (grant.hearts > 0) {
-        next = next.copy(balance = next.balance + grant.hearts)
+        books = books.copy(balance = books.balance + grant.hearts)
       }
       val earnedToday = grant.heartsEarnedToday
       if (earnedToday != null) {
@@ -195,8 +249,8 @@ class HeartLedger(
         next = rolledOver(next, today)
         next = next.copy(earnedTally = minOf(next.earnedTally + grant.hearts, dailyEarnCeiling))
       }
-      grant.heartsGiven?.let { next = next.copy(heartsGiven = it) }
-      _state.value = next
+      grant.heartsGiven?.let { books = books.copy(heartsGiven = it) }
+      _state.value = next.withBooks()
     }
   }
 
@@ -207,30 +261,32 @@ class HeartLedger(
    * project the member tapped. The amount is clamped to the balance, so an
    * over-ask gives everything that's left rather than failing.
    *
-   * Optimistic: the books move immediately, then the spend goes to the server
-   * under a fresh idempotency UUID. Success reconciles to the server's
-   * absolutes; any failure rolls the whole mutation back and leaves a quiet
-   * [State.spendFailure]. The round trip finishes even if the caller is
-   * cancelled, so an optimistic spend is always either confirmed or rolled
+   * Optimistic: the books and the pool move immediately, then the spend goes
+   * to the server under a fresh idempotency UUID. Success reconciles to the
+   * server's absolutes; any failure rolls the whole mutation back and leaves
+   * a quiet [State.spendFailure]. The round trip finishes even if the caller
+   * is cancelled, so an optimistic spend is always either confirmed or rolled
    * back. Without a remote (fixtures, previews) the send stays purely local.
    *
-   * Spends are serialised: a second send's books move at once, but its
-   * request waits for the first to settle, and the first's absolutes are not
-   * adopted while the second is still pending (they would erase it).
+   * Spends are serialised: a second send's figures move at once, but its
+   * request waits for the first to settle.
    */
   suspend fun send(hearts: Int, categoryId: String, projectId: String? = null) {
     val spend = synchronized(lock) {
       val current = _state.value
       val amount = minOf(hearts, current.balance)
       if (amount <= 0) return
+      val pending = PendingSpend(generation, amount, categoryId, projectId)
+      if (remote != null) {
+        unsettled += pending
+      } else {
+        books = books.giving(amount, categoryId)
+      }
       _state.value = current.copy(
-        balance = current.balance - amount,
-        heartsGiven = current.heartsGiven + amount,
-        givenByCategory = current.givenByCategory.adding(categoryId, amount),
+        pool = current.pool.adding(categoryId, projectId, amount),
         spendFailure = null,
-      )
-      if (remote != null) unsettledSpends++
-      PendingSpend(generation, amount)
+      ).withBooks()
+      pending
     }
     val remote = remote ?: return
 
@@ -242,33 +298,36 @@ class HeartLedger(
         } catch (_: Exception) {
           null
         }
-        settle(spend, settled, categoryId)
+        settle(spend, settled)
       }
     }
   }
 
+  /** Send a single heart — the one-tap paths. No-op once the balance is spent. */
+  suspend fun sendHeart(categoryId: String, projectId: String? = null) = send(1, categoryId, projectId)
+
   /** Applies one spend's outcome, unless the ledger was reset since. */
-  private fun settle(spend: PendingSpend, settled: WalletSummary?, categoryId: String) {
+  private fun settle(spend: PendingSpend, settled: WalletSummary?) {
     synchronized(lock) {
       if (generation != spend.generation) return
-      unsettledSpends--
+      unsettled.remove(spend)
       val current = _state.value
       if (settled != null) {
-        // Another optimistic spend is still waiting: this snapshot predates
-        // it, so keep the books as they are — the last spend reconciles.
-        if (unsettledSpends > 0) return
-        _state.value = current.copy(
+        // Covers this spend and every earlier one; the later ones are still
+        // queued behind it, so they stay subtracted on top.
+        books = Books(
           balance = settled.heartsBalance,
           heartsGiven = settled.heartsGiven,
-          givenByCategory = settled.givenByCategory.ifEmpty { current.givenByCategory },
+          givenByCategory = settled.givenByCategory.ifEmpty { books.givenByCategory },
         )
+        _state.value = current.withBooks()
       } else {
+        // The books never held this spend; dropping it from the unsettled
+        // list is the whole rollback. Only the pool moved on its own.
         _state.value = current.copy(
-          balance = current.balance + spend.amount,
-          heartsGiven = current.heartsGiven - spend.amount,
-          givenByCategory = current.givenByCategory.adding(categoryId, -spend.amount),
-          spendFailure = SpendFailure(amount = spend.amount, categoryId = categoryId),
-        )
+          pool = current.pool.adding(spend.categoryId, spend.projectId, -spend.amount),
+          spendFailure = SpendFailure(amount = spend.amount, categoryId = spend.categoryId),
+        ).withBooks()
       }
     }
   }
@@ -281,27 +340,46 @@ class HeartLedger(
   /**
    * Forgets the signed-out account's wallet, so the next account never sees a
    * previous member's balance while its first garden fetch is still in
-   * flight. Any spend still in flight is dropped when it settles.
+   * flight. Any spend still in flight is dropped when it settles. The pool
+   * stays: it is the community's, not the account's.
    */
   fun resetLocalState() {
     synchronized(lock) {
       generation++
-      unsettledSpends = 0
+      unsettled.clear()
+      books = Books(balance = 0, heartsGiven = 0, givenByCategory = emptyMap())
       _state.value = State(
         balance = 0,
         heartsGiven = 0,
         earnedTally = 0,
         tallyDay = today(),
         givenByCategory = emptyMap(),
+        pool = _state.value.pool,
       )
     }
   }
 
   // MARK: - Internals
 
-  private class PendingSpend(val generation: Long, val amount: Int)
+  /** [this] state with the member's figures recomputed: the books, less every
+   * unsettled spend. Call with [lock] held. */
+  private fun State.withBooks(): State {
+    var shown = books
+    for (spend in unsettled) shown = shown.giving(spend.amount, spend.categoryId)
+    return copy(
+      // A refresh that already counted an in-flight gift could take this below
+      // zero for a moment; nothing shows a negative balance.
+      balance = maxOf(0, shown.balance),
+      heartsGiven = shown.heartsGiven,
+      givenByCategory = shown.givenByCategory,
+    )
+  }
 
-  private fun today(): LocalDate = LocalDate.ofInstant(clock.instant(), zone)
+  private fun Books.giving(amount: Int, categoryId: String): Books = copy(
+    balance = balance - amount,
+    heartsGiven = heartsGiven + amount,
+    givenByCategory = givenByCategory.adding(categoryId, amount),
+  )
 
   /** [state] with its tally zeroed if its day is not [today]. */
   private fun rolledOver(state: State, today: LocalDate): State =
@@ -337,6 +415,11 @@ class HeartLedger(
     fun fresh(clock: Clock, zone: ZoneId) =
       HeartLedger(remote = null, clock = clock, zone = zone, balance = 120)
 
+    /** A small balance below the quick-amount ladder — iOS's
+     * `HeartLedger(balance: 7, heartsGiven: 41)` preview. */
+    fun small(clock: Clock, zone: ZoneId) =
+      HeartLedger(remote = null, clock = clock, zone = zone, balance = 7, heartsGiven = 41)
+
     /** An emptied portfolio with a full day behind it — the one case where
      * practice can't earn more until tomorrow. */
     fun spent(clock: Clock, zone: ZoneId) = HeartLedger(
@@ -350,5 +433,16 @@ class HeartLedger(
         "peace" to 240, "healthcare" to 228, "nature" to 194, "education" to 176, "community" to 142,
       ),
     )
+
+    /** Spent, but with the day still open — the caption points at the next
+     * practice instead of tomorrow. */
+    fun spentDayOpen(clock: Clock, zone: ZoneId) =
+      HeartLedger(remote = null, clock = clock, zone = zone, balance = 0, heartsGiven = 40)
+
+    /** A portfolio whose last send the server refused and rolled back — the
+     * quiet caption under the send/donate CTAs. */
+    fun sendRefused(clock: Clock, zone: ZoneId) = sample(clock, zone).apply {
+      _state.value = _state.value.copy(spendFailure = SpendFailure(amount = 1, categoryId = "nature"))
+    }
   }
 }
