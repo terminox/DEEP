@@ -35,8 +35,9 @@ fun TestScope.pauseSession(
   awardSink: (suspend (AwardGrant) -> Unit)? = null,
   activitySink: (suspend (Instant) -> Unit)? = null,
   introDuration: Duration = Duration.ZERO,
+  clock: SyncedClock = SyncedClock(SchedulerClock(testScheduler)),
 ): GlobalPauseSession = GlobalPauseSession(
-  clock = SyncedClock(SchedulerClock(testScheduler)),
+  clock = clock,
   remote = remote,
   scope = backgroundScope,
   presenceId = { PRESENCE_ID },

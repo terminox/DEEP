@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -254,10 +255,17 @@ fun AppRoot(
       // Each phase is its own composition: leaving Main disposes the shell and
       // all of its remembered state, so a log out followed by a sign-in opens a
       // fresh shell on Home rather than on the last member's Settings.
+      //
+      // While a full-screen presentation covers the shell, the shell leaves
+      // the accessibility tree: TalkBack could otherwise reach the lounge, its
+      // feed and all five tabs under the live session (QA round 1, B4) — the
+      // modal semantics iOS's full-screen cover gets for free.
+      val covered = runningSession != null || pauseOpen
       AnimatedContent(
         targetState = phase,
         transitionSpec = { fadeIn(hush()) togetherWith fadeOut(hush()) },
         label = "root-phase",
+        modifier = if (covered) Modifier.clearAndSetSemantics {} else Modifier,
       ) { target ->
         when (target) {
           RootPhase.Restoring -> Box(Modifier.fillMaxSize())

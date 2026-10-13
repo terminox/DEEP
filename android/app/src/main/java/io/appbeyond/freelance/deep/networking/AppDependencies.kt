@@ -246,13 +246,20 @@ class AppDependencies(context: Context) {
    * The selected plant and its sunlight, persisted in `deep.garden`. Every
    * wallet riding a garden response hydrates [heartLedger] — unless the
    * member has signed out in the meantime (see [ingestAwards] for why the
-   * signed-in check sits here as well).
+   * signed-in check sits here as well). A wallet that arrived means the
+   * server is reachable again, so a gift whose answer was lost is re-sent
+   * under its own id right after ([HeartLedger.reconcile]).
    */
   val gardenStore: GardenStore = GardenStore(
     remote = rewardsRemote,
     blob = DataStoreBlobStore(context.applicationContext, "deep.garden"),
   ).also { garden ->
-    garden.heartsChanged = { wallet -> if (isSignedIn) heartLedger.hydrate(wallet) }
+    garden.heartsChanged = { wallet ->
+      if (isSignedIn) {
+        heartLedger.hydrate(wallet)
+        if (heartLedger.hasUnconfirmedSpends) launchQuietly("hearts reconcile") { heartLedger.reconcile() }
+      }
+    }
   }
 
   /** The day the continuity beat was last shown, persisted in `deep.continuity`. */
@@ -477,8 +484,8 @@ class AppDependencies(context: Context) {
    * Forgets everything the account's stores hold for the signed-out member —
    * journal, garden, hearts, the continuity day — on disk and in memory, so
    * the next member never inherits any of it, and switches the daily reminder
-   * off (as iOS's log out and delete both do). Every exit calls this: Settings'
-   * log out and account deletion, the server ending a session
+   * off and back to its default time (iOS only switches it off). Every exit
+   * calls this: Settings' log out and account deletion, the server ending a session
    * ([accountStore]'s involuntary sign-out), `AppRoot`'s rejected launch
    * restore, and the account watcher below. Idempotent, so the overlap is
    * harmless; runs to completion even if its caller is cancelled. A response
@@ -492,9 +499,10 @@ class AppDependencies(context: Context) {
       heartLedger.resetLocalState()
       continuityWitness.resetLocalState()
       // The nudge is about practice, and practice leaves with the account —
-      // so the alarm goes too. The *language* stays: what you read in belongs
-      // to the phone, not to whoever is signed into it.
-      reminderStore.disable()
+      // so the alarm goes too, and its time with it: the next member starts
+      // at 21:00, not at the last one's hour. The *language* stays: what you
+      // read in belongs to the phone, not to whoever is signed into it.
+      reminderStore.reset()
     }
   }
 

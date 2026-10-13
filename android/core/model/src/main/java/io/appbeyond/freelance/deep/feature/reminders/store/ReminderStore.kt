@@ -26,7 +26,8 @@ import java.time.ZonedDateTime
  * this phone — the one that will actually buzz — so it does not follow the
  * account to another device. (Signing out and deleting the account still
  * switch it off, as on iOS: the nudge is about practice, and practice leaves
- * with the account.)
+ * with the account — and, unlike iOS, the time goes back to the default too,
+ * so the next member never inherits it: [reset].)
  *
  * The store deliberately doesn't know about practice. Whether today's goal is
  * already met arrives as an argument, so the rule stays testable and the
@@ -114,6 +115,17 @@ class ReminderStore(
   suspend fun disable() {
     restore()
     mutate { write(reminder.copy(isEnabled = false)) }
+  }
+
+  /**
+   * Back to [DailyReminder.initial] — off, at 21:00 — with the queue cleared.
+   * Every account exit calls this rather than [disable], so the next member
+   * on this phone starts clean instead of arming the last one's clock face
+   * (QA round 1, B8).
+   */
+  suspend fun reset() {
+    restore()
+    mutate { write(DailyReminder.initial) }
   }
 
   /** Adopts a new clock face; the day is meaningless for a daily nudge. */

@@ -255,7 +255,7 @@ fun GlobalPauseSessionCoordinator(
           } else {
             val locale = LocalConfiguration.current.locales[0]
             GlobalPauseReflectionScreen(
-              intentions = pause.schedule?.intentions?.takeIf { it.isNotEmpty() } ?: sampleIntentions(),
+              intentions = localizedIntentions(pause.schedule?.intentions),
               name = memberName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.pause_composer_friend),
               place = devicePlace(locale),
               isPreparing = isPreparing,

@@ -321,8 +321,20 @@ class GlobalPauseSession(
     val wait = maxOf(Duration.between(now, boundary), MIN_BOUNDARY_WAIT)
     boundaryJob = scope.launch {
       delay(wait.toMillis())
+      val wasLive = _state.value.isMeditationLive
       recomputeState()
-      armBoundaryTimer()
+      if (wasLive && !_state.value.isMeditationLive) {
+        // The meditation ended on this device's reckoning: confirm it with
+        // the server, once, rather than trusting a clock last synced minutes
+        // ago until the feedback phase runs out. In production this is one
+        // read per night for a member idling in the lounge; under the dev
+        // time-travel loop it is what catches every wrap, not only the first
+        // (QA round 1, B12) — the wrapped `serverNow` puts the card back on
+        // LIVE.
+        refreshSchedule()
+      } else {
+        armBoundaryTimer()
+      }
     }
   }
 
@@ -455,6 +467,12 @@ class GlobalPauseSession(
   fun claimPauseAward() {
     if (_state.value.pauseAward != null || claimJob != null) return
     val country = countryIso()
+    // The closing beat below is the last: the meditation is over, so the
+    // renewal loop stops here rather than at leaveSession, which runs a
+    // moment later — a periodic beat landing in between re-registered the
+    // presence after the claim (QA round 1, B13). The job stays referenced,
+    // so the visit still reads as in session until it leaves.
+    heartbeatJob?.cancel()
     _state.update { it.copy(pauseAwardPending = true) }
     claimJob = scope.launch {
       finalBeat(country)

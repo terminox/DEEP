@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -119,7 +121,15 @@ fun HeartCapsule(
         indication = null,
         onClick = onClick,
       )
-      .then(if (accessibilityLabel != null) Modifier.semantics { contentDescription = accessibilityLabel } else Modifier)
+      // Said outright, so TalkBack reads a dimmed capsule as "Button, disabled"
+      // rather than an action-sounding label that does nothing (QA round 1,
+      // B19): a disabled `clickable` drops its click action but not its
+      // enabled state.
+      .semantics {
+        role = Role.Button
+        if (!enabled) disabled()
+        if (accessibilityLabel != null) contentDescription = accessibilityLabel
+      }
       .padding(
         horizontal = if (compact) 16.dp else 22.dp,
         vertical = if (compact) 13.dp else 16.dp,

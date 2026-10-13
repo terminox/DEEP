@@ -1,6 +1,7 @@
 package io.appbeyond.freelance.deep.shared.localization
 
 import android.icu.text.CompactDecimalFormat
+import android.icu.text.DisplayContext
 import android.icu.text.NumberFormat
 import android.icu.text.RelativeDateTimeFormatter
 import android.icu.util.ULocale
@@ -24,7 +25,7 @@ import java.util.Locale
  * activity's configuration rather than to `Locale.getDefault()`.
  *
  * ICU (`android.icu`, API 24+) rather than `java.text` for the compact and
- * relative forms, which `java.text` lacks: "18.5K", "1.8 หมื่น", "2 days ago".
+ * relative forms, which `java.text` lacks: "18.5K", "2 days ago".
  * Dates never pass through here as day keys — those stay Gregorian and
  * `en_US_POSIX` (see the Thai Buddhist-calendar note in `:core:model`); a
  * relative date has no year to shift.
@@ -34,7 +35,11 @@ object AppFormat {
   /** A whole number with grouping — "2,450". */
   fun number(value: Int, locale: Locale): String = NumberFormat.getIntegerInstance(locale).format(value.toLong())
 
-  /** A compact count — "18.5K" / "1.8 หมื่น" (iOS `.notation(.compactName)`). */
+  /**
+   * A compact count — "18.5K" (iOS `.notation(.compactName)`). CLDR's *short*
+   * Thai form keeps the Latin "K" ("73K"); "7.3 หมื่น" is the long form, which
+   * neither platform uses.
+   */
   fun compact(value: Int, locale: Locale): String =
     CompactDecimalFormat.getInstance(ULocale.forLocale(locale), CompactDecimalFormat.CompactStyle.SHORT)
       .format(value.toLong())
@@ -57,6 +62,15 @@ object AppFormat {
     )
     return 'H' in pattern || 'k' in pattern
   }
+
+  /** The moment itself, named — "Now" / "ขณะนี้" — for an age under a minute. */
+  fun now(locale: Locale): String =
+    RelativeDateTimeFormatter.getInstance(
+      ULocale.forLocale(locale),
+      null,
+      RelativeDateTimeFormatter.Style.LONG,
+      DisplayContext.CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE,
+    ).format(RelativeDateTimeFormatter.Direction.PLAIN, RelativeDateTimeFormatter.AbsoluteUnit.NOW)
 
   /**
    * How long ago, named — "yesterday", "6 days ago", "last week", "2 weeks

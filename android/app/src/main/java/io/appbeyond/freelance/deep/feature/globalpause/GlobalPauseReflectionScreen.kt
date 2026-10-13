@@ -204,6 +204,22 @@ fun GlobalPauseReflectionScreen(
 /** Room under the scroll for the pinned button. */
 private val BUTTON_CLEARANCE = 112.dp
 
+/**
+ * Tonight's intentions, labelled in DEEP's own copy for every key it knows,
+ * in the member's language. The schedule's labels are the admin's English
+ * whatever `Accept-Language` says, so a Thai member read "Healing" on the
+ * reflection chips and the feed tags (QA round 1, B5); a key DEEP doesn't
+ * know keeps the server's label, and no schedule at all falls back to
+ * [sampleIntentions]. iOS still shows the server's label here.
+ */
+@Composable
+fun localizedIntentions(server: List<Intention>?): List<Intention> {
+  val samples = sampleIntentions()
+  if (server.isNullOrEmpty()) return samples
+  val own = samples.associateBy { it.key }
+  return server.map { own[it.key] ?: it }
+}
+
 /** The offline intention labels, in the member's language — iOS's `Intention.samples`. */
 @Composable
 fun sampleIntentions(): List<Intention> = listOf(
