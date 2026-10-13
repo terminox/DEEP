@@ -26,8 +26,10 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -121,15 +123,27 @@ fun HeartCapsule(
         indication = null,
         onClick = onClick,
       )
-      // Said outright, so TalkBack reads a dimmed capsule as "Button, disabled"
-      // rather than an action-sounding label that does nothing (QA round 1,
-      // B19): a disabled `clickable` drops its click action but not its
-      // enabled state.
-      .semantics {
-        role = Role.Button
-        if (!enabled) disabled()
-        if (accessibilityLabel != null) contentDescription = accessibilityLabel
-      }
+      // One node for TalkBack, carrying the label, the role and — when there
+      // is nothing to commit — the disabled state, so a dimmed capsule reads
+      // "Button, disabled" rather than an action-sounding label. A label
+      // replaces the children outright: merged, the label landed on a child
+      // node that still reported itself enabled (QA rounds 1–2, B19). With a
+      // trailing slot the children stay merged in, so its words are read.
+      .then(
+        if (accessibilityLabel != null && trailing == null) {
+          Modifier.clearAndSetSemantics {
+            contentDescription = accessibilityLabel
+            role = Role.Button
+            if (enabled) this.onClick(label = null) { onClick(); true } else disabled()
+          }
+        } else {
+          Modifier.semantics(mergeDescendants = true) {
+            role = Role.Button
+            if (!enabled) disabled()
+            if (accessibilityLabel != null) contentDescription = accessibilityLabel
+          }
+        },
+      )
       .padding(
         horizontal = if (compact) 16.dp else 22.dp,
         vertical = if (compact) 13.dp else 16.dp,

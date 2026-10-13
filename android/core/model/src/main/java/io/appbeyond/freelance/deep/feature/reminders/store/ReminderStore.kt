@@ -14,6 +14,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Clock
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -118,6 +119,20 @@ class ReminderStore(
   }
 
   /**
+   * Records that today's nudge has just been posted, so no rebuild today —
+   * a later clock face, a foreground, the receiver's own re-arm — queues a
+   * second one. The queue itself is left to the caller's [reschedule].
+   */
+  suspend fun markPosted(day: LocalDate) {
+    restore()
+    mutate {
+      val updated = reminder.copy(lastPostedDay = day.toString())
+      _state.value = _state.value.copy(reminder = updated)
+      blob.writeQuietly(StoreJson.encodeToString(DailyReminder.serializer(), updated))
+    }
+  }
+
+  /**
    * Back to [DailyReminder.initial] — off, at 21:00 — with the queue cleared.
    * Every account exit calls this rather than [disable], so the next member
    * on this phone starts clean instead of arming the last one's clock face
@@ -183,8 +198,10 @@ class ReminderStore(
 
   private suspend fun pushQueue(goalMetToday: Boolean) {
     val now = ZonedDateTime.ofInstant(clock.instant(), zone())
+    // Today is done either way: practised, or already nudged once.
+    val skipToday = goalMetToday || reminder.postedOn(now.toLocalDate())
     scheduler.replaceQueue(
-      ReminderSchedule.occurrences(after = now, reminder = reminder, goalMetToday = goalMetToday)
+      ReminderSchedule.occurrences(after = now, reminder = reminder, goalMetToday = skipToday)
     )
   }
 }
