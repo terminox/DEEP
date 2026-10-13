@@ -494,4 +494,54 @@ class PracticeJournalTest {
     journal.reset()
     assertEquals(0, journal.currentStreakDays())
   }
+
+  // MARK: - The reminder's rule (B23, iOS PR #62)
+
+  @Test
+  @DisplayName("A Global Pause sat today rests the reminder; minutes short of the goal do not")
+  fun pauseSatTodayRestsTheReminder() = runTest {
+    val blob = InMemoryBlobStore()
+    val journal = journal(FailingPracticeRemote(), blob)
+    journal.record("Balancing breath", durationSeconds = 3 * 60)
+    assertFalse(journal.hasSatGlobalPauseToday())
+    assertFalse(journal.reminderRestsToday(), "Three minutes is short of the goal.")
+
+    journal.recordPauseDay(now)
+    assertEquals(3, journal.minutesToday(), "A pause adds no minutes…")
+    assertTrue(journal.hasSatGlobalPauseToday())
+    assertTrue(journal.reminderRestsToday(), "…but it rests today's reminder.")
+
+    val relaunched = journal(FailingPracticeRemote(), blob)
+    relaunched.restore()
+    assertTrue(relaunched.reminderRestsToday(), "The sit survives a relaunch.")
+
+    relaunched.reset()
+    assertFalse(relaunched.reminderRestsToday(), "And leaves with the account.")
+  }
+
+  @Test
+  @DisplayName("Yesterday's pause doesn't rest today's reminder; the goal alone still does")
+  fun yesterdaysPauseDoesNotRestToday() = runTest {
+    val journal = journal(FailingPracticeRemote())
+    journal.recordPauseDay(now.minus(Duration.ofDays(1)))
+    assertFalse(journal.reminderRestsToday())
+
+    journal.record("Balancing breath", durationSeconds = 10 * 60)
+    assertTrue(journal.reminderRestsToday())
+  }
+
+  @Test
+  @DisplayName("The pause day key stays Gregorian on a Thai device's Buddhist calendar")
+  fun pauseDayKeyIsGregorian() = runTest {
+    val original = java.util.Locale.getDefault()
+    try {
+      java.util.Locale.setDefault(java.util.Locale.forLanguageTag("th-TH-u-ca-buddhist"))
+      val journal = journal(FailingPracticeRemote())
+      journal.recordPauseDay(now)
+      assertEquals(listOf("2026-07-23"), journal.state.value.pauseDays)
+      assertTrue(journal.reminderRestsToday())
+    } finally {
+      java.util.Locale.setDefault(original)
+    }
+  }
 }

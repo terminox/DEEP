@@ -1,5 +1,10 @@
 package io.appbeyond.freelance.deep.feature.practice.model
 
+import java.time.LocalDate
+import java.util.Locale
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.time.Clock
 import java.time.Instant
@@ -146,5 +151,41 @@ class PracticeMathTest {
   fun longestStreakEmptyIsZero() {
     val longest = PracticeMath.longestStreakDays(emptyList(), zone)
     assertEquals(0, longest)
+  }
+
+  // MARK: - A Global Pause sat today (B23, iOS PR #62)
+
+  @Test
+  @DisplayName("A pause marked today counts; yesterday's pause does not")
+  fun pauseDayCountsOnlyToday() {
+    val today = LocalDate.of(2026, 7, 23)
+    assertTrue(PracticeMath.hasPauseDay(setOf(today), zone, clock))
+    assertFalse(PracticeMath.hasPauseDay(setOf(today.minusDays(1)), zone, clock))
+    assertFalse(PracticeMath.hasPauseDay(emptySet(), zone, clock))
+  }
+
+  @Test
+  @DisplayName("A pause that ends past midnight belongs to the day its marker landed in")
+  fun pauseMarkerPastMidnightIsTheNewDay() {
+    // The claim's answer landed at 00:04 on the 24th.
+    val marker = setOf(LocalDate.ofInstant(date(2026, 7, 24, 0, 4), zone))
+    val lateOnTheEve = Clock.fixed(date(2026, 7, 23, 23, 50), zone)
+    val nextMorning = Clock.fixed(date(2026, 7, 24, 8, 0), zone)
+    assertFalse(PracticeMath.hasPauseDay(marker, zone, lateOnTheEve))
+    assertTrue(PracticeMath.hasPauseDay(marker, zone, nextMorning))
+  }
+
+  @Test
+  @DisplayName("A pause sat today still counts on a Thai device's Buddhist calendar")
+  fun pauseDayIgnoresBuddhistDefault() {
+    val original = Locale.getDefault()
+    try {
+      Locale.setDefault(Locale.forLanguageTag("th-TH-u-ca-buddhist"))
+      // Keys are ISO-8601, parsed with the ISO chronology whatever the locale.
+      val key = LocalDate.parse("2026-07-23")
+      assertTrue(PracticeMath.hasPauseDay(setOf(key), zone, clock))
+    } finally {
+      Locale.setDefault(original)
+    }
   }
 }

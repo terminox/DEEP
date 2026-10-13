@@ -36,7 +36,7 @@ class ReminderScheduleTest {
     val occurrences = ReminderSchedule.occurrences(
       after = date("2026-09-01T08:00:00+07:00"),
       reminder = DailyReminder(isEnabled = false, hour = 21, minute = 0),
-      goalMetToday = false,
+      practisedToday = false,
     )
     assertTrue(occurrences.isEmpty())
   }
@@ -47,7 +47,7 @@ class ReminderScheduleTest {
     val occurrences = ReminderSchedule.occurrences(
       after = date("2026-09-01T08:00:00+07:00"),
       reminder = enabled,
-      goalMetToday = false,
+      practisedToday = false,
     )
     assertEquals(ReminderSchedule.horizon, occurrences.size)
 
@@ -65,7 +65,7 @@ class ReminderScheduleTest {
   @DisplayName("today is included when the time is still ahead")
   fun includesTodayBeforeTheHour() {
     val now = date("2026-09-01T08:00:00+07:00")
-    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, goalMetToday = false)
+    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, practisedToday = false)
     assertEquals(now.toLocalDate(), occurrences[0].toLocalDate())
   }
 
@@ -73,7 +73,7 @@ class ReminderScheduleTest {
   @DisplayName("today is skipped once its time has passed")
   fun skipsTodayAfterTheHour() {
     val now = date("2026-09-01T21:30:00+07:00")
-    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, goalMetToday = false)
+    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, practisedToday = false)
     assertFalse(occurrences[0].toLocalDate() == now.toLocalDate())
     assertEquals(ReminderSchedule.horizon, occurrences.size, "the window still fills")
   }
@@ -82,7 +82,7 @@ class ReminderScheduleTest {
   @DisplayName("a day whose practice is done stays quiet")
   fun skipsTodayWhenGoalMet() {
     val now = date("2026-09-01T08:00:00+07:00")
-    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, goalMetToday = true)
+    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, practisedToday = true)
     assertFalse(occurrences[0].toLocalDate() == now.toLocalDate())
     // Tomorrow is not skipped — only today can be known to be complete.
     val tomorrow = now.plusDays(1)
@@ -99,7 +99,7 @@ class ReminderScheduleTest {
   @DisplayName("every occurrence is in the future")
   fun allFuture() {
     val now = date("2026-09-01T20:59:59+07:00")
-    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, goalMetToday = false)
+    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, practisedToday = false)
     assertTrue(occurrences.all { it.isAfter(now) })
   }
 
@@ -129,7 +129,7 @@ class ReminderScheduleTest {
     val occurrences = ReminderSchedule.occurrences(
       after = now,
       reminder = DailyReminder(isEnabled = true, hour = 2, minute = 30),
-      goalMetToday = false,
+      practisedToday = false,
     )
 
     val days = occurrences.map { it.toLocalDate() }
@@ -149,7 +149,7 @@ class ReminderScheduleTest {
     val occurrences = ReminderSchedule.occurrences(
       after = now,
       reminder = DailyReminder(isEnabled = true, hour = 1, minute = 30),
-      goalMetToday = false,
+      practisedToday = false,
       limit = 3,
     )
 
@@ -162,7 +162,7 @@ class ReminderScheduleTest {
   @DisplayName("a time outside the gap is untouched on the spring-forward day")
   fun springForwardDayKeepsOtherTimes() {
     val now = ZonedDateTime.of(2026, 3, 7, 12, 0, 0, 0, newYork)
-    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, goalMetToday = false, limit = 3)
+    val occurrences = ReminderSchedule.occurrences(after = now, reminder = enabled, practisedToday = false, limit = 3)
     assertEquals(
       listOf(LocalDate.of(2026, 3, 7), LocalDate.of(2026, 3, 8), LocalDate.of(2026, 3, 9)),
       occurrences.map { it.toLocalDate() },

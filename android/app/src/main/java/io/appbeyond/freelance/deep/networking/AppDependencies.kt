@@ -345,11 +345,12 @@ class AppDependencies(context: Context) {
     zone = { ZoneId.systemDefault() },
   )
 
-  /** Whether today's practice goal is already met — the one fact the reminder
-   * store deliberately doesn't know. */
-  private suspend fun goalMetToday(): Boolean {
+  /** Whether today already counts as practised — the goal met, or a Global
+   * Pause sat ([PracticeJournal.reminderRestsToday]). The one fact the
+   * reminder store deliberately doesn't know; every evaluation reads it. */
+  private suspend fun practisedToday(): Boolean {
     practiceJournal.restore()
-    return practiceJournal.minutesToday() >= practiceJournal.dailyGoalMinutes
+    return practiceJournal.reminderRestsToday()
   }
 
   /**
@@ -359,7 +360,7 @@ class AppDependencies(context: Context) {
    * and clock receivers.
    */
   suspend fun rescheduleReminder() {
-    reminderStore.reschedule(goalMetToday = goalMetToday())
+    reminderStore.reschedule(practisedToday = practisedToday())
   }
 
   /** [rescheduleReminder] fire-and-forget, for lifecycle seams. */
@@ -369,17 +370,18 @@ class AppDependencies(context: Context) {
 
   /** Turns the reminder on — the screen supplies the permission [prompt]. */
   suspend fun enableReminder(prompt: suspend () -> Boolean) =
-    reminderStore.enable(goalMetToday = goalMetToday(), prompt = prompt)
+    reminderStore.enable(practisedToday = practisedToday(), prompt = prompt)
 
   /** A new clock face for the reminder. */
   suspend fun setReminderTime(hour: Int, minute: Int) =
-    reminderStore.setTime(hour, minute, goalMetToday = goalMetToday())
+    reminderStore.setTime(hour, minute, practisedToday = practisedToday())
 
   /**
    * Adopts a language. The view tree recreates in it (the per-app locale);
    * the server-authored content the process holds is refetched in it, since
    * `Accept-Language` follows the choice from the next request on. The
-   * reminder needs nothing: it resolves its words as it fires.
+   * reminder needs nothing: it resolves its words as it fires (iOS
+   * reschedules here only because it bakes the words into each request).
    */
   fun selectLanguage(selected: AppLanguage) {
     val changed = selected != language
@@ -423,7 +425,16 @@ class AppDependencies(context: Context) {
     countryIso = { DeviceRegion.isoCode(context.applicationContext) },
     introDuration = { bundledDuration(context.applicationContext, R.raw.fuku_intro) },
     awardSink = { grant -> ingestAwards(grant) },
-    activitySink = { at -> if (isSignedIn) practiceJournal.recordPauseDay(at) },
+    // An eligible claim keeps the day in the rhythm and rests today's
+    // reminder at once (iOS PR #62). Stamped with the device's clock, as iOS
+    // stamps `Date.now`: the pause clock follows the server, and a
+    // time-travelled server would file the sit under the wrong day.
+    activitySink = { _ ->
+      if (isSignedIn) {
+        practiceJournal.recordPauseDay(clock.instant())
+        rescheduleReminderQuietly()
+      }
+    },
   )
 
   /** The books a pause night's ending reads. */
