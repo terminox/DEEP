@@ -52,7 +52,7 @@ struct ReminderStoreTests {
     let scheduler = MockReminderScheduler(permission: .unasked, grantsWhenAsked: true)
     let store = makeStore("enable-grants", scheduler: scheduler)
 
-    let permission = await store.enable(goalMetToday: false)
+    let permission = await store.enable(practisedToday: false)
 
     #expect(permission == .granted)
     #expect(store.reminder.isEnabled)
@@ -64,7 +64,7 @@ struct ReminderStoreTests {
     let scheduler = MockReminderScheduler(permission: .unasked, grantsWhenAsked: false)
     let store = makeStore("enable-refused", scheduler: scheduler)
 
-    let permission = await store.enable(goalMetToday: false)
+    let permission = await store.enable(practisedToday: false)
 
     #expect(permission == .denied)
     #expect(store.reminder.isEnabled == false, "never claim it is on over a queue that can't exist")
@@ -76,7 +76,7 @@ struct ReminderStoreTests {
     let scheduler = MockReminderScheduler(permission: .granted)
     let store = makeStore("disable", scheduler: scheduler)
 
-    await store.enable(goalMetToday: false)
+    await store.enable(practisedToday: false)
     #expect(!scheduler.queue.isEmpty)
 
     await store.disable()
@@ -88,12 +88,12 @@ struct ReminderStoreTests {
   func timeChangeRewritesQueue() async {
     let scheduler = MockReminderScheduler(permission: .granted)
     let store = makeStore("time-change", scheduler: scheduler)
-    await store.enable(goalMetToday: false)
+    await store.enable(practisedToday: false)
 
     let sevenThirty = calendar.date(
       bySettingHour: 7, minute: 30, second: 0, of: fixedNow()
     )!
-    await store.setTime(sevenThirty, goalMetToday: false)
+    await store.setTime(sevenThirty, practisedToday: false)
 
     #expect(store.reminder.hour == 7)
     #expect(store.reminder.minute == 30)
@@ -108,7 +108,7 @@ struct ReminderStoreTests {
   func revokedPermissionTurnsItOff() async {
     let scheduler = MockReminderScheduler(permission: .granted)
     let store = makeStore("revoked", scheduler: scheduler)
-    await store.enable(goalMetToday: false)
+    await store.enable(practisedToday: false)
     #expect(store.reminder.isEnabled)
 
     // Someone turns notifications off for DEEP while the app is asleep.
@@ -122,7 +122,7 @@ struct ReminderStoreTests {
       calendar: calendar,
       now: fixedNow
     )
-    await reopened.reschedule(goalMetToday: false)
+    await reopened.reschedule(practisedToday: false)
 
     #expect(reopened.reminder.isEnabled == false)
     #expect(revoked.queue.isEmpty)
@@ -133,19 +133,62 @@ struct ReminderStoreTests {
     let scheduler = MockReminderScheduler(permission: .granted)
     let store = makeStore("goal-met", scheduler: scheduler)
 
-    await store.enable(goalMetToday: true)
+    await store.enable(practisedToday: true)
 
     let today = scheduler.queue.filter { calendar.isDate($0.date, inSameDayAs: fixedNow()) }
     #expect(today.isEmpty)
+  }
+
+  @Test("a Global Pause sat this morning moves tonight's reminder to tomorrow")
+  func pauseSatMovesTonightToTomorrow() async {
+    let scheduler = MockReminderScheduler(permission: .granted)
+    let store = makeStore("pause-sat", scheduler: scheduler)
+    let practice = PracticeDefaultsStore(
+      defaults: makeDefaults("pause-sat.practice"),
+      remote: MockPracticeRemote(),
+      calendar: calendar,
+      now: fixedNow
+    )
+
+    await store.enable(practisedToday: practice.reminderRestsToday)
+    let tonight = scheduler.queue.first?.date
+    #expect(tonight.map { calendar.isDate($0, inSameDayAs: fixedNow()) } == true)
+
+    // What the pause session's activity sink does once the server counts it.
+    practice.recordActivity(.pause, at: fixedNow())
+    await store.reschedule(practisedToday: practice.reminderRestsToday)
+
+    let tomorrow = calendar.date(byAdding: .day, value: 1, to: fixedNow())!
+    #expect(scheduler.queue.contains { calendar.isDate($0.date, inSameDayAs: fixedNow()) } == false)
+    #expect(scheduler.queue.first.map { calendar.isDate($0.date, inSameDayAs: tomorrow) } == true)
+    #expect(scheduler.queue.count == ReminderSchedule.horizon, "the window still fills")
+  }
+
+  @Test("a finished sound alone leaves tonight's reminder in place")
+  func trackDoesNotQuietTonight() async {
+    let scheduler = MockReminderScheduler(permission: .granted)
+    let store = makeStore("track-only", scheduler: scheduler)
+    let practice = PracticeDefaultsStore(
+      defaults: makeDefaults("track-only.practice"),
+      remote: MockPracticeRemote(),
+      calendar: calendar,
+      now: fixedNow
+    )
+    await store.enable(practisedToday: false)
+
+    practice.recordActivity(.track, at: fixedNow())
+    await store.reschedule(practisedToday: practice.reminderRestsToday)
+
+    #expect(scheduler.queue.first.map { calendar.isDate($0.date, inSameDayAs: fixedNow()) } == true)
   }
 
   @Test("the setting survives a relaunch")
   func settingPersists() async {
     let scheduler = MockReminderScheduler(permission: .granted)
     let store = makeStore("persists", scheduler: scheduler)
-    await store.enable(goalMetToday: false)
+    await store.enable(practisedToday: false)
     let sixAm = calendar.date(bySettingHour: 6, minute: 15, second: 0, of: fixedNow())!
-    await store.setTime(sixAm, goalMetToday: false)
+    await store.setTime(sixAm, practisedToday: false)
 
     let relaunched = ReminderStore(
       scheduler: MockReminderScheduler(permission: .granted),

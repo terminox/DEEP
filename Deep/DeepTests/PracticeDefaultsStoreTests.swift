@@ -354,6 +354,39 @@ struct PracticeDefaultsStoreTests {
     #expect(relaunched.currentStreakDays == 0)
   }
 
+  @Test("A Global Pause sat today rests the reminder; a finished track does not")
+  func pauseSatTodayRestsTheReminder() {
+    let (defaults, name) = Self.makeSuite()
+    defer { defaults.removePersistentDomain(forName: name) }
+
+    var clock = Self.now
+    let store = PracticeDefaultsStore(
+      defaults: defaults, remote: MockPracticeRemote(), calendar: Self.calendar, now: { clock }
+    )
+    #expect(store.reminderRestsToday == false)
+
+    // A sound to its end keeps the rhythm, but the reminder still speaks.
+    store.recordActivity(.track, at: Self.now)
+    #expect(store.continuityTransition().returnedToday)
+    #expect(store.hasSatGlobalPauseToday == false)
+    #expect(store.reminderRestsToday == false)
+
+    // No DEEP Session minutes at all — the pause alone is enough.
+    store.recordActivity(.pause, at: Self.now)
+    #expect(store.minutesToday == 0)
+    #expect(store.hasSatGlobalPauseToday)
+    #expect(store.reminderRestsToday)
+
+    let relaunched = PracticeDefaultsStore(
+      defaults: defaults, remote: MockPracticeRemote(), calendar: Self.calendar, now: { clock }
+    )
+    #expect(relaunched.reminderRestsToday, "the sit survives a relaunch")
+
+    // Tomorrow asks again.
+    clock = Self.date(year: 2026, month: 7, day: 24, hour: 8)
+    #expect(store.reminderRestsToday == false)
+  }
+
   // MARK: - Hydration
 
   @Test("A pull hydrates the journal and takes the server's activity days")
