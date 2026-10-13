@@ -70,6 +70,11 @@ class MainActivity : ComponentActivity() {
 
     val dependencies = (application as DeepApplication).dependencies
 
+    // From 33 a language picked in the system's per-app settings recreates
+    // this activity without restarting the process; adopt it, so the
+    // reminder and server copy follow the language the screens now read in.
+    dependencies.languageStore.adoptSystemChoice()
+
     // Below API 33 a new language means a new base context: recreate, as the
     // system does itself from 33 when the per-app locale changes.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {

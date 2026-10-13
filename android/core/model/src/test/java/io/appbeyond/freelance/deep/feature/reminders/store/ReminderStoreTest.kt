@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.reminders.store
 
+import io.appbeyond.freelance.deep.feature.reminders.model.DailyReminder
 import io.appbeyond.freelance.deep.feature.reminders.model.ReminderSchedule
 import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
 import kotlinx.coroutines.test.runTest
@@ -163,5 +164,26 @@ class ReminderStoreTest {
     store.reschedule(goalMetToday = false)
 
     assertTrue(scheduler.queue.isEmpty())
+  }
+
+  @Test
+  @DisplayName("an account exit resets the time as well as the switch, and the reset persists")
+  fun resetForgetsTheTime() = runTest {
+    val blob = InMemoryBlobStore()
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler, blob)
+    store.enable(goalMetToday = false, prompt = prompt)
+    store.setTime(hour = 23, minute = 15, goalMetToday = false)
+
+    store.reset()
+
+    assertEquals(DailyReminder.initial, store.reminder)
+    assertTrue(scheduler.queue.isEmpty())
+    val nextMember = store(MockReminderScheduler(ReminderPermission.Granted), blob)
+    nextMember.restore()
+    assertEquals(DailyReminder.initial, nextMember.reminder, "The next member never inherits 23:15.")
+    nextMember.enable(goalMetToday = false, prompt = prompt)
+    assertEquals(21, nextMember.reminder.hour)
+    assertEquals(0, nextMember.reminder.minute)
   }
 }

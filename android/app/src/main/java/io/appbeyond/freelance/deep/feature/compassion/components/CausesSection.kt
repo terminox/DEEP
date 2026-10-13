@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.compassion.CompassionCause
@@ -65,6 +68,11 @@ import java.time.ZoneId
 // MARK: - Constants
 
 private val TILE_WIDTH = 224.dp
+
+/** How far a cause's name may shrink to stay on one line. */
+private const val TITLE_MIN_SCALE = 0.75f
+
+private val TITLE_SCALE_STEP = 0.25.sp
 private val BANNER_HEIGHT = 132.dp
 private val SHELF_SPACING = 16.dp
 
@@ -170,12 +178,18 @@ fun CategoryTile(
         .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 14.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      Text(
+      // One line, shrinking before it clips — iOS's `.minimumScaleFactor`. The
+      // Thai "สันติภาพและความเป็นอยู่ที่ดี" is wider than the tile at full size.
+      BasicText(
         text = cause.name,
-        style = DeepType.sectionTitle,
-        color = Color.deepPlum,
+        style = DeepType.sectionTitle.copy(color = Color.deepPlum),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
+        autoSize = TextAutoSize.StepBased(
+          minFontSize = DeepType.sectionTitle.fontSize * TITLE_MIN_SCALE,
+          maxFontSize = DeepType.sectionTitle.fontSize,
+          stepSize = TITLE_SCALE_STEP,
+        ),
       )
       // Two lines reserved, so the five cards level whichever taglines wrap.
       Text(
