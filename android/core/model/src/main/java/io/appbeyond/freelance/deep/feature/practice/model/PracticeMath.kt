@@ -131,6 +131,16 @@ object PracticeMath {
     return ContinuityTransition(before = before, after = if (days.contains(today)) before + 1 else before)
   }
 
+  /**
+   * Whether a Global Pause the server counted was sat on today's local day —
+   * iOS's `hasActivity(.pause, in:calendar:now:)`. [pauseDays] are ISO
+   * (Gregorian) keys stamped as each claim's answer landed, so a sit whose
+   * answer lands past midnight belongs to the new day, and a Thai device's
+   * Buddhist calendar never shifts them.
+   */
+  fun hasPauseDay(pauseDays: Set<LocalDate>, zone: ZoneId, clock: Clock): Boolean =
+    LocalDate.ofInstant(clock.instant(), zone) in pauseDays
+
   /** Distinct local-midnight days with at least one completion. */
   private fun practiceDays(completions: List<PracticeCompletion>, zone: ZoneId): Set<LocalDate> =
     completions.map { LocalDate.ofInstant(it.completedAt, zone) }.toSet()

@@ -28,16 +28,20 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         val store = dependencies.reminderStore
         store.restore()
         if (store.reminder.isEnabled) {
-          val today = LocalDate.now(ZoneId.systemDefault())
+          // The day the alarm was armed for, so one delivered late past
+          // midnight is booked to the evening it belongs to.
+          val day = intent.getStringExtra(AlarmReminderScheduler.EXTRA_DAY)
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            ?: LocalDate.now(ZoneId.systemDefault())
           AlarmReminderScheduler.post(
             localized = dependencies.languageStore.localized(context.applicationContext),
-            day = today,
+            day = day,
           )
           // Once a day: a later clock face set this evening arms tomorrow.
-          store.markPosted(today)
+          store.markPosted(day)
         }
         // Strictly after now, so this arms tomorrow's occurrence.
-        store.reschedule(goalMetToday = false)
+        store.reschedule(practisedToday = false)
       } catch (unexpected: Exception) {
         Log.w(TAG, "Reminder alarm failed", unexpected)
       } finally {

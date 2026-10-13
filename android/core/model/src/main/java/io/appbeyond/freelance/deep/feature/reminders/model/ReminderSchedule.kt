@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.reminders.model
 
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZonedDateTime
@@ -41,16 +42,25 @@ object ReminderSchedule {
   const val horizon = 56
 
   /**
+   * How late the system may deliver an occurrence: Android arms the nudge as
+   * an inexact alarm in a window this long from the chosen minute (the
+   * shortest window `setWindow` honours). An occurrence inside it may not
+   * have fired yet; see `ReminderStore.reschedule`.
+   */
+  val deliveryWindow: Duration = Duration.ofMinutes(10)
+
+  /**
    * The next [limit] firing times after [after].
    *
-   * @param goalMetToday today's practice is already complete, so today's
-   *   occurrence is dropped. Only today can be known this way; every later
+   * @param practisedToday today already counts as practised — the goal met,
+   *   or a Global Pause sat (`PracticeJournal.reminderRestsToday`) — so
+   *   today's occurrence is dropped. Only today can be known this way; every later
    *   day is scheduled and withdrawn later if it turns out the same.
    */
   fun occurrences(
     after: ZonedDateTime,
     reminder: DailyReminder,
-    goalMetToday: Boolean,
+    practisedToday: Boolean,
     limit: Int = horizon,
   ): List<ZonedDateTime> {
     if (!reminder.isEnabled || limit <= 0) return emptyList()
@@ -69,7 +79,7 @@ object ReminderSchedule {
       // Strictly after `now`, so rescheduling at 21:00:30 doesn't re-queue
       // the 21:00 that just fired.
       if (!fires.isAfter(after)) continue
-      if (goalMetToday && fires.toLocalDate() == after.toLocalDate()) continue
+      if (practisedToday && fires.toLocalDate() == after.toLocalDate()) continue
       found.add(fires)
     }
     return found

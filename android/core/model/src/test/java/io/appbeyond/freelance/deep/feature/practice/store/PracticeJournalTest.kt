@@ -3,6 +3,7 @@ package io.appbeyond.freelance.deep.feature.practice.store
 import io.appbeyond.freelance.deep.feature.practice.model.ContinuityTransition
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeCompletion
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
+import io.appbeyond.freelance.deep.shared.persistence.BlobStoring
 import io.appbeyond.freelance.deep.shared.persistence.GatedBlobStore
 import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
 import io.appbeyond.freelance.deep.shared.persistence.StoreJson
@@ -38,6 +39,23 @@ private class FailingPracticeRemote : PracticeRemote {
  * awards, optionally parks every call on [gate], and hands back a canned
  * server log for [pull].
  */
+/** A blob whose reads park on [readGate] — a cold DataStore read in flight. */
+private class ReadGatedBlobStore(initial: String?) : BlobStoring {
+  @Volatile
+  private var value: String? = initial
+
+  val readGate = CompletableDeferred<Unit>()
+
+  override suspend fun read(): String? {
+    readGate.await()
+    return value
+  }
+
+  override suspend fun write(value: String?) {
+    this.value = value
+  }
+}
+
 private class RecordingPracticeRemote(
   var grant: AwardGrant? = null,
   var canned: List<PracticeCompletion> = emptyList(),
@@ -352,6 +370,55 @@ class PracticeJournalTest {
   }
 
   @Test
+  @DisplayName("A signed-out member's minutes never reach the next member, live or after a relaunch")
+  fun resetLeavesNothingForTheNextMember() = runTest {
+    val blob = InMemoryBlobStore()
+    val journal = journal(MockPracticeRemote(), blob)
+    journal.record("Balancing breath", durationSeconds = 11 * 60)
+    assertEquals(11, journal.minutesToday())
+
+    journal.reset()
+    assertEquals(0, journal.minutesToday())
+
+    // A cold start (the force-stop in QA round 3) reads the disk, not memory.
+    val relaunched = journal(MockPracticeRemote(), blob)
+    relaunched.restore()
+    assertEquals(0, relaunched.minutesToday())
+    assertTrue(relaunched.completions.isEmpty())
+  }
+
+  @Test
+  @DisplayName("A restore still reading the disk when the reset lands can't bring the old journal back")
+  fun lateRestoreCannotUndoReset() = runTest {
+    val blob = ReadGatedBlobStore(
+      StoreJson.encodeToString(
+        PracticeJournal.State.serializer(),
+        PracticeJournal.State(
+          completions = listOf(
+            PracticeCompletion(UUID.randomUUID(), "Balancing breath", 11 * 60, now, isSynced = true),
+          ),
+        ),
+      ),
+    )
+    val journal = PracticeJournal(MockPracticeRemote(), blob, clock, zone)
+
+    // The launch warm-up is still reading the previous member's blob…
+    val warming = launch { journal.restore() }
+    runCurrent()
+    // …when the sign-out resets the journal.
+    val resetting = launch { journal.reset() }
+    runCurrent()
+    blob.readGate.complete(Unit)
+    warming.join()
+    resetting.join()
+
+    assertEquals(0, journal.minutesToday())
+    val relaunched = PracticeJournal(MockPracticeRemote(), blob, clock, zone)
+    relaunched.restore()
+    assertEquals(0, relaunched.minutesToday())
+  }
+
+  @Test
   @DisplayName("A record cancelled while saving still survives a relaunch")
   fun cancelledRecordIsStillPersisted() = runTest {
     val blob = GatedBlobStore()
@@ -426,5 +493,55 @@ class PracticeJournalTest {
     journal.recordPauseDay(now)
     journal.reset()
     assertEquals(0, journal.currentStreakDays())
+  }
+
+  // MARK: - The reminder's rule (B23, iOS PR #62)
+
+  @Test
+  @DisplayName("A Global Pause sat today rests the reminder; minutes short of the goal do not")
+  fun pauseSatTodayRestsTheReminder() = runTest {
+    val blob = InMemoryBlobStore()
+    val journal = journal(FailingPracticeRemote(), blob)
+    journal.record("Balancing breath", durationSeconds = 3 * 60)
+    assertFalse(journal.hasSatGlobalPauseToday())
+    assertFalse(journal.reminderRestsToday(), "Three minutes is short of the goal.")
+
+    journal.recordPauseDay(now)
+    assertEquals(3, journal.minutesToday(), "A pause adds no minutes…")
+    assertTrue(journal.hasSatGlobalPauseToday())
+    assertTrue(journal.reminderRestsToday(), "…but it rests today's reminder.")
+
+    val relaunched = journal(FailingPracticeRemote(), blob)
+    relaunched.restore()
+    assertTrue(relaunched.reminderRestsToday(), "The sit survives a relaunch.")
+
+    relaunched.reset()
+    assertFalse(relaunched.reminderRestsToday(), "And leaves with the account.")
+  }
+
+  @Test
+  @DisplayName("Yesterday's pause doesn't rest today's reminder; the goal alone still does")
+  fun yesterdaysPauseDoesNotRestToday() = runTest {
+    val journal = journal(FailingPracticeRemote())
+    journal.recordPauseDay(now.minus(Duration.ofDays(1)))
+    assertFalse(journal.reminderRestsToday())
+
+    journal.record("Balancing breath", durationSeconds = 10 * 60)
+    assertTrue(journal.reminderRestsToday())
+  }
+
+  @Test
+  @DisplayName("The pause day key stays Gregorian on a Thai device's Buddhist calendar")
+  fun pauseDayKeyIsGregorian() = runTest {
+    val original = java.util.Locale.getDefault()
+    try {
+      java.util.Locale.setDefault(java.util.Locale.forLanguageTag("th-TH-u-ca-buddhist"))
+      val journal = journal(FailingPracticeRemote())
+      journal.recordPauseDay(now)
+      assertEquals(listOf("2026-07-23"), journal.state.value.pauseDays)
+      assertTrue(journal.reminderRestsToday())
+    } finally {
+      java.util.Locale.setDefault(original)
+    }
   }
 }

@@ -98,7 +98,7 @@ class ReminderStore(
    *
    * @param prompt shows the system's notification permission dialog.
    */
-  suspend fun enable(goalMetToday: Boolean, prompt: suspend () -> Boolean): ReminderPermission {
+  suspend fun enable(practisedToday: Boolean, prompt: suspend () -> Boolean): ReminderPermission {
     restore()
     return mutate {
       val permission = scheduler.requestPermission(prompt)
@@ -107,7 +107,7 @@ class ReminderStore(
         // Never leave the toggle on over a queue that can't exist.
         write(reminder.copy(isEnabled = false))
       } else {
-        write(reminder.copy(isEnabled = true), goalMetToday)
+        write(reminder.copy(isEnabled = true), practisedToday)
       }
       permission
     }
@@ -144,11 +144,11 @@ class ReminderStore(
   }
 
   /** Adopts a new clock face; the day is meaningless for a daily nudge. */
-  suspend fun setTime(hour: Int, minute: Int, goalMetToday: Boolean) {
+  suspend fun setTime(hour: Int, minute: Int, practisedToday: Boolean) {
     restore()
     mutate {
       val updated = reminder.withTime(hour, minute)
-      if (updated != reminder) write(updated, goalMetToday)
+      if (updated != reminder) write(updated, practisedToday)
     }
   }
 
@@ -160,7 +160,7 @@ class ReminderStore(
    * reminder fires, and on boot or a clock/zone change, because the system
    * forgets alarms across a reboot.
    */
-  suspend fun reschedule(goalMetToday: Boolean) {
+  suspend fun reschedule(practisedToday: Boolean) {
     restore()
     mutate {
       if (!reminder.isEnabled) {
@@ -175,7 +175,7 @@ class ReminderStore(
         write(reminder.copy(isEnabled = false))
         return@mutate
       }
-      pushQueue(goalMetToday)
+      pushQueue(practisedToday, keepDue = true)
     }
   }
 
@@ -186,22 +186,37 @@ class ReminderStore(
   private suspend fun <T> mutate(block: suspend () -> T): T =
     withContext(NonCancellable) { mutationLock.withLock { block() } }
 
-  private suspend fun write(updated: DailyReminder, goalMetToday: Boolean = false) {
+  private suspend fun write(updated: DailyReminder, practisedToday: Boolean = false) {
     _state.value = _state.value.copy(reminder = updated)
     blob.writeQuietly(StoreJson.encodeToString(DailyReminder.serializer(), updated))
     if (updated.isEnabled) {
-      pushQueue(goalMetToday)
+      pushQueue(practisedToday)
     } else {
       scheduler.clearQueue()
     }
   }
 
-  private suspend fun pushQueue(goalMetToday: Boolean) {
+  /**
+   * Rebuilds the system queue from now.
+   *
+   * @param keepDue keep an occurrence whose minute has passed but whose
+   *   delivery window ([ReminderSchedule.deliveryWindow]) hasn't, unless its
+   *   day already had its nudge. The alarm is inexact: at 01:56 a 01:55 nudge
+   *   may still be pending, and rebuilding strictly after now replaced it with
+   *   tomorrow's — opening DEEP inside the window cost the member today's
+   *   nudge (QA round 3, B24). Only the lifecycle rebuild ([reschedule])
+   *   keeps it; an explicit change of setting ([enable], [setTime]) never
+   *   fires a minute already behind the member.
+   */
+  private suspend fun pushQueue(practisedToday: Boolean, keepDue: Boolean = false) {
     val now = ZonedDateTime.ofInstant(clock.instant(), zone())
-    // Today is done either way: practised, or already nudged once.
-    val skipToday = goalMetToday || reminder.postedOn(now.toLocalDate())
-    scheduler.replaceQueue(
-      ReminderSchedule.occurrences(after = now, reminder = reminder, goalMetToday = skipToday)
-    )
+    val from = if (keepDue) now.minus(ReminderSchedule.deliveryWindow) else now
+    val today = now.toLocalDate()
+    val queue = ReminderSchedule
+      .occurrences(after = from, reminder = reminder, practisedToday = false, limit = ReminderSchedule.horizon + 2)
+      // A day is done either way: practised today, or already nudged once.
+      .filterNot { (practisedToday && it.toLocalDate() == today) || reminder.postedOn(it.toLocalDate()) }
+      .take(ReminderSchedule.horizon)
+    scheduler.replaceQueue(queue)
   }
 }

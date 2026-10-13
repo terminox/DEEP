@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import io.appbeyond.freelance.deep.MainActivity
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.reminders.model.ReminderCopy
+import io.appbeyond.freelance.deep.feature.reminders.model.ReminderSchedule
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderPermission
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderScheduling
 import java.time.LocalDate
@@ -83,7 +84,7 @@ class AlarmReminderScheduler(private val context: Context) : ReminderScheduling 
       AlarmManager.RTC_WAKEUP,
       next.toInstant().toEpochMilli(),
       WINDOW_MILLIS,
-      alarmIntent(context),
+      alarmIntent(context, day = next.toLocalDate()),
     )
   }
 
@@ -105,12 +106,18 @@ class AlarmReminderScheduler(private val context: Context) : ReminderScheduling 
     private const val NOTIFICATION_ID = 21
     private const val REQUEST_ALARM = 21
     private const val REQUEST_OPEN = 22
-    private const val WINDOW_MILLIS = 10 * 60 * 1000L
+    private val WINDOW_MILLIS = ReminderSchedule.deliveryWindow.toMillis()
 
-    private fun alarmIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
+    /** The armed occurrence's own local day, carried to [ReminderAlarmReceiver]
+     * so a nudge delivered after midnight is booked to the day it belongs to. */
+    const val EXTRA_DAY = "io.appbeyond.freelance.deep.reminder.DAY"
+
+    private fun alarmIntent(context: Context, day: LocalDate? = null): PendingIntent = PendingIntent.getBroadcast(
       context,
       REQUEST_ALARM,
-      Intent(context, ReminderAlarmReceiver::class.java),
+      Intent(context, ReminderAlarmReceiver::class.java).apply {
+        if (day != null) putExtra(EXTRA_DAY, day.toString())
+      },
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 

@@ -115,6 +115,18 @@ class PracticeJournal(
 
   fun longestStreakDays(): Int = PracticeMath.longestStreakDays(completions, zone, pauseDays())
 
+  /** Whether a Global Pause the server counted (an eligible claim) was sat
+   * today — the same marker the rhythm reads. iOS's `hasSatGlobalPauseToday`. */
+  fun hasSatGlobalPauseToday(): Boolean = PracticeMath.hasPauseDay(pauseDays(), zone, clock)
+
+  /**
+   * Whether today's reminder should rest: today's goal met in DEEP Session
+   * minutes, or a Global Pause sat today. The one rule every reminder
+   * evaluation reads (iOS's `reminderRestsToday`, PR #62). A finished sound
+   * keeps the rhythm but does not rest the reminder.
+   */
+  fun reminderRestsToday(): Boolean = minutesToday() >= dailyGoalMinutes || hasSatGlobalPauseToday()
+
   /** The rhythm across today's boundary — what a pause night's ending reads. */
   fun continuityTransition(): ContinuityTransition =
     PracticeMath.continuityTransition(completions, zone, clock, pauseDays())
