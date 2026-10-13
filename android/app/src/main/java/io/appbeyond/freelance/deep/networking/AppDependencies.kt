@@ -19,6 +19,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.TrackListenReporting
 import io.appbeyond.freelance.deep.feature.deepsound.store.ApiSoundLibrary
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
+import io.appbeyond.freelance.deep.feature.globalpause.earth.CountryLookup
 import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
 import io.appbeyond.freelance.deep.feature.globalpause.store.GlobalPauseSession
 import io.appbeyond.freelance.deep.feature.globalpause.store.PauseEventRemote
@@ -423,6 +424,10 @@ class AppDependencies(context: Context) {
     // The device's region, not the in-app language's: a member reading in
     // Thai on an English-region phone is pausing from where the phone is.
     countryIso = { DeviceRegion.isoCode(context.applicationContext) },
+    // The globe's country table: joins the server couldn't place land on their
+    // country, and the arrival turn has somewhere to aim before the first
+    // heartbeat resolves the member's own point.
+    countryCentroid = CountryLookup::centroid,
     introDuration = { bundledDuration(context.applicationContext, R.raw.fuku_intro) },
     awardSink = { grant -> ingestAwards(grant) },
     // An eligible claim keeps the day in the rhythm and rests today's
