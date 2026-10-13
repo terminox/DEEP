@@ -1,7 +1,6 @@
 package io.appbeyond.freelance.deep.networking
 
 import android.content.Context
-import android.content.res.Resources
 import android.media.MediaMetadataRetriever
 import androidx.annotation.RawRes
 import androidx.core.net.toUri
@@ -21,7 +20,6 @@ import io.appbeyond.freelance.deep.feature.deepsound.player.TrackListenReporting
 import io.appbeyond.freelance.deep.feature.deepsound.store.ApiSoundLibrary
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.globalpause.earth.CountryLookup
-import io.appbeyond.freelance.deep.feature.globalpause.model.PauseCountry
 import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
 import io.appbeyond.freelance.deep.feature.globalpause.store.GlobalPauseSession
 import io.appbeyond.freelance.deep.feature.globalpause.store.PauseEventRemote
@@ -46,6 +44,7 @@ import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
 import io.appbeyond.freelance.deep.feature.reminders.AlarmReminderScheduler
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
+import io.appbeyond.freelance.deep.shared.localization.DeviceRegion
 import io.appbeyond.freelance.deep.shared.localization.LanguageStore
 import io.appbeyond.freelance.deep.shared.persistence.DataStoreBlobStore
 import kotlinx.coroutines.CancellationException
@@ -422,7 +421,7 @@ class AppDependencies(context: Context) {
     presenceId = presenceIds::id,
     // The device's region, not the in-app language's: a member reading in
     // Thai on an English-region phone is pausing from where the phone is.
-    countryIso = { PauseCountry.normalize(Resources.getSystem().configuration.locales[0].country) },
+    countryIso = { DeviceRegion.isoCode(context.applicationContext) },
     // The globe's country table: joins the server couldn't place land on their
     // country, and the arrival turn has somewhere to aim before the first
     // heartbeat resolves the member's own point.

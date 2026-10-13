@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,7 +48,6 @@ import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeScene
 import io.appbeyond.freelance.deep.feature.globalpause.globe.LocalGlobeRendering
 import io.appbeyond.freelance.deep.feature.globalpause.model.ContinentPresence
 import io.appbeyond.freelance.deep.feature.globalpause.model.GlobalPauseRewardSnapshot
-import io.appbeyond.freelance.deep.feature.globalpause.model.PauseCountry
 import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
 import io.appbeyond.freelance.deep.feature.globalpause.store.FixturePauseEventRemote
 import io.appbeyond.freelance.deep.feature.globalpause.store.GlobalPauseAudioPlaying
@@ -60,6 +60,7 @@ import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.feature.rewards.model.RewardReceipt
 import io.appbeyond.freelance.deep.feature.rewards.screens.RewardRitualScreen
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
+import io.appbeyond.freelance.deep.shared.localization.DeviceRegion
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.hush
@@ -266,7 +267,7 @@ fun GlobalPauseSessionCoordinator(
             GlobalPauseReflectionScreen(
               intentions = localizedIntentions(pause.schedule?.intentions),
               name = memberName?.takeIf { it.isNotBlank() } ?: stringResource(R.string.pause_composer_friend),
-              place = devicePlace(locale),
+              place = devicePlace(LocalContext.current, locale),
               isPreparing = isPreparing,
               post = { message, intention -> session.post(message, intention) },
               submit = { intention -> session.submit(intention = intention, mood = null) },
@@ -296,12 +297,11 @@ fun GlobalPauseSessionCoordinator(
 
 /**
  * The country the post itself carries — the device's region, read from the
- * same source the session sends — named in the member's language.
+ * same source the session sends ([DeviceRegion]) — named in the member's
+ * language.
  */
-private fun devicePlace(locale: Locale): String {
-  val region = PauseCountry.normalize(
-    android.content.res.Resources.getSystem().configuration.locales[0].country,
-  ) ?: return ""
+private fun devicePlace(context: Context, locale: Locale): String {
+  val region = DeviceRegion.isoCode(context) ?: return ""
   return Locale("", region).getDisplayCountry(locale).ifBlank { region }
 }
 
