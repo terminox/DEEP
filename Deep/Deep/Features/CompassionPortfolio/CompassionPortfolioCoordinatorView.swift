@@ -21,6 +21,9 @@ import SwiftUI
 struct CompassionPortfolioCoordinatorView: View {
   @State private var path = NavigationPath()
   @State private var donation: CompassionCategory?
+  #if DEBUG
+  @State private var prototype = HeartThanksPrototype()
+  #endif
 
   var body: some View {
     NavigationStack(path: $path) {
@@ -29,9 +32,17 @@ struct CompassionPortfolioCoordinatorView: View {
           CompassionCategoryView(category: category)
         }
     }
-    .sheet(item: $donation) { category in
+    .sheet(item: $donation, onDismiss: {
+      #if DEBUG
+      prototype.sheetDidDismiss()
+      #endif
+    }) { category in
       DonateHeartsView(category: category)
     }
+    #if DEBUG
+    .prototypeThanksCover(prototype)
+    .environment(\.heartThanksPrototype, prototype)
+    #endif
     .environment(\.openCategory, { category in path.append(category) })
     .environment(\.openDonation, { category in donation = category })
     .preferredColorScheme(.light)

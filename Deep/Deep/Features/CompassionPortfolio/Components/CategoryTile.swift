@@ -104,6 +104,9 @@ struct CategoryTile: View {
     )
     .frame(height: bannerHeight)
     .clipShape(shape)
+    #if DEBUG
+    .prototypeTileNote(category.id)
+    #endif
   }
 
   /// Two figures on one tonal panel, told as labelled rows rather than two

@@ -11,6 +11,9 @@ import SwiftUI
 struct DonateHeartsView: View {
   @Environment(\.heartLedger) private var ledger
   @Environment(\.dismiss) private var dismiss
+  #if DEBUG
+  @Environment(\.heartThanksPrototype) private var prototype
+  #endif
   let category: CompassionCategory
 
   @State private var amount = 0
@@ -59,7 +62,13 @@ struct DonateHeartsView: View {
       .padding(.bottom, .rhythm)
       // Once the hearts are gone the sheet is only finishing its sentence.
       .allowsHitTesting(donated == nil)
+      #if DEBUG
+      .prototypeHidden(.content)
+      #endif
     }
+    #if DEBUG
+    .prototypeSheetStage()
+    #endif
     .scrollBounceBehavior(.basedOnSize)
     .scrollIndicators(.hidden)
     .animation(.settle, value: ledger.spendFailure)
@@ -75,6 +84,10 @@ struct DonateHeartsView: View {
     HStack(spacing: 14) {
       CompassionMotif(symbol: category.symbol, palette: category.palette, cornerRadius: 14)
         .frame(width: 48, height: 48)
+        #if DEBUG
+        .prototypeAnchor(.motif)
+        .prototypeMotifBeat()
+        #endif
 
       VStack(alignment: .leading, spacing: 2) {
         Text(category.name)
@@ -88,6 +101,10 @@ struct DonateHeartsView: View {
       // A `Spacer` here would bid against the text column and wrap the name on
       // a row with room to spare; a greedy frame leaves the text its width.
       .frame(maxWidth: .infinity, alignment: .leading)
+      #if DEBUG
+      .prototypeAnchor(.causeText)
+      .prototypeHidden(.causeText)
+      #endif
     }
     .accessibilityElement(children: .combine)
   }
@@ -129,6 +146,10 @@ struct DonateHeartsView: View {
     .accessibilityElement(children: .ignore)
     .accessibilityLabel("Hearts to donate")
     .accessibilityValue("\(amount) of \(ledger.balance)")
+    #if DEBUG
+    .prototypeAnchor(.readout)
+    .prototypeHidden(.readout)
+    #endif
   }
 
   /// The amounts worth one tap. The ladder steps down for a small balance.
@@ -246,6 +267,9 @@ struct DonateHeartsView: View {
     .animation(.exhale, value: ledger.canGive)
     .animation(.exhale, value: donated)
     .heartBurst(trigger: burst)
+    #if DEBUG
+    .prototypeAnchor(.cta)
+    #endif
   }
 
   /// The cause card's donate capsule is live whatever the balance, so this is
@@ -305,6 +329,15 @@ struct DonateHeartsView: View {
   private func donate() {
     let given = Swift.min(amount, ledger.balance)
     guard given > 0 else { return }
+
+    #if DEBUG
+    // PROTOTYPE: a thank-you variant takes the moment from here.
+    if let prototype, prototype.variant != .current {
+      ledger.send(given, to: category)
+      prototype.give(given, to: category)
+      return
+    }
+    #endif
 
     ledger.send(given, to: category)
     burst += 1

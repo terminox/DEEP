@@ -54,6 +54,10 @@ struct CompassionPortfolioHomeView: View {
     .scrollIndicators(.hidden)
     .scrollBounceBehavior(.always)
     .ignoresSafeArea(edges: .top)
+    #if DEBUG
+    .prototypeCardStage()
+    .overlay(alignment: .bottom) { HeartThanksSwitcherPrototype() }
+    #endif
     .background { AtmosphereBackground() }
     // No trailing balance chip: the portfolio card carries that number a few
     // points below, and "Where your hearts go" now titles the causes shelf, so
