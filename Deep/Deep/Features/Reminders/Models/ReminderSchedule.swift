@@ -21,13 +21,15 @@ enum ReminderSchedule {
 
   /// The next `horizon` firing times after `now`.
   ///
-  /// - Parameter goalMetToday: today's practice is already complete, so
-  ///   today's occurrence is dropped. Only today can be known this way; every
-  ///   later day is scheduled and withdrawn later if it turns out the same.
+  /// - Parameter practisedToday: today is already practised (the daily goal's
+  ///   DEEP Session minutes met, or a Global Pause sat — see
+  ///   `PracticeStore.reminderRestsToday`), so today's occurrence is
+  ///   dropped. Only today can be known this way; every later day is
+  ///   scheduled and withdrawn later if it turns out the same.
   static func occurrences(
     after now: Date,
     reminder: DailyReminder,
-    goalMetToday: Bool,
+    practisedToday: Bool,
     calendar: Calendar = .current,
     limit: Int = horizon
   ) -> [Date] {
@@ -50,7 +52,7 @@ enum ReminderSchedule {
       // Strictly after `now`, so rescheduling at 21:00:30 doesn't re-queue the
       // 21:00 that just fired.
       guard fires > now else { continue }
-      if goalMetToday, calendar.isDate(fires, inSameDayAs: now) { continue }
+      if practisedToday, calendar.isDate(fires, inSameDayAs: now) { continue }
       found.append(fires)
     }
     return found
