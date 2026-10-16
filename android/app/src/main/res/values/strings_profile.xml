@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Settings. Copy ported from
-  Deep/Deep/Features/Profile/SettingsView.swift. Thai lands in week 5 as
+  Deep/Deep/Features/Profile/SettingsView.swift. The Thai lives in
   values-th/strings_profile.xml.
 -->
 <resources>
@@ -14,9 +14,6 @@
   <string name="settings_section_preferences">Preferences</string>
   <string name="settings_language">Language</string>
   <string name="settings_daily_reminder">Daily reminder</string>
-  <string name="settings_section_membership">Membership</string>
-  <string name="settings_manage_subscription">Manage subscription</string>
-  <string name="settings_restore_purchases">Restore purchases</string>
   <string name="settings_section_account">Account</string>
   <string name="settings_log_out">Log out</string>
   <string name="settings_delete_account">Delete account</string>

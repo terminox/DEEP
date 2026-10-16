@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Onboarding copy, ported verbatim from Deep/Deep/Features/Onboarding. English
-  only; Thai lands with the rest of values-th in week 5.
+  Onboarding copy, ported verbatim from Deep/Deep/Features/Onboarding. The Thai
+  lives in values-th/strings_onboarding.xml.
 -->
 <resources>
 

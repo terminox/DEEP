@@ -19,7 +19,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,7 +56,9 @@ import io.appbeyond.freelance.deep.theme.driftGrey
 import io.appbeyond.freelance.deep.theme.duskRose
 import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.frostedCard
+import io.appbeyond.freelance.deep.theme.lavenderMist
 import io.appbeyond.freelance.deep.theme.moonCream
+import io.appbeyond.freelance.deep.theme.pebble
 import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.softPress
 
@@ -70,6 +75,10 @@ private val PROGRESS_SIZE = 18.dp
 private val PROGRESS_STROKE = 1.5.dp
 private val SECTION_TITLE_INSET = 8.dp
 private val SECTION_TITLE_GAP = 10.dp
+private val TOGGLE_PADDING_VERTICAL = 12.dp
+private val TIME_PADDING_VERTICAL = 10.dp
+private val TIME_CHIP_RADIUS = 8.dp
+private const val SWITCH_OFF_TRACK_ALPHA = 0.25f
 
 /** iOS `HeaderIconButton`: a 40pt disc of white at 65% with a faint rim. */
 private val HEADER_BUTTON_SIZE = 40.dp
@@ -129,6 +138,9 @@ sealed interface SettingsAccessory {
   data object Chevron : SettingsAccessory
   data class Value(val text: String) : SettingsAccessory
   data object Progress : SettingsAccessory
+
+  /** The chosen row in a list of choices — iOS's `.check`. */
+  data object Check : SettingsAccessory
 }
 
 /**
@@ -214,7 +226,116 @@ fun SettingsRow(
         strokeWidth = PROGRESS_STROKE,
         modifier = Modifier.size(PROGRESS_SIZE),
       )
+      SettingsAccessory.Check -> Icon(
+        imageVector = ProfileIcons.Checkmark,
+        contentDescription = null,
+        tint = Color.deepPlum,
+        modifier = Modifier.size(ROW_ICON_GLYPH),
+      )
     }
+  }
+}
+
+/**
+ * A settings line whose accessory is a switch.
+ *
+ * Ported from `SettingsToggleRow` in
+ * Deep/Deep/Features/Reminders/Components/SettingsControlRows.swift. A sibling
+ * of [SettingsRow] rather than another accessory: the switch owns the row's
+ * whole hit area (the row toggles), and everything visual is borrowed from
+ * [SettingsRow] so the two stack inside one card without a seam. The switch is
+ * Material's, tinted lavenderMist as iOS tints its `Toggle`.
+ */
+@Composable
+fun SettingsToggleRow(
+  title: String,
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+  modifier: Modifier = Modifier,
+  icon: ImageVector? = null,
+) {
+  Row(
+    modifier
+      .fillMaxWidth()
+      .toggleable(
+        value = checked,
+        role = Role.Switch,
+        interactionSource = null,
+        indication = null,
+        onValueChange = onCheckedChange,
+      )
+      .padding(vertical = TOGGLE_PADDING_VERTICAL, horizontal = ROW_PADDING_HORIZONTAL),
+    horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    if (icon != null) RowGlyph(icon, Color.deepPlum)
+    Text(text = title, style = DeepType.body, color = Color.deepPlum, modifier = Modifier.weight(1f))
+    Switch(
+      checked = checked,
+      onCheckedChange = null,
+      colors = SwitchDefaults.colors(
+        checkedThumbColor = Color.White,
+        checkedTrackColor = Color.lavenderMist,
+        checkedBorderColor = Color.lavenderMist,
+        uncheckedThumbColor = Color.White,
+        uncheckedTrackColor = Color.driftGrey.copy(alpha = SWITCH_OFF_TRACK_ALPHA),
+        uncheckedBorderColor = Color.Transparent,
+      ),
+    )
+  }
+}
+
+/**
+ * A settings line whose accessory is a time of day, in the reading language's
+ * own clock convention. Tapping it opens the time picker (the caller's).
+ *
+ * Ported from `SettingsTimeRow` — iOS's compact `DatePicker`, whose pill this
+ * value chip echoes: the time on a soft pebble.
+ */
+@Composable
+fun SettingsTimeRow(
+  title: String,
+  time: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  icon: ImageVector? = null,
+) {
+  Row(
+    modifier
+      .fillMaxWidth()
+      .clickable(
+        role = Role.Button,
+        interactionSource = null,
+        indication = null,
+        onClick = onClick,
+      )
+      .padding(vertical = TIME_PADDING_VERTICAL, horizontal = ROW_PADDING_HORIZONTAL),
+    horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    if (icon != null) RowGlyph(icon, Color.deepPlum)
+    Text(text = title, style = DeepType.body, color = Color.deepPlum, modifier = Modifier.weight(1f))
+    Text(
+      text = time,
+      style = DeepType.body,
+      color = Color.deepPlum,
+      modifier = Modifier
+        .softPress()
+        .pebble(cornerRadius = TIME_CHIP_RADIUS)
+        .padding(horizontal = 12.dp, vertical = 6.dp),
+    )
+  }
+}
+
+@Composable
+private fun RowGlyph(icon: ImageVector, ink: Color) {
+  Box(Modifier.size(ROW_ICON_COLUMN), contentAlignment = Alignment.Center) {
+    Icon(
+      imageVector = icon,
+      contentDescription = null,
+      tint = ink.copy(alpha = ROW_ICON_ALPHA),
+      modifier = Modifier.size(ROW_ICON_GLYPH),
+    )
   }
 }
 
@@ -289,22 +410,44 @@ fun DeepConfirmDialog(
   actions: List<DialogAction>,
   onDismissRequest: () -> Unit,
 ) {
+  DeepDialog(title = title, actions = actions, onDismissRequest = onDismissRequest) {
+    Text(
+      text = message,
+      style = DeepType.body,
+      color = Color.driftGrey,
+      textAlign = TextAlign.Center,
+    )
+  }
+}
+
+/**
+ * [DeepConfirmDialog]'s frame around any body — the daily reminder's time
+ * picker sits in it, so choosing a time arrives in the same frosted card over
+ * the same plum scrim as every other question Settings asks.
+ */
+@Composable
+fun DeepDialog(
+  title: String,
+  actions: List<DialogAction>,
+  onDismissRequest: () -> Unit,
+  body: @Composable () -> Unit,
+) {
   Dialog(
     onDismissRequest = onDismissRequest,
     properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
   ) {
     (LocalView.current.parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
-    DeepConfirmDialogContent(title, message, actions, onDismissRequest)
+    DeepDialogContent(title, actions, onDismissRequest, body)
   }
 }
 
 /** The dialog's body alone, so previews can render it without a window. */
 @Composable
-private fun DeepConfirmDialogContent(
+private fun DeepDialogContent(
   title: String,
-  message: String,
   actions: List<DialogAction>,
   onDismissRequest: () -> Unit,
+  body: @Composable () -> Unit,
 ) {
   val appeared = remember { MutableTransitionState(false).apply { targetState = true } }
 
@@ -345,13 +488,7 @@ private fun DeepConfirmDialogContent(
           color = Color.deepPlum,
           textAlign = TextAlign.Center,
         )
-        Text(
-          text = message,
-          style = DeepType.body,
-          color = Color.driftGrey,
-          textAlign = TextAlign.Center,
-          modifier = Modifier.padding(top = 10.dp),
-        )
+        Box(Modifier.padding(top = 10.dp)) { body() }
         Row(
           Modifier.padding(top = Dp.rhythm),
           horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -421,15 +558,21 @@ private fun DeepConfirmDialogPreview() {
     Box(Modifier.fillMaxSize().background(Color.moonCream)) {
       AtmosphereBackground(animated = false)
       if (open) {
-        DeepConfirmDialogContent(
+        DeepDialogContent(
           title = "Log out of DEEP?",
-          message = "You'll start fresh from the welcome flow. What you've shared stays safe.",
           actions = listOf(
             DialogAction("Stay") { open = false },
             DialogAction("Log out", destructive = true) { open = false },
           ),
           onDismissRequest = { open = false },
-        )
+        ) {
+          Text(
+            text = "You'll start fresh from the welcome flow. What you've shared stays safe.",
+            style = DeepType.body,
+            color = Color.driftGrey,
+            textAlign = TextAlign.Center,
+          )
+        }
       }
     }
   }

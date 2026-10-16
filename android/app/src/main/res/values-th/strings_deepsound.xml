@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_deepsound.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+
+  <!-- Home -->
+  <string name="deepsound_title">DEEP Sound</string>
+  <string name="deepsound_subtitle">หายใจและฟัง</string>
+  <string name="deepsound_failed">เรารวบรวมเสียงไม่ได้ในตอนนี้</string>
+  <string name="deepsound_retry">ลองอีกครั้ง</string>
+
+  <!-- Breathe hero card -->
+  <string name="deepsound_breathe_eyebrow">เซสชัน DEEP</string>
+  <string name="deepsound_breathe_title">หายใจ</string>
+  <string name="deepsound_breathe_pattern">เข้า %1$d วิ · ออก %2$d วิ</string>
+  <string name="deepsound_breathe_a11y">หายใจ การฝึกหายใจแบบมีผู้นำ</string>
+  <string name="deepsound_balancing_breath_title">ลมหายใจสมดุล</string>
+  <string name="deepsound_balancing_breath_tagline">หายใจช้า ๆ เพื่อกลับมาอยู่กับปัจจุบัน</string>
+
+  <!-- Collection detail -->
+  <string name="deepsound_back">ย้อนกลับ</string>
+  <string name="deepsound_collection_meta">%1$s · %2$s</string>
+  <plurals name="deepsound_track_count">
+    <item quantity="other">%d เพลง</item>
+  </plurals>
+  <string name="deepsound_minutes">%d นาที</string>
+  <string name="deepsound_play">เล่น</string>
+  <string name="deepsound_shuffle">สุ่ม</string>
+  <string name="deepsound_save_to_playlist">บันทึกลงเพลย์ลิสต์</string>
+  <string name="deepsound_remove_from_playlist">นำออกจากเพลย์ลิสต์</string>
+
+  <!-- Lyrics -->
+  <string name="deepsound_lyrics_empty">เพลงนี้ไม่มีเนื้อร้อง — ปล่อยให้มันโอบคุณไว้</string>
+
+</resources>

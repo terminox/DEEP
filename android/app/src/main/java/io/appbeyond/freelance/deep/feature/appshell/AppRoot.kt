@@ -37,6 +37,11 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressSt
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
+import io.appbeyond.freelance.deep.feature.reminders.store.MockReminderScheduler
+import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
+import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
+import java.time.Clock
+import java.time.ZoneId
 import io.appbeyond.freelance.deep.networking.DeepApiException
 import io.appbeyond.freelance.deep.onboarding.model.OnboardingState
 import io.appbeyond.freelance.deep.onboarding.model.RootPhase
@@ -116,9 +121,13 @@ private object Handoff {
  *   which covers both a restored launch and a fresh sign-in or sign-up — and
  *   on every process foreground while it stays composed: iOS's `bootstrap()`,
  *   `.flow → .main` and scene-phase `.active` seams in one place.
- * @param flushPracticeJournal / resetRewardsState the rewards side of every
+ * @param flushPracticeJournal / resetAccountState the rewards side of every
  *   exit, handed on to Settings, and the reset is also run here when the
  *   server rejects a restored session.
+ * @param reminderStore / preferences the daily reminder and the language
+ *   picker, handed on to Settings' preference screens.
+ * @param compassionContent / compassionCauseContent the Compassion tab's root
+ *   and its (parked) cause detail, handed on to the shell.
  * @param flowContent the onboarding and auth flow. A slot rather than a direct
  *   call so this file does not depend on the flow's wiring.
  */
@@ -129,16 +138,20 @@ fun AppRoot(
   onboardingRemote: OnboardingRemote,
   awaitOnboardingLoaded: suspend () -> Unit,
   language: AppLanguage,
+  reminderStore: ReminderStore,
+  preferences: PreferenceActions,
   soundPlayer: SoundPlaying,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
   syncRewards: () -> Unit,
   flushPracticeJournal: suspend () -> Unit,
-  resetRewardsState: suspend () -> Unit,
+  resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   flowContent: @Composable () -> Unit = {},
   homeContent: @Composable (actions: HomeActions) -> Unit = {},
   gardenContent: @Composable (actions: HomeActions) -> Unit = {},
+  compassionContent: @Composable (openCause: (String) -> Unit) -> Unit = {},
+  compassionCauseContent: @Composable (causeId: String, onBack: () -> Unit) -> Unit = { _, _ -> },
   deepSessionContent: @Composable (session: DeepSession, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
 ) {
@@ -189,7 +202,7 @@ fun AppRoot(
             if (TokenRefresher.isAuthRejection(rejected)) {
               accountStore.logOut()
               onboardingStore.reset()
-              resetRewardsState()
+              resetAccountState()
             }
           } catch (_: Exception) {
             // A local write that failed: keep what is on disk and carry on.
@@ -248,13 +261,17 @@ fun AppRoot(
               accountStore = accountStore,
               onboardingStore = onboardingStore,
               language = language,
+              reminderStore = reminderStore,
+              preferences = preferences,
               soundPlayer = soundPlayer,
               soundLibrary = soundLibrary,
               playlistStore = playlistStore,
               flushPracticeJournal = flushPracticeJournal,
-              resetRewardsState = resetRewardsState,
+              resetAccountState = resetAccountState,
               homeContent = homeContent,
               gardenContent = gardenContent,
+              compassionContent = compassionContent,
+              compassionCauseContent = compassionCauseContent,
               onOpenDeepSession = {
                 soundPlayer.pause()
                 runningSession = it
@@ -304,12 +321,16 @@ private fun AppRootPreview() {
     onboardingRemote = MockOnboardingRemote(),
     awaitOnboardingLoaded = {},
     language = AppLanguage.English,
+    reminderStore = remember {
+      ReminderStore(MockReminderScheduler(), InMemoryBlobStore(), Clock.systemDefaultZone()) { ZoneId.systemDefault() }
+    },
+    preferences = PreferenceActions.none,
     soundPlayer = MockSoundPlayer.idle(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
     flushPracticeJournal = {},
-    resetRewardsState = {},
+    resetAccountState = {},
     homeContent = { TabPlaceholderScreen(DeepTab.Home) },
   )
 }
@@ -323,12 +344,16 @@ private fun AppRootFirstLaunchPreview() {
     onboardingRemote = MockOnboardingRemote(),
     awaitOnboardingLoaded = {},
     language = AppLanguage.English,
+    reminderStore = remember {
+      ReminderStore(MockReminderScheduler(), InMemoryBlobStore(), Clock.systemDefaultZone()) { ZoneId.systemDefault() }
+    },
+    preferences = PreferenceActions.none,
     soundPlayer = MockSoundPlayer.idle(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
     flushPracticeJournal = {},
-    resetRewardsState = {},
+    resetAccountState = {},
     flowContent = { TabPlaceholderScreen(DeepTab.Compassion) },
   )
 }

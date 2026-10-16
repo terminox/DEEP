@@ -126,8 +126,8 @@ Decided while building it:
   is dropped rather than writing the last member's figures back. Log out first offers unsynced
   practice to the server for up to three seconds, where iOS drops it.
 - **Known and left alone.** A wallet refresh that lands while a heart is being given, followed by
-  that gift being refused, double-counts the gift. Fix it in week 5 with the giving screen.
-  Yesterday's earned-today figure arriving just after midnight is read as today's. Both match iOS.
+  that gift being refused, double-counts the gift — fixed in week 5, below. Yesterday's
+  earned-today figure arriving just after midnight is read as today's, matching iOS.
 - **The device timezone is read at launch.** The server reads it per request, so awards land on
   the right day either way. Only the app's own "today" waits for a relaunch after a zone change.
 
@@ -136,6 +136,32 @@ Decided while building it:
 The Compassion Portfolio and the donate flow. The You tab, settings, account deletion, and the
 daily reminder. And the language switch — the iOS app carries 291 strings with Thai for 285 of
 them, and the server localizes content off `Accept-Language`, so Thai is parity, not a bonus.
+
+Decided while building it:
+
+- **Parity, deliberately.** The portfolio home, the donate sheet and its soft keypad, the five
+  causes with their partners, projects and field reports — kept local, as iOS keeps them. The
+  cause detail is ported but parked, exactly as on iOS: the route exists and nothing pushes it.
+  The community pool climbs only with this device's own gifts, as on iOS. The daily reminder's
+  copy rotates one line a day and skips a day whose practice is done.
+- **Fixed on Android, invisible to a member.** The week-4 double count is gone: the heart ledger
+  keeps the server's figures apart from gifts still in flight, so a refresh or an award landing
+  mid-gift followed by a refusal counts the gift once. The price is a brief undercount when a
+  refresh already counted the gift, until the gift's own answer lands a moment later.
+- **One title per action.** The donate sheet keeps "Donate hearts" on its button for the life of
+  the screen and dims it while there is nothing to commit, where iOS relabels it per amount
+  ("Donate 10 hearts", "Pick an amount", "Donated 10 hearts").
+- **The reminder rides AlarmManager, inexact.** One alarm at a time in a ten-minute window,
+  re-armed as it fires and on boot, clock and timezone changes. No `SCHEDULE_EXACT_ALARM`: it is
+  denied by default from Android 14 and is a second permission journey for a gentle nudge.
+  `POST_NOTIFICATIONS` is asked only when the member turns the reminder on. The channel is
+  quiet (no sound, no badge), matching iOS's passive interruption level.
+- **A spring-forward gap skips the day**, as iOS does. Settled; see below.
+- **The language switch** is the platform per-app locale (`LocaleManager` on API 33+, a wrapped
+  base context below), persisted in DataStore and mirrored into the system's per-app language
+  settings. Choosing one refetches the server-authored content in it.
+- **No Membership section in Settings.** DEEP Premium is out of scope, and iOS's two rows are App
+  Store actions with nothing behind them here; the plan chip still reads "Free plan".
 
 ### Week 6 — `v0.0.6` · The world pauses together
 
@@ -207,10 +233,9 @@ enough to answer; each gets written up properly as the work reaches it.
   equivalent for. Nunito is in place for week 1, but it ships no `tnum` table, and the 96sp session
   numeral rolls as the length slider moves — so either it has uniform figures by default, or that
   token needs a different face.
-- **A reminder in a spring-forward gap.** iOS skips the day when the chosen wall-clock time does
-  not exist; Kotlin's `ZonedDateTime` resolves forward by the gap instead. No test covers it
-  because Asia/Bangkok has no DST, but the two platforms would differ for a member elsewhere.
-  Settle it when reminders ship in week 5.
+- ~~**A reminder in a spring-forward gap.**~~ **Settled in week 5: the day is skipped,** as on
+  iOS. `ReminderSchedule` checks the wall time against the zone's rules before building it, and
+  tests pin New York's spring-forward and fall-back nights.
 - **The `versionCode` scheme.** iOS stamps Unix epoch seconds. `versionCode` is a signed 32-bit
   int that can never decrease on a store track, so that does not survive the port.
 - **Whether the two platforms share a version source** or diverge on the record.

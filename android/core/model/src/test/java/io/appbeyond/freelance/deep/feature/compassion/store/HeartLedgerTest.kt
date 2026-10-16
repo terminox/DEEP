@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.compassion.store
 
+import io.appbeyond.freelance.deep.auth.HttpStatusCarrying
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.model.WalletSummary
 import io.appbeyond.freelance.deep.feature.rewards.store.GatedRewardsRemote
@@ -28,8 +29,12 @@ import kotlin.test.assertTrue
  * The ledger's three behaviours that can't be reached by hand: the daily earn
  * ceiling (thirty finished sessions), the absolute reconcile that keeps
  * optimistic credits from double-counting, and the spend rollback when the
- * server refuses. The iOS refusal test also checks the cause's pooled total;
- * that half arrives with the Compassion catalog in week 5.
+ * server refuses — the refusal case checking the cause's pooled total too, as
+ * the iOS test does.
+ *
+ * Android adds the week-4 carry-over's regressions (a wallet refresh or an
+ * award landing mid-gift, then the gift refused or accepted), which iOS has no
+ * test for because it still double-counts.
  */
 @OptIn(ExperimentalCoroutinesApi::class) // runCurrent, to park a spend mid-flight.
 class HeartLedgerTest {
@@ -232,20 +237,269 @@ class HeartLedgerTest {
   @DisplayName("A refused spend rolls the whole optimistic mutation back")
   fun sendRollsBackOnServerRefusal() = runTest {
     val mock = MockRewardsRemote()
-    mock.failsSpend = true
+    mock.refusesSpend = true
     val remote = GatedRewardsRemote(mock)
     val ledger = ledger(balance = 5, remote = remote)
+
+    val pooledBefore = ledger.state.value.pool.hearts(cause)
 
     val sending = launch { ledger.send(2, cause) }
     runCurrent()
     assertEquals(3, ledger.state.value.balance) // Optimistic decrement plays immediately.
+    assertEquals(pooledBefore + 2, ledger.state.value.pool.hearts(cause))
 
     remote.gate.complete(Unit)
     sending.join()
     assertEquals(5, ledger.state.value.balance)
     assertEquals(0, ledger.state.value.heartsGiven)
     assertEquals(0, ledger.heartsGiven(cause))
+    assertEquals(pooledBefore, ledger.state.value.pool.hearts(cause))
     assertEquals(HeartLedger.SpendFailure(amount = 2, categoryId = cause), ledger.state.value.spendFailure)
+  }
+
+  // MARK: - A refresh mid-gift (the week-4 carry-over)
+
+  private val untouchedWallet = WalletSummary(
+    heartsBalance = 5, heartsEarned = 5, heartsGiven = 0, earnedToday = 0, remainingToday = 30,
+  )
+
+  @Test
+  @DisplayName("A wallet refresh mid-gift, then the gift refused, counts the gift once")
+  fun refreshThenRefusalCountsOnce() = runTest {
+    val mock = MockRewardsRemote(walletSummary = untouchedWallet)
+    mock.refusesSpend = true
+    val remote = GatedRewardsRemote(mock)
+    val ledger = ledger(balance = 5, remote = remote)
+
+    val sending = launch { ledger.send(2, cause) }
+    runCurrent()
+    // The garden pull answers while the POST is out: the server has not
+    // applied the gift (it is about to refuse it).
+    ledger.hydrate(untouchedWallet)
+    assertEquals(3, ledger.state.value.balance, "The gift in flight stays subtracted, so nothing flickers back.")
+    assertEquals(2, ledger.state.value.heartsGiven)
+
+    remote.gate.complete(Unit)
+    sending.join()
+    assertEquals(5, ledger.state.value.balance, "Refused once, returned once — never 7.")
+    assertEquals(0, ledger.state.value.heartsGiven)
+    assertEquals(0, ledger.heartsGiven(cause))
+    assertEquals(HeartLedger.SpendFailure(amount = 2, categoryId = cause), ledger.state.value.spendFailure)
+  }
+
+  @Test
+  @DisplayName("An award's absolutes mid-gift, then the gift refused, count the gift once")
+  fun grantThenRefusalCountsOnce() = runTest {
+    val mock = MockRewardsRemote(walletSummary = untouchedWallet)
+    mock.refusesSpend = true
+    val remote = GatedRewardsRemote(mock)
+    val ledger = ledger(balance = 5, remote = remote)
+
+    val sending = launch { ledger.send(2, cause) }
+    runCurrent()
+    // A session's award settles mid-gift: the server's balance is 5 + 1.
+    ledger.apply(AwardGrant(hearts = 1, sunlight = 1, plantId = "oak", heartsBalance = 6, heartsEarnedToday = 1))
+    assertEquals(4, ledger.state.value.balance)
+
+    remote.gate.complete(Unit)
+    sending.join()
+    assertEquals(6, ledger.state.value.balance)
+    assertEquals(0, ledger.state.value.heartsGiven)
+  }
+
+  @Test
+  @DisplayName("A refresh that already counted the gift settles on the server's figures once it lands")
+  fun refreshIncludingGiftThenSuccess() = runTest {
+    val mock = MockRewardsRemote(walletSummary = untouchedWallet)
+    val remote = GatedRewardsRemote(mock)
+    val ledger = ledger(balance = 5, remote = remote)
+
+    val sending = launch { ledger.send(2, cause) }
+    runCurrent()
+    // Served after the server committed the gift, so it already counts it.
+    ledger.hydrate(untouchedWallet.copy(heartsBalance = 3, heartsGiven = 2, givenByCategory = mapOf(cause to 2)))
+    assertEquals(1, ledger.state.value.balance, "Briefly short by the gift until its own answer lands.")
+
+    remote.gate.complete(Unit)
+    sending.join()
+    assertEquals(3, ledger.state.value.balance)
+    assertEquals(2, ledger.state.value.heartsGiven)
+    assertEquals(2, ledger.heartsGiven(cause))
+    assertNull(ledger.state.value.spendFailure)
+  }
+
+  @Test
+  @DisplayName("A refresh that already counted the gift, then the gift's answer lost, settles on the re-send")
+  fun refreshIncludingGiftThenLostAnswer() = runTest {
+    val mock = MockRewardsRemote(walletSummary = untouchedWallet)
+    mock.losesSpendAnswer = true // The commit happens; the response never arrives.
+    val remote = GatedRewardsRemote(mock)
+    val ledger = ledger(balance = 5, remote = remote)
+
+    val sending = launch { ledger.send(2, cause) }
+    runCurrent()
+    ledger.hydrate(untouchedWallet.copy(heartsBalance = 3, heartsGiven = 2, givenByCategory = mapOf(cause to 2)))
+
+    remote.gate.complete(Unit)
+    sending.join()
+    assertNull(ledger.state.value.spendFailure, "An unanswered gift is not a refused one.")
+    assertTrue(ledger.hasUnconfirmedSpends)
+
+    mock.losesSpendAnswer = false
+    ledger.reconcile()
+    assertEquals(3, ledger.state.value.balance)
+    assertEquals(2, ledger.state.value.heartsGiven)
+    assertFalse(ledger.hasUnconfirmedSpends)
+    assertEquals(1, mock.spends.size, "The re-send is the same gift, not a second one.")
+  }
+
+  // MARK: - An unknown outcome (QA round 1, B3)
+
+  private val wallet110 = WalletSummary(
+    heartsBalance = 110, heartsEarned = 110, heartsGiven = 0, earnedToday = 0, remainingToday = 30,
+  )
+
+  @Test
+  @DisplayName("A gift the server committed but never answered is not reported as refused")
+  fun lostAnswerIsNotARefusal() = runTest {
+    val mock = MockRewardsRemote(walletSummary = wallet110)
+    mock.losesSpendAnswer = true
+    val ledger = ledger(balance = 110, remote = mock)
+    val pooledBefore = ledger.state.value.pool.hearts("healthcare")
+
+    ledger.send(10, "healthcare")
+
+    assertNull(ledger.state.value.spendFailure, "No \"they're back in your balance\" for a gift that may have landed.")
+    assertEquals(100, ledger.state.value.balance, "The hearts stay out, so the member can't give them twice.")
+    assertEquals(10, ledger.heartsGiven("healthcare"))
+    assertEquals(pooledBefore + 10, ledger.state.value.pool.hearts("healthcare"), "The pool keeps the gift too.")
+    assertTrue(ledger.hasUnconfirmedSpends)
+    assertEquals(3, mock.spendAttempts.size, "One attempt and two re-sends…")
+    assertEquals(1, mock.spendAttempts.toSet().size, "…all under the same idempotency id.")
+    assertEquals(1, mock.spends.size, "The server holds exactly one gift.")
+  }
+
+  @Test
+  @DisplayName("A wallet refresh after a lost answer, then the re-send, lands on the server's figures once")
+  fun lostAnswerReconcilesAfterRefresh() = runTest {
+    val mock = MockRewardsRemote(walletSummary = wallet110)
+    mock.losesSpendAnswer = true
+    val ledger = ledger(balance = 110, remote = mock)
+    ledger.send(10, "healthcare")
+    mock.losesSpendAnswer = false
+
+    // The pull-to-refresh: the server's wallet already counts the gift.
+    ledger.hydrate(mock.wallet())
+    ledger.reconcile()
+
+    assertEquals(100, ledger.state.value.balance)
+    assertEquals(10, ledger.state.value.heartsGiven)
+    assertEquals(10, ledger.heartsGiven("healthcare"))
+    assertFalse(ledger.hasUnconfirmedSpends)
+    assertNull(ledger.state.value.spendFailure)
+    assertEquals(1, mock.spends.size)
+  }
+
+  @Test
+  @DisplayName("A gift that never reached the server is committed by the re-send, once")
+  fun unreachedGiftIsCommittedByResend() = runTest {
+    val mock = MockRewardsRemote(walletSummary = wallet110)
+    mock.failsSpend = true
+    val ledger = ledger(balance = 110, remote = mock)
+    ledger.send(10, "healthcare")
+    assertEquals(100, ledger.state.value.balance)
+    assertTrue(mock.spends.isEmpty())
+
+    mock.failsSpend = false
+    ledger.reconcile()
+
+    assertEquals(1, mock.spends.size)
+    assertEquals(100, ledger.state.value.balance)
+    assertEquals(100, mock.walletSummary.heartsBalance)
+    assertFalse(ledger.hasUnconfirmedSpends)
+  }
+
+  @Test
+  @DisplayName("An unconfirmed gift the server then declines rolls back, with the caption")
+  fun unconfirmedThenRefusedRollsBack() = runTest {
+    val mock = MockRewardsRemote(walletSummary = wallet110)
+    mock.failsSpend = true
+    val ledger = ledger(balance = 110, remote = mock)
+    val pooledBefore = ledger.state.value.pool.hearts("healthcare")
+    ledger.send(10, "healthcare")
+
+    mock.failsSpend = false
+    mock.refusesSpend = true
+    ledger.reconcile()
+
+    assertEquals(110, ledger.state.value.balance)
+    assertEquals(0, ledger.heartsGiven("healthcare"))
+    assertEquals(pooledBefore, ledger.state.value.pool.hearts("healthcare"))
+    assertEquals(HeartLedger.SpendFailure(amount = 10, categoryId = "healthcare"), ledger.state.value.spendFailure)
+    assertFalse(ledger.hasUnconfirmedSpends)
+  }
+
+  @Test
+  @DisplayName("The next send re-sends an unconfirmed gift first, under its own id")
+  fun nextSendResendsUnconfirmedFirst() = runTest {
+    val mock = MockRewardsRemote(walletSummary = wallet110)
+    mock.failsSpend = true
+    val ledger = ledger(balance = 110, remote = mock)
+    ledger.send(10, "healthcare")
+    val firstId = mock.spendAttempts.first()
+
+    mock.failsSpend = false
+    ledger.send(5, cause)
+
+    assertEquals(listOf(firstId), mock.spends.take(1).map { it.id })
+    assertEquals(listOf(10, 5), mock.spends.map { it.amount })
+    assertEquals(95, ledger.state.value.balance)
+    assertEquals(95, mock.walletSummary.heartsBalance)
+    assertFalse(ledger.hasUnconfirmedSpends)
+  }
+
+  @Test
+  @DisplayName("Only a 4xx the server answered is a refusal; timeouts, 408, 429 and 5xx are unknown")
+  fun refusalClassification() {
+    fun status(code: Int) = object : Exception(), HttpStatusCarrying {
+      override val status: Int = code
+    }
+    assertTrue(HeartLedger.isRefusal(status(409)))
+    assertTrue(HeartLedger.isRefusal(status(400)))
+    assertTrue(HeartLedger.isRefusal(MockRewardsRemote.Refusal()))
+    assertFalse(HeartLedger.isRefusal(status(408)))
+    assertFalse(HeartLedger.isRefusal(status(429)))
+    assertFalse(HeartLedger.isRefusal(status(500)))
+    assertFalse(HeartLedger.isRefusal(status(503)))
+    assertFalse(HeartLedger.isRefusal(MockRewardsRemote.Failure()))
+    assertFalse(HeartLedger.isRefusal(java.net.SocketTimeoutException("timeout")))
+  }
+
+  @Test
+  @DisplayName("A send to a project moves that project's pooled total with its cause's")
+  fun projectSendMovesProjectPool() = runTest {
+    val ledger = ledger(balance = 5)
+    val before = ledger.state.value.pool
+
+    ledger.send(1, "healthcare", projectId = "health-clinic")
+
+    val after = ledger.state.value.pool
+    assertEquals(before.hearts("healthcare") + 1, after.hearts("healthcare"))
+    assertEquals(before.projectHearts("health-clinic") + 1, after.projectHearts("health-clinic"))
+    assertEquals(before.heartsPooled + 1, after.heartsPooled)
+  }
+
+  @Test
+  @DisplayName("Signing out forgets the wallet but keeps the community pool")
+  fun resetKeepsPool() = runTest {
+    val ledger = ledger(balance = 5)
+    ledger.send(2, cause)
+    val pool = ledger.state.value.pool
+
+    ledger.resetLocalState()
+
+    assertEquals(0, ledger.state.value.balance)
+    assertEquals(pool, ledger.state.value.pool)
   }
 
   @Test
@@ -274,7 +528,7 @@ class HeartLedgerTest {
   @DisplayName("A spend that settles after sign-out is dropped, success or refusal")
   fun lateSpendAfterResetIsDropped() = runTest {
     val mock = MockRewardsRemote()
-    mock.failsSpend = true
+    mock.refusesSpend = true
     val remote = GatedRewardsRemote(mock)
     val ledger = ledger(balance = 5, remote = remote)
 

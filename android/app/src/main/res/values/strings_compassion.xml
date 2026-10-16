@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Compassion portfolio: the tab, the donate sheet, the (parked) cause
+  detail, and the static catalogue of causes, partners, projects and field
+  reports. Ported from Deep/Deep/Features/CompassionPortfolio/ and its keys in
+  Deep/Deep/Localizable.xcstrings. The Thai lives in values-th/strings_compassion.xml.
+
+  The catalogue copy is keyed by the ids in :core:model's CompassionCatalog
+  (dashes become underscores), so the figures and the words can never drift.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+  <!-- Home -->
+  <string name="compassion_title">Compassion</string>
+  <string name="compassion_subtitle">Turn practice into giving</string>
+
+  <!-- Portfolio card: "MY HEARTS" -->
+  <string name="compassion_my_hearts">MY HEARTS</string>
+  <!-- "\(balance) to give" -->
+  <string name="compassion_to_give">%1$s to give</string>
+  <string name="compassion_all_given">All given away</string>
+  <string name="compassion_no_hearts_yet">No hearts yet</string>
+  <!-- iOS " given" — the figure is drawn before it -->
+  <string name="compassion_given_suffix">" given"</string>
+  <!-- iOS " of %lld today" — the figure is drawn before it -->
+  <string name="compassion_today_suffix" tools:ignore="PluralsCandidate">" of %1$d today"</string>
+  <string name="compassion_today_full">today is full</string>
+  <plurals name="compassion_summary_can_give">
+    <item quantity="one">%1$d heart to give</item>
+    <item quantity="other">%1$d hearts to give</item>
+  </plurals>
+  <string name="compassion_summary_none_left">No hearts left to give</string>
+  <string name="compassion_summary_given" tools:ignore="PluralsCandidate">%1$d given</string>
+  <plurals name="compassion_summary_today_full">
+    <item quantity="one">Today is full, %1$d heart earned</item>
+    <item quantity="other">Today is full, %1$d hearts earned</item>
+  </plurals>
+  <plurals name="compassion_summary_today">
+    <item quantity="one">%1$d of %2$d heart earned today</item>
+    <item quantity="other">%1$d of %2$d hearts earned today</item>
+  </plurals>
+
+  <!-- Community pool -->
+  <string name="compassion_community_pool">THE COMMUNITY POOL</string>
+  <string name="compassion_people_reached_across" tools:ignore="PluralsCandidate">%1$s people reached across %2$d causes</string>
+  <string name="compassion_hearts_pooled">Hearts pooled</string>
+
+  <!-- Causes shelf -->
+  <string name="compassion_causes_title">Where your hearts go</string>
+  <string name="compassion_causes_subtitle">Send them to a cause and we give, for real, on your behalf.</string>
+  <!-- A compact count, e.g. "18.5K hearts" -->
+  <string name="compassion_hearts_compact">%1$s hearts</string>
+  <string name="compassion_of_giving">of giving</string>
+  <string name="compassion_donate_hearts">Donate hearts</string>
+  <string name="compassion_donate_hearts_to">Donate hearts to %1$s</string>
+  <string name="compassion_tile_facts" tools:ignore="PluralsCandidate">%1$s hearts pooled, %2$d percent of giving</string>
+
+  <!-- Field reports -->
+  <string name="compassion_from_the_field">From the field</string>
+
+  <!-- Donate sheet -->
+  <string name="donate_hearts_you_hold">of %1$s hearts you hold</string>
+  <string name="donate_amount_label">Hearts to donate</string>
+  <string name="donate_amount_value">%1$d of %2$d</string>
+  <string name="donate_all">All</string>
+  <string name="donate_all_hearts" tools:ignore="PluralsCandidate">All %1$d hearts</string>
+  <plurals name="donate_amount_hearts">
+    <item quantity="one">%1$d heart</item>
+    <item quantity="other">%1$d hearts</item>
+  </plurals>
+  <plurals name="donate_action_to">
+    <item quantity="one">Donate %1$d heart to %2$s</item>
+    <item quantity="other">Donate %1$d hearts to %2$s</item>
+  </plurals>
+  <string name="donate_no_hearts">No hearts to give yet</string>
+  <string name="donate_today_full">Today is full — more tomorrow.</string>
+  <string name="donate_practice_earns">Practice earns more.</string>
+  <string name="donate_delete">Delete</string>
+  <string name="donate_hold_to_clear">Hold to clear</string>
+  <plurals name="compassion_rollback">
+    <item quantity="one">That heart couldn\'t be sent — it\'s back in your balance.</item>
+    <item quantity="other">Those %1$s hearts couldn\'t be sent — they\'re back in your balance.</item>
+  </plurals>
+
+  <!-- Cause detail (parked, as on iOS) -->
+  <string name="compassion_back">Back</string>
+  <string name="compassion_people_reached">People reached</string>
+  <string name="compassion_share_of_giving">Share of giving</string>
+  <string name="compassion_projects_title">Projects in this cause</string>
+  <string name="compassion_your_part">YOUR PART</string>
+  <string name="compassion_your_part_none">No hearts here yet — the first one is yours to send.</string>
+  <plurals name="compassion_your_part_sent">
+    <item quantity="one">You\'ve sent %1$s heart to this cause.</item>
+    <item quantity="other">You\'ve sent %1$s hearts to this cause.</item>
+  </plurals>
+  <string name="compassion_send_a_heart">Send a heart</string>
+  <string name="compassion_send_a_heart_to">Send a heart to %1$s</string>
+  <string name="compassion_hearts_left">%1$s left</string>
+  <string name="compassion_practice_earns_more">Practice earns more</string>
+  <string name="compassion_balance_chip">My hearts</string>
+  <string name="compassion_project_hearts">%1$s hearts</string>
+  <string name="compassion_project_funded">%1$d%% funded</string>
+  <string name="compassion_project_progress" tools:ignore="PluralsCandidate">%1$d percent funded</string>
+  <string name="compassion_partner_organisation">PARTNER ORGANISATION</string>
+  <string name="compassion_partner_since">Since %1$s</string>
+  <string name="compassion_partner_visit">Visit %1$s</string>
+
+  <!-- Catalogue: causes -->
+  <string name="cause_peace_name">Peace &amp; Well-being</string>
+  <string name="cause_peace_tagline">Calmer minds, a kinder world</string>
+  <string name="cause_peace_partner">V-Peace Foundation</string>
+  <string name="cause_peace_partner_blurb">Volunteers nurturing compassion and global understanding through mindful practice.</string>
+  <string name="cause_healthcare_name">Healthcare</string>
+  <string name="cause_healthcare_tagline">Caring for health and well-being</string>
+  <string name="cause_healthcare_partner">Ramathibodi Foundation</string>
+  <string name="cause_healthcare_partner_blurb">Supporting healthcare access and medical care for those who need it most.</string>
+  <string name="cause_education_name">Education</string>
+  <string name="cause_education_tagline">Empowering minds, building tomorrow</string>
+  <string name="cause_education_partner">One Buddhist</string>
+  <string name="cause_education_partner_blurb">Inspiring wisdom, mindfulness and compassionate learning for every child.</string>
+  <string name="cause_nature_name">Nature</string>
+  <string name="cause_nature_tagline">Protecting nature for future generations</string>
+  <string name="cause_nature_partner">Seub Nakhasathien Foundation</string>
+  <string name="cause_nature_partner_blurb">Conserving forests and wildlife so wild places endure for those who follow.</string>
+  <string name="cause_community_name">Community</string>
+  <string name="cause_community_tagline">Stronger communities, brighter futures</string>
+  <string name="cause_community_partner">Together Foundation</string>
+  <string name="cause_community_partner_blurb">Building resilient neighbourhoods through shared care and local hands.</string>
+  <string name="cause_scope_global">Global</string>
+  <string name="cause_scope_thailand">Thailand</string>
+
+  <!-- Catalogue: projects -->
+  <string name="project_peace_light_title">Light of Peace</string>
+  <string name="project_peace_light_blurb">Candlelit gatherings carrying a shared intention for calm.</string>
+  <string name="project_peace_meditation_title">Global Meditation Day</string>
+  <string name="project_peace_meditation_blurb">A worldwide pause held together, once each season.</string>
+  <string name="project_peace_circle_title">Peace Circle</string>
+  <string name="project_peace_circle_blurb">Small local circles learning to listen and reconcile.</string>
+  <string name="project_health_clinic_title">Mobile Clinic</string>
+  <string name="project_health_clinic_blurb">Bringing healthcare to remote communities by road.</string>
+  <string name="project_health_surgery_title">Children\'s Heart Surgery</string>
+  <string name="project_health_surgery_blurb">Funding life-changing treatment for children.</string>
+  <string name="project_health_mental_title">Mental Health Care</string>
+  <string name="project_health_mental_blurb">Access to counselling and mental wellness.</string>
+  <string name="project_edu_art_title">Mindful Art for Kids</string>
+  <string name="project_edu_art_blurb">Cultivating creativity, calm and focus through art.</string>
+  <string name="project_edu_learning_title">Learning for Life</string>
+  <string name="project_edu_learning_blurb">Books and resources for children in need.</string>
+  <string name="project_edu_scholarship_title">Scholarship Program</string>
+  <string name="project_edu_scholarship_blurb">Supporting bright students to reach their dreams.</string>
+  <string name="project_nature_forest_title">Restore the Forest</string>
+  <string name="project_nature_forest_blurb">Replanting native canopy across cleared land.</string>
+  <string name="project_nature_water_title">Clean Water Streams</string>
+  <string name="project_nature_water_blurb">Protecting watersheds that villages depend on.</string>
+  <string name="project_nature_wildlife_title">Wildlife Refuge</string>
+  <string name="project_nature_wildlife_blurb">Safe habitat for species on the edge.</string>
+  <string name="project_community_elderly_title">Care for Elders</string>
+  <string name="project_community_elderly_blurb">Companionship and support for those living alone.</string>
+  <string name="project_community_meals_title">Shared Meals</string>
+  <string name="project_community_meals_blurb">Warm food for families through hard seasons.</string>
+  <string name="project_community_shelter_title">Safe Shelter</string>
+  <string name="project_community_shelter_blurb">A roof and a fresh start for those in crisis.</string>
+
+  <!-- Catalogue: field reports -->
+  <string name="report_clinic_title">Mobile clinic reached Mae Hong Son</string>
+  <string name="report_clinic_blurb">320 villagers received check-ups and medicine over three days in the hills.</string>
+  <string name="report_clinic_location">Mae Hong Son</string>
+  <string name="report_forest_title">12,000 saplings planted</string>
+  <string name="report_forest_blurb">Volunteers restored 40 rai of native canopy ahead of the rains.</string>
+  <string name="report_forest_location">Chiang Mai</string>
+  <string name="report_scholarship_title">18 new scholarships awarded</string>
+  <string name="report_scholarship_blurb">Students from rural provinces begin their first university term.</string>
+  <string name="report_scholarship_location">Nationwide</string>
+  <string name="report_meals_title">5,000 meals shared this month</string>
+  <string name="report_meals_blurb">Neighbourhood kitchens kept families fed through the flood season.</string>
+  <string name="report_meals_location">Ayutthaya</string>
+
+</resources>

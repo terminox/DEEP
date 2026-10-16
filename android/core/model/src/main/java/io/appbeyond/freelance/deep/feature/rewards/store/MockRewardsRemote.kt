@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.rewards.store
 
+import io.appbeyond.freelance.deep.auth.HttpStatusCarrying
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenPlot
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenSnapshot
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
@@ -20,8 +21,15 @@ class MockRewardsRemote(
   var walletSummary: WalletSummary = WalletSummary.sample,
 ) : RewardsRemote {
 
-  /** Thrown by a call whose failure switch is on. */
+  /** Thrown by a call whose failure switch is on — no answer from the server,
+   * like a timeout: the caller can't tell whether anything happened. */
   class Failure : Exception("MockRewardsRemote failure")
+
+  /** The server read the spend and declined it — deep-api's 409
+   * `insufficient_hearts`. */
+  class Refusal : Exception("MockRewardsRemote refusal"), HttpStatusCarrying {
+    override val status: Int = 409
+  }
 
   /** One spend the mock accepted — the idempotency id and payload that would
    * have gone over the wire. */
@@ -31,7 +39,15 @@ class MockRewardsRemote(
   var failsGarden = false
   var failsPlants = false
   var failsSelectPlant = false
+  /** Every spend gets no answer, and nothing is committed. */
   var failsSpend = false
+
+  /** Every spend is declined ([Refusal]). */
+  var refusesSpend = false
+
+  /** Every spend is committed, then its answer is lost ([Failure]) — the
+   * stalled request that lands after the client gave up. */
+  var losesSpendAnswer = false
 
   /** Spends accepted, newest last. */
   val spends: MutableList<Spend> = mutableListOf()
@@ -65,8 +81,18 @@ class MockRewardsRemote(
 
   override suspend fun wallet(): WalletSummary = walletSummary
 
+  /** Every call to [spend], answered or not — retries included. */
+  val spendAttempts: MutableList<UUID> = mutableListOf()
+
   override suspend fun spend(id: UUID, amount: Int, category: String, projectId: String?): WalletSummary {
-    if (failsSpend || walletSummary.heartsBalance < amount) throw Failure()
+    spendAttempts += id
+    if (failsSpend) throw Failure()
+    // Idempotent by id, as deep-api is: a re-send returns the wallet as it is.
+    if (spends.any { it.id == id }) {
+      if (losesSpendAnswer) throw Failure()
+      return walletSummary
+    }
+    if (refusesSpend || walletSummary.heartsBalance < amount) throw Refusal()
     spends += Spend(id, amount, category, projectId)
     val given = walletSummary.givenByCategory.toMutableMap()
     given[category] = (given[category] ?: 0) + amount
@@ -75,6 +101,7 @@ class MockRewardsRemote(
       heartsGiven = walletSummary.heartsGiven + amount,
       givenByCategory = given,
     )
+    if (losesSpendAnswer) throw Failure()
     return walletSummary
   }
 }
