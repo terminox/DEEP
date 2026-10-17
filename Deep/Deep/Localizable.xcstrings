@@ -151,6 +151,16 @@
     "-%@" : {
       "shouldTranslate" : false
     },
+    "1 heart" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 หัวใจ"
+          }
+        }
+      }
+    },
     "1 heart ready to give" : {
       "localizations" : {
         "th" : {
@@ -171,12 +181,32 @@
         }
       }
     },
+    "Done" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เสร็จสิ้น"
+          }
+        }
+      }
+    },
     "Growth is on its way" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "การเติบโตกำลังมาถึง"
+          }
+        }
+      }
+    },
+    "Thank you for giving to %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ขอบคุณที่มอบหัวใจให้ %@"
           }
         }
       }
@@ -1262,6 +1292,7 @@
       }
     },
     "Donated %@ %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
