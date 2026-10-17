@@ -8,9 +8,15 @@ import SwiftUI
 /// on this screen that would look borrowed from another product, and DESIGN.md
 /// rules out hard slides besides. Quick amounts sit above the pad so the common
 /// answers need no typing at all.
+///
+/// Giving is the moment the sheet exists for, so it is given room: hearts rise
+/// from the button in proportion to the gift (`RisingHearts`), the form fades
+/// back, and the sheet blooms into the app's thank-you (`GivingThanksView`),
+/// which the member closes themselves.
 struct DonateHeartsView: View {
   @Environment(\.heartLedger) private var ledger
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   let category: CompassionCategory
 
   @State private var amount = 0
@@ -19,10 +25,16 @@ struct DonateHeartsView: View {
   /// suggestion), so typing over "All" writes what was typed instead of being
   /// swallowed by the ceiling.
   @State private var entryIsFresh = true
-  @State private var burst = 0
-  /// Set once hearts have gone, so the button can confirm before the sheet
-  /// leaves. Holds what was actually given, which may be less than was asked.
-  @State private var donated: Int?
+  /// Set once hearts have gone: what was actually given, which may be less
+  /// than was asked. Fades the form back and lifts the hearts.
+  @State private var given: Int?
+  /// Follows `given` a beat behind, so the thanks blooms into a sheet the form
+  /// has already left rather than crossing it.
+  @State private var thanking = false
+  /// The donate button's frame in the sheet, where the hearts lift off.
+  @State private var actionFrame: CGRect = .zero
+  /// Where this gift's hearts left from, frozen at the tap.
+  @State private var liftOff: CGPoint?
 
   var body: some View {
     ScrollView {
@@ -57,17 +69,49 @@ struct DonateHeartsView: View {
       .padding(.horizontal, .edge)
       .padding(.top, .rhythm)
       .padding(.bottom, .rhythm)
-      // Once the hearts are gone the sheet is only finishing its sentence.
-      .allowsHitTesting(donated == nil)
+      // Once the hearts are gone the form steps back for the thanks.
+      .opacity(given == nil ? 1 : 0)
+      .scaleEffect(given == nil || reduceMotion ? 1 : 0.96)
+      .allowsHitTesting(given == nil)
+      .accessibilityHidden(given != nil)
     }
+    .coordinateSpace(.named(Self.sheetSpace))
     .scrollBounceBehavior(.basedOnSize)
     .scrollIndicators(.hidden)
+    .scrollDisabled(given != nil)
+    .overlay {
+      if let given, thanking {
+        GivingThanksView(category: ledger.category(category.id) ?? category, amount: given) {
+          dismiss()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
+      }
+    }
+    .overlay {
+      if let given, let liftOff, !reduceMotion {
+        RisingHearts(count: RisingHearts.count(for: given), origin: liftOff)
+      }
+    }
     .animation(.settle, value: ledger.spendFailure)
     .sensoryFeedback(.selection, trigger: amount)
+    .sensoryFeedback(.impact(weight: .light), trigger: given) { old, new in old == nil && new != nil }
+    .task(id: given) { await thank() }
+    .onChange(of: ledger.spendFailure) { _, failure in
+      // The server refused: the hearts are back in the balance, so the thanks
+      // gives way to the form and its rollback caption.
+      guard let failure, failure.categoryID == category.id, given != nil else { return }
+      withAnimation(.bloom) {
+        given = nil
+        thanking = false
+      }
+    }
     .presentationDetents([.height(560), .large])
     .presentationBackground { AtmosphereBackground() }
     .onAppear { amount = Swift.min(10, ledger.balance) }
   }
+
+  private static let sheetSpace = "donateHeartsSheet"
 
   // MARK: - Cause
 
@@ -209,16 +253,10 @@ struct DonateHeartsView: View {
   @ViewBuilder
   private var action: some View {
     Group {
-      if let donated {
-        capsuleLabel {
-          Image(systemName: "heart.fill")
-            .font(.system(size: 16, weight: .semibold))
-          Text("Donated \(donated.formatted()) \(donated == 1 ? "heart" : "hearts")")
-        }
-        .accessibilityAddTraits(.isStaticText)
-      } else if ledger.balance == 0 {
-        // After `donated`, so giving the last heart still confirms before the
-        // sheet leaves rather than flipping straight to the empty note.
+      if ledger.balance == 0, given == nil {
+        // Not while a gift is being thanked: giving the last heart would
+        // otherwise swap the button for the empty note under the fading form,
+        // moving the point the hearts are rising from.
         emptyNote
       } else if amount > 0 {
         Button(action: donate) {
@@ -244,8 +282,9 @@ struct DonateHeartsView: View {
     }
     .animation(.exhale, value: amount > 0)
     .animation(.exhale, value: ledger.canGive)
-    .animation(.exhale, value: donated)
-    .heartBurst(trigger: burst)
+    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.sheetSpace)) } action: {
+      actionFrame = $0
+    }
   }
 
   /// The cause card's donate capsule is live whatever the balance, so this is
@@ -300,20 +339,30 @@ struct DonateHeartsView: View {
     .shadow(color: Color.lavenderMist.opacity(0.35), radius: 18, y: 10)
   }
 
-  /// Gives, then holds for a beat so the heart has time to bloom — dismissing on
-  /// the same frame would cut the one moment in this feature worth feeling.
+  /// Gives, and lifts the hearts from the button the member just pressed. The
+  /// thanks follows in `thank()`; the sheet stays until they close it.
   private func donate() {
-    let given = Swift.min(amount, ledger.balance)
-    guard given > 0 else { return }
+    let gift = Swift.min(amount, ledger.balance)
+    guard gift > 0 else { return }
 
-    ledger.send(given, to: category)
-    burst += 1
-    donated = given
+    ledger.send(gift, to: category)
+    liftOff = CGPoint(x: actionFrame.midX, y: actionFrame.minY + 8)
+    withAnimation(.bloom) { given = gift }
+  }
 
-    Task {
-      try? await Task.sleep(for: .seconds(0.9))
-      dismiss()
-    }
+  /// The second beat of a gift: once the form has stepped back, the thanks
+  /// blooms in, and VoiceOver hears it, since the words it would otherwise
+  /// land on are gone.
+  private func thank() async {
+    guard given != nil else { return }
+    try? await Task.sleep(for: .seconds(0.35))
+    guard !Task.isCancelled else { return }
+    withAnimation(.bloom) { thanking = true }
+    let name = (ledger.category(category.id) ?? category).name
+    AccessibilityNotification.Announcement(
+      String(localized: "Thank you for giving to \(name)", bundle: .app, locale: .app)
+    )
+    .post()
   }
 }
 
