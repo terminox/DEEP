@@ -4,8 +4,7 @@
   app/build.gradle.kts, so DEEP Dev and DEEP Staging can sit on one device and
   tell themselves apart.
 
-  Thai lands in week 5 as values-th. The iOS catalog carries 291 keys with Thai
-  for 285 of them, so this file will grow to match.
+  The Thai lives in values-th/strings.xml.
 -->
 <resources>
 

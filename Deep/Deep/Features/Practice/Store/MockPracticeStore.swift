@@ -10,6 +10,7 @@ final class MockPracticeStore: PracticeStore {
   var completions: [PracticeCompletion]
   var dailyGoalMinutes: Int
   var minutesToday: Int
+  var hasSatGlobalPauseToday: Bool
   var currentStreakDays: Int
   var longestStreakDays: Int
   var isHydrated: Bool
@@ -25,6 +26,7 @@ final class MockPracticeStore: PracticeStore {
     completions: [PracticeCompletion] = [],
     dailyGoalMinutes: Int = 10,
     minutesToday: Int = 7,
+    hasSatGlobalPauseToday: Bool = false,
     currentStreakDays: Int = 12,
     longestStreakDays: Int = 12,
     isHydrated: Bool = true,
@@ -34,6 +36,7 @@ final class MockPracticeStore: PracticeStore {
     self.completions = completions
     self.dailyGoalMinutes = dailyGoalMinutes
     self.minutesToday = minutesToday
+    self.hasSatGlobalPauseToday = hasSatGlobalPauseToday
     self.currentStreakDays = currentStreakDays
     self.longestStreakDays = longestStreakDays
     self.isHydrated = isHydrated
@@ -53,6 +56,7 @@ final class MockPracticeStore: PracticeStore {
 
   func recordActivity(_ kind: PracticeActivity.Kind, at date: Date) {
     activities.append(PracticeActivity(kind: kind, at: date))
+    if kind == .pause { hasSatGlobalPauseToday = true }
     markToday()
   }
 
@@ -72,6 +76,7 @@ final class MockPracticeStore: PracticeStore {
     completions = []
     activities = []
     minutesToday = 0
+    hasSatGlobalPauseToday = false
     currentStreakDays = 0
     longestStreakDays = 0
     practicedToday = false

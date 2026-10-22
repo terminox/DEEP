@@ -61,6 +61,14 @@ object ProfileIcons {
     curveTo(12.8f, 21.5f, 13.5f, 21.2f, 14f, 20.5f)
   }
 
+  /** Daily reminder time. */
+  val Clock: ImageVector = lineIcon("ProfileClock") {
+    circle(12f, 12f, 8.5f)
+    moveTo(12f, 7.5f)
+    lineTo(12f, 12f)
+    lineTo(15f, 14f)
+  }
+
   /** Manage subscription. */
   val CreditCard: ImageVector = lineIcon("ProfileCreditCard") {
     moveTo(5f, 6f)
@@ -141,6 +149,13 @@ object ProfileIcons {
     close()
   }
 
+  /** The chosen row in a list of choices — iOS's `checkmark` (the language picker). */
+  val Checkmark: ImageVector = lineIcon("ProfileCheckmark") {
+    moveTo(5f, 12.5f)
+    lineTo(9.5f, 17f)
+    lineTo(19f, 7f)
+  }
+
   /**
    * Settings. Sliders rather than a gear: a gear drawn in this light a stroke
    * reads as a sun, and a sun already means sunlight in the garden.
@@ -203,6 +218,7 @@ private fun ProfileIconsPreview() {
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
       listOf(
         ProfileIcons.Bell,
+        ProfileIcons.Clock,
         ProfileIcons.CreditCard,
         ProfileIcons.ArrowClockwise,
         ProfileIcons.LogOut,

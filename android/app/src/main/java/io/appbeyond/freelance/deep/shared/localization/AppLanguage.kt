@@ -1,7 +1,5 @@
 package io.appbeyond.freelance.deep.shared.localization
 
-import java.util.Locale
-
 /**
  * The language DEEP reads its copy in.
  *
@@ -17,10 +15,10 @@ import java.util.Locale
  * titles, plant names, the pause's welcome lines — must arrive in the language
  * the member picked in-app.
  *
- * Not ported (yet): the persisted choice (`LanguageStore`), and the `Locale.app`
- * / `Bundle.app` ambient projections that resolve copy outside the view tree.
- * Until a store lands, [AppDependencies][io.appbeyond.freelance.deep.networking.AppDependencies]
- * holds the choice in memory, seeded from [deviceMatched].
+ * The choice is persisted and applied by [LanguageStore]. iOS's `Locale.app` /
+ * `Bundle.app` ambient projections have no counterpart: the per-app locale puts
+ * the choice into every context's configuration, so resources and
+ * [rememberAppLocale] already read in it.
  */
 enum class AppLanguage(val rawValue: String) {
   English("english"),
@@ -64,16 +62,5 @@ enum class AppLanguage(val rawValue: String) {
 
     /** Resolves a persisted raw value, or null if it is not one of ours. */
     fun of(rawValue: String): AppLanguage? = entries.firstOrNull { it.rawValue == rawValue }
-
-    /**
-     * The language the device is asking for, narrowed to the two DEEP speaks.
-     *
-     * `Locale.getDefault()` already reflects a per-app language override on
-     * API 33+, and the device language below that, so a phone set to French
-     * lands on English without a case for it here — the same answer iOS gets
-     * from `Bundle.main.preferredLocalizations`.
-     */
-    fun deviceMatched(): AppLanguage =
-      if (Locale.getDefault().language == Thai.resourceLanguageCode) Thai else English
   }
 }

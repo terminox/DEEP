@@ -47,6 +47,18 @@ enum PracticeMath {
     completions.count { calendar.isDate($0.completedAt, inSameDayAs: now) }
   }
 
+  /// Whether a practice of `kind` was marked on `now`'s day. The marker's
+  /// instant is compared through `calendar`, so the day ends at the member's
+  /// own midnight; no day key is parsed.
+  static func hasActivity(
+    _ kind: PracticeActivity.Kind,
+    in activities: [PracticeActivity],
+    calendar: Calendar,
+    now: Date
+  ) -> Bool {
+    activities.contains { $0.kind == kind && calendar.isDate($0.at, inSameDayAs: now) }
+  }
+
   // MARK: - Practice days
 
   /// Distinct local-midnight days with any practice: finished sessions, local

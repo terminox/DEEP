@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_mind_garden.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <!-- The collapsing header over the oak. -->
+  <string name="mind_garden_title">สวนแห่งใจ</string>
+  <string name="mind_garden_subtitle">ดูแลความสงบของคุณ</string>
+
+  <!-- The plant picker pill and its TalkBack action. -->
+  <string name="garden_change">เปลี่ยน</string>
+  <string name="garden_change_action">เปลี่ยนต้นไม้</string>
+  <string name="garden_growth_summary" tools:ignore="PluralsCandidate">%1$s แสงแดด %2$d จาก %3$d สู่ %4$s</string> <!-- no iOS Thai -->
+  <string name="garden_growth_summary_fully_grown">%1$s เติบโตเต็มที่แล้ว</string> <!-- no iOS Thai -->
+
+  <!-- The daily practice card. -->
+  <string name="practice_eyebrow">การฝึกวันนี้</string>
+  <string name="practice_headline_tend">ดูแลสวนของคุณ</string>
+  <string name="practice_headline_complete">ครบเป้าหมายของวันนี้แล้ว</string> <!-- no iOS Thai -->
+  <!-- %1$s is the plant's name or practice_subtitle_garden; Thai sets it without spaces. -->
+  <string name="practice_subtitle_feeds">ทุกเซสชันช่วยหล่อเลี้ยง%1$sของคุณ</string> <!-- no iOS Thai -->
+  <string name="practice_subtitle_garden">สวน</string>
+  <string name="practice_subtitle_complete">กลับมาใหม่พรุ่งนี้ เพื่อการเติบโตครั้งใหม่</string> <!-- no iOS Thai -->
+  <string name="practice_minutes">%1$d จาก %2$d นาที</string>
+  <plurals name="practice_summary_complete">
+    <item quantity="other">ครบเป้าหมายของวันนี้แล้ว %1$d จาก %2$d นาที</item> <!-- no iOS Thai -->
+  </plurals>
+  <plurals name="practice_summary_begin">
+    <item quantity="other">เริ่มการฝึกของวันนี้ ฝึกไปแล้ว %1$d จาก %2$d นาที</item> <!-- no iOS Thai -->
+  </plurals>
+
+  <!-- The plant picker sheet. -->
+  <string name="picker_title">เลือกต้นไม้ของคุณ</string>
+  <string name="picker_subtitle">แสงแดดยังอยู่กับต้นไม้ทุกต้น — มันจะเติบโตต่อจากจุดเดิมเมื่อคุณกลับมา</string>
+  <string name="picker_growing">กำลังปลูก %1$s</string>
+  <string name="picker_grow">ปลูก %1$s</string>
+  <string name="picker_grow_hint">เปลี่ยนสวนของคุณเป็นต้นไม้นี้</string>
+  <string name="picker_keep">เก็บ %1$s</string>
+  <string name="picker_row_summary" tools:ignore="PluralsCandidate">%1$s, %2$s, แสงแดด %3$d</string>
+  <string name="picker_failed">สวนยังไม่ตอบกลับ</string> <!-- no iOS Thai -->
+  <string name="picker_retry">ลองอีกครั้ง</string>
+  <string name="garden_salutation_morning">สวัสดีตอนเช้า</string>
+  <string name="garden_salutation_afternoon">สวัสดีตอนบ่าย</string>
+  <string name="garden_salutation_evening">สวัสดีตอนเย็น</string>
+  <!-- Same order as values/strings_mind_garden.xml: GardenGreeting.quoteIndex rotates by position. -->
+  <string-array name="garden_quotes">
+    <item>ทุกลมหายใจรดน้ำสวนของคุณ</item>
+    <item>ช่วงเวลาเล็ก ๆ เติบโตได้สูงใหญ่</item>
+    <item>ไม่ต้องเร่งต้นไม้</item>
+    <item>ความนิ่งคือสิ่งที่ทำให้รากหยั่งลึก</item>
+    <item>ความสงบเล็ก ๆ ที่ดูแลทุกวัน จะกลายเป็นร่มเงา</item>
+    <item>เติบโตตามจังหวะลมหายใจ</item>
+    <item>ต้นโอ๊กทุกต้นเคยเป็นเมล็ดที่เงียบงัน</item>
+    <item>วันนี้ขอเพียงไม่กี่นาทีอันอ่อนโยน</item>
+  </string-array>
+  <string name="picker_switch_failed">เปลี่ยนต้นไม้ไม่ได้ — ลองอีกครั้งในอีกสักครู่</string> <!-- no iOS Thai -->
+</resources>
