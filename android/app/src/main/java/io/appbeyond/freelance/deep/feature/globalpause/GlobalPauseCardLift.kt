@@ -12,33 +12,27 @@ import androidx.compose.ui.Modifier
 import io.appbeyond.freelance.deep.theme.hush
 
 /**
- * THE CARD-LIFT HOOK, left for week 7.
+ * THE CARD LIFT — iOS `Transitions/GlobalPauseCardLiftTransition.swift`.
  *
- * On iOS (`Transitions/GlobalPauseCardLiftTransition.swift`) tapping the live
- * card in Fuku's Lounge doesn't cut to the session: the card itself lifts and
- * grows until its night sky and globe *are* the session's backdrop, with the
- * chrome faded out before the flight and the meditation overlay cascading in
- * after it lands. The reverse plays on leaving.
+ * Tapping the live card in Fuku's Lounge doesn't cut to the session: the
+ * card's chrome fades, then the card itself grows until its night sky and
+ * globe ARE the session's backdrop, and the meditation overlay cascades in
+ * once it lands. Leaving mid-sit flies it home; leaving from the ending's
+ * cream simply fades.
  *
- * Week 6 presents the session with a plain [hush] crossfade, but routes
- * everything the lift will need through this one seam, so week 7 replaces the
- * implementation here and nowhere else:
+ * The seam has four ends, each applied where its screen already composes:
+ * - [cardLiftSource] on the lounge's `GlobalPauseCard` — where the lift starts.
+ * - [cardLiftTarget] on the session's backdrop (night sky + globe), inside the
+ *   presentation's `AnimatedVisibility` in `AppRoot`, whose scope it is handed.
+ * - [cardLiftCover] on the ending's opaque layer — while it covers the
+ *   backdrop, there is nothing left to fly.
+ * - [enter] / [exit] for that presentation, and [landingMillis] for when the
+ *   overlay may cascade in.
  *
- * - [cardLiftSource] wraps the lounge card's surface (`GlobalPauseCard`).
- *   Week 7 makes it a `sharedBounds` source keyed [KEY], inside the shell's
- *   `AnimatedContent` scope that the lounge already composes in.
- * - [cardLiftTarget] wraps the session's backdrop (night sky + globe) inside
- *   the presentation's `AnimatedVisibility` in `AppRoot`, whose scope it is
- *   handed.
- * - [enter] / [exit] are that presentation's transitions — a crossfade now,
- *   the lift's choreography then.
- * - [onLanded] is when the meditation overlay may cascade in: at once now,
- *   after the flight settles then (iOS's `viewDidAppear` reveal).
- *
- * Both card and session already draw one shared `GlobeScene` through
- * `LocalGlobeRendering`, so the lift moves one globe rather than swapping two.
- * A `SharedTransitionLayout` will be needed above both — `AppRoot`'s root
- * `Box` is the common ancestor of the shell and the presentation.
+ * Both the card and the session draw ONE shared `GlobeScene` through
+ * `LocalGlobeRendering`, so the lift moves one world rather than swapping
+ * two. Implementations: `EarthCardLift` (the lift, or a plain crossfade under
+ * reduced motion) and [CrossfadeCardLift] (previews, and the default).
  */
 @Stable
 interface GlobalPauseCardLift {
@@ -47,7 +41,12 @@ interface GlobalPauseCardLift {
   fun Modifier.cardLiftSource(): Modifier
 
   /** Marks where it lands, in the presentation's [visibility] scope. */
+  @Composable
   fun Modifier.cardLiftTarget(visibility: AnimatedVisibilityScope): Modifier
+
+  /** Marks a layer that hides the backdrop for as long as it is composed. */
+  @Composable
+  fun Modifier.cardLiftCover(): Modifier
 
   val enter: EnterTransition
 
@@ -55,17 +54,18 @@ interface GlobalPauseCardLift {
 
   /** How long after the presentation begins the overlay may reveal, in ms. */
   val landingMillis: Long
-
-  companion object {
-    /** The shared-element key both ends of the lift will use. */
-    const val KEY = "global-pause-card"
-  }
 }
 
-/** Week 6: no lift — a crossfade, and the overlay reveals as it lands. */
+/** No lift — a crossfade, and the overlay reveals as it lands. */
 object CrossfadeCardLift : GlobalPauseCardLift {
   override fun Modifier.cardLiftSource(): Modifier = this
+
+  @Composable
   override fun Modifier.cardLiftTarget(visibility: AnimatedVisibilityScope): Modifier = this
+
+  @Composable
+  override fun Modifier.cardLiftCover(): Modifier = this
+
   override val enter: EnterTransition = fadeIn(hush())
   override val exit: ExitTransition = fadeOut(hush())
   override val landingMillis: Long = hush<Float>().durationMillis.toLong()

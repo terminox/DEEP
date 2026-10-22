@@ -49,11 +49,11 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * The week-6 stand-in behind [GlobeRendering]: a flat, dotted orb that still
+ * The 2D stand-in behind [GlobeRendering]: a flat, dotted orb that still
  * tells the truth about the room — every located participant glows where they
  * are, the member's own point warms, and each arrival rings out as it lands.
- * It is deliberately modest; week 7's GLES Earth replaces it wholesale and
- * this stays as the fallback for devices that can't run that.
+ * Deliberately modest: [EarthGlobeRendering] falls back to it in previews,
+ * below OpenGL ES 3.0, and after a shader or EGL failure.
  *
  * Projection is orthographic around a turning centre: in the card it drifts
  * west to east, about a turn every two minutes; in the session it eases round

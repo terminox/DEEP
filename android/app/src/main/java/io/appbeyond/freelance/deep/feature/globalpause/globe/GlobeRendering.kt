@@ -19,16 +19,16 @@ import kotlinx.coroutines.flow.asSharedFlow
  *
  * Every Global Pause screen that shows the Earth — the card in Fuku's Lounge
  * and the live session behind the meditation — draws it through
- * [LocalGlobeRendering], never by naming a renderer. Week 6 ships
- * [PlaceholderGlobeRendering], a flat 2D orb; week 7 provides its GLES Earth
- * (`EARTH3D_SPIKE.md`) at the app root instead:
+ * [LocalGlobeRendering], never by naming a renderer. `MainActivity` provides
+ * [EarthGlobeRendering], the OpenGL ES Earth (`EARTH3D_SPIKE.md`), which
+ * itself falls back to [PlaceholderGlobeRendering], the flat 2D orb, wherever
+ * the Earth can't run. The local's default is the placeholder, so previews
+ * stay hermetic.
  *
- *   CompositionLocalProvider(LocalGlobeRendering provides EarthGlobeRendering) { … }
- *
- * and no screen changes. What the renderer draws from is [GlobeScene], one
- * instance for the whole app (owned in `MainActivity`), so the card and the
- * session share one globe — the precondition for the week-7 card lift, where
- * the card's globe *becomes* the session's backdrop without a cut.
+ * What the renderer draws from is [GlobeScene], one instance for the whole
+ * app (owned in `MainActivity`), so the card and the session share one globe
+ * — the precondition for the card lift, where the card's globe *becomes* the
+ * session's backdrop without a cut.
  *
  * iOS counterparts: `GlobalPauseEarthScene` (the scene), `EarthSceneView` /
  * `Earth3DView` (the renderer), `NightSkyBackground` (the backdrop).
@@ -87,8 +87,8 @@ class GlobeScene {
   /** Located participants, server-clustered. */
   var locations: List<PauseLiveSnapshot.GeoPoint> by mutableStateOf(emptyList())
 
-  /** Participants the server couldn't place, by country — drawn at the
-   * country centroid once the renderer has a country table (week 7). */
+  /** Participants the server couldn't place, by country — drawn at their
+   * country's centroid (`CountryLookup`). */
   var unlocatedByCountry: Map<String, Int> by mutableStateOf(emptyMap())
 
   /** The member's own point: the globe turns here and seats a home glow. */
