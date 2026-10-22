@@ -18,9 +18,10 @@ struct RisingHearts: View {
     Swift.min(24, 5 + Int(4 * log2(Double(Swift.max(amount, 1)))))
   }
 
-  /// Rose and lavender only: peach and cream read as beige smudges over the
-  /// pale atmosphere. Repeats are weights.
-  private static let tones: [Color] = [.blushPowder, .blushPowder, .duskRose, .duskRose, .lavenderMist, .softLilac]
+  /// Mostly moon-white, with a blush and a peach heart among them. The
+  /// lavender shadow below is what seats the white against the pale
+  /// atmosphere. Repeats are weights.
+  private static let tones: [Color] = [.moonCream, .moonCream, .moonCream, .moonCream, .blushPowder, .peachCloud]
   private static let symbolSize: CGFloat = 32
 
   /// Where the hearts lift off, in this view's own space.

@@ -171,7 +171,7 @@ struct DonateHeartsView: View {
         .foregroundStyle(.driftGrey)
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Hearts to donate")
+    .accessibilityLabel("Hearts to send")
     .accessibilityValue("\(amount) of \(ledger.balance)")
   }
 
@@ -263,11 +263,11 @@ struct DonateHeartsView: View {
           capsuleLabel {
             Image(systemName: "heart.fill")
               .font(.system(size: 16, weight: .semibold))
-            Text("Donate \(amount.formatted()) \(amount == 1 ? "heart" : "hearts")")
+            Text("Send \(amount.formatted()) \(amount == 1 ? "heart" : "hearts")")
           }
         }
         .buttonStyle(.softPress)
-        .accessibilityLabel("Donate \(amount) hearts to \(category.name)")
+        .accessibilityLabel("Send \(amount) hearts to \(category.name)")
       } else {
         // Not a dimmed button: a disabled CTA reads as something broken, and
         // there is nothing broken about a member who hasn't chosen yet.
