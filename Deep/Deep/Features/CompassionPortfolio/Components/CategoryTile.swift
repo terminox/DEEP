@@ -165,7 +165,7 @@ struct CategoryTile: View {
       HStack(spacing: 8) {
         Image(systemName: "heart.fill")
           .font(.system(size: 14, weight: .semibold))
-        Text("Donate hearts")
+        Text("Send hearts")
       }
       .font(DeepType.sectionTitle)
       .foregroundStyle(.white)
@@ -181,7 +181,7 @@ struct CategoryTile: View {
       }
     }
     .buttonStyle(.softPress)
-    .accessibilityLabel("Donate hearts to \(live.name)")
+    .accessibilityLabel("Send hearts to \(live.name)")
   }
 }
 

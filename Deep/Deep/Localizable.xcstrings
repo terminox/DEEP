@@ -151,6 +151,16 @@
     "-%@" : {
       "shouldTranslate" : false
     },
+    "1 heart" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 หัวใจ"
+          }
+        }
+      }
+    },
     "1 heart ready to give" : {
       "localizations" : {
         "th" : {
@@ -171,12 +181,32 @@
         }
       }
     },
+    "Done" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เสร็จสิ้น"
+          }
+        }
+      }
+    },
     "Growth is on its way" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "การเติบโตกำลังมาถึง"
+          }
+        }
+      }
+    },
+    "Thank you for giving to %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ขอบคุณที่มอบหัวใจให้ %@"
           }
         }
       }
@@ -1209,70 +1239,74 @@
         }
       }
     },
-    "Donate %@ %@" : {
+    "Send %@ %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Donate %1$@ %2$@"
+            "value" : "Send %1$@ %2$@"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "บริจาค %1$@ %2$@"
+            "value" : "ส่งหัวใจ %1$@ ดวง"
           }
         }
       }
     },
-    "Donate %lld hearts to %@" : {
+    "Send %lld hearts to %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Donate %1$lld hearts to %2$@"
+            "value" : "Send %1$lld hearts to %2$@"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "บริจาค %1$lld หัวใจให้ %2$@"
+            "value" : "ส่ง %1$lld หัวใจให้ %2$@"
           }
         }
       }
     },
-    "Donate hearts" : {
+    "Send hearts" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "บริจาคหัวใจ"
+            "value" : "ส่งหัวใจ"
           }
         }
       }
     },
-    "Donate hearts to %@" : {
+    "Send hearts to %@" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "บริจาคหัวใจให้ %@"
+            "value" : "ส่งหัวใจให้ %@"
           }
         }
       }
     },
-    "Donated %@ %@" : {
+    "Where your hearts go" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Donated %1$@ %2$@"
-          }
-        },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "บริจาคแล้ว %1$@ %2$@"
+            "value" : "ที่ที่หัวใจของคุณไปถึง"
+          }
+        }
+      }
+    },
+    "Each heart is a vote for the causes you'd like DEEP to support." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หัวใจแต่ละดวงคือเสียงโหวตให้ด้านที่คุณอยากให้ DEEP สนับสนุน"
           }
         }
       }
@@ -1547,12 +1581,12 @@
         }
       }
     },
-    "Hearts to donate" : {
+    "Hearts to send" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "หัวใจที่จะบริจาค"
+            "value" : "หัวใจที่จะส่ง"
           }
         }
       }
