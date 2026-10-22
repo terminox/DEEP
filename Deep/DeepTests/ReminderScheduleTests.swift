@@ -27,7 +27,7 @@ struct ReminderScheduleTests {
     let occurrences = ReminderSchedule.occurrences(
       after: date("2026-09-01T08:00:00+07:00"),
       reminder: DailyReminder(isEnabled: false, hour: 21, minute: 0),
-      goalMetToday: false,
+      practisedToday: false,
       calendar: calendar
     )
     #expect(occurrences.isEmpty)
@@ -38,7 +38,7 @@ struct ReminderScheduleTests {
     let occurrences = ReminderSchedule.occurrences(
       after: date("2026-09-01T08:00:00+07:00"),
       reminder: enabled,
-      goalMetToday: false,
+      practisedToday: false,
       calendar: calendar
     )
     #expect(occurrences.count == ReminderSchedule.horizon)
@@ -58,7 +58,7 @@ struct ReminderScheduleTests {
   func includesTodayBeforeTheHour() {
     let now = date("2026-09-01T08:00:00+07:00")
     let occurrences = ReminderSchedule.occurrences(
-      after: now, reminder: enabled, goalMetToday: false, calendar: calendar
+      after: now, reminder: enabled, practisedToday: false, calendar: calendar
     )
     #expect(calendar.isDate(occurrences[0], inSameDayAs: now))
   }
@@ -67,7 +67,7 @@ struct ReminderScheduleTests {
   func skipsTodayAfterTheHour() {
     let now = date("2026-09-01T21:30:00+07:00")
     let occurrences = ReminderSchedule.occurrences(
-      after: now, reminder: enabled, goalMetToday: false, calendar: calendar
+      after: now, reminder: enabled, practisedToday: false, calendar: calendar
     )
     #expect(!calendar.isDate(occurrences[0], inSameDayAs: now))
     #expect(occurrences.count == ReminderSchedule.horizon, "the window still fills")
@@ -77,7 +77,7 @@ struct ReminderScheduleTests {
   func skipsTodayWhenGoalMet() {
     let now = date("2026-09-01T08:00:00+07:00")
     let occurrences = ReminderSchedule.occurrences(
-      after: now, reminder: enabled, goalMetToday: true, calendar: calendar
+      after: now, reminder: enabled, practisedToday: true, calendar: calendar
     )
     #expect(!calendar.isDate(occurrences[0], inSameDayAs: now))
     // Tomorrow is not skipped — only today can be known to be complete.
@@ -94,7 +94,7 @@ struct ReminderScheduleTests {
   func allFuture() {
     let now = date("2026-09-01T20:59:59+07:00")
     let occurrences = ReminderSchedule.occurrences(
-      after: now, reminder: enabled, goalMetToday: false, calendar: calendar
+      after: now, reminder: enabled, practisedToday: false, calendar: calendar
     )
     #expect(occurrences.allSatisfy { $0 > now })
   }
@@ -109,6 +109,17 @@ struct ReminderScheduleTests {
 
     let nextDay = calendar.date(byAdding: .day, value: 1, to: day)!
     #expect(ReminderScheduler.identifier(for: nextDay, calendar: calendar) != first)
+  }
+
+  @Test("the day key stays Gregorian on a Thai device's Buddhist calendar")
+  func identifierIsGregorianUnderBuddhistCalendar() {
+    var buddhist = Calendar(identifier: .buddhist)
+    buddhist.timeZone = TimeZone(identifier: "Asia/Bangkok")!
+    buddhist.locale = Locale(identifier: "th_TH")
+    // 00:30 Bangkok is still the previous evening in UTC — the key follows
+    // the calendar's timezone, not GMT.
+    let justAfterMidnight = date("2026-09-02T00:30:00+07:00")
+    #expect(ReminderScheduler.identifier(for: justAfterMidnight, calendar: buddhist) == "deep.reminder.2026-09-02")
   }
 
   @Test("copy rotates by day and holds still within one")

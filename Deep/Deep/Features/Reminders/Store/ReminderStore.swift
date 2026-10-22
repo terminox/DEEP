@@ -8,9 +8,10 @@ import Observation
 /// property of this phone — the one that will actually buzz — so it survives a
 /// log out and does not follow the account to another device.
 ///
-/// The store deliberately doesn't know about practice. Whether today's goal is
-/// already met arrives as an argument, so the rule stays testable and the
-/// store stays a store.
+/// The store deliberately doesn't know about practice. Whether today is
+/// already practised arrives as an argument (`PracticeStore.reminderRestsToday`
+/// at every call site), so the rule stays testable and the store stays a
+/// store.
 @Observable
 final class ReminderStore {
   private static let key = "deep.reminder"
@@ -49,14 +50,14 @@ final class ReminderStore {
   /// Returns the settled permission so the screen can explain a refusal rather
   /// than leaving a toggle that silently springs back.
   @discardableResult
-  func enable(goalMetToday: Bool) async -> ReminderPermission {
+  func enable(practisedToday: Bool) async -> ReminderPermission {
     permission = await scheduler.requestPermission()
     guard permission == .granted else {
       // Never leave the toggle on over a queue that can't exist.
       await write(reminder: DailyReminder(isEnabled: false, hour: reminder.hour, minute: reminder.minute))
       return permission
     }
-    await write(reminder: DailyReminder(isEnabled: true, hour: reminder.hour, minute: reminder.minute), goalMetToday: goalMetToday)
+    await write(reminder: DailyReminder(isEnabled: true, hour: reminder.hour, minute: reminder.minute), practisedToday: practisedToday)
     return permission
   }
 
@@ -64,19 +65,20 @@ final class ReminderStore {
     await write(reminder: DailyReminder(isEnabled: false, hour: reminder.hour, minute: reminder.minute))
   }
 
-  func setTime(_ date: Date, goalMetToday: Bool) async {
+  func setTime(_ date: Date, practisedToday: Bool) async {
     var updated = reminder
     updated.setTime(from: date, calendar: calendar)
     guard updated != reminder else { return }
-    await write(reminder: updated, goalMetToday: goalMetToday)
+    await write(reminder: updated, practisedToday: practisedToday)
   }
 
   /// Rebuilds the queue from the current settings.
   ///
-  /// Called on every foreground (the window rolls forward, and today's goal
-  /// may since have been met) and whenever the language changes, because each
-  /// queued notification carries copy that was resolved when it was written.
-  func reschedule(goalMetToday: Bool) async {
+  /// Called on every foreground (the window rolls forward, and today may
+  /// since have been practised), the moment the server counts a Global Pause
+  /// sit, and whenever the language changes, because each queued notification
+  /// carries copy that was resolved when it was written.
+  func reschedule(practisedToday: Bool) async {
     guard reminder.isEnabled else {
       await scheduler.clearQueue()
       return
@@ -88,28 +90,28 @@ final class ReminderStore {
       await write(reminder: DailyReminder(isEnabled: false, hour: reminder.hour, minute: reminder.minute))
       return
     }
-    await pushQueue(goalMetToday: goalMetToday)
+    await pushQueue(practisedToday: practisedToday)
   }
 
   // MARK: - Internals
 
-  private func write(reminder updated: DailyReminder, goalMetToday: Bool = false) async {
+  private func write(reminder updated: DailyReminder, practisedToday: Bool = false) async {
     reminder = updated
     if let data = try? JSONEncoder().encode(updated) {
       defaults.set(data, forKey: Self.key)
     }
     if updated.isEnabled {
-      await pushQueue(goalMetToday: goalMetToday)
+      await pushQueue(practisedToday: practisedToday)
     } else {
       await scheduler.clearQueue()
     }
   }
 
-  private func pushQueue(goalMetToday: Bool) async {
+  private func pushQueue(practisedToday: Bool) async {
     let dates = ReminderSchedule.occurrences(
       after: now(),
       reminder: reminder,
-      goalMetToday: goalMetToday,
+      practisedToday: practisedToday,
       calendar: calendar
     )
     await scheduler.replaceQueue(

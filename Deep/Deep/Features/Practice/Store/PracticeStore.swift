@@ -15,6 +15,9 @@ protocol PracticeStore: AnyObject, Observable {
   /// The gentle daily goal, in minutes.
   var dailyGoalMinutes: Int { get }
   var minutesToday: Int { get }
+  /// Whether the server counted a Global Pause sat today — the same `.pause`
+  /// marker the rhythm reads, so the two never disagree about the day.
+  var hasSatGlobalPauseToday: Bool { get }
   var currentStreakDays: Int { get }
   var longestStreakDays: Int { get }
   /// Whether the server's log has been pulled into this journal at least once
@@ -49,6 +52,14 @@ extension PracticeStore {
   /// Marks a day kept right now.
   func recordActivity(_ kind: PracticeActivity.Kind) {
     recordActivity(kind, at: .now)
+  }
+
+  /// Whether today's daily reminder can rest: DEEP Session minutes have met
+  /// the goal, or a Global Pause was sat. Every reminder reschedule reads this
+  /// one rule. Narrower than the rhythm on purpose — a sound listened to its
+  /// end keeps the day in the rhythm but does not quiet the reminder.
+  var reminderRestsToday: Bool {
+    minutesToday >= dailyGoalMinutes || hasSatGlobalPauseToday
   }
 }
 

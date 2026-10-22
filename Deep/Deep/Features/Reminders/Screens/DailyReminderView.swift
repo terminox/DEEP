@@ -13,8 +13,8 @@ struct DailyReminderView: View {
 
   @State private var pickedTime = Date()
 
-  private var goalMetToday: Bool {
-    practiceStore.minutesToday >= practiceStore.dailyGoalMinutes
+  private var practisedToday: Bool {
+    practiceStore.reminderRestsToday
   }
 
   var body: some View {
@@ -59,7 +59,7 @@ struct DailyReminderView: View {
       await reminderStore.refreshPermission()
     }
     .onChange(of: pickedTime) { _, newValue in
-      Task { await reminderStore.setTime(newValue, goalMetToday: goalMetToday) }
+      Task { await reminderStore.setTime(newValue, practisedToday: practisedToday) }
     }
   }
 
@@ -106,7 +106,7 @@ struct DailyReminderView: View {
 
   private func setEnabled(_ wantsOn: Bool) async {
     if wantsOn {
-      await reminderStore.enable(goalMetToday: goalMetToday)
+      await reminderStore.enable(practisedToday: practisedToday)
       pickedTime = reminderStore.reminder.pickerDate()
     } else {
       await reminderStore.disable()
