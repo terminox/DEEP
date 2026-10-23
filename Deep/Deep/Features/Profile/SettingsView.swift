@@ -274,6 +274,9 @@ struct SettingsView: View {
       do {
         try await subscriptionStore.restore()
         restorePhase = .restored
+        // Confirmed with the server the way a purchase is, so the audio it
+        // withholds is released without waiting for the next foreground.
+        if subscriptionStore.isSubscribed { premiumAccess.didPurchase() }
       } catch is CancellationError {
         // Backing out of the App Store prompt — nothing happened, say nothing.
         restorePhase = .idle

@@ -20,6 +20,9 @@ struct CollectionDetailView: View {
   /// What this screen shows and plays: the fresh copy once there is one.
   private var current: SoundCollection { latest ?? collection }
 
+  /// The content epoch this screen arrived on; re-fetching starts after it.
+  @State private var arrivedOnEpoch: Int?
+
   var body: some View {
     ScrollView(showsIndicators: false) {
       VStack(spacing: .rhythm) {
@@ -35,13 +38,20 @@ struct CollectionDetailView: View {
     .navigationTitle(current.title)
     .navigationBarTitleDisplayMode(.inline)
     .toolbarBackground(.hidden, for: .navigationBar)
-    .onChange(of: premiumAccess.contentEpoch) {
-      Task {
-        // A failed fetch keeps the copy on screen; the gate still reads the
-        // new answer, so locks follow the flip either way.
-        if let fresh = try? await repository.collection(id: collection.id) {
-          latest = fresh
-        }
+    // Keyed on the epoch, so a newer change cancels an older re-fetch and its
+    // answer — possibly from before the server agreed — can never land last.
+    .task(id: premiumAccess.contentEpoch) {
+      let epoch = premiumAccess.contentEpoch
+      guard let arrived = arrivedOnEpoch else {
+        arrivedOnEpoch = epoch
+        return
+      }
+      guard epoch != arrived else { return }
+      // A failed fetch keeps the copy on screen. Locks still follow the new
+      // answer: the gate never lets a stale verdict open a sound to a
+      // listener without DEEP Premium.
+      if let fresh = try? await repository.collection(id: collection.id), !Task.isCancelled {
+        latest = fresh
       }
     }
   }

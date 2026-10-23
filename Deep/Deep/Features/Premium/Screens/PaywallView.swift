@@ -481,6 +481,9 @@ struct PaywallView: View {
       // which is the confirmation. One that finds nothing has to say so — a
       // Restore that answers with silence reads as a dead button.
       restore = subscriptionStore.isSubscribed ? .restored : .nothingFound
+      // The server has to hear about it too, or the audio it withholds stays
+      // withheld: confirm a restored membership the way a purchase is.
+      if subscriptionStore.isSubscribed { premiumAccess.didPurchase() }
       try? await Task.sleep(for: .seconds(2.5))
       if restore == .restored || restore == .nothingFound { restore = .idle }
     }

@@ -216,18 +216,51 @@ struct PremiumAccessTests {
   func serverCatchUpMovesContentEpoch() {
     let access = Self.access(store: .none)
     access.adopt(.lapsed)
+    let start = access.contentEpoch
     access.didPurchase()
     #expect(access.flipCount == 1)
-    #expect(access.contentEpoch == 1)
+    #expect(access.contentEpoch == start + 1)
 
     // Already unlocked on the store's word; the server now releases the audio.
     access.adopt(.member)
     #expect(access.flipCount == 1)
-    #expect(access.contentEpoch == 2)
+    #expect(access.contentEpoch == start + 2)
 
     // Saying the same thing again moves nothing.
     access.adopt(.member)
-    #expect(access.contentEpoch == 2)
+    #expect(access.contentEpoch == start + 2)
+  }
+
+  @Test("The server's first answer, arriving under a grace window, still re-fetches")
+  func firstAnswerUnderGraceMovesEpoch() {
+    let access = Self.access(store: .none)
+    access.didPurchase()
+    let before = access.contentEpoch
+    access.adopt(.member)
+    #expect(access.contentEpoch == before + 1)
+  }
+
+  @Test("An answer that lands after sign-out is dropped, never inherited")
+  func lateAnswerAfterSignOutDropped() async {
+    let defaults = Self.makeDefaults()
+    let fetcher = MockEntitlementFetcher(answers: [.success(.member)])
+    let access = Self.access(fetcher: fetcher, defaults: defaults)
+    access.identify(userID: "u1")
+    async let late: Void = access.refresh()
+    access.identify(userID: nil)
+    await late
+    access.identify(userID: "u2")
+    #expect(access.server == nil)
+    #expect(!access.hasPremium)
+  }
+
+  @Test("An ownerless remembered answer is never stamped onto the next member")
+  func ownerlessAnswerForgotten() {
+    let defaults = Self.makeDefaults()
+    Self.access(defaults: defaults).adopt(.member)
+    let next = Self.access(defaults: defaults)
+    next.identify(userID: "u2")
+    #expect(next.server == nil)
   }
 
   @Test("A grace window over an already-premium member is no flip")

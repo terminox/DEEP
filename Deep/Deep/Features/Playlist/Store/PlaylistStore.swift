@@ -21,6 +21,8 @@ final class PlaylistStore {
   /// second one an addition rather than a reshape.
   private(set) var playlists: [Playlist] = []
   private(set) var isRefreshing = false
+  /// Set when a refresh was asked for during another; see `refresh()`.
+  @ObservationIgnored private var refreshQueued = false
   /// True only when there is nothing to show *and* the last fetch failed —
   /// a cached snapshot on screen is worth more than an error.
   private(set) var loadFailed = false
@@ -70,20 +72,32 @@ final class PlaylistStore {
 
   /// Pulls the playlists. Errors are swallowed while something is already on
   /// screen — the cached snapshot stays and the next refresh retries.
+  ///
+  /// A refresh asked for while one is in flight isn't dropped: it runs once
+  /// the flight lands. The in-flight answer may predate what prompted the ask
+  /// — the server confirming a purchase a second after the first re-fetch
+  /// left, with the audio still withheld.
   func refresh() async {
-    guard let remote, !isRefreshing else { return }
+    guard let remote else { return }
+    guard !isRefreshing else {
+      refreshQueued = true
+      return
+    }
     isRefreshing = true
     defer {
       isRefreshing = false
       hasLoaded = true
     }
-    do {
-      let fetched = try await remote.fetchPlaylists()
-      loadFailed = false
-      withAnimation(.bloom) { adopt(fetched) }
-    } catch {
-      loadFailed = playlists.isEmpty
-    }
+    repeat {
+      refreshQueued = false
+      do {
+        let fetched = try await remote.fetchPlaylists()
+        loadFailed = false
+        withAnimation(.bloom) { adopt(fetched) }
+      } catch {
+        loadFailed = playlists.isEmpty
+      }
+    } while refreshQueued
   }
 
   /// The first look on entering the tab; later visits keep what's on screen

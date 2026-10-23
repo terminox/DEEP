@@ -6,14 +6,20 @@ import Foundation
 /// passing the one answer `PremiumAccess.hasPremium` gives them. Pure — no
 /// SwiftUI, no stores — so each rule is a unit test away.
 ///
-/// Two inputs, in order of authority:
+/// Two inputs:
 ///
 /// 1. **The server's verdict** (`isLocked` on a track or collection), present
-///    whenever the content was fetched from a server that knows who asked. It
-///    already accounts for the listener's entitlement, so it wins.
-/// 2. **The client rule** (`isPremium`), the fallback for content that came
-///    without a verdict — an older server, or a playlist cached before the
-///    field existed.
+///    whenever the content was fetched from a server that knows who asked.
+///    For sounds it can only *add* a lock: a `false` verdict was true for the
+///    member who fetched it, and a copy cached before a lapse (a saved
+///    playlist offline, a detail screen whose re-fetch failed) would otherwise
+///    keep playing premium audio after the membership ended.
+/// 2. **The client rule** (`isPremium`), which always applies to a listener
+///    without DEEP Premium.
+///
+/// Plants are the exception: there the server's verdict wins both ways,
+/// because it is how a grandfathered plant stays open, and a plant carries
+/// no audio to leak.
 ///
 /// Either way, `hasPremium == true` always unlocks *visually*: a member whose
 /// purchase the server hasn't heard about yet is never shown a lock. The worst
@@ -26,7 +32,7 @@ enum PremiumGate {
   /// track is.
   static func isLocked(_ collection: SoundCollection, hasPremium: Bool) -> Bool {
     guard !hasPremium else { return false }
-    return collection.isLocked ?? collection.isPremium
+    return collection.isLocked == true || collection.isPremium
   }
 
   /// Whether one track is locked *within the collection it is played from* —
@@ -37,8 +43,7 @@ enum PremiumGate {
     hasPremium: Bool
   ) -> Bool {
     guard !hasPremium else { return false }
-    if let verdict = track.isLocked { return verdict }
-    return isLocked(collection, hasPremium: hasPremium) || track.isPremium
+    return track.isLocked == true || track.isPremium || isLocked(collection, hasPremium: hasPremium)
   }
 
   /// Whether the server withheld this premium track's audio. A track like

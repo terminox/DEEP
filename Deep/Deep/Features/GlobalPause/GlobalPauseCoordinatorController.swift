@@ -391,11 +391,23 @@ extension GlobalPauseCoordinatorController: UINavigationControllerDelegate {
     willShow viewController: UIViewController,
     animated: Bool
   ) {
-    navigationController.setNavigationBarHidden(
-      viewController === navigationController.viewControllers.first
-        || barlessScreens.contains(viewController),
-      animated: animated
-    )
+    navigationController.setNavigationBarHidden(hidesBar(over: viewController), animated: animated)
+    // An abandoned edge-swipe leaves the screen it started on in place, but
+    // the bar has already been set for the one it was heading to.
+    navigationController.transitionCoordinator?.notifyWhenInteractionChanges {
+      [weak self, weak navigationController] context in
+      guard context.isCancelled,
+            let self,
+            let navigationController,
+            let staying = context.viewController(forKey: .from)
+      else { return }
+      navigationController.setNavigationBarHidden(self.hidesBar(over: staying), animated: false)
+    }
+  }
+
+  /// The root feed and the screens that draw their own top go without a bar.
+  private func hidesBar(over viewController: UIViewController) -> Bool {
+    viewController === navigation.viewControllers.first || barlessScreens.contains(viewController)
   }
 
   func navigationController(

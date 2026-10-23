@@ -66,14 +66,20 @@ struct PremiumGateTests {
     #expect(!PremiumGate.isLocked(free, in: premiumHome, hasPremium: true))
   }
 
-  @Test("The server's track verdict beats the client rule, both ways")
-  func serverTrackVerdictWins() {
-    // Premium, but the server knows this caller is entitled.
-    let opened = Self.track("a", premium: true, locked: false)
-    #expect(!PremiumGate.isLocked(opened, in: Self.collection(premium: true, tracks: [opened]), hasPremium: false))
-    // Marked free, but the server withheld it anyway.
+  @Test("The server's verdict can add a lock the client rule wouldn't")
+  func serverVerdictAddsLock() {
     let withheld = Self.track("b", locked: true)
     #expect(PremiumGate.isLocked(withheld, in: Self.collection(tracks: [withheld]), hasPremium: false))
+  }
+
+  @Test("An open verdict cached while a member never unlocks after a lapse")
+  func staleOpenVerdictDoesNotUnlock() {
+    // Fetched while a member: the server said open and sent the audio.
+    let cached = Self.track("a", premium: true, locked: false)
+    let home = Self.collection(premium: true, locked: false, tracks: [cached])
+    #expect(PremiumGate.isLocked(cached, in: home, hasPremium: false))
+    #expect(PremiumGate.isLocked(home, hasPremium: false))
+    #expect(PremiumGate.playable(home, hasPremium: false).isEmpty)
   }
 
   @Test("Membership unlocks visually even when the server still says locked")
@@ -91,11 +97,11 @@ struct PremiumGateTests {
 
   // MARK: - Collections
 
-  @Test("A collection reads locked from its verdict, else from its flag")
+  @Test("A collection reads locked from its flag or a locking verdict")
   func collectionLock() {
     #expect(!PremiumGate.isLocked(Self.collection(tracks: []), hasPremium: false))
     #expect(PremiumGate.isLocked(Self.collection(premium: true, tracks: []), hasPremium: false))
-    #expect(!PremiumGate.isLocked(Self.collection(premium: true, locked: false, tracks: []), hasPremium: false))
+    #expect(PremiumGate.isLocked(Self.collection(locked: true, tracks: []), hasPremium: false))
     #expect(!PremiumGate.isLocked(Self.collection(premium: true, tracks: []), hasPremium: true))
   }
 

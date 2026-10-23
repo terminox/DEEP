@@ -41,6 +41,9 @@ final class PremiumAccess {
   /// Whether the server has answered since launch — a remembered answer is a
   /// stand-in, not an answer.
   @ObservationIgnored private(set) var hasServerAnswerThisSession = false
+  /// Moves whenever the member changes. An answer fetched for one member that
+  /// lands after another (or none) is signed in is dropped, never adopted.
+  @ObservationIgnored private var identityGeneration = 0
 
   /// What the server last said for this member: `nil` until it has ever
   /// answered (or after sign-out), remembered across launches otherwise.
@@ -101,7 +104,10 @@ final class PremiumAccess {
   /// server's remembered one, or the store's cached one — stands.
   func refresh() async {
     guard let fetcher else { return }
-    guard let answer = try? await fetcher.currentEntitlement() else { return }
+    let generation = identityGeneration
+    guard let answer = try? await fetcher.currentEntitlement(),
+          generation == identityGeneration
+    else { return }
     adopt(answer)
   }
 
@@ -123,10 +129,11 @@ final class PremiumAccess {
     server = answer.isActive
     cache.save(ServerAnswerCache.Entry(owner: cache.load()?.owner, active: answer.isActive))
     let flipped = reconcile()
-    // The server changed its mind without `hasPremium` moving (it was already
-    // carried by the store or a grace window): content still needs the audio
-    // the server now releases, or no longer does.
-    if !flipped, let previous, previous != answer.isActive {
+    // The server changed its mind — or answered for the first time — without
+    // `hasPremium` moving (it was already carried by the store or a grace
+    // window): content still needs the audio the server now releases, or no
+    // longer does.
+    if !flipped, previous != answer.isActive {
       contentEpoch += 1
     }
   }
@@ -138,13 +145,18 @@ final class PremiumAccess {
       forgetServer()
       return
     }
-    if let owner = cache.load()?.owner, owner != userID {
+    let remembered = cache.load()
+    // Someone else's answer — or an answer with no owner at all, which can
+    // only be one that landed after a sign-out — is never inherited.
+    if let remembered, remembered.owner != userID,
+       remembered.owner != nil || remembered.active != nil {
       forgetServer()
     }
     cache.save(ServerAnswerCache.Entry(owner: userID, active: server))
   }
 
   private func forgetServer() {
+    identityGeneration += 1
     confirmationTask?.cancel()
     confirmationTask = nil
     cache.clear()
@@ -157,7 +169,8 @@ final class PremiumAccess {
 
   // MARK: - After a purchase
 
-  /// A purchase just completed: unlock now, on the store's word, and keep
+  /// A purchase — or a restore that found one — just completed: unlock now, on
+  /// the store's word, and keep
   /// asking the server until it agrees or the ladder runs out. The server is
   /// first nudged to re-check with RevenueCat rather than wait for the
   /// webhook; that nudge failing (rate-limited, or not configured locally) is
@@ -177,11 +190,16 @@ final class PremiumAccess {
   /// The confirmation ladder, awaitable so tests can run it to the end.
   func confirmPurchase() async {
     guard let fetcher else { return }
-    if let nudged = try? await fetcher.refreshEntitlement() { adopt(nudged) }
+    let generation = identityGeneration
+    if let nudged = try? await fetcher.refreshEntitlement(), generation == identityGeneration {
+      adopt(nudged)
+    }
     for delay in confirmationDelays {
-      if server == true || Task.isCancelled { return }
+      if server == true || Task.isCancelled || generation != identityGeneration { return }
       guard (try? await sleep(delay)) != nil else { return }
-      if let answer = try? await fetcher.currentEntitlement() { adopt(answer) }
+      if let answer = try? await fetcher.currentEntitlement(), generation == identityGeneration {
+        adopt(answer)
+      }
     }
   }
 
