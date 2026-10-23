@@ -29,6 +29,15 @@ CURRENT_PROJECT_VERSION = 1
 TERMS_URL = https:/$()/deep.app/terms
 PRIVACY_URL = https:/$()/deep.app/privacy
 
+// ---- RevenueCat ----
+// The public SDK key. Empty here on purpose: an empty key degrades to "not
+// subscribed" and never crashes. RevenueCat issues one key per *store app*, and
+// the DEEP Premium project only has a Test Store app so far — whose `test_` key
+// RevenueCat deliberately crashes in release builds. So only Dev sets it; once an
+// App Store app exists in the project, its `appl_` key belongs here, for every
+// environment (sandbox vs production is told apart by receipt, not by key).
+REVENUECAT_API_KEY =
+
 // ---- Platform / Swift ----
 SDKROOT = iphoneos
 IPHONEOS_DEPLOYMENT_TARGET = 26.2

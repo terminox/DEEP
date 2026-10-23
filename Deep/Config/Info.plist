@@ -39,6 +39,8 @@
 	<string>DEEP connects to a development server running on your Mac.</string>
 	<key>PrivacyURL</key>
 	<string>$(PRIVACY_URL)</string>
+	<key>RevenueCatAPIKey</key>
+	<string>$(REVENUECAT_API_KEY)</string>
 	<key>TermsURL</key>
 	<string>$(TERMS_URL)</string>
 	<key>UIApplicationSceneManifest</key>
