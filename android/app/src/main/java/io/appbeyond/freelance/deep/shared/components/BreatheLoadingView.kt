@@ -1,5 +1,9 @@
 package io.appbeyond.freelance.deep.shared.components
 
+import android.content.ContentResolver
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -9,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -22,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -158,21 +164,41 @@ fun BreatheLoadingView(
 /**
  * Whether the system's animator duration scale is pinned to zero — the
  * signal Android exposes for "prefer reduced motion" (there is no dedicated
- * accessibility flag the way iOS has `accessibilityReduceMotion`). Several
+ * accessibility flag the way iOS has `accessibilityReduceMotion`). Both the
+ * developer option and Accessibility's "Remove animations" set it. Several
  * components beyond this one need it, so it lives here rather than being
  * duplicated per call site.
  *
- * Read once per composition rather than observed live: the setting changing
- * mid-session is rare enough that a recomposition-triggering
- * `ContentObserver` would be overhead this app doesn't need yet.
+ * Observed live, as iOS's environment value is: the setting is changed from
+ * the system's own settings while DEEP stays open in the background, and no
+ * configuration change follows to recompose anything.
  */
 @Composable
 fun rememberReduceMotion(): Boolean {
-  val context = LocalContext.current
-  return remember {
-    Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+  val resolver = LocalContext.current.contentResolver
+  var reduceMotion by remember(resolver) { mutableStateOf(resolver.reducesMotion()) }
+  val observes = !LocalInspectionMode.current
+  DisposableEffect(resolver, observes) {
+    if (!observes) return@DisposableEffect onDispose {}
+    val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+      override fun onChange(selfChange: Boolean) {
+        reduceMotion = resolver.reducesMotion()
+      }
+    }
+    resolver.registerContentObserver(
+      Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE),
+      false,
+      observer,
+    )
+    // Picks up a change made between the first read and registering.
+    reduceMotion = resolver.reducesMotion()
+    onDispose { resolver.unregisterContentObserver(observer) }
   }
+  return reduceMotion
 }
+
+private fun ContentResolver.reducesMotion(): Boolean =
+  Settings.Global.getFloat(this, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
 // MARK: - Previews
 

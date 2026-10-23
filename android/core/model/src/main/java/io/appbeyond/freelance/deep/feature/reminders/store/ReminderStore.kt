@@ -96,18 +96,23 @@ class ReminderStore(
    * Returns the settled permission so the screen can explain a refusal rather
    * than leaving a toggle that silently springs back.
    *
+   * The prompt is answered before the lock is taken, and stays cancellable: it
+   * waits on a person, and on an activity that may be recreated (or never
+   * answer) while the dialog is up. Holding the lock across it stalled every
+   * reschedule, toggle and alarm behind an answer that might never come.
+   *
    * @param prompt shows the system's notification permission dialog.
    */
-  suspend fun enable(goalMetToday: Boolean, prompt: suspend () -> Boolean): ReminderPermission {
+  suspend fun enable(practisedToday: Boolean, prompt: suspend () -> Boolean): ReminderPermission {
     restore()
+    val permission = scheduler.requestPermission(prompt)
     return mutate {
-      val permission = scheduler.requestPermission(prompt)
       _state.value = _state.value.copy(permission = permission)
       if (permission != ReminderPermission.Granted) {
         // Never leave the toggle on over a queue that can't exist.
         write(reminder.copy(isEnabled = false))
       } else {
-        write(reminder.copy(isEnabled = true), goalMetToday)
+        write(reminder.copy(isEnabled = true), practisedToday)
       }
       permission
     }
@@ -144,11 +149,11 @@ class ReminderStore(
   }
 
   /** Adopts a new clock face; the day is meaningless for a daily nudge. */
-  suspend fun setTime(hour: Int, minute: Int, goalMetToday: Boolean) {
+  suspend fun setTime(hour: Int, minute: Int, practisedToday: Boolean) {
     restore()
     mutate {
       val updated = reminder.withTime(hour, minute)
-      if (updated != reminder) write(updated, goalMetToday)
+      if (updated != reminder) write(updated, practisedToday)
     }
   }
 
@@ -160,7 +165,7 @@ class ReminderStore(
    * reminder fires, and on boot or a clock/zone change, because the system
    * forgets alarms across a reboot.
    */
-  suspend fun reschedule(goalMetToday: Boolean) {
+  suspend fun reschedule(practisedToday: Boolean) {
     restore()
     mutate {
       if (!reminder.isEnabled) {
@@ -175,7 +180,7 @@ class ReminderStore(
         write(reminder.copy(isEnabled = false))
         return@mutate
       }
-      pushQueue(goalMetToday, keepDue = true)
+      pushQueue(practisedToday, keepDue = true)
     }
   }
 
@@ -186,11 +191,11 @@ class ReminderStore(
   private suspend fun <T> mutate(block: suspend () -> T): T =
     withContext(NonCancellable) { mutationLock.withLock { block() } }
 
-  private suspend fun write(updated: DailyReminder, goalMetToday: Boolean = false) {
+  private suspend fun write(updated: DailyReminder, practisedToday: Boolean = false) {
     _state.value = _state.value.copy(reminder = updated)
     blob.writeQuietly(StoreJson.encodeToString(DailyReminder.serializer(), updated))
     if (updated.isEnabled) {
-      pushQueue(goalMetToday)
+      pushQueue(practisedToday)
     } else {
       scheduler.clearQueue()
     }
@@ -208,14 +213,14 @@ class ReminderStore(
    *   keeps it; an explicit change of setting ([enable], [setTime]) never
    *   fires a minute already behind the member.
    */
-  private suspend fun pushQueue(goalMetToday: Boolean, keepDue: Boolean = false) {
+  private suspend fun pushQueue(practisedToday: Boolean, keepDue: Boolean = false) {
     val now = ZonedDateTime.ofInstant(clock.instant(), zone())
     val from = if (keepDue) now.minus(ReminderSchedule.deliveryWindow) else now
     val today = now.toLocalDate()
     val queue = ReminderSchedule
-      .occurrences(after = from, reminder = reminder, goalMetToday = false, limit = ReminderSchedule.horizon + 2)
+      .occurrences(after = from, reminder = reminder, practisedToday = false, limit = ReminderSchedule.horizon + 2)
       // A day is done either way: practised today, or already nudged once.
-      .filterNot { (goalMetToday && it.toLocalDate() == today) || reminder.postedOn(it.toLocalDate()) }
+      .filterNot { (practisedToday && it.toLocalDate() == today) || reminder.postedOn(it.toLocalDate()) }
       .take(ReminderSchedule.horizon)
     scheduler.replaceQueue(queue)
   }

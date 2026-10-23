@@ -17,8 +17,3 @@
 -keepclasseswithmembers class io.appbeyond.freelance.deep.** {
   kotlinx.serialization.KSerializer serializer(...);
 }
-
-# Ktor resolves its engine and plugins reflectively via ServiceLoader.
--keep class io.ktor.** { *; }
--dontwarn io.ktor.**
--dontwarn org.slf4j.**

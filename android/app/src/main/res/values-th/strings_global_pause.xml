@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_global_pause.xml, ported from iOS
+  Deep/Deep/Localizable.xcstrings. Entries marked "no iOS Thai" have no Thai in
+  the iOS catalog and were translated fresh. "Global Pause" stays in English,
+  as the iOS Thai copy keeps it ("เปิด Global Pause ครั้งถัดไป").
+-->
+<resources>
+
+  <!-- Home: the lounge card -->
+  <string name="pause_lounge_card_title">เลานจ์ของ DJ Fuku</string>
+  <string name="pause_lounge_card_body">ฟังดนตรีสดและหยุดพักไปพร้อมกับโลกใบนี้</string>
+  <string name="pause_lounge_card_a11y">เลานจ์ของ Fuku — เพลง Lo-Fi ระหว่างที่ทั้งโลกรวมตัวกันเพื่อหยุดพัก</string>
+  <string name="pause_lounge_card_a11y_on_air">เลานจ์ของ Fuku กำลังออกอากาศ — เพลง Lo-Fi ระหว่างที่ทั้งโลกรวมตัวกันเพื่อหยุดพัก</string>
+
+  <!-- The ON AIR and LIVE badges -->
+  <string name="pause_on_air_badge">สด</string>
+  <string name="pause_on_air">ออกอากาศ</string>
+  <string name="pause_on_air_muted">ออกอากาศ ปิดเสียงอยู่</string>
+  <string name="pause_on_air_mute_hint">ปิดเสียงเซ็ตของ Fuku</string>
+  <string name="pause_on_air_unmute_hint">เปิดเสียงเซ็ตของ Fuku</string>
+  <string name="pause_live_badge">สด</string> <!-- no iOS Thai -->
+  <string name="pause_live_spoken">สด</string> <!-- no iOS Thai -->
+
+  <!-- Fuku's Lounge -->
+  <string name="pause_lounge_title">เลานจ์ของ Fuku</string>
+  <string name="pause_messages_title">ข้อความแห่งสันติ</string> <!-- no iOS Thai -->
+  <string name="pause_message_quoted">“%1$s”</string>
+  <string name="pause_message_a11y_from">จาก %1$s</string> <!-- no iOS Thai -->
+  <string name="pause_message_a11y_says">กล่าวว่า: %1$s</string> <!-- no iOS Thai -->
+  <string name="pause_message_a11y_tagged">แท็ก %1$s</string> <!-- no iOS Thai -->
+
+  <!-- The Global Pause card -->
+  <string name="pause_card_title">Global Pause</string>
+  <string name="pause_card_resting">หายใจไปพร้อมกับทั้งโลก</string> <!-- no iOS Thai -->
+  <string name="pause_card_live_caption">โลกกำลังหยุดพัก</string> <!-- no iOS Thai -->
+  <string name="pause_card_join">เข้าร่วมเลย</string> <!-- no iOS Thai -->
+  <string name="pause_card_countdown">เริ่มในอีก %1$02d:%2$02d</string> <!-- no iOS Thai -->
+  <string name="pause_card_a11y">%1$s %2$s</string>
+  <string name="pause_schedule_today">วันนี้ · %1$s</string>
+  <string name="pause_schedule_tomorrow">พรุ่งนี้ · %1$s</string>
+
+  <!-- The live meditation -->
+  <string name="pause_meditation_live">สด · ทั่วโลก</string>
+  <string name="pause_meditation_live_a11y">การทำสมาธิสดกำลังดำเนินอยู่</string>
+  <plurals name="pause_company">
+    <item quantity="other">%1$s คนกำลังหยุดพักไปพร้อมกับคุณ</item>
+  </plurals>
+  <string name="pause_meditation_progress_a11y">ทำสมาธิไปแล้ว %1$d เปอร์เซ็นต์</string>
+  <string name="pause_continent_americas">อเมริกา</string> <!-- no iOS Thai -->
+  <string name="pause_continent_americas_spoken">ทวีปอเมริกา</string> <!-- no iOS Thai -->
+  <string name="pause_continent_europe">ยุโรป</string> <!-- no iOS Thai -->
+  <string name="pause_continent_africa">แอฟริกา</string> <!-- no iOS Thai -->
+  <string name="pause_continent_asia">เอเชีย</string> <!-- no iOS Thai -->
+  <string name="pause_continent_oceania">โอเชียเนีย</string> <!-- no iOS Thai -->
+  <string name="pause_continent_antarctica">แอนตาร์กติกา</string> <!-- no iOS Thai -->
+  <string name="pause_continent_count_a11y">%1$s คนใน%2$s</string> <!-- no iOS Thai -->
+  <string name="pause_continents_a11y">กำลังหยุดพักตอนนี้: %1$s</string> <!-- no iOS Thai -->
+  <string name="pause_session_close">ปิด</string>
+  <string name="pause_leave_title">ออกจากเซสชัน?</string>
+  <string name="pause_leave_message">โลกยังคงหายใจต่อไป — คุณกลับมาร่วมได้ตลอดช่วงที่ยังถ่ายทอดสด</string> <!-- no iOS Thai -->
+  <string name="pause_leave_confirm">ออก</string>
+  <string name="pause_leave_stay">หายใจต่อไป</string>
+
+  <!-- The reflection -->
+  <string name="pause_reflection_eyebrow">ข้อความแห่งสันติ</string>
+  <string name="pause_reflection_title">ขอบคุณที่หยุดพัก</string>
+  <string name="pause_reflection_tag_prompt">คุณกำลังโอบสิ่งใดไว้</string>
+  <string name="pause_composer_placeholder">คืนนี้มีอะไรอยู่ในใจคุณ</string>
+  <string name="pause_composer_friend">เพื่อน</string> <!-- no iOS Thai -->
+  <string name="pause_reflection_note_signed_out">เข้าสู่ระบบจากแท็บ “ฉัน” เพื่อฝากข้อความ</string> <!-- no iOS Thai -->
+  <string name="pause_reflection_note_limit">สามข้อความต่อวันก็เพียงพอแล้ว พักผ่อนเถอะ</string> <!-- no iOS Thai -->
+  <string name="pause_reflection_note_failed">ยังส่งข้อความของคุณไม่ได้ในตอนนี้</string> <!-- no iOS Thai -->
+  <string name="pause_intention_peace">ความสงบ</string>
+  <string name="pause_intention_healing">การเยียวยา</string>
+  <string name="pause_intention_gratitude">ความกตัญญู</string>
+  <string name="pause_intention_someone_i_love">คนที่ฉันรัก</string>
+  <string name="pause_intention_other">อื่น ๆ</string>
+
+  <!-- The meditation's ongoing notification, while it plays -->
+  <string name="pause_channel_name">Global Pause</string>
+  <string name="pause_notification_title">Global Pause</string>
+  <string name="pause_notification_body">โลกกำลังหายใจไปพร้อมกัน</string> <!-- no iOS Thai -->
+
+  <!-- The pause night's ending -->
+  <string name="reward_pause_missed">อยู่จนจบการทำสมาธิเพื่อรับหัวใจ</string>
+  <string name="reward_pause_thanks">ขอบคุณที่หยุดพัก</string>
+
+  <!-- The globe (week 7) -->
+  <string name="pause_globe_a11y">ลูกโลกแบบโต้ตอบ แสดงตำแหน่งที่ผู้คนกำลังหยุดพัก</string>
+</resources>

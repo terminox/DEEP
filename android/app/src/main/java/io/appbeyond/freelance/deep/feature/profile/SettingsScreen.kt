@@ -46,6 +46,7 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgre
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.feature.reminders.model.DailyReminder
 import io.appbeyond.freelance.deep.shared.localization.AppFormat
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
@@ -195,6 +196,9 @@ fun SettingsScreen(
     }
   }
 
+  val scroll = rememberScrollState()
+  ScrollToTopOnReselect(scroll)
+
   Box(modifier.fillMaxSize()) {
     AtmosphereBackground()
 
@@ -204,7 +208,7 @@ fun SettingsScreen(
       Column(
         Modifier
           .fillMaxSize()
-          .verticalScroll(rememberScrollState())
+          .verticalScroll(scroll)
           .padding(horizontal = Dp.edge)
           // Clears the mini player too while a track is loaded, or the pill
           // sits on the version footer with no way to scroll it free.

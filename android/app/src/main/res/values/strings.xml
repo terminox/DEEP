@@ -28,32 +28,54 @@
   <!-- collapsibleHomeHeader(title:subtitle:) on GlobalPauseHomeView.swift -->
   <string name="home_header_title">Home</string>
   <string name="home_header_subtitle">Take a breath with the world today</string>
-  <string name="home_greeting">Pause. Breathe. Connect.</string>
-  <string name="home_failed_title">We could not reach DEEP</string>
-  <string name="home_failed_body">Check your connection, and try again when you are ready.</string>
+  <!-- GlobalPauseHomeView.swift's failed feed: "We couldn't gather today's content just now." -->
+  <string name="home_failed">We couldn’t gather today’s content just now.</string>
   <string name="home_retry">Try again</string>
-  <string name="home_session_card_title">DEEP Session</string>
-  <string name="home_session_card_body">A guided breath, for as long as you have.</string>
-  <string name="home_lounge_card_title">Fuku\'s Lounge</string>
-  <string name="home_lounge_card_body">The world pauses together.</string>
+  <!-- DeepSessionEntryCard.swift: "Begin %@, a guided breathing session" -->
+  <string name="home_session_card_a11y">Begin %1$s, a guided breathing session</string>
   <string name="home_explore_title">Explore</string>
+  <!-- ExploreByContentSection.swift's tile: "Explore %@" -->
+  <string name="home_explore_category">Explore %1$s</string>
+  <!-- HomeSectionHeader.swift: "See all" -->
+  <string name="home_see_all">See all</string>
+  <!-- SoundCollection.kindLabel (FeatureCard.swift) — plain Strings on iOS, so not in the catalog -->
+  <string name="home_kind_guided">Guided</string>
+  <string name="home_kind_soundscape">Soundscape</string>
+  <!-- FeatureCard.swift's second line: "\(kindLabel) · \(subtitle)" -->
+  <string name="home_kind_subtitle">%1$s · %2$s</string>
   <!-- HomeTile.swift / FeatureCard.swift's play button: "Play %@" -->
   <string name="home_play_collection">Play %1$s</string>
 
   <!-- DEEP Session -->
   <string name="session_begin">Begin</string>
-  <string name="session_minutes">min</string>
-  <string name="session_pattern">4s in, 6s out, %1$d rounds</string>
+  <!-- DeepSessionIntroView's beginButton accessibilityLabel: "Begin %@, %lld minutes" -->
+  <string name="session_begin_accessibility">Begin %1$s, %2$d minutes</string>
+  <string name="session_minutes">MIN</string>
+  <string name="session_pattern">%1$ds in · %2$ds out · %3$d rounds</string>
+  <string name="session_length">Session length</string>
+  <plurals name="session_length_minutes">
+    <item quantity="one">%1$d minute</item>
+    <item quantity="other">%1$d minutes</item>
+  </plurals>
+  <string name="session_settling_in">Settling in</string>
+  <!-- VoiceOver's opening announcement: "Settling in. \(countdownSeconds)" -->
+  <string name="session_settling_in_announcement">Settling in. %1$d</string>
   <string name="session_breathe_in">Breathe in</string>
   <string name="session_breathe_out">Breathe out</string>
-  <string name="session_round">Round %1$d of %2$d</string>
-  <string name="session_ending">You\'re here now</string>
+  <string name="session_paused">Paused</string>
+  <string name="session_take_your_time">Take your time</string>
+  <string name="session_time_left_almost">Almost there</string>
+  <string name="session_time_left_minute">About a minute left</string>
+  <string name="session_time_left_minutes">About %1$d min left</string>
+  <string name="session_ending">You’re here now</string>
+  <string name="session_complete">Session complete</string>
   <string name="session_pause">Pause</string>
   <string name="session_resume">Resume</string>
+  <string name="session_close">Close</string>
   <string name="session_leave">Leave</string>
-  <string name="session_leave_confirm">Leave this session?</string>
-  <string name="session_leave_confirm_body">You can come back to it whenever you like.</string>
-  <string name="session_stay">Stay</string>
+  <string name="session_leave_confirm">Leave your session?</string>
+  <string name="session_leave_confirm_body">Your breath will be here whenever you’re ready to return.</string>
+  <string name="session_stay">Keep breathing</string>
 
   <!-- Loading -->
   <string name="loading_beat">Take a moment</string>

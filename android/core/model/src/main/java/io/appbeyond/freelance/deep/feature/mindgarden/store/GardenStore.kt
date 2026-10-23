@@ -5,6 +5,7 @@ import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenSnapshot
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.model.WalletSummary
+import io.appbeyond.freelance.deep.feature.rewards.store.PlantLockedException
 import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
 import io.appbeyond.freelance.deep.shared.persistence.BlobStoring
 import io.appbeyond.freelance.deep.shared.persistence.StoreJson
@@ -79,6 +80,11 @@ class GardenStore(
 
     /** The plants, when loaded; empty otherwise. */
     val plants: List<Plant> get() = emptyList()
+
+    /** This catalog with [plantId] marked locked — what a `premium_locked`
+     * refusal teaches. Anything but a loaded catalog has nothing to mark. */
+    fun locking(plantId: String): PlantCatalog =
+      if (this is Loaded) Loaded(plants.map { if (it.id == plantId) it.copy(isLocked = true) else it }) else this
   }
 
   data class State(
@@ -226,8 +232,17 @@ class GardenStore(
    * (so an award applied meanwhile is kept) — and only if no newer switch or
    * sign-out happened since; a superseded switch leaves the outcome to the
    * newer one.
+   *
+   * A DEEP Premium plant the catalog marks [Plant.isLocked] is never switched
+   * to at all. One the server refuses as locked anyway (403 `premium_locked`,
+   * arriving as [PlantLockedException] — the catalog was fetched before a
+   * membership lapsed, say) reverts like any refusal but without the caption,
+   * which would blame the connection: the catalog marks that plant locked
+   * instead, so the picker shows why. Android has no way to buy DEEP Premium,
+   * so the lock is all there is to say.
    */
   suspend fun selectPlant(newPlant: Plant) {
+    if (newPlant.isLocked) return
     restore()
     val switch = synchronized(lock) {
       val current = _state.value
@@ -242,8 +257,12 @@ class GardenStore(
 
     withContext(NonCancellable) {
       persist()
+      var locked = false
       val snapshot = try {
         remote.selectPlant(newPlant.id)
+      } catch (_: PlantLockedException) {
+        locked = true
+        null
       } catch (_: Exception) {
         null
       }
@@ -258,7 +277,8 @@ class GardenStore(
           it.copy(
             plant = fallback,
             sunlight = fallback?.let { plant -> it.sunlightByPlant[plant.id] } ?: 0,
-            switchFailed = true,
+            switchFailed = !locked,
+            catalog = if (locked) it.catalog.locking(newPlant.id) else it.catalog,
           )
         }
         true

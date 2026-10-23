@@ -19,7 +19,11 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.TrackLyrics
  */
 interface SoundLibrary {
 
-  /** `GET /sound/home` (anon) — every category as a shelf, collections and tracks in server order. */
+  /**
+   * `GET /sound/home` (optional auth) — every category as a shelf, collections
+   * and tracks in server order, DEEP Premium content marked locked (and without
+   * audio) for a caller who is not a member.
+   */
   suspend fun shelves(): List<SoundShelf>
 
   /**

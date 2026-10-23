@@ -20,7 +20,15 @@ enum class TrackKind {
 
 /**
  * A single track inside a collection. `audioUrl` is the streaming source; `null`
- * means there is nothing to play (fixture content, or a row with no audio yet).
+ * means there is nothing to play (fixture content, a row with no audio yet, or
+ * a locked track).
+ *
+ * [isLocked] is the server's effective answer for this listener — DEEP
+ * Premium content they are not a member for (a premium track, or any track of
+ * a premium collection). A locked track arrives with its title, duration and
+ * lyric languages but no `audioUrl`, and never joins a queue (see
+ * [SoundQueue.playable]). A server that predates the lock sends no flag, which
+ * reads as unlocked.
  */
 data class SoundTrack(
   val id: String,
@@ -29,10 +37,16 @@ data class SoundTrack(
   val kind: TrackKind = TrackKind.Instrumental,
   val audioUrl: String? = null,
   val isPremium: Boolean = false,
+  val isLocked: Boolean = false,
   val lyricsLanguages: List<String> = emptyList(),
 )
 
-/** A collection of tracks — DEEP Sound's equivalent of an album. */
+/**
+ * A collection of tracks — DEEP Sound's equivalent of an album.
+ *
+ * [isLocked] is the server's answer for a premium collection this listener is
+ * not a member for; its tracks then all arrive locked too.
+ */
 data class SoundCollection(
   val id: String,
   val title: String,
@@ -41,10 +55,20 @@ data class SoundCollection(
   val imageUrl: String?,
   val categoryId: String = "",
   val isPremium: Boolean = false,
+  val isLocked: Boolean = false,
   val tracks: List<SoundTrack> = emptyList(),
 ) {
   val trackCount: Int get() = tracks.size
   val totalDurationSeconds: Int get() = tracks.sumOf { it.durationSeconds }
+
+  /**
+   * True when nothing here can play for this listener: the collection itself
+   * is locked, or every one of its tracks is (a free collection holding only
+   * premium tracks). A collection sent without its tracks goes by its own flag.
+   * What a card's lock glyph reads.
+   */
+  val locksEveryTrack: Boolean
+    get() = isLocked || (tracks.isNotEmpty() && tracks.all { it.isLocked })
 
   /** Every track as a queue entry, all sharing this collection. */
   fun queue(): List<SoundQueueEntry> = tracks.map { SoundQueueEntry(it, this) }

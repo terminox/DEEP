@@ -3,6 +3,9 @@ package io.appbeyond.freelance.deep.feature.deepsound.model
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Ported from the transport-rule cases in DEEP's `SoundPlayer`/
@@ -112,5 +115,93 @@ class SoundQueueTest {
   @DisplayName("progress is the elapsed fraction of the duration")
   fun progressIsTheElapsedFraction() {
     assertEquals(0.5, SoundQueue.progress(elapsed = 50.0, duration = 100.0))
+  }
+
+  // MARK: - playable (DEEP Premium locks)
+
+  private fun queue(vararg locked: Boolean): List<SoundQueueEntry> {
+    val tracks = locked.mapIndexed { i, isLocked ->
+      SoundTrack(id = "t$i", title = "Track $i", durationSeconds = 60, isLocked = isLocked)
+    }
+    val collection = SoundCollection(
+      id = "c",
+      title = "Collection",
+      subtitle = "",
+      palette = null,
+      imageUrl = null,
+      tracks = tracks,
+    )
+    return collection.queue()
+  }
+
+  private fun ids(start: SoundQueue.Start?): List<String>? = start?.entries?.map { it.track.id }
+
+  @Test
+  @DisplayName("an all-unlocked queue plays exactly as asked")
+  fun playableKeepsAnUnlockedQueue() {
+    val start = SoundQueue.playable(queue(false, false, false), startIndex = 1)
+    assertEquals(listOf("t0", "t1", "t2"), ids(start))
+    assertEquals(1, start?.index)
+  }
+
+  @Test
+  @DisplayName("locked tracks are left out of the queue, and the start keeps its track")
+  fun playableDropsLockedTracks() {
+    val start = SoundQueue.playable(queue(true, false, true, false), startIndex = 3)
+    assertEquals(listOf("t1", "t3"), ids(start))
+    assertEquals(1, start?.index)
+  }
+
+  @Test
+  @DisplayName("starting on a locked track begins on the next unlocked one")
+  fun playableSkipsALockedStart() {
+    val start = SoundQueue.playable(queue(false, true, true, false), startIndex = 1)
+    assertEquals(listOf("t0", "t3"), ids(start))
+    assertEquals("t3", start?.entries?.get(start.index)?.track?.id)
+  }
+
+  @Test
+  @DisplayName("a locked start at the end wraps round to the first unlocked track")
+  fun playableWrapsPastALockedEnd() {
+    val start = SoundQueue.playable(queue(true, false, true), startIndex = 2)
+    assertEquals(listOf("t1"), ids(start))
+    assertEquals(0, start?.index)
+  }
+
+  @Test
+  @DisplayName("a queue with nothing unlocked plays nothing")
+  fun playableAllLockedIsNull() {
+    assertNull(SoundQueue.playable(queue(true, true), startIndex = 0))
+    assertNull(SoundQueue.playable(emptyList(), startIndex = 0))
+  }
+
+  @Test
+  @DisplayName("advancing through a playable queue never lands on a locked track")
+  fun playableAdvanceNeverHitsLocked() {
+    val start = SoundQueue.playable(queue(false, true, false, true, false), startIndex = 0)!!
+    var index = start.index
+    repeat(start.entries.size * 2) {
+      index = SoundQueue.nextIndex(index, start.entries.size)
+      assertFalse(start.entries[index].track.isLocked)
+    }
+  }
+
+  @Test
+  @DisplayName("an out-of-range start is clamped before the lock is checked")
+  fun playableClampsTheStart() {
+    val start = SoundQueue.playable(queue(false, false, true), startIndex = 10)
+    assertEquals(listOf("t0", "t1"), ids(start))
+    assertEquals(0, start?.index)
+  }
+
+  @Test
+  @DisplayName("a collection reads locked when it or every track is")
+  fun collectionLocksEveryTrack() {
+    val free = queue(false, true).first().collection
+    val allLocked = queue(true, true).first().collection
+    assertFalse(free.locksEveryTrack)
+    assertTrue(allLocked.locksEveryTrack)
+    assertTrue(free.copy(isLocked = true).locksEveryTrack)
+    assertFalse(free.copy(tracks = emptyList()).locksEveryTrack)
   }
 }

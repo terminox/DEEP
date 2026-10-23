@@ -1,9 +1,15 @@
 package io.appbeyond.freelance.deep.feature.reminders.store
 
+import io.appbeyond.freelance.deep.feature.practice.store.MockPracticeRemote
+import io.appbeyond.freelance.deep.feature.practice.store.PracticeJournal
 import io.appbeyond.freelance.deep.feature.reminders.model.DailyReminder
 import io.appbeyond.freelance.deep.feature.reminders.model.ReminderSchedule
 import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -30,7 +36,7 @@ class ReminderStoreTest {
   /** A prompt that must never be shown — the mock decides the answer. */
   private val prompt: suspend () -> Boolean = { true }
 
-  private fun store(scheduler: MockReminderScheduler, blob: InMemoryBlobStore = InMemoryBlobStore()) =
+  private fun store(scheduler: ReminderScheduling, blob: InMemoryBlobStore = InMemoryBlobStore()) =
     ReminderStore(scheduler = scheduler, blob = blob, clock = clock, zone = { zone })
 
   @Test
@@ -49,7 +55,7 @@ class ReminderStoreTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Unasked, grantsWhenAsked = true)
     val store = store(scheduler)
 
-    val permission = store.enable(goalMetToday = false, prompt = prompt)
+    val permission = store.enable(practisedToday = false, prompt = prompt)
 
     assertEquals(ReminderPermission.Granted, permission)
     assertTrue(store.reminder.isEnabled)
@@ -62,7 +68,7 @@ class ReminderStoreTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Unasked, grantsWhenAsked = false)
     val store = store(scheduler)
 
-    val permission = store.enable(goalMetToday = false, prompt = prompt)
+    val permission = store.enable(practisedToday = false, prompt = prompt)
 
     assertEquals(ReminderPermission.Denied, permission)
     assertFalse(store.reminder.isEnabled, "never claim it is on over a queue that can't exist")
@@ -76,7 +82,7 @@ class ReminderStoreTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
 
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
     assertTrue(scheduler.queue.isNotEmpty())
 
     store.disable()
@@ -89,9 +95,9 @@ class ReminderStoreTest {
   fun timeChangeRewritesQueue() = runTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
 
-    store.setTime(hour = 7, minute = 30, goalMetToday = false)
+    store.setTime(hour = 7, minute = 30, practisedToday = false)
 
     assertEquals(7, store.reminder.hour)
     assertEquals(30, store.reminder.minute)
@@ -107,13 +113,13 @@ class ReminderStoreTest {
   fun revokedPermissionTurnsItOff() = runTest {
     val blob = InMemoryBlobStore()
     val store = store(MockReminderScheduler(ReminderPermission.Granted), blob)
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
     assertTrue(store.reminder.isEnabled)
 
     // Someone turns notifications off for DEEP while the app is asleep.
     val revoked = MockReminderScheduler(ReminderPermission.Denied)
     val reopened = store(revoked, blob)
-    reopened.reschedule(goalMetToday = false)
+    reopened.reschedule(practisedToday = false)
 
     assertFalse(reopened.reminder.isEnabled)
     assertTrue(revoked.queue.isEmpty())
@@ -125,7 +131,7 @@ class ReminderStoreTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
 
-    store.enable(goalMetToday = true, prompt = prompt)
+    store.enable(practisedToday = true, prompt = prompt)
 
     assertTrue(scheduler.queue.none { it.toLocalDate() == now.toLocalDate() })
   }
@@ -135,8 +141,8 @@ class ReminderStoreTest {
   fun settingPersists() = runTest {
     val blob = InMemoryBlobStore()
     val store = store(MockReminderScheduler(ReminderPermission.Granted), blob)
-    store.enable(goalMetToday = false, prompt = prompt)
-    store.setTime(hour = 6, minute = 15, goalMetToday = false)
+    store.enable(practisedToday = false, prompt = prompt)
+    store.setTime(hour = 6, minute = 15, practisedToday = false)
 
     val relaunched = store(MockReminderScheduler(ReminderPermission.Granted), blob)
     relaunched.restore()
@@ -150,7 +156,7 @@ class ReminderStoreTest {
   fun grantedSkipsPrompt() = runTest {
     var prompted = false
     val store = store(MockReminderScheduler(ReminderPermission.Granted))
-    store.enable(goalMetToday = false, prompt = { prompted = true; true })
+    store.enable(practisedToday = false, prompt = { prompted = true; true })
     assertFalse(prompted)
   }
 
@@ -161,7 +167,7 @@ class ReminderStoreTest {
     val store = store(scheduler)
     scheduler.replaceQueue(listOf(now.plusHours(1)))
 
-    store.reschedule(goalMetToday = false)
+    store.reschedule(practisedToday = false)
 
     assertTrue(scheduler.queue.isEmpty())
   }
@@ -172,8 +178,8 @@ class ReminderStoreTest {
     val blob = InMemoryBlobStore()
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler, blob)
-    store.enable(goalMetToday = false, prompt = prompt)
-    store.setTime(hour = 23, minute = 15, goalMetToday = false)
+    store.enable(practisedToday = false, prompt = prompt)
+    store.setTime(hour = 23, minute = 15, practisedToday = false)
 
     store.reset()
 
@@ -182,7 +188,7 @@ class ReminderStoreTest {
     val nextMember = store(MockReminderScheduler(ReminderPermission.Granted), blob)
     nextMember.restore()
     assertEquals(DailyReminder.initial, nextMember.reminder, "The next member never inherits 23:15.")
-    nextMember.enable(goalMetToday = false, prompt = prompt)
+    nextMember.enable(practisedToday = false, prompt = prompt)
     assertEquals(21, nextMember.reminder.hour)
     assertEquals(0, nextMember.reminder.minute)
   }
@@ -193,17 +199,17 @@ class ReminderStoreTest {
     // `now` is 08:00. The nudge was set for 07:30 and has just gone out.
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
     store.markPosted(now.toLocalDate())
 
-    store.setTime(hour = 9, minute = 0, goalMetToday = false)
+    store.setTime(hour = 9, minute = 0, practisedToday = false)
 
     val first = scheduler.queue.first()
     assertEquals(now.toLocalDate().plusDays(1), first.toLocalDate(), "Not a second nudge at 09:00 today.")
     assertEquals(9, first.hour)
 
     // The foreground rebuild agrees.
-    store.reschedule(goalMetToday = false)
+    store.reschedule(practisedToday = false)
     assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
   }
 
@@ -212,10 +218,10 @@ class ReminderStoreTest {
   fun postedYesterdayKeepsToday() = runTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
     store.markPosted(now.toLocalDate().minusDays(1))
 
-    store.setTime(hour = 9, minute = 0, goalMetToday = false)
+    store.setTime(hour = 9, minute = 0, practisedToday = false)
 
     assertEquals(now.toLocalDate(), scheduler.queue.first().toLocalDate())
   }
@@ -225,7 +231,7 @@ class ReminderStoreTest {
   fun postedDayPersists() = runTest {
     val blob = InMemoryBlobStore()
     val store = store(MockReminderScheduler(ReminderPermission.Granted), blob)
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
     store.markPosted(now.toLocalDate())
 
     val relaunched = store(MockReminderScheduler(ReminderPermission.Granted), blob)
@@ -244,10 +250,10 @@ class ReminderStoreTest {
     // `now` is 08:00; the 07:55 nudge is armed and may still be pending.
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
-    store.setTime(hour = 7, minute = 55, goalMetToday = false)
+    store.enable(practisedToday = false, prompt = prompt)
+    store.setTime(hour = 7, minute = 55, practisedToday = false)
 
-    store.reschedule(goalMetToday = false)
+    store.reschedule(practisedToday = false)
 
     val first = scheduler.queue.first()
     assertEquals(now.toLocalDate(), first.toLocalDate(), "Not pushed to tomorrow by a foreground.")
@@ -262,10 +268,10 @@ class ReminderStoreTest {
   fun rebuildPastWindowMovesOn() = runTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
-    store.setTime(hour = 7, minute = 45, goalMetToday = false)
+    store.enable(practisedToday = false, prompt = prompt)
+    store.setTime(hour = 7, minute = 45, practisedToday = false)
 
-    store.reschedule(goalMetToday = false)
+    store.reschedule(practisedToday = false)
 
     assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
   }
@@ -275,14 +281,14 @@ class ReminderStoreTest {
   fun rebuildInsideWindowHonoursTheDay() = runTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
-    store.setTime(hour = 7, minute = 55, goalMetToday = false)
+    store.enable(practisedToday = false, prompt = prompt)
+    store.setTime(hour = 7, minute = 55, practisedToday = false)
 
-    store.reschedule(goalMetToday = true)
+    store.reschedule(practisedToday = true)
     assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
 
     store.markPosted(now.toLocalDate())
-    store.reschedule(goalMetToday = false)
+    store.reschedule(practisedToday = false)
     assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
   }
 
@@ -291,9 +297,9 @@ class ReminderStoreTest {
   fun setTimeBehindNowArmsTomorrow() = runTest {
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
 
-    store.setTime(hour = 7, minute = 58, goalMetToday = false)
+    store.setTime(hour = 7, minute = 58, practisedToday = false)
 
     assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
   }
@@ -305,11 +311,81 @@ class ReminderStoreTest {
     // yesterday. Tonight's occurrence must still be armed.
     val scheduler = MockReminderScheduler(ReminderPermission.Granted)
     val store = store(scheduler)
-    store.enable(goalMetToday = false, prompt = prompt)
+    store.enable(practisedToday = false, prompt = prompt)
     store.markPosted(now.toLocalDate().minusDays(1))
 
-    store.reschedule(goalMetToday = false)
+    store.reschedule(practisedToday = false)
 
     assertEquals(now.toLocalDate(), scheduler.queue.first().toLocalDate())
+  }
+
+  // MARK: - B23: a Global Pause rests the reminder (iOS PR #62)
+
+  @Test
+  @DisplayName("a Global Pause sat this morning moves tonight's reminder to tomorrow")
+  fun pauseThisMorningMovesTonight() = runTest {
+    val journal = PracticeJournal(MockPracticeRemote(), InMemoryBlobStore(), clock, zone)
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(practisedToday = journal.reminderRestsToday(), prompt = prompt)
+    assertEquals(now.toLocalDate(), scheduler.queue.first().toLocalDate(), "Tonight's 21:00 is armed.")
+
+    // The claim lands eligible at 08:00; the app reschedules at once.
+    journal.recordPauseDay(clock.instant())
+    store.reschedule(practisedToday = journal.reminderRestsToday())
+
+    assertTrue(scheduler.queue.none { it.toLocalDate() == now.toLocalDate() })
+    assertEquals(now.toLocalDate().plusDays(1), scheduler.queue.first().toLocalDate())
+    assertEquals(ReminderSchedule.horizon, scheduler.queue.size, "The window still fills.")
+  }
+
+  @Test
+  @DisplayName("minutes short of the goal, with no pause, leave tonight's reminder in place")
+  fun shortPracticeLeavesTonight() = runTest {
+    val journal = PracticeJournal(MockPracticeRemote(), InMemoryBlobStore(), clock, zone)
+    journal.record("Balancing breath", durationSeconds = 60)
+    val scheduler = MockReminderScheduler(ReminderPermission.Granted)
+    val store = store(scheduler)
+    store.enable(practisedToday = journal.reminderRestsToday(), prompt = prompt)
+
+    assertEquals(now.toLocalDate(), scheduler.queue.first().toLocalDate())
+  }
+
+  /** Shows the screen's prompt for real, as the Android scheduler does. */
+  private class PromptingScheduler(
+    private val base: MockReminderScheduler = MockReminderScheduler(),
+  ) : ReminderScheduling by base {
+    override suspend fun requestPermission(prompt: suspend () -> Boolean): ReminderPermission =
+      if (prompt()) ReminderPermission.Granted else ReminderPermission.Denied
+
+    val queue: List<ZonedDateTime> get() = base.queue
+  }
+
+  @Test
+  @DisplayName("an unanswered permission prompt holds up no other change")
+  fun unansweredPromptHoldsNothingUp() = runTest {
+    val scheduler = PromptingScheduler(MockReminderScheduler(ReminderPermission.Granted))
+    val store = store(scheduler)
+    // The activity was recreated with the dialog up: nobody will ever answer.
+    val unanswered = CompletableDeferred<Boolean>()
+    val asking = launch { store.enable(practisedToday = false, prompt = { unanswered.await() }) }
+    runCurrent()
+
+    // A reschedule (the alarm receiver's, a foreground's) and a toggle still
+    // run to completion while the question hangs.
+    withTimeout(1_000) {
+      store.reschedule(practisedToday = false)
+      store.setTime(hour = 7, minute = 0, practisedToday = false)
+      store.disable()
+    }
+    assertFalse(store.reminder.isEnabled)
+    assertEquals(7, store.reminder.hour)
+
+    // The screen abandons the question; the store is left as it was.
+    unanswered.cancel()
+    asking.join()
+    assertTrue(asking.isCancelled)
+    assertFalse(store.reminder.isEnabled)
+    assertTrue(scheduler.queue.isEmpty())
   }
 }

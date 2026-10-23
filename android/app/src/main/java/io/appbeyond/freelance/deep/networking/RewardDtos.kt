@@ -95,12 +95,16 @@ data class PlantDto(
   val palette: String? = null,
   val displayOrder: Int = 0,
   val isPremium: Boolean = false,
+  /** DEEP Premium, and this caller may not select it (deep-api #65). Absent
+   * from an older server, which never listed premium plants: unlocked. */
+  val isLocked: Boolean = false,
   val isDefault: Boolean = false,
   val isActive: Boolean = true,
   val stages: List<PlantStageDto>? = null,
 )
 
-/** `GET /garden/plants` — active, non-premium plants with their stages. */
+/** `GET /garden/plants` — every active plant with its stages, premium ones
+ * marked [PlantDto.isLocked] for a caller who may not select them. */
 @Serializable
 data class PlantsResponseDto(
   val plants: List<PlantDto> = emptyList(),
@@ -202,6 +206,7 @@ fun PlantDto.toDomain(siblingStages: List<PlantStageDto>? = null): Plant = Plant
   stages = (stages ?: siblingStages ?: emptyList())
     .sortedBy { it.displayOrder }
     .map { it.toDomain() },
+  isLocked = isLocked,
 )
 
 /** The picker catalog, in the admin's display order. */

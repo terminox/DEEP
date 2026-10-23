@@ -60,6 +60,9 @@ android/keystore.properties
 
 # Build artifacts. The weekly client build is attached to its PR, not committed.
 *.apk
+# scripts/build-android-release.sh collects the release APK, bundle, mapping
+# and checksums here.
+android/dist/
 *.aab
 *.aar
 

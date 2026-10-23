@@ -12,6 +12,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import io.appbeyond.freelance.deep.DeepApplication
 import io.appbeyond.freelance.deep.MainActivity
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.reminders.model.ReminderCopy
@@ -78,7 +79,10 @@ class AlarmReminderScheduler(private val context: Context) : ReminderScheduling 
       clearQueue()
       return
     }
-    ensureChannel(context)
+    // Named in the reading language: below API 33 the per-app locale doesn't
+    // reach the application context, and the channel read English in system
+    // settings until the first nudge renamed it.
+    ensureChannel(localizedContext())
     val alarms = context.getSystemService(AlarmManager::class.java) ?: return
     alarms.setWindow(
       AlarmManager.RTC_WAKEUP,
@@ -91,6 +95,9 @@ class AlarmReminderScheduler(private val context: Context) : ReminderScheduling 
   override suspend fun clearQueue() {
     context.getSystemService(AlarmManager::class.java)?.cancel(alarmIntent(context))
   }
+
+  private fun localizedContext(): Context =
+    (context.applicationContext as? DeepApplication)?.dependencies?.languageStore?.localized(context) ?: context
 
   private fun canPost(): Boolean {
     if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false

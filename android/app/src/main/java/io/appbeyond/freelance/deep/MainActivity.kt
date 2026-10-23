@@ -1,12 +1,16 @@
 package io.appbeyond.freelance.deep
 
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -16,14 +20,26 @@ import io.appbeyond.freelance.deep.feature.appshell.PreferenceActions
 import io.appbeyond.freelance.deep.feature.compassion.CompassionCategoryScreen
 import io.appbeyond.freelance.deep.feature.compassion.CompassionCoordinator
 import io.appbeyond.freelance.deep.feature.compassion.rememberCompassionContent
+import io.appbeyond.freelance.deep.feature.deepsession.ChimePlayer
 import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionCoordinator
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.player.play
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
+import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseLobbyScreen
+import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseSessionCoordinator
+import io.appbeyond.freelance.deep.feature.globalpause.audio.GlobalPauseAudioPlayer
+import io.appbeyond.freelance.deep.feature.globalpause.EarthCardLift
+import io.appbeyond.freelance.deep.feature.globalpause.LocalGlobalPauseCardLift
+import io.appbeyond.freelance.deep.feature.globalpause.globe.EarthGlobeRendering
+import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeFlight
+import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeScene
+import io.appbeyond.freelance.deep.feature.globalpause.globe.LocalGlobeRendering
+import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 import io.appbeyond.freelance.deep.networking.LocalVideoCache
 import io.appbeyond.freelance.deep.networking.VideoCache
+import io.appbeyond.freelance.deep.theme.exhale
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.drop
@@ -57,15 +73,33 @@ class MainActivity : ComponentActivity() {
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    installSplashScreen()
+    // The splash is moonCream with the DEEP mark; the first frame is moonCream
+    // under the atmosphere. The splash fades off it, the exhale, rather than
+    // cutting, so the sky arrives instead of jumping in. Opacity only, which
+    // reduced motion keeps.
+    //
+    // Only on a real launch. A recreate (below API 33, the in-app language
+    // switch) would otherwise have the compat splash draw its view again — the
+    // mark over moonCream for half a second, then the fade — while the launch
+    // beat behind it rightly doesn't replay. There the post-splash theme goes
+    // on directly and no splash view is drawn; from 31 the system shows no
+    // splash for a recreate either.
+    if (savedInstanceState == null) {
+      installSplashScreen().setOnExitAnimationListener { splash ->
+        splash.view.animate().alpha(0f).exhale().withEndAction { splash.remove() }
+      }
+    } else {
+      setTheme(R.style.Theme_Deep)
+    }
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
 
     val dependencies = (application as DeepApplication).dependencies
 
-    // From 33 a language picked in the system's per-app settings recreates
-    // this activity without restarting the process; adopt it, so the
-    // reminder and server copy follow the language the screens now read in.
+    // From 33 a language picked in the system's per-app settings reaches a
+    // running process as a configuration change ([onConfigurationChanged]);
+    // one picked while DEEP was not running is adopted here. Either way the
+    // reminder and server copy follow the language the screens read in.
     dependencies.languageStore.adoptSystemChoice()
 
     // Below API 33 a new language means a new base context: recreate, as the
@@ -91,7 +125,28 @@ class MainActivity : ComponentActivity() {
 
     setContent {
       val language by dependencies.languageStore.selection.collectAsStateWithLifecycle()
-      CompositionLocalProvider(LocalVideoCache provides videoCache) {
+      // One globe for the whole app, so the lounge card and the live session
+      // draw the same one — what the card lift moves between them.
+      val globeScene = remember { GlobeScene() }
+      // The Earth and the lift share one flight: the lift drives it, the
+      // session's globe rides it. Reduced motion keeps the crossfade.
+      val globeFlight = remember { GlobeFlight() }
+      val globeRendering = remember { EarthGlobeRendering(globeFlight) }
+      val reduceMotion = rememberReduceMotion()
+      val cardLift = remember(reduceMotion) { EarthCardLift(globeFlight, reduceMotion) }
+      val pause by dependencies.globalPause.state.collectAsStateWithLifecycle()
+      // The DEEP Session's closing bell, owned out here rather than by the
+      // practice: it rings for close to four seconds, long enough to tap
+      // through the reward ritual and close while it still sounds, and a bell
+      // owned by the cover would be cut off mid-ring as the cover leaves —
+      // iOS's `DeepSessionRunModifier` owns it outside the presentation too.
+      val chime = remember { ChimePlayer(applicationContext) }
+      DisposableEffect(chime) { onDispose { chime.release() } }
+      CompositionLocalProvider(
+        LocalVideoCache provides videoCache,
+        LocalGlobeRendering provides globeRendering,
+        LocalGlobalPauseCardLift provides cardLift,
+      ) {
         AppRoot(
           accountStore = dependencies.accountStore,
           onboardingStore = dependencies.onboardingStore,
@@ -121,11 +176,16 @@ class MainActivity : ComponentActivity() {
             GlobalPauseHomeScreen(
               repository = dependencies.pauseHome,
               onOpenDeepSession = actions.openDeepSession,
-              // iOS's home tiles start their collection outright, with no detail
-              // screen between the tap and the sound.
+              // A tile's or card's body pushes the collection's detail; only its
+              // small round play button starts it in place — iOS's `HomeTile` /
+              // `FeatureCard`.
+              onOpenCollection = actions.openCollection,
               onPlayCollection = { dependencies.soundPlayer.play(it) },
               onOpenCollectionList = actions.openCollectionList,
               refreshKey = account?.id,
+              isFukuOnAir = pause.isFukuOnAir,
+              onOpenFukuLounge = actions.openFukuLounge,
+              onRefreshPause = dependencies.globalPause::start,
             )
           },
           gardenContent = { actions ->
@@ -175,12 +235,73 @@ class MainActivity : ComponentActivity() {
             DeepSessionCoordinator(
               session = session,
               onFinish = onFinish,
+              chime = chime,
               onComplete = dependencies.practiceRewards::complete,
               onWitnessContinuity = dependencies.practiceRewards::witnessContinuity,
+            )
+          },
+          fukuLoungeContent = { onJoin, onBack ->
+            GlobalPauseLobbyScreen(
+              session = dependencies.globalPause,
+              scene = globeScene,
+              fetchMessages = dependencies.pauseEvents::messages,
+              soundPlayer = dependencies.soundPlayer,
+              onJoin = onJoin,
+              onBack = onBack,
+            )
+          },
+          canJoinGlobalPause = { dependencies.globalPause.state.value.isMeditationLive },
+          globalPauseContent = { visibility, onFinish ->
+            val context = LocalContext.current
+            val audio = remember { GlobalPauseAudioPlayer(context.applicationContext, dependencies.http.mediaClient) }
+            DisposableEffect(audio) { onDispose { audio.release() } }
+            val account by dependencies.accountStore.account.collectAsStateWithLifecycle()
+            GlobalPauseSessionCoordinator(
+              session = dependencies.globalPause,
+              scene = globeScene,
+              audio = audio,
+              snapshot = dependencies.pauseNightRewards::snapshot,
+              receipt = dependencies.pauseNightRewards::receipt,
+              witnessContinuity = dependencies.pauseNightRewards::witnessContinuity,
+              memberName = account?.displayName,
+              onFinish = onFinish,
+              visibility = visibility,
             )
           },
         )
       }
     }
+  }
+
+  /**
+   * Language, font size, display size and foldable changes are handled in
+   * process (`configChanges`): Compose re-reads the configuration, and
+   * nothing — not the launch beat, a running DEEP Session or an open Global
+   * Pause — is torn down by a recreate.
+   *
+   * - **API 33+:** a language picked in the system's per-app settings now
+   *   arrives here instead of recreating the activity, so it is adopted here.
+   * - **API 26–32:** the activity reads through the base context
+   *   [attachBaseContext] wrapped. That wrapper's configuration was copied
+   *   whole as it was made, so the platform's rebase of it on a change can
+   *   either keep stale values (the font scale and density it was made with)
+   *   or, where the activity carries no override of its own, drop its locale
+   *   altogether. Rather than lean on which, compare what the screens now read
+   *   with what they should, and recreate when they disagree — the old path,
+   *   kept only for the cases it is still needed. (A dark-mode toggle that
+   *   leaves both intact changes nothing: DEEP is light-only.)
+   */
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    val languageStore = (application as DeepApplication).dependencies.languageStore
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      languageStore.adoptSystemChoice()
+      return
+    }
+    val reading = resources.configuration
+    val language = languageStore.selection.value
+    val staleLocale = reading.locales.get(0)?.language != language.resourceLanguageCode
+    val staleScale = reading.fontScale != newConfig.fontScale || reading.densityDpi != newConfig.densityDpi
+    if (staleLocale || staleScale) recreate()
   }
 }

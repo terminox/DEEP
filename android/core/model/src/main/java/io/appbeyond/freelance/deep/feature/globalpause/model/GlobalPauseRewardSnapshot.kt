@@ -12,6 +12,10 @@ import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
  * night, another pair for a first peace message), so unlike a DEEP Session
  * there is no optimistic credit to read back: the "before" has to be kept.
  *
+ * The rhythm is deliberately not frozen here: a counted pause keeps the day,
+ * and whether it does is only known once the claim settles — so the ending
+ * reads the journal's `continuityTransition()` when it composes the receipt.
+ *
  * Ported from Deep/Deep/Features/GlobalPause/Models/GlobalPauseRewardSnapshot.swift;
  * the receipt fold is `RewardReceipt.pauseNight`.
  */
@@ -19,9 +23,6 @@ data class GlobalPauseRewardSnapshot(
   val garden: GardenGrowth?,
   val heartBalance: Int,
   val heartsEarnedToday: Int,
-  /** Days of returning as the practice journal has them. A pause night adds no
-   * practice day, so this number is witnessed by the ritual, never moved. */
-  val continuityDays: Int,
   val continuityWitnessedToday: Boolean,
 ) {
   companion object {
@@ -30,7 +31,6 @@ data class GlobalPauseRewardSnapshot(
       garden = GardenGrowth(plant = Plant.oakFixture, sunlight = 240),
       heartBalance = 12,
       heartsEarnedToday = 2,
-      continuityDays = 7,
       continuityWitnessedToday = false,
     )
 

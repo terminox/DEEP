@@ -48,6 +48,8 @@
   <!-- "Save to playlist" / "Remove from playlist" -->
   <string name="deepsound_save_to_playlist">Save to playlist</string>
   <string name="deepsound_remove_from_playlist">Remove from playlist</string>
+  <!-- The DEEP Premium lock's spoken name — iOS's `lock.fill` reads "Lock" by itself -->
+  <string name="deepsound_locked">Locked</string>
 
   <!-- Lyrics (LyricsSheet.swift) -->
   <!-- "No lyrics for this one — just let it wash over you." -->

@@ -58,6 +58,11 @@ data class PauseSectionDto(
  *
  * [subtitle] is nullable here although the column is not, because the translated
  * projection may resolve to nothing for a language that has no override.
+ *
+ * [isLocked] is the server's DEEP Premium answer for this caller (deep-api
+ * #65): a premium collection seen by a non-member. [isPremium] stays for the
+ * badge; the lock is what the app acts on. Absent from a server that predates
+ * the lock, so it defaults to unlocked and such a server plays as before.
  */
 @Serializable
 data class CollectionDto(
@@ -68,6 +73,7 @@ data class CollectionDto(
   val palette: String,
   val imageUrl: String? = null,
   val isPremium: Boolean = false,
+  val isLocked: Boolean = false,
   val displayOrder: Int = 0,
   val trackCount: Int? = null,
   val tracks: List<TrackDto>? = null,
@@ -82,6 +88,9 @@ data class CollectionDto(
  *
  * [audioUrl] is null when the row has no audio uploaded yet, which the admin
  * allows — a track that cannot be played is a real state, not a decoding error.
+ * It is also null on a locked track: [isLocked] is the server's effective
+ * DEEP Premium answer (a premium track, or any track of a premium collection,
+ * for a non-member), and the URL is what it withholds. Missing means unlocked.
  */
 @Serializable
 data class TrackDto(
@@ -91,6 +100,7 @@ data class TrackDto(
   val kind: String,
   val audioUrl: String? = null,
   val isPremium: Boolean = false,
+  val isLocked: Boolean = false,
   val displayOrder: Int = 0,
   val lyricsLanguages: List<String> = emptyList(),
 )

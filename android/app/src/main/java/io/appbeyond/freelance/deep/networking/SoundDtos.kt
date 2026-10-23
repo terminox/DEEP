@@ -122,6 +122,7 @@ fun CollectionDto.toDomain(): SoundCollection = SoundCollection(
   imageUrl = imageUrl,
   categoryId = categoryId,
   isPremium = isPremium,
+  isLocked = isLocked,
   tracks = (tracks ?: emptyList())
     .sortedBy { it.displayOrder }
     .map { it.toDomain() },
@@ -135,6 +136,7 @@ fun TrackDto.toDomain(): SoundTrack = SoundTrack(
   kind = TrackKind.fromServer(kind),
   audioUrl = audioUrl,
   isPremium = isPremium,
+  isLocked = isLocked,
   lyricsLanguages = lyricsLanguages,
 )
 

@@ -14,17 +14,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.deepsound.SoundFixtures
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
@@ -48,6 +53,9 @@ private const val ARTWORK_SHADOW_ALPHA = 0.2f
 private val ARTWORK_SHADOW_RADIUS = 12.dp
 private val ARTWORK_SHADOW_OFFSET_Y = 8.dp
 
+/** The lock disc's inset from the artwork's corner — `HomeTile`'s `.padding(8)`. */
+private val LOCK_DISC_INSET = 8.dp
+
 // MARK: - Tile
 
 /**
@@ -62,6 +70,11 @@ private val ARTWORK_SHADOW_OFFSET_Y = 8.dp
  *
  * The lift is `Modifier.dropShadow`, as in `frostedCard`: a platform elevation
  * shadow reads as hard grey against the atmosphere.
+ *
+ * A collection with nothing this listener can play (DEEP Premium, locked)
+ * carries the lock disc at its artwork's corner, where the home tiles keep
+ * their play button. It still opens: the catalogue is visible to everyone,
+ * and the detail shows which sounds are locked.
  */
 @Composable
 fun CollectionTile(
@@ -71,6 +84,7 @@ fun CollectionTile(
   size: Dp = COLLECTION_TILE_SIZE,
 ) {
   val shape = RoundedCornerShape(Dp.tile)
+  val locked = stringResource(R.string.deepsound_locked)
 
   Column(
     modifier
@@ -81,25 +95,36 @@ fun CollectionTile(
         indication = null,
         role = Role.Button,
         onClick = { onOpen(collection) },
-      ),
+      )
+      .semantics { if (collection.locksEveryTrack) stateDescription = locked },
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    ArtworkImage(
-      url = collection.imageUrl,
-      palette = collection.palette,
-      contentDescription = null,
-      modifier = Modifier
-        .size(size)
-        .dropShadow(
-          shape = shape,
-          shadow = Shadow(
-            radius = ARTWORK_SHADOW_RADIUS,
-            color = Color.lavenderMist.copy(alpha = ARTWORK_SHADOW_ALPHA),
-            offset = DpOffset(0.dp, ARTWORK_SHADOW_OFFSET_Y),
-          ),
+    Box {
+      ArtworkImage(
+        url = collection.imageUrl,
+        palette = collection.palette,
+        contentDescription = null,
+        modifier = Modifier
+          .size(size)
+          .dropShadow(
+            shape = shape,
+            shadow = Shadow(
+              radius = ARTWORK_SHADOW_RADIUS,
+              color = Color.lavenderMist.copy(alpha = ARTWORK_SHADOW_ALPHA),
+              offset = DpOffset(0.dp, ARTWORK_SHADOW_OFFSET_Y),
+            ),
+          )
+          .clip(shape),
+      )
+      if (collection.locksEveryTrack) {
+        ArtworkLockDisc(
+          ArtworkDiscSize.Small,
+          Modifier
+            .align(Alignment.BottomEnd)
+            .padding(LOCK_DISC_INSET),
         )
-        .clip(shape),
-    )
+      }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
       Text(
@@ -130,6 +155,16 @@ private fun CollectionTilePreview() {
   DeepTheme {
     Box(Modifier.background(Color.moonCream).padding(Dp.edge)) {
       CollectionTile(collection = SoundFixtures.oceanDepths, onOpen = {})
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Collection tile — DEEP Premium locked")
+@Composable
+private fun CollectionTileLockedPreview() {
+  DeepTheme {
+    Box(Modifier.background(Color.moonCream).padding(Dp.edge)) {
+      CollectionTile(collection = SoundFixtures.oceanDepths.copy(isLocked = true), onOpen = {})
     }
   }
 }

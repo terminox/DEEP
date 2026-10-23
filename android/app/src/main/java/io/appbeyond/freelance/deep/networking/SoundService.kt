@@ -12,7 +12,12 @@ import retrofit2.http.Path
  */
 interface SoundService {
 
-  /** Anonymous. Every category, ordered, with its ordered collections and tracks. */
+  /**
+   * Optional auth. Every category, ordered, with its ordered collections and
+   * tracks; for a non-member, DEEP Premium tracks come back `isLocked` with no
+   * `audioUrl`. A present-but-stale token is a 401, which the client's
+   * authenticator refreshes and retries.
+   */
   @GET("sound/home")
   suspend fun home(): SoundHomeDto
 

@@ -30,6 +30,7 @@
   <string name="deepsound_shuffle">สุ่ม</string>
   <string name="deepsound_save_to_playlist">บันทึกลงเพลย์ลิสต์</string>
   <string name="deepsound_remove_from_playlist">นำออกจากเพลย์ลิสต์</string>
+  <string name="deepsound_locked">ล็อกอยู่</string> <!-- no iOS Thai -->
 
   <!-- Lyrics -->
   <string name="deepsound_lyrics_empty">เพลงนี้ไม่มีเนื้อร้อง — ปล่อยให้มันโอบคุณไว้</string>

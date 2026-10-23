@@ -54,6 +54,7 @@ import io.appbeyond.freelance.deep.feature.onboarding.components.OnboardingPrevi
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LoopingVideoFrameGrabber
 import io.appbeyond.freelance.deep.shared.components.LoopingVideoView
+import io.appbeyond.freelance.deep.shared.components.rememberIncreasedContrast
 import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.deepPlum
@@ -116,9 +117,10 @@ sealed interface WelcomeVideo {
  * Compose the topmost sibling with any pointer node under a finger takes the
  * touch. iOS gets the same from `allowsHitTesting(false)` on the overlay.
  *
- * Not ported: iOS's Increase Contrast branch (solid veils, irisDusk mark).
- * Android exposes high-contrast text only through a hidden API, so there is no
- * signal to follow; the cream mark and translucent veils always apply.
+ * Increased contrast (the system's colour-contrast level, from Android 14)
+ * takes iOS's Increase Contrast branch. The veils go solid moonCream, and that
+ * is the mark's own colour, so the mark trades its cream bloom for a solid
+ * irisDusk tint instead of vanishing into the backdrop.
  */
 @Composable
 fun WelcomeScreen(
@@ -130,6 +132,7 @@ fun WelcomeScreen(
   video: WelcomeVideo = WelcomeVideo.Live(),
 ) {
   val isStill = video is WelcomeVideo.Still
+  val increasedContrast = rememberIncreasedContrast()
 
   Box(modifier.fillMaxSize()) {
     if (isStill) {
@@ -143,7 +146,7 @@ fun WelcomeScreen(
 
     Footage(video = video, modifier = Modifier.fillMaxSize().clearAndSetSemantics {})
 
-    Veils(Modifier.fillMaxSize())
+    Veils(increasedContrast = increasedContrast, modifier = Modifier.fillMaxSize())
 
     Column(
       modifier = Modifier
@@ -155,7 +158,11 @@ fun WelcomeScreen(
       verticalArrangement = Arrangement.spacedBy(Dp.rhythm),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      DeepLogoMark(size = MARK_SIZE, tint = Color.moonCream, isGlowing = true)
+      DeepLogoMark(
+        size = MARK_SIZE,
+        tint = if (increasedContrast) Color.irisDusk else Color.moonCream,
+        isGlowing = !increasedContrast,
+      )
 
       OnboardingLogoText()
 
@@ -284,17 +291,19 @@ private fun Footage(video: WelcomeVideo, modifier: Modifier = Modifier) {
 /**
  * Soft moonCream gradients that guarantee contrast against the footage: a
  * light wash over the sky behind the logo, and a near-solid scrim under the
- * actions.
+ * actions. Both go solid under increased contrast.
  */
 @Composable
-private fun Veils(modifier: Modifier = Modifier) {
+private fun Veils(increasedContrast: Boolean, modifier: Modifier = Modifier) {
+  val topAlpha = if (increasedContrast) 1f else TOP_VEIL_ALPHA
+  val bottomMidAlpha = if (increasedContrast) 1f else BOTTOM_VEIL_MID_ALPHA
   Column(modifier.clearAndSetSemantics {}) {
     Box(
       Modifier
         .weight(1f)
         .fillMaxWidth()
         .background(
-          Brush.verticalGradient(listOf(Color.moonCream.copy(alpha = TOP_VEIL_ALPHA), Color.Transparent)),
+          Brush.verticalGradient(listOf(Color.moonCream.copy(alpha = topAlpha), Color.Transparent)),
         ),
     )
     Spacer(Modifier.weight(1f))
@@ -305,7 +314,7 @@ private fun Veils(modifier: Modifier = Modifier) {
         .background(
           Brush.verticalGradient(
             0f to Color.Transparent,
-            BOTTOM_VEIL_MID_STOP to Color.moonCream.copy(alpha = BOTTOM_VEIL_MID_ALPHA),
+            BOTTOM_VEIL_MID_STOP to Color.moonCream.copy(alpha = bottomMidAlpha),
             1f to Color.moonCream,
           ),
         ),

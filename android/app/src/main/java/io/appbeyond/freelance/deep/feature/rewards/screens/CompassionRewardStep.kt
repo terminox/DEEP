@@ -166,7 +166,13 @@ fun CompassionRewardStep(
   RewardStepLayout(
     eyebrow = stringResource(R.string.reward_compassion_eyebrow),
     title = stringResource(
-      if (awarded) R.string.reward_compassion_title_carried else R.string.reward_compassion_title_full,
+      when {
+        awarded -> R.string.reward_compassion_title_carried
+        // A pause night the server didn't count — or hasn't answered for yet —
+        // is not a full day: say so honestly rather than blame the ceiling.
+        receipt.explainsMissedAttendance || receipt.awaitsAttendanceAward -> R.string.reward_pause_thanks
+        else -> R.string.reward_compassion_title_full
+      },
     ),
     buttonTitle = buttonTitle,
     isFinal = isFinal,
@@ -201,16 +207,16 @@ fun CompassionRewardStep(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(COPY_SPACING),
       ) {
-        Text(
-          if (awarded) {
-            pluralStringResource(R.plurals.reward_compassion_awarded, receipt.heartsAwarded, receipt.heartsAwarded)
-          } else {
-            stringResource(R.string.reward_today_full)
-          },
-          style = DeepType.displayTitle,
-          color = if (awarded) Color.duskRose else Color.deepPlum,
-          textAlign = TextAlign.Center,
-        )
+        // Absent while the night's award is still on its way.
+        compassionRewardLine(receipt)?.let { line ->
+          Text(
+            line,
+            // The explanation is a sentence, not a figure — it reads at body size.
+            style = if (receipt.explainsMissedAttendance) FIGURE_BODY_STYLE else DeepType.displayTitle,
+            color = if (awarded) Color.duskRose else Color.deepPlum,
+            textAlign = TextAlign.Center,
+          )
+        }
         Text(
           pluralStringResource(R.plurals.reward_compassion_balance, shownBalance, formatFigure(shownBalance)),
           style = FIGURE_BODY_STYLE,
@@ -258,6 +264,16 @@ private fun HeartMotif(modifier: Modifier = Modifier) {
   }
 }
 
+/** The line under the motif; null while a pause night's award is unknown. */
+@Composable
+private fun compassionRewardLine(receipt: RewardReceipt): String? = when {
+  receipt.explainsMissedAttendance -> stringResource(R.string.reward_pause_missed)
+  receipt.awaitsAttendanceAward -> null
+  receipt.heartsAwarded > 0 ->
+    pluralStringResource(R.plurals.reward_compassion_awarded, receipt.heartsAwarded, receipt.heartsAwarded)
+  else -> stringResource(R.string.reward_today_full)
+}
+
 /** The card in one sentence — the settled truth, never a mid-count figure. */
 @Composable
 private fun compassionSummary(receipt: RewardReceipt): String {
@@ -266,16 +282,19 @@ private fun compassionSummary(receipt: RewardReceipt): String {
     receipt.heartBalanceAfter,
     formatFigure(receipt.heartBalanceAfter),
   )
-  return if (receipt.heartsAwarded > 0) {
+  if (receipt.heartsAwarded > 0) {
     val received = pluralStringResource(
       R.plurals.reward_compassion_received,
       receipt.heartsAwarded,
       receipt.heartsAwarded,
     )
-    stringResource(R.string.reward_compassion_summary_awarded, received, balance)
-  } else {
-    stringResource(R.string.reward_compassion_summary_full, balance)
+    return stringResource(R.string.reward_compassion_summary_awarded, received, balance)
   }
+  if (receipt.explainsMissedAttendance || receipt.awaitsAttendanceAward) {
+    return listOfNotNull(stringResource(R.string.reward_pause_thanks), compassionRewardLine(receipt), balance)
+      .joinToString(". ")
+  }
+  return stringResource(R.string.reward_compassion_summary_full, balance)
 }
 
 // MARK: - Previews
@@ -312,4 +331,16 @@ private fun CompassionRewardCappedPreview() {
 @Composable
 private fun CompassionRewardPauseNightPreview() {
   CompassionStepPreview(RewardReceipt.pauseNight, buttonTitle = "Continue")
+}
+
+@Preview(showBackground = true, name = "Compassion — pause missed")
+@Composable
+private fun CompassionRewardPauseMissedPreview() {
+  CompassionStepPreview(RewardReceipt.pauseMissed, buttonTitle = "Carry this calm", isFinal = true)
+}
+
+@Preview(showBackground = true, name = "Compassion — claim still on its way")
+@Composable
+private fun CompassionRewardPausePendingPreview() {
+  CompassionStepPreview(RewardReceipt.pausePending, buttonTitle = "Carry this calm", isFinal = true)
 }

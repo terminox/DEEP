@@ -89,7 +89,7 @@ class ContinuityWitness(
 
   private fun witnessedToday(): Boolean {
     val last = _lastWitnessed.value ?: return false
-    return LocalDate.ofInstant(last, zone) == LocalDate.ofInstant(clock.instant(), zone)
+    return last.atZone(zone).toLocalDate() == clock.instant().atZone(zone).toLocalDate()
   }
 
   /**

@@ -201,6 +201,50 @@ class GardenStoreTest {
   }
 
   @Test
+  @DisplayName("A DEEP Premium plant the catalog marks locked is never switched to")
+  fun selectLockedPlantIsRefusedLocally() = runTest {
+    val locked = Plant.sakuraFixture.copy(isLocked = true)
+    val remote = MockRewardsRemote(catalog = listOf(Plant.oakFixture, locked))
+    val store = store(remote)
+    store.refresh()
+
+    store.selectPlant(locked)
+
+    assertEquals("oak", store.state.value.plant?.id)
+    assertFalse(store.state.value.switchFailed)
+    assertEquals("oak", remote.selectedPlantId, "No request went out.")
+  }
+
+  @Test
+  @DisplayName("A premium_locked refusal reverts without the caption and marks the plant locked")
+  fun selectPlantPremiumRefusalMarksCatalog() = runTest {
+    val remote = MockRewardsRemote(catalog = listOf(Plant.oakFixture, Plant.sakuraFixture))
+    val store = store(remote)
+    store.refresh()
+    store.loadCatalogIfNeeded()
+
+    // The server learned of the lock after the catalog was fetched.
+    remote.catalog = listOf(Plant.oakFixture, Plant.sakuraFixture.copy(isLocked = true))
+    store.selectPlant(Plant.sakuraFixture)
+
+    assertEquals("oak", store.state.value.plant?.id)
+    assertFalse(store.state.value.switchFailed, "A lock is not a connection problem.")
+    val sakura = store.state.value.catalog.plants.first { it.id == "sakura" }
+    assertTrue(sakura.isLocked)
+    assertFalse(store.state.value.catalog.plants.first { it.id == "oak" }.isLocked)
+  }
+
+  @Test
+  @DisplayName("A plant persisted before the lock existed decodes as unlocked")
+  fun plantBlobWithoutLockDecodes() {
+    val json = """{"id":"oak","name":"Oak","tagline":"","stages":[]}"""
+    val plant = kotlinx.serialization.json.Json.decodeFromString(Plant.serializer(), json)
+    assertFalse(plant.isLocked)
+    val locked = """{"id":"oak","name":"Oak","tagline":"","stages":[],"isLocked":true}"""
+    assertTrue(kotlinx.serialization.json.Json.decodeFromString(Plant.serializer(), locked).isLocked)
+  }
+
+  @Test
   @DisplayName("The optimistic switch shows before the server answers")
   fun selectPlantIsOptimistic() = runTest {
     val remote = GatedRewardsRemote(MockRewardsRemote(sunlightByPlant = mapOf("oak" to 240, "sakura" to 90)))

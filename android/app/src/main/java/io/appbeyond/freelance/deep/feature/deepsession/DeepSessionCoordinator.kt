@@ -1,58 +1,73 @@
 package io.appbeyond.freelance.deep.feature.deepsession
 
-import android.content.Context
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import io.appbeyond.freelance.deep.R
+import io.appbeyond.freelance.deep.feature.deepsession.model.BreathEngine
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
-import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSessionLength
 import io.appbeyond.freelance.deep.feature.rewards.model.RewardReceipt
 import io.appbeyond.freelance.deep.feature.rewards.screens.RewardRitualScreen
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.hush
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.seconds
 
-/** The stages of a practice: the threshold, the breath, and what it grew. */
+/** The stages of a running practice: the breath, then what it grew. */
 private sealed interface SessionStage {
-  data object Threshold : SessionStage
   data object Practice : SessionStage
   data class Completion(val receipt: RewardReceipt) : SessionStage
 }
 
 /**
- * Owns one visit to DEEP Session: the threshold, then the practice, then the
- * reward ritual, then out.
+ * Owns one run of a DEEP Session: the practice, then the reward ritual, then
+ * out. Presented over the whole shell — tab bar and mini player included —
+ * from Begin on the threshold ([DeepSessionIntroScreen]), which stays on the
+ * launching tab's stack underneath, so closing drifts straight back onto it.
  *
- * A coordinator in the project's sense — it holds the stage and the chosen
- * length and wires the three screens together (threshold, practice, reward ritual), and carries no styling of its own.
+ * A coordinator in the project's sense: it owns the stage switch, the
+ * [BreathEngine], the finish handshake and recording the practice, and carries
+ * no styling of its own. Ported from
+ * Deep/Deep/Features/DeepSession/DeepSessionCoordinatorView.swift.
  *
- * The chime is created here rather than inside [DeepSessionScreen] so it can be
- * warmed before the practice starts and can finish ringing after the practice
- * screen has gone. The bell outliving its screen is the whole reason the iOS
- * version owns it outside the presentation too.
+ * - **Recorded the instant the engine finishes**, not after the settle: the
+ *   bell is struck, the practice and both rewards are banked, and only then
+ *   does the last exhale get its one-second hold before the ritual blooms in.
+ *   So closing from the finished screen — which asks nothing — still counts.
+ *   Only a practice carried through reaches the end, so leaving early leaves
+ *   in silence with nothing banked.
+ * - **Leaving the app settles the practice into a pause**; resuming stays the
+ *   member's own gesture (iOS's `scenePhase == .background`, here ON_STOP).
+ *   A practice still in its settling count is left to the screen, which
+ *   restarts the count on return — pausing an engine that has not begun would
+ *   strand it paused once the count hands over.
  *
- * Only a practice that runs to its end is recorded — leaving early closes the
- * visit with nothing banked, as iOS's `finishSession` is reached only from
- * `.finished`. The completion is recorded once, through [onComplete], and the
- * ritual it returns replaces the practice on the same `hush` crossfade.
+ * The bell is [chime], owned above this presentation: it rings for close to
+ * four seconds, long enough for a member to tap through the ritual and close
+ * while it is still sounding, and a chime owned here would be torn down
+ * mid-ring as the cover leaves.
  *
+ * @param session the practice at the length chosen on the threshold.
  * @param onComplete records the finished practice and returns what it earned
- *   (`PracticeRewards.complete`). Null — previews — closes on finish instead.
+ *   (`PracticeRewards.complete`). Null — previews — closes after the settle.
  * @param onWitnessContinuity stamps today's continuity beat as the ritual shows it.
  */
 @Composable
@@ -60,40 +75,53 @@ fun DeepSessionCoordinator(
   session: DeepSession,
   onFinish: () -> Unit,
   modifier: Modifier = Modifier,
-  chime: ChimePlaying? = null,
+  chime: ChimePlaying = SilentChime(),
   onComplete: (suspend (title: String, durationSeconds: Int) -> RewardReceipt)? = null,
   onWitnessContinuity: suspend () -> Unit = {},
 ) {
-  val context = LocalContext.current
   val scope = rememberCoroutineScope()
-  var stage by remember { mutableStateOf<SessionStage>(SessionStage.Threshold) }
-  var didRecord by remember { mutableStateOf(false) }
-  var minutes by remember { mutableStateOf(readMinutes(context)) }
-
-  val resolvedChime = remember(chime) { chime ?: ChimePlayer(context) }
-  DisposableEffect(resolvedChime) {
-    onDispose { if (chime == null) resolvedChime.release() }
-  }
-
-  // The threshold's title and tagline are localised here, at the UI edge —
-  // the model type in :core:model deliberately knows nothing about resources.
-  val titled = session.copy(
-    title = stringResource(R.string.home_session_card_title),
-    tagline = stringResource(R.string.home_session_card_body),
-  )
-
-  // Back from the threshold leaves, as the iOS threshold's back swipe does.
-  // Without it the press fell through to the shell underneath, which quietly
-  // switched tabs (or closed the app from Home) while the threshold stayed
-  // up with no way out. Registered as the visit opens, so it outranks the
-  // shell's handler; the practice screen's own confirm-to-leave handler is
-  // composed later still and takes over once the breath begins.
-  BackHandler(enabled = stage == SessionStage.Threshold) { onFinish() }
+  val engine = remember(session) { BreathEngine(session, scope) }
+  var stage by remember { mutableStateOf<SessionStage>(SessionStage.Practice) }
+  val currentOnFinish by rememberUpdatedState(onFinish)
+  val currentOnComplete by rememberUpdatedState(onComplete)
 
   // The journal names the practice itself, not the card that opened it: iOS
   // records `DeepSessionLibrary.balancingBreath`'s title, and a member's pulled
   // history mixes both platforms' rows. One practice ships, so it is named here.
   val journalTitle = stringResource(R.string.deepsound_balancing_breath_title)
+
+  // Warmed a whole practice ahead of the strike, so the bell that ends the
+  // practice is not the thing waking the audio stack on the last exhale.
+  LaunchedEffect(chime) { chime.prepare() }
+
+  DisposableEffect(engine) { onDispose { engine.cancel() } }
+
+  LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+    // Null before the first inhale (the screen owns the settling count) and
+    // once finished; `pause` is a no-op while already paused.
+    if (engine.remainingInPhase != null) engine.pause()
+  }
+
+  // Banks the practice once, the moment it finishes. `complete` runs
+  // NonCancellable, so the record survives this cover leaving mid-settle.
+  LaunchedEffect(engine) {
+    engine.state.first { it.phase == BreathEngine.Phase.Finished }
+    // The bell marks the breath, not the exit: struck ahead of everything
+    // below, so no bookkeeping sits between the last exhale and the sound.
+    chime.ring()
+    val settle = launch { delay(FINISH_HOLD) }
+    val record = currentOnComplete
+    if (record == null) {
+      settle.join()
+      currentOnFinish()
+      return@LaunchedEffect
+    }
+    val seconds = (session.duration.inWholeMilliseconds / 1000.0).roundToInt()
+    val receipt = record(journalTitle, seconds)
+    // Let the final exhale settle before the first reward blooms in.
+    settle.join()
+    stage = SessionStage.Completion(receipt)
+  }
 
   AnimatedContent(
     targetState = stage,
@@ -102,36 +130,7 @@ fun DeepSessionCoordinator(
     modifier = modifier,
   ) { current ->
     when (current) {
-      SessionStage.Threshold -> DeepSessionIntroScreen(
-        session = titled,
-        minutes = minutes,
-        onMinutesChange = {
-          minutes = it
-          writeMinutes(context, it)
-        },
-        onBegin = { stage = SessionStage.Practice },
-      )
-
-      SessionStage.Practice -> {
-        val practice = titled.lasting(minutes)
-        DeepSessionScreen(
-          session = practice,
-          onFinished = {
-            val record = onComplete
-            if (record == null) {
-              onFinish()
-            } else if (!didRecord) {
-              didRecord = true
-              scope.launch {
-                val seconds = (practice.duration.inWholeMilliseconds / 1000.0).roundToInt()
-                stage = SessionStage.Completion(record(journalTitle, seconds))
-              }
-            }
-          },
-          onLeave = onFinish,
-          chime = resolvedChime,
-        )
-      }
+      SessionStage.Practice -> DeepSessionScreen(engine = engine, onClose = onFinish)
 
       is SessionStage.Completion -> RewardRitualScreen(
         receipt = current.receipt,
@@ -143,27 +142,8 @@ fun DeepSessionCoordinator(
   }
 }
 
-/*
- * The chosen length persists across visits — every visit after the first opens
- * on whatever was last chosen. One integer, so it stays in SharedPreferences
- * rather than earning a DataStore; the key matches the iOS @AppStorage key so
- * the two platforms describe the same setting.
- */
-
-private const val PREFS = "deep.session"
-private const val KEY_MINUTES = "deep.session.minutes"
-
-private fun readMinutes(context: Context): Int =
-  context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    .getInt(KEY_MINUTES, DeepSessionLength.opening)
-    .coerceIn(DeepSessionLength.range)
-
-private fun writeMinutes(context: Context, minutes: Int) {
-  context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    .edit()
-    .putInt(KEY_MINUTES, minutes)
-    .apply()
-}
+/** The last exhale's settle before the ritual — iOS's one second. */
+private val FINISH_HOLD = 1.seconds
 
 @Preview(showBackground = true)
 @Composable

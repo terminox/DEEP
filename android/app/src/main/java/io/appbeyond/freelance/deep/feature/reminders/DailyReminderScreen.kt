@@ -27,6 +27,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +60,7 @@ import io.appbeyond.freelance.deep.feature.reminders.store.ReminderPermission
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.shared.localization.AppFormat
 import io.appbeyond.freelance.deep.shared.localization.rememberAppLocale
 import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
@@ -121,11 +123,24 @@ fun DailyReminderScreen(
   val prompt: suspend () -> Boolean = {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
       val answer = CompletableDeferred<Boolean>()
+      // One question at a time: a second tap supersedes an unanswered first.
+      pendingAnswer?.cancel()
       pendingAnswer = answer
       currentLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
       answer.await()
     } else {
       false
+    }
+  }
+  // The answer comes back to the activity that asked. Recreated (or gone)
+  // with the dialog still up, this screen will never hear it: abandon the
+  // question rather than strand whoever is awaiting it. Cancelled, not
+  // refused — the member said nothing, and the next resume re-reads the
+  // system's answer anyway.
+  DisposableEffect(Unit) {
+    onDispose {
+      pendingAnswer?.cancel()
+      pendingAnswer = null
     }
   }
 
@@ -134,6 +149,8 @@ fun DailyReminderScreen(
   }
 
   var pickingTime by remember { mutableStateOf(false) }
+  val scroll = rememberScrollState()
+  ScrollToTopOnReselect(scroll)
 
   Box(modifier.fillMaxSize()) {
     AtmosphereBackground()
@@ -142,7 +159,7 @@ fun DailyReminderScreen(
       Column(
         Modifier
           .fillMaxSize()
-          .verticalScroll(rememberScrollState())
+          .verticalScroll(scroll)
           .padding(horizontal = Dp.edge)
           .padding(top = Dp.rhythm, bottom = 40.dp + LocalMiniPlayerClearance.current),
         verticalArrangement = Arrangement.spacedBy(Dp.rhythm),

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.mindgarden.components.DailyPracticeCard
@@ -33,6 +36,7 @@ import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenGreeting
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenHeroMedia
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
 import io.appbeyond.freelance.deep.feature.mindgarden.store.GardenStore
+import io.appbeyond.freelance.deep.feature.practice.model.DayRollover
 import io.appbeyond.freelance.deep.feature.practice.store.MockPracticeRemote
 import io.appbeyond.freelance.deep.feature.practice.store.PracticeJournal
 import io.appbeyond.freelance.deep.feature.rewards.store.MockRewardsRemote
@@ -41,6 +45,7 @@ import io.appbeyond.freelance.deep.shared.components.CollapsibleHomeHeader
 import io.appbeyond.freelance.deep.shared.components.HeroRefreshable
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
 import io.appbeyond.freelance.deep.shared.components.LoopingVideoView
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.shared.components.StretchyHero
 import io.appbeyond.freelance.deep.shared.components.rememberHeroPull
 import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
@@ -49,6 +54,7 @@ import io.appbeyond.freelance.deep.theme.bloom
 import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.time.Clock
 import java.time.ZoneId
@@ -65,6 +71,9 @@ private const val HERO_SCREEN_FRACTION = 0.5f
 
 /** How far the growth card rides up over the hero — iOS's `heroOverlap: 52`. */
 private val HERO_OVERLAP = 52.dp
+
+/** How far past midnight the day-rollover wake lands, so it never reads the old date. */
+private const val ROLLOVER_MARGIN_MILLIS = 1_000L
 
 // MARK: - Screen
 
@@ -90,7 +99,8 @@ private val HERO_OVERLAP = 52.dp
  *
  * @param garden the plant, its banked sunlight and the picker catalog.
  * @param journal today's practice minutes, read live: a session finished
- *   anywhere regrows the practice card.
+ *   anywhere regrows the practice card, and a new day empties it — at
+ *   midnight on screen, or on the next return to the foreground.
  * @param onOpenSession the practice card was tapped — iOS pushes the
  *   balancing-breath DEEP Session threshold.
  * @param onRefresh the pull: refresh the garden and the journal together (iOS
@@ -110,13 +120,31 @@ fun MindGardenHomeScreen(
 ) {
   val gardenState by garden.state.collectAsStateWithLifecycle()
   val journalState by journal.state.collectAsStateWithLifecycle()
-  // Derived from the journal as it stands, so reading its state keeps the card live.
-  val practice = remember(journalState) { journal.gardenState() }
+  // "Today" as a value the card is keyed on: the journal alone never changes
+  // at midnight, so a garden left open — or resumed the next morning — kept
+  // showing yesterday's minutes. Re-read on every return to the foreground
+  // (the zone may have changed too), and woken at each midnight while on
+  // screen. A loop rather than an effect keyed on the date: a wake that lands
+  // a hair early (the delay runs on uptime, the date on the wall clock, which
+  // NTP or a zone change can move) reads the same date, and an effect keyed
+  // on it would never arm again. The margin carries each wake past the line.
+  var today by remember { mutableStateOf(currentDay()) }
+  LifecycleEventEffect(Lifecycle.Event.ON_START) { today = currentDay() }
+  LaunchedEffect(Unit) {
+    while (true) {
+      delay(DayRollover.untilNextDay(ZoneId.systemDefault(), Clock.systemDefaultZone()).toMillis() + ROLLOVER_MARGIN_MILLIS)
+      today = currentDay()
+    }
+  }
+  // Derived from the journal as it stands on this day, so reading its state
+  // keeps the card live.
+  val practice = remember(journalState, today) { journal.gardenState() }
   val growth = gardenState.growth
 
   var pickingPlant by rememberSaveable { mutableStateOf(false) }
 
   val listState = rememberLazyListState()
+  ScrollToTopOnReselect(listState)
   val (pull, nestedScroll) = rememberHeroPull(listState)
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
   val windowHeight = LocalWindowInfo.current.containerSize.height
@@ -197,6 +225,9 @@ fun MindGardenHomeScreen(
     PlantPickerSheet(garden = garden, onDismiss = { pickingPlant = false })
   }
 }
+
+/** Today's date where the member is now. */
+private fun currentDay() = DayRollover.today(ZoneId.systemDefault(), Clock.systemDefaultZone())
 
 /** The hero's footage: the bundled oak loop, or the stage's own over its portrait. */
 @Composable

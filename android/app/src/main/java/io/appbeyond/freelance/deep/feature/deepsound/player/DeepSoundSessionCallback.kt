@@ -2,7 +2,10 @@
 
 package io.appbeyond.freelance.deep.feature.deepsound.player
 
+import android.content.Intent
+import android.view.KeyEvent
 import androidx.annotation.OptIn
+import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -23,8 +26,16 @@ import io.appbeyond.freelance.deep.R
  *
  * @param ownPackage this build's package, read at runtime so the `.dev` and
  *   `.staging` suffixes compare correctly.
+ * @param isHeld whether a practice holds DEEP Sound silent
+ *   (`SoundPlaying.holdPlayback`) — see [connectionFor].
+ * @param onNothingToResume a play arrived with no queue loaded — see
+ *   [onPlaybackResumption]. The service stops itself cleanly.
  */
-class DeepSoundSessionCallback(private val ownPackage: String) : MediaSession.Callback {
+class DeepSoundSessionCallback(
+  private val ownPackage: String,
+  private val isHeld: () -> Boolean = { false },
+  private val onNothingToResume: () -> Unit = {},
+) : MediaSession.Callback {
 
   /**
    * Foreign controllers get transport and nothing else.
@@ -48,19 +59,74 @@ class DeepSoundSessionCallback(private val ownPackage: String) : MediaSession.Ca
   override fun onConnect(
     session: MediaSession,
     controller: MediaSession.ControllerInfo,
+  ): MediaSession.ConnectionResult = connectionFor(session, controller)
+
+  /**
+   * What [controller] may do right now.
+   *
+   * While DEEP Sound is held for a practice, every controller but the app's
+   * own [SoundPlayer] — the media notification's (which also stands for the
+   * platform session the system UI and a headset talk to), and every foreign
+   * one — loses `COMMAND_PLAY_PAUSE`, so the play button leaves the
+   * notification and the lock screen rather than sitting there refusing. On
+   * Android 8–12 that matters beyond looks: a paused notification's play is a
+   * foreground-service start, and a play that is then dropped would leave the
+   * service owing Android a `startForeground` it never gets. [SoundPlayer]
+   * keeps its full set (it refuses itself while held, and still needs to
+   * pause).
+   */
+  fun connectionFor(
+    session: MediaSession,
+    controller: MediaSession.ControllerInfo,
   ): MediaSession.ConnectionResult {
     val defaults = MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
-    if (controller.packageName == ownPackage) return defaults.build()
+    val isNotification = session.isMediaNotificationController(controller)
+    val isForeign = controller.packageName != ownPackage
+    if (!isForeign && !isNotification) return defaults.build()
 
-    val transportOnly = defaults.build().availablePlayerCommands.buildUpon()
-      .removeAll(
+    val commands = defaults.build().availablePlayerCommands.buildUpon()
+    if (isForeign) {
+      commands.removeAll(
         Player.COMMAND_CHANGE_MEDIA_ITEMS,
         Player.COMMAND_SET_MEDIA_ITEM,
         Player.COMMAND_SET_REPEAT_MODE,
         Player.COMMAND_SET_SHUFFLE_MODE,
       )
-      .build()
-    return defaults.setAvailablePlayerCommands(transportOnly).build()
+    }
+    if (isHeld()) commands.remove(Player.COMMAND_PLAY_PAUSE)
+    return defaults.setAvailablePlayerCommands(commands.build()).build()
+  }
+
+  /**
+   * Re-grants every connected controller what [connectionFor] says now — the
+   * hold was taken or released. Media3 redraws the notification (and the
+   * platform session's actions) from the notification controller's new set.
+   */
+  fun refreshCommands(session: MediaSession) {
+    session.connectedControllers.forEach { controller ->
+      if (controller.packageName == ownPackage && !session.isMediaNotificationController(controller)) {
+        return@forEach
+      }
+      val granted = connectionFor(session, controller)
+      session.setAvailableCommands(controller, granted.availableSessionCommands, granted.availablePlayerCommands)
+    }
+  }
+
+  /**
+   * A media button that would start playback while held — a tap on a play
+   * button drawn before the hold took it away, or a headset — is swallowed
+   * here, before Media3 turns it into a play. Had it arrived as a
+   * foreground-service start, `DeepSoundService.onStartCommand` has already
+   * paid the `startForeground` it owed, under the paused notification.
+   */
+  override fun onMediaButtonEvent(
+    session: MediaSession,
+    controllerInfo: MediaSession.ControllerInfo,
+    intent: Intent,
+  ): Boolean {
+    if (!isHeld()) return false
+    val key = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_KEY_EVENT, KeyEvent::class.java) ?: return false
+    return key.keyCode in HELD_KEYS
   }
 
   /**
@@ -80,9 +146,38 @@ class DeepSoundSessionCallback(private val ownPackage: String) : MediaSession.Ca
   ): ListenableFuture<MutableList<MediaItem>> =
     Futures.immediateFuture(mediaItems.map { it.withPlayableUri() }.toMutableList())
 
+  /**
+   * A play with nothing loaded: Media3 asks what to resume.
+   *
+   * The queue lives in [SoundPlayer] for the process's lifetime and is never
+   * persisted, so a play that arrives here — in practice, a headset or the
+   * play button of a notification that outlived its process — has nothing to
+   * resume. This fails quietly (Media3's default `UnsupportedOperationException`
+   * logs as if the app forgot something) and has the service stop. The
+   * foreground start such a play owes is paid before it gets here, in
+   * `DeepSoundService.onStartCommand`.
+   */
+  override fun onPlaybackResumption(
+    mediaSession: MediaSession,
+    controller: MediaSession.ControllerInfo,
+    isForPlayback: Boolean,
+  ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+    if (isForPlayback) onNothingToResume()
+    return Futures.immediateFailedFuture(IllegalStateException("No DEEP Sound queue to resume."))
+  }
+
   private fun MediaItem.withPlayableUri(): MediaItem {
     val uri = localConfiguration?.uri ?: requestMetadata.mediaUri ?: silence
     return buildUpon().setUri(uri).build()
+  }
+
+  private companion object {
+    /** The keys that would start a paused player. */
+    val HELD_KEYS = setOf(
+      KeyEvent.KEYCODE_MEDIA_PLAY,
+      KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+      KeyEvent.KEYCODE_HEADSETHOOK,
+    )
   }
 
   /** Resolved by the player's `DefaultDataSource`, as the hero video's loop is. */

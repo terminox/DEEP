@@ -24,6 +24,10 @@ data class Plant(
   /** The growth ladder in evolution order; thresholds strictly increasing
    * from 0. Validated server-side; the derivation tolerates anything. */
   val stages: List<PlantStage>,
+  /** A DEEP Premium plant this member may not select — shown in the picker,
+   * never chosen. The server's answer (membership, or progress already grown
+   * on it); a server that predates the lock sends none, which reads as free. */
+  val isLocked: Boolean = false,
 ) {
   companion object {
     /** The palette a plant without one (or with an unknown one) reads as. */
@@ -72,7 +76,8 @@ data class Plant(
     )
 
     /** The mock catalog — the four seeded slugs minus premium, matching what
-     * `GET /garden/plants` serves in seed data. */
+     * `GET /garden/plants` served in seed data before premium plants were
+     * listed (locked) for everyone. */
     val fixtures: List<Plant> = listOf(oakFixture, sakuraFixture, lotusFixture)
   }
 }

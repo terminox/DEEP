@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -96,6 +97,12 @@ private sealed interface LyricsLoad {
  * sheet, the lyrics start over for the new track rather than showing the old
  * one's.
  *
+ * iOS offers `.presentationDetents([.medium, .large])`: it opens at half
+ * height and drags up to full. Material3's partially-expanded state is that
+ * half, but it only applies to content taller than it — so the body fills the
+ * sheet's full height (scrolling within it), and the sheet opens half-way up
+ * and expands on a drag, a short lyric included.
+ *
  * @param track the track whose lyrics to show.
  * @param library where the lyrics come from.
  * @param onDismiss the sheet was swiped or tapped away.
@@ -109,7 +116,7 @@ fun LyricsSheet(
 ) {
   ModalBottomSheet(
     onDismissRequest = onDismiss,
-    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
     shape = RoundedCornerShape(topStart = Dp.card, topEnd = Dp.card),
     containerColor = Color.moonCream,
     contentColor = Color.deepPlum,
@@ -146,6 +153,8 @@ private fun LyricsContent(track: SoundTrack, library: SoundLibrary) {
     load = load,
     selected = selected,
     onSelect = { selected = it },
+    // The sheet's full height, so it has a large detent to rise to.
+    modifier = Modifier.fillMaxHeight(),
   )
 }
 
@@ -155,9 +164,10 @@ private fun LyricsBody(
   load: LyricsLoad,
   selected: String?,
   onSelect: (String) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   Column(
-    Modifier
+    modifier
       .fillMaxWidth()
       .verticalScroll(rememberScrollState())
       .navigationBarsPadding()

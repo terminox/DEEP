@@ -3,6 +3,7 @@ package io.appbeyond.freelance.deep.networking
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenSnapshot
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
 import io.appbeyond.freelance.deep.feature.rewards.model.WalletSummary
+import io.appbeyond.freelance.deep.feature.rewards.store.PlantLockedException
 import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
 import java.util.UUID
 
@@ -23,8 +24,14 @@ class ApiRewardsRemote(private val service: RewardsService) : RewardsRemote {
 
   override suspend fun plants(): List<Plant> = apiCall { service.plants() }.toDomain()
 
+  /** A 403 `premium_locked` becomes [PlantLockedException], so `GardenStore`
+   * can tell a DEEP Premium refusal from a lost connection. */
   override suspend fun selectPlant(id: String): GardenSnapshot =
-    apiCall { service.selectPlant(SelectPlantRequest(plantId = id)) }.toDomain()
+    try {
+      apiCall { service.selectPlant(SelectPlantRequest(plantId = id)) }.toDomain()
+    } catch (refused: DeepApiException.Http) {
+      if (refused.code == PREMIUM_LOCKED) throw PlantLockedException() else throw refused
+    }
 
   override suspend fun wallet(): WalletSummary = apiCall { service.wallet() }.wallet.toDomain()
 
@@ -35,3 +42,6 @@ class ApiRewardsRemote(private val service: RewardsService) : RewardsRemote {
       )
     }.wallet.toDomain()
 }
+
+/** deep-api's `error.code` for DEEP Premium content this caller may not use. */
+private const val PREMIUM_LOCKED = "premium_locked"

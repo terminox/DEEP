@@ -7,6 +7,21 @@ import java.time.ZoneId
 import kotlin.math.max
 
 /**
+ * The practice rhythm across today's boundary: the run of consecutive days
+ * before today, and as it stands now. `after > before` exactly when today is
+ * the day that extended it — the ending names that a return.
+ *
+ * Ported from `ContinuityTransition` in PracticeMath.swift.
+ *
+ * @property before consecutive practice days ending yesterday.
+ * @property after consecutive practice days ending today — or, while today has
+ *   no practice yet, the run still alive from yesterday (the same as [before]).
+ */
+data class ContinuityTransition(val before: Int, val after: Int) {
+  val returnedToday: Boolean get() = after > before
+}
+
+/**
  * Pure aggregate math over the practice journal. The server keeps a dumb log;
  * everything the garden shows — today's minutes, streaks — is derived here,
  * in the user's own calendar, so day boundaries follow the device timezone.
@@ -58,9 +73,10 @@ object PracticeMath {
     completions: List<PracticeCompletion>,
     zone: ZoneId,
     clock: Clock,
+    extraDays: Set<LocalDate> = emptySet(),
   ): Int {
-    val days = practiceDays(completions, zone)
-    val today = LocalDate.ofInstant(clock.instant(), zone)
+    val days = practiceDays(completions, zone) + extraDays
+    val today = clock.instant().atZone(zone).toLocalDate()
     var cursor = if (days.contains(today)) today else today.minusDays(1)
 
     var streak = 0
@@ -78,8 +94,9 @@ object PracticeMath {
   fun longestStreakDays(
     completions: List<PracticeCompletion>,
     zone: ZoneId,
+    extraDays: Set<LocalDate> = emptySet(),
   ): Int {
-    val days = practiceDays(completions, zone).sorted()
+    val days = (practiceDays(completions, zone) + extraDays).sorted()
     var longest = 0
     var run = 0
     var previous: LocalDate? = null
@@ -91,10 +108,43 @@ object PracticeMath {
     return longest
   }
 
+  /**
+   * The run before today and the run now — see [ContinuityTransition].
+   *
+   * @param extraDays days kept by something other than a session — an
+   *   attended Global Pause.
+   */
+  fun continuityTransition(
+    completions: List<PracticeCompletion>,
+    zone: ZoneId,
+    clock: Clock,
+    extraDays: Set<LocalDate> = emptySet(),
+  ): ContinuityTransition {
+    val days = practiceDays(completions, zone) + extraDays
+    val today = clock.instant().atZone(zone).toLocalDate()
+    var cursor = today.minusDays(1)
+    var before = 0
+    while (days.contains(cursor)) {
+      before++
+      cursor = cursor.minusDays(1)
+    }
+    return ContinuityTransition(before = before, after = if (days.contains(today)) before + 1 else before)
+  }
+
+  /**
+   * Whether a Global Pause the server counted was sat on today's local day —
+   * iOS's `hasActivity(.pause, in:calendar:now:)`. [pauseDays] are ISO
+   * (Gregorian) keys stamped as each claim's answer landed, so a sit whose
+   * answer lands past midnight belongs to the new day, and a Thai device's
+   * Buddhist calendar never shifts them.
+   */
+  fun hasPauseDay(pauseDays: Set<LocalDate>, zone: ZoneId, clock: Clock): Boolean =
+    clock.instant().atZone(zone).toLocalDate() in pauseDays
+
   /** Distinct local-midnight days with at least one completion. */
   private fun practiceDays(completions: List<PracticeCompletion>, zone: ZoneId): Set<LocalDate> =
-    completions.map { LocalDate.ofInstant(it.completedAt, zone) }.toSet()
+    completions.map { it.completedAt.atZone(zone).toLocalDate() }.toSet()
 
   private fun sameDay(a: Instant, b: Instant, zone: ZoneId): Boolean =
-    LocalDate.ofInstant(a, zone) == LocalDate.ofInstant(b, zone)
+    a.atZone(zone).toLocalDate() == b.atZone(zone).toLocalDate()
 }

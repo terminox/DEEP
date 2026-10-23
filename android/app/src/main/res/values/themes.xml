@@ -11,6 +11,7 @@
   -->
   <style name="Theme.Deep.Starting" parent="Theme.SplashScreen">
     <item name="windowSplashScreenBackground">@color/moon_cream</item>
+    <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
     <item name="postSplashScreenTheme">@style/Theme.Deep</item>
   </style>
 

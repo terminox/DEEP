@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 /*
  * A plain Kotlin/JVM module with no Android dependency at all.
@@ -17,6 +18,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  * minSdk is 26, so java.time is available natively on device and no core-library
  * desugaring is needed for anything written here to behave identically in both
  * places.
+ *
+ * That holds for Java 8's API only, so the module compiles against Java 8's
+ * class library (`-Xjdk-release`), not the JDK 17 it runs on. Built against 17,
+ * it could call later additions Android 8 doesn't have: `LocalDate.ofInstant`
+ * is Java 9 but API 34 on Android, and it crashed every launch below Android 14.
+ * Lint's NewApi check never sees this module, because it isn't an Android
+ * module. Compiling against Java 8 turns such a call into a compile error.
  */
 plugins {
   // Applied without a version on purpose. The root build file pins the Kotlin
@@ -39,6 +47,18 @@ kotlin {
   compilerOptions {
     jvmTarget.set(JvmTarget.JVM_17)
   }
+}
+
+// The shipping code only. The tests run on the JVM, never on a phone, and
+// JUnit 6 itself needs 17.
+tasks.named<KotlinCompile>("compileKotlin") {
+  compilerOptions {
+    jvmTarget.set(JvmTarget.JVM_1_8)
+    freeCompilerArgs.add("-Xjdk-release=1.8")
+  }
+}
+tasks.named<JavaCompile>("compileJava") {
+  options.release.set(8)
 }
 
 dependencies {

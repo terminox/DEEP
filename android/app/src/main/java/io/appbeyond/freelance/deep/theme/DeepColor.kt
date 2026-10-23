@@ -37,6 +37,17 @@ private object DeepPalette {
    * footage, where [LavenderMist] washes out.
    */
   val IrisDusk = Color(0xFF9A8CCE)
+
+  /**
+   * Global Pause's night: the top of the sky the globe hangs in, its horizon,
+   * and the veil that deepens it under the card's text. Night-only shades,
+   * darker than any daytime token — iOS's `NightSkyBackground` mixes its sky
+   * from dusk to night at 0.90 (zenith) and 0.60 (horizon), and the card
+   * chrome's scrim is its own raw night-plum.
+   */
+  val NightZenith = Color(0xFF0F0C20)
+  val NightHorizon = Color(0xFF1F1934)
+  val NightVeil = Color(0xFF0D0A1C)
 }
 
 // MARK: - Colours
@@ -59,3 +70,6 @@ val Color.Companion.deepPlum: Color get() = DeepPalette.DeepPlum
 val Color.Companion.driftGrey: Color get() = DeepPalette.DriftGrey
 val Color.Companion.duskRose: Color get() = DeepPalette.DuskRose
 val Color.Companion.irisDusk: Color get() = DeepPalette.IrisDusk
+val Color.Companion.nightZenith: Color get() = DeepPalette.NightZenith
+val Color.Companion.nightHorizon: Color get() = DeepPalette.NightHorizon
+val Color.Companion.nightVeil: Color get() = DeepPalette.NightVeil

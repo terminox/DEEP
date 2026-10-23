@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -45,6 +46,7 @@ import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.deepPlum
@@ -106,6 +108,8 @@ fun CollectionListScreen(
   modifier: Modifier = Modifier,
 ) {
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
+  val listState = rememberLazyListState()
+  ScrollToTopOnReselect(listState)
 
   Box(
     modifier
@@ -122,6 +126,7 @@ fun CollectionListScreen(
       ListTopBar(title = title, onBack = onBack)
 
       LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
           start = Dp.edge,

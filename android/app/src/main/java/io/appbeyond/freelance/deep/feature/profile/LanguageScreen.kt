@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
@@ -49,6 +50,9 @@ fun LanguageScreen(
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val scroll = rememberScrollState()
+  ScrollToTopOnReselect(scroll)
+
   Box(modifier.fillMaxSize()) {
     AtmosphereBackground()
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -56,7 +60,7 @@ fun LanguageScreen(
       Column(
         Modifier
           .fillMaxSize()
-          .verticalScroll(rememberScrollState())
+          .verticalScroll(scroll)
           .padding(horizontal = Dp.edge)
           .padding(top = Dp.rhythm, bottom = 40.dp + LocalMiniPlayerClearance.current),
         verticalArrangement = Arrangement.spacedBy(Dp.rhythm),

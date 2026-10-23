@@ -25,8 +25,8 @@ import io.appbeyond.freelance.deep.theme.moonCream
 /**
  * DEEP Sound's shared glyphs — the ones both the collection screens and the
  * player reach for (play, the open bookmark) plus the collection screens' own
- * (shuffle, the struck bookmark, the two chevrons). [PlayerIcons] carries the
- * rest of the transport. Drawn in the same hand as
+ * (shuffle, the struck bookmark, the two chevrons, the DEEP Premium lock).
+ * [PlayerIcons] carries the rest of the transport. Drawn in the same hand as
  * [io.appbeyond.freelance.deep.feature.appshell.DeepIcons]: paths on a 24dp
  * canvas, 1.5 stroke, round caps and joins, no colour of their own — `Icon`
  * tints them at the call site.
@@ -99,6 +99,44 @@ object SoundIcons {
     lineTo(9.5f, 18f)
   }
 
+  /**
+   * `lock.fill` — DEEP Premium content this listener is locked out of. Like
+   * [Play], a solid body (an outline padlock reads as an unlocked one at
+   * caption size), under the one stroked shackle.
+   */
+  val Lock: ImageVector = ImageVector.Builder(
+    name = "SoundLock",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+  ).addPath(
+    pathData = PathData {
+      moveTo(8f, 11f)
+      lineTo(8f, 8f)
+      curveTo(8f, 5.8f, 9.8f, 4f, 12f, 4f)
+      curveTo(14.2f, 4f, 16f, 5.8f, 16f, 8f)
+      lineTo(16f, 11f)
+    },
+    stroke = SolidColor(Color.Black),
+    strokeLineWidth = LOCK_SHACKLE_WIDTH,
+    strokeLineCap = StrokeCap.Round,
+  ).addPath(
+    pathData = PathData {
+      moveTo(7f, 10.5f)
+      lineTo(17f, 10.5f)
+      curveTo(18.1f, 10.5f, 19f, 11.4f, 19f, 12.5f)
+      lineTo(19f, 18f)
+      curveTo(19f, 19.1f, 18.1f, 20f, 17f, 20f)
+      lineTo(7f, 20f)
+      curveTo(5.9f, 20f, 5f, 19.1f, 5f, 18f)
+      lineTo(5f, 12.5f)
+      curveTo(5f, 11.4f, 5.9f, 10.5f, 7f, 10.5f)
+      close()
+    },
+    fill = SolidColor(Color.Black),
+  ).build()
+
   /** The bookmark ribbon, shared point for point with [PlayerIcons.BookmarkFilled]. */
   private fun PathBuilder.ribbon() {
     moveTo(8f, 4f)
@@ -137,6 +175,9 @@ object SoundIcons {
 /** DESIGN.md's line weight — "1.5pt stroke, soft terminals". */
 private const val STROKE_WIDTH = 1.5f
 
+/** The padlock's shackle, a touch heavier so it holds its own beside the solid body. */
+private const val LOCK_SHACKLE_WIDTH = 2f
+
 // MARK: - Preview
 
 @Preview(showBackground = true, name = "Sound icons")
@@ -155,6 +196,7 @@ private fun SoundIconsPreview() {
       SoundIcons.BookmarkSlash,
       SoundIcons.ChevronBack,
       SoundIcons.ChevronForward,
+      SoundIcons.Lock,
     ).forEach { icon ->
       Icon(icon, contentDescription = null, tint = Color.deepPlum, modifier = Modifier.size(28.dp))
     }

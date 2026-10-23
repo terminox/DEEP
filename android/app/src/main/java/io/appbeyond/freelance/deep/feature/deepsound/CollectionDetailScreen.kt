@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -62,6 +63,7 @@ import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.card
@@ -103,6 +105,9 @@ private val ROW_PADDING_VERTICAL = 14.dp
 /** The track number's column — iOS's `.frame(width: 24)`. */
 private val NUMBER_WIDTH = 24.dp
 
+/** The DEEP Premium lock — iOS's `lock.fill` at `.caption` size. */
+private val LOCK_GLYPH_SIZE = 12.dp
+
 /**
  * The saved/remove menu — Android's `DropdownMenu` has no iOS counterpart to cite;
  * `.contextMenu` there is the system's own chrome, with no corner radius of its own.
@@ -125,10 +130,12 @@ private const val TABULAR_FIGURES = "tnum"
  * bar background, as iOS hides the toolbar background. Predictive back is the
  * shell's `BackHandler`; [onBack] is only the chevron.
  *
- * **No premium lock — a deliberate divergence.** iOS gates premium tracks
- * behind a "A premium sound" alert until the member subscribes. Android plays
- * everything for now: there is no subscription store on this side yet, and a
- * lock with no way through it would only be a dead end.
+ * **DEEP Premium locks.** A track the server marks locked carries iOS's
+ * `lock.fill` beside its length and never plays: Play, Shuffle and a tapped
+ * row all queue only the unlocked tracks (`SoundQueue.playable`, inside the
+ * player), so a run never carries on into a locked sound. Tapping a locked row
+ * does nothing more — iOS answers it with a "A premium sound" note that points
+ * at a membership Android has no way to sell, so here the lock says it all.
  *
  * @param collection the collection to show; its tracks play as one queue.
  * @param player the shared player — the same one the shell's mini player reads.
@@ -152,6 +159,8 @@ fun CollectionDetailScreen(
     collection.tracks.filter { playlistStore.isSaved(it.id) }.map { it.id }.toSet()
   }
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
+  val listState = rememberLazyListState()
+  ScrollToTopOnReselect(listState)
 
   Box(
     modifier
@@ -168,6 +177,7 @@ fun CollectionDetailScreen(
       DetailTopBar(title = collection.title, onBack = onBack)
 
       LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = CONTENT_TOP_PADDING, bottom = bottomInset),
       ) {
@@ -189,10 +199,12 @@ fun CollectionDetailScreen(
             SoundActionButton(
               title = stringResource(R.string.deepsound_shuffle),
               icon = SoundIcons.Shuffle,
-              // A random place to begin; the queue itself stays in order, as on iOS.
+              // A random place to begin among the tracks that can play; the
+              // queue itself stays in order, as on iOS.
               onClick = {
-                if (collection.tracks.isNotEmpty()) {
-                  player.play(collection, startIndex = Random.nextInt(collection.trackCount))
+                val unlocked = collection.tracks.indices.filterNot { collection.tracks[it].isLocked }
+                if (unlocked.isNotEmpty()) {
+                  player.play(collection, startIndex = unlocked[Random.nextInt(unlocked.size)])
                 }
               },
               modifier = Modifier.weight(1f),
@@ -207,8 +219,9 @@ fun CollectionDetailScreen(
             number = index + 1,
             track = track,
             isCurrent = playback.isCurrent(track, collection),
+            isLocked = track.isLocked,
             isSaved = track.id in savedIds,
-            onPlay = { player.play(collection.queue(), index) },
+            onPlay = { if (!track.isLocked) player.play(collection.queue(), index) },
             onToggleSaved = { scope.launch { playlistStore.toggle(track, collection) } },
             modifier = Modifier.padding(horizontal = Dp.edge),
           )
@@ -321,7 +334,9 @@ private fun ArtworkHeader(collection: SoundCollection) {
 /**
  * One track: its number, title and length. Tapping plays the collection from
  * here; a long press opens the one place a collection offers to save a sound,
- * so the row itself stays as quiet as it was.
+ * so the row itself stays as quiet as it was. A locked track wears a small grey
+ * lock before its length — iOS's caption-size `lock.fill` — and can still be
+ * saved (the catalogue is visible to everyone; only its audio is withheld).
  *
  * The current track reads in lavender at medium weight. iOS uses semibold, but
  * the bundled Inter is declared at 400 and 500 only — a 600 request would be
@@ -340,6 +355,7 @@ private fun TrackRow(
   onPlay: () -> Unit,
   onToggleSaved: () -> Unit,
   modifier: Modifier = Modifier,
+  isLocked: Boolean = false,
 ) {
   var menuOpen by remember { mutableStateOf(false) }
   val haptics = LocalHapticFeedback.current
@@ -379,6 +395,14 @@ private fun TrackRow(
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.weight(1f),
       )
+      if (isLocked) {
+        Icon(
+          SoundIcons.Lock,
+          contentDescription = stringResource(R.string.deepsound_locked),
+          tint = Color.driftGrey,
+          modifier = Modifier.size(LOCK_GLYPH_SIZE),
+        )
+      }
       Text(
         text = SoundTime.clock(track.durationSeconds.toDouble()),
         style = DeepType.caption.copy(fontFeatureSettings = TABULAR_FIGURES),
@@ -426,6 +450,22 @@ private fun CollectionDetailPreview() {
   DeepTheme {
     CollectionDetailScreen(
       collection = SoundFixtures.oceanDepths,
+      player = remember { MockSoundPlayer.idle() },
+      playlistStore = remember { MockPlaylistStore.empty },
+      onBack = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Collection detail — DEEP Premium locked")
+@Composable
+private fun CollectionDetailLockedPreview() {
+  DeepTheme {
+    val collection = SoundFixtures.oceanDepths
+    CollectionDetailScreen(
+      collection = collection.copy(
+        tracks = collection.tracks.mapIndexed { index, track -> track.copy(isLocked = index > 0) },
+      ),
       player = remember { MockSoundPlayer.idle() },
       playlistStore = remember { MockPlaylistStore.empty },
       onBack = {},
