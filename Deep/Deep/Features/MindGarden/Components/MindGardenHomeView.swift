@@ -27,6 +27,10 @@ struct MindGardenHomeView: View {
   /// practice snapshot above stays a plain value; growth is the one live thing.
   @Environment(\.gardenStore) private var gardenStore
 
+  #if DEBUG
+  @Environment(\.openGrowthPassport) private var openGrowthPassport
+  #endif
+
   /// The oak owns half the screen on this screen only, so the garden opens on
   /// the tree. Measured rather than hardcoded — half of 852pt is not half of
   /// 956pt — and the hero bleeds under the status bar, so the fraction is of
@@ -90,6 +94,21 @@ struct MindGardenHomeView: View {
             openDeepSession(DeepSessionLibrary.balancingBreath)
           }
           .padding(.horizontal, .edge)
+
+          #if DEBUG
+          // PROTOTYPE — door into the Growth Passport variants. Throwaway.
+          Button(action: openGrowthPassport) {
+            Label("Growth Passport (prototype)", systemImage: "book.closed.fill")
+              .font(DeepType.body.weight(.medium))
+              .foregroundStyle(.deepPlum)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 16)
+              .frostedCard(cornerRadius: .chip)
+          }
+          .buttonStyle(.softPress)
+          .padding(.horizontal, .edge)
+          .accessibilityIdentifier("prototype.openPassport")
+          #endif
 
           Color.clear.frame(height: bottomInset)
         }

@@ -16,6 +16,9 @@ struct MindGardenCoordinatorView: View {
   /// The plant picker is raised, not pushed — a choice made beside the garden
   /// rather than a place you travel to.
   @State private var isPickingPlant = false
+  #if DEBUG
+  @State private var isShowingPassportPrototype = false
+  #endif
 
   var body: some View {
     NavigationStack(path: $path) {
@@ -36,6 +39,11 @@ struct MindGardenCoordinatorView: View {
     .sheet(isPresented: $isPickingPlant) { PlantPickerSheet() }
     .environment(\.openDeepSession, { session in path.append(session) })
     .environment(\.openPlantPicker, { isPickingPlant = true })
+    #if DEBUG
+    // PROTOTYPE — Growth Passport variants, throwaway.
+    .fullScreenCover(isPresented: $isShowingPassportPrototype) { GrowthPassportPrototypeView() }
+    .environment(\.openGrowthPassport, { isShowingPassportPrototype = true })
+    #endif
     .preferredColorScheme(.light)
   }
 }
@@ -46,6 +54,11 @@ extension EnvironmentValues {
   /// "Change" pill calls it from a plain `Button`, so all routing stays in the
   /// coordinator. The no-op default keeps previews hermetic.
   @Entry var openPlantPicker: () -> Void = {}
+
+  #if DEBUG
+  /// PROTOTYPE — opens the Growth Passport variants. Throwaway.
+  @Entry var openGrowthPassport: () -> Void = {}
+  #endif
 }
 
 #Preview("Mind Garden") {
