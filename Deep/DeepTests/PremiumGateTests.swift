@@ -7,12 +7,22 @@ import Foundation
 /// of it.
 @MainActor
 struct PremiumGateTests {
+  /// A track with streamable audio unless `withheld`, the way the server
+  /// sends one it doesn't hold back.
   private static func track(
     _ id: String,
     premium: Bool = false,
-    locked: Bool? = nil
+    locked: Bool? = nil,
+    withheld: Bool = false
   ) -> SoundTrack {
-    SoundTrack(id: id, title: id, duration: 60, isPremium: premium, isLocked: locked)
+    SoundTrack(
+      id: id,
+      title: id,
+      duration: 60,
+      audioURL: withheld ? nil : URL(string: "https://example.test/\(id).mp3"),
+      isPremium: premium,
+      isLocked: locked
+    )
   }
 
   private static func collection(
@@ -122,6 +132,31 @@ struct PremiumGateTests {
       SoundQueueEntry(track: Self.track("b"), collection: Self.collection(premium: true, tracks: [])),
     ]
     #expect(PremiumGate.playable(entries, hasPremium: false).map(\.track.id) == ["a"])
+  }
+
+  // MARK: - Withheld audio
+
+  @Test("A premium track the server sent without audio never starts, even for a member")
+  func withheldNeverStarts() {
+    let withheld = Self.track("a", premium: true, withheld: true)
+    let home = Self.collection(tracks: [withheld])
+    #expect(PremiumGate.isWithheld(withheld, in: home))
+    #expect(!PremiumGate.canStart(withheld, in: home, hasPremium: true))
+    #expect(PremiumGate.playable(home, hasPremium: true).isEmpty)
+  }
+
+  @Test("A free track without audio is fixture content, not a withholding")
+  func freeWithoutAudioIsNotWithheld() {
+    let fixture = Self.track("a", withheld: true)
+    let home = Self.collection(tracks: [fixture])
+    #expect(!PremiumGate.isWithheld(fixture, in: home))
+    #expect(PremiumGate.canStart(fixture, in: home, hasPremium: false))
+  }
+
+  @Test("A track withheld inside a premium collection is withheld by it")
+  func withheldByCollection() {
+    let free = Self.track("a", withheld: true)
+    #expect(PremiumGate.isWithheld(free, in: Self.collection(premium: true, tracks: [free])))
   }
 
   // MARK: - Cache compatibility

@@ -20,8 +20,7 @@ struct PlaylistView: View {
   @Environment(\.premiumAccess) private var premiumAccess
   @Environment(\.openSettings) private var openSettings
   @Environment(\.openDeepSound) private var openDeepSound
-
-  @State private var showPremiumGate = false
+  @Environment(\.openPaywall) private var openPaywall
 
   private var entries: [PlaylistEntry] { store.entries }
 
@@ -58,11 +57,6 @@ struct PlaylistView: View {
     // visit.
     .onChange(of: premiumAccess.contentEpoch) {
       Task { await store.refresh() }
-    }
-    .alert("A premium sound", isPresented: $showPremiumGate) {
-      Button("Maybe later", role: .cancel) {}
-    } message: {
-      Text("This one is part of DEEP Premium. It'll be here whenever you're ready.")
     }
   }
 
@@ -193,12 +187,13 @@ struct PlaylistView: View {
   /// Starts the whole playlist from one sound, so what follows is the rest of
   /// what this listener saved — each entry carrying its own collection, which
   /// is what lets the artwork and the origin line change track by track.
-  /// Locked sounds get the same gentle note a collection gives them.
+  /// A locked sound — or one whose audio the server withheld — opens the
+  /// invitation instead, the same door a collection opens.
   private func attemptPlay(at index: Int) {
     guard entries.indices.contains(index) else { return }
     let entry = entries[index]
-    if isLocked(entry) {
-      showPremiumGate = true
+    if !PremiumGate.canStart(entry.track, in: entry.collection, hasPremium: premiumAccess.hasPremium) {
+      openPaywall(.lockedSound)
     } else {
       let queue = playable
       // Matched on the track and its origin: a queue entry carries no
@@ -216,7 +211,7 @@ struct PlaylistView: View {
     guard !entries.isEmpty else { return }
     let queue = playable
     if queue.isEmpty {
-      showPremiumGate = true
+      openPaywall(.lockedSound)
     } else {
       player.play(queue, at: shuffled ? nil : 0, shuffled: shuffled)
     }
@@ -228,6 +223,13 @@ struct PlaylistView: View {
   PlaylistView(bottomInset: .rhythm)
     .environment(\.playlistStore, .sample)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
+}
+
+#Preview("Playlist — a premium sound, locked") {
+  PlaylistView(bottomInset: .rhythm)
+    .environment(\.playlistStore, .withPremium)
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
+    .environment(\.premiumAccess, .free)
 }
 
 #Preview("Playlist — nothing saved") {

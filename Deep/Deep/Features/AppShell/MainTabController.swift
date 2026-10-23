@@ -168,6 +168,7 @@ final class MainTabController: UITabBarController {
       premiumAccess: premiumAccess,
       legalLinks: legalLinks,
       playlistStore: playlistStore,
+      languageStore: languageStore,
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       gardenStore: gardenStore,

@@ -135,6 +135,22 @@
         }
       }
     },
+    "%lld tracks, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld tracks, %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld เพลง ความยาว %2$@"
+          }
+        }
+      }
+    },
     "%lld/%lld hearts today" : {
       "localizations" : {
         "en" : {
@@ -236,6 +252,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "การเติบโตกำลังมาถึง"
+          }
+        }
+      }
+    },
+    "Guided" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "มีเสียงนำ"
+          }
+        }
+      }
+    },
+    "Part of DEEP Premium" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เป็นส่วนหนึ่งของ DEEP Premium"
+          }
+        }
+      }
+    },
+    "Soundscape" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เสียงบรรยากาศ"
           }
         }
       }
@@ -520,22 +566,6 @@
         }
       }
     },
-    "%lld tracks · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld tracks · %2$@"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld เพลง · %2$@"
-          }
-        }
-      }
-    },
     "%lld%% funded" : {
       "localizations" : {
         "th" : {
@@ -658,16 +688,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ช่วงหยุดพักรออยู่"
-          }
-        }
-      }
-    },
-    "A premium sound" : {
-      "localizations" : {
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เสียงสำหรับสมาชิกพรีเมียม"
           }
         }
       }
@@ -2043,16 +2063,6 @@
         }
       }
     },
-    "Maybe later" : {
-      "localizations" : {
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ไว้ทีหลัง"
-          }
-        }
-      }
-    },
     "Meditation %lld percent through" : {
       "localizations" : {
         "th" : {
@@ -3310,16 +3320,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "กองรวมของชุมชน"
-          }
-        }
-      }
-    },
-    "This one is part of DEEP Premium. It'll be here whenever you're ready." : {
-      "localizations" : {
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เสียงนี้เป็นส่วนหนึ่งของ DEEP Premium มันจะอยู่ตรงนี้เมื่อคุณพร้อม"
           }
         }
       }

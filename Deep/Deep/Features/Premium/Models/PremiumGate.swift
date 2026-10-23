@@ -41,10 +41,28 @@ enum PremiumGate {
     return isLocked(collection, hasPremium: hasPremium) || track.isPremium
   }
 
+  /// Whether the server withheld this premium track's audio. A track like
+  /// that must never start: the player would load it and play silence. It
+  /// happens to a member whose purchase the server hasn't heard about yet —
+  /// unlocked on the store's word, still withheld by the server — and to
+  /// content cached across a lapse. A free track without audio is fixture
+  /// content, not a withholding, and is left to the player.
+  static func isWithheld(_ track: SoundTrack, in collection: SoundCollection) -> Bool {
+    guard track.audioURL == nil else { return false }
+    return track.isLocked == true || track.isPremium
+      || collection.isLocked == true || collection.isPremium
+  }
+
+  /// Whether tapping this track may start it. Anything else opens the paywall.
+  static func canStart(_ track: SoundTrack, in collection: SoundCollection, hasPremium: Bool) -> Bool {
+    !isLocked(track, in: collection, hasPremium: hasPremium) && !isWithheld(track, in: collection)
+  }
+
   /// The entries a queue may hold, in order: Play, Shuffle and a tapped row
-  /// all queue these, so a run never carries on into a locked sound.
+  /// all queue these, so a run never carries on into a locked sound — or into
+  /// one the server withheld.
   static func playable(_ entries: [SoundQueueEntry], hasPremium: Bool) -> [SoundQueueEntry] {
-    entries.filter { !isLocked($0.track, in: $0.collection, hasPremium: hasPremium) }
+    entries.filter { canStart($0.track, in: $0.collection, hasPremium: hasPremium) }
   }
 
   /// A collection's tracks as playable queue entries.

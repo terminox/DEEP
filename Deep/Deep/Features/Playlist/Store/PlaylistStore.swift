@@ -226,6 +226,14 @@ extension PlaylistStore {
     return store
   }
 
+  /// Sounds saved, one of them DEEP Premium — the locked-row state.
+  static var withPremium: PlaylistStore {
+    let store = PlaylistStore()
+    store.adopt([PlaylistFixtures.withPremium], persist: false)
+    store.hasLoaded = true
+    return store
+  }
+
   /// Nothing saved yet — the invitation state.
   static var empty: PlaylistStore {
     let store = PlaylistStore()

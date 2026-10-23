@@ -7,6 +7,7 @@ struct CollectionDetailView: View {
   @Environment(\.premiumAccess) private var premiumAccess
   @Environment(\.playlistStore) private var playlistStore
   @Environment(\.soundContentRepository) private var repository
+  @Environment(\.openPaywall) private var openPaywall
   /// The collection as it arrived from the screen that opened it.
   let collection: SoundCollection
   var bottomInset: CGFloat
@@ -18,8 +19,6 @@ struct CollectionDetailView: View {
 
   /// What this screen shows and plays: the fresh copy once there is one.
   private var current: SoundCollection { latest ?? collection }
-
-  @State private var showPremiumGate = false
 
   var body: some View {
     ScrollView(showsIndicators: false) {
@@ -45,11 +44,6 @@ struct CollectionDetailView: View {
         }
       }
     }
-    .alert("A premium sound", isPresented: $showPremiumGate) {
-      Button("Maybe later", role: .cancel) {}
-    } message: {
-      Text("This one is part of DEEP Premium. It'll be here whenever you're ready.")
-    }
   }
 
   private func isLocked(_ track: SoundTrack) -> Bool {
@@ -62,12 +56,13 @@ struct CollectionDetailView: View {
     PremiumGate.playable(current, hasPremium: premiumAccess.hasPremium)
   }
 
-  /// Play through the premium gate: locked content shows a gentle note instead.
+  /// Play through the premium gate: a locked sound — or one whose audio the
+  /// server withheld — opens the invitation instead of starting.
   private func attemptPlay(at index: Int) {
     guard current.tracks.indices.contains(index) else { return }
     let track = current.tracks[index]
-    if isLocked(track) {
-      showPremiumGate = true
+    if !PremiumGate.canStart(track, in: current, hasPremium: premiumAccess.hasPremium) {
+      openPaywall(.lockedSound)
     } else {
       let queue = playable
       player.play(queue, at: queue.firstIndex { $0.track.id == track.id } ?? 0)
@@ -80,7 +75,7 @@ struct CollectionDetailView: View {
     guard !current.tracks.isEmpty else { return }
     let queue = playable
     if queue.isEmpty {
-      showPremiumGate = true
+      openPaywall(.lockedSound)
     } else {
       player.play(queue, at: shuffled ? nil : 0, shuffled: shuffled)
     }
@@ -101,7 +96,7 @@ struct CollectionDetailView: View {
           .font(DeepType.body)
           .foregroundStyle(.driftGrey)
           .multilineTextAlignment(.center)
-        Text("\(current.trackCount) tracks · \(current.totalDuration.minutesString)")
+        Text("\(current.trackCount) tracks, \(current.totalDuration.minutesString)")
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
           .padding(.top, 2)
@@ -172,9 +167,8 @@ private struct TrackRow: View {
           .lineLimit(1)
         Spacer()
         if isLocked {
-          Image(systemName: "lock.fill")
-            .font(.caption)
-            .foregroundStyle(.driftGrey)
+          PremiumLockBadge(diameter: 22)
+            .transition(.opacity)
         }
         Text(track.duration.clockString)
           .font(DeepType.caption)
@@ -183,6 +177,7 @@ private struct TrackRow: View {
       }
       .padding(.vertical, 14)
       .contentShape(Rectangle())
+      .animation(.settle, value: isLocked)
     }
     .buttonStyle(.softPress)
     .contextMenu {
@@ -204,6 +199,29 @@ private struct TrackRow: View {
       bottomInset: .rhythm
     )
     .environment(\.soundPlayer, MockSoundPlayer.idle)
+    .environment(\.premiumAccess, .free)
+  }
+}
+
+#Preview("Collection Detail — locked") {
+  NavigationStack {
+    CollectionDetailView(
+      collection: SoundLibrary.premiumSample,
+      bottomInset: .rhythm
+    )
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
+    .environment(\.premiumAccess, .free)
+  }
+}
+
+#Preview("Collection Detail — member") {
+  NavigationStack {
+    CollectionDetailView(
+      collection: SoundLibrary.premiumSample,
+      bottomInset: .rhythm
+    )
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
+    .environment(\.premiumAccess, .member)
   }
 }
 #endif
