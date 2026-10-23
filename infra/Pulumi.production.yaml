@@ -19,3 +19,5 @@ config:
   deep:adminBootstrapPassword:
     secure: AAABAGAqtCgftYF7kENBUft6DwORBTY3Uj7IeixGqKPrshfQ6CHSFKILwCg1dKA03Kid/aqYPVg=
   deep:image: asia-southeast1-docker.pkg.dev/graphite-girder-509905-i2/backend/api:ffc6fbb
+  deep:revenuecatWebhookAuth:
+    secure: AAABACpD0ucFGlxFnQiFJRjPMUwaXabBEUC61pizCyXfwVX0Arel3pm9Rpf+w3m53BcxqM78XtArTqjNT7rCd0trPmvosvHK7XT0Ewq2yGMULQ==
