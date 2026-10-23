@@ -25,18 +25,17 @@ CURRENT_PROJECT_VERSION = 1
 // `#include "Base.xcconfig"`, the way Prod overrides API_BASE_URL.
 // `$()` keeps xcconfig from reading `//` as a comment — without it the value
 // silently becomes "https:", which still parses as a URL and fails at tap time.
-// TODO: swap for the real published URLs before submission.
-TERMS_URL = https:/$()/deep.app/terms
-PRIVACY_URL = https:/$()/deep.app/privacy
+TERMS_URL = https:/$()/deeppeace.space/terms
+PRIVACY_URL = https:/$()/deeppeace.space/privacy
 
 // ---- RevenueCat ----
-// The public SDK key. Empty here on purpose: an empty key degrades to "not
-// subscribed" and never crashes. RevenueCat issues one key per *store app*, and
-// the DEEP Premium project only has a Test Store app so far — whose `test_` key
-// RevenueCat deliberately crashes in release builds. So only Dev sets it; once an
-// App Store app exists in the project, its `appl_` key belongs here, for every
-// environment (sandbox vs production is told apart by receipt, not by key).
-REVENUECAT_API_KEY =
+// The public SDK key of the DEEP Premium project's App Store app — public by
+// design, safe to commit. One key serves every environment: sandbox and
+// production are told apart by the receipt, not the key. Dev overrides it with
+// the Test Store's `test_` key (after its `#include` of this file), so a
+// simulator can buy without App Store Connect; that key must never reach a
+// release environment, where RevenueCat deliberately crashes on it.
+REVENUECAT_API_KEY = appl_SwTTrOPvnymssLbodWntHicSCRs
 
 // ---- Platform / Swift ----
 SDKROOT = iphoneos
