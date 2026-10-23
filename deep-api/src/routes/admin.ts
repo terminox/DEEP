@@ -23,6 +23,7 @@ import { ApiError } from "../lib/errors.js";
 import { verifyPassword } from "../auth/password.js";
 import { createSession } from "../auth/sessions.js";
 import { requireRole } from "../auth/middleware.js";
+import { ADMIN_ACCESS } from "../lib/premiumContent.js";
 import { MEDIA_RULES, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
 import { readAudioDurationSeconds } from "../lib/audioDuration.js";
 import {
@@ -61,6 +62,9 @@ import {
 import { scheduleProblems, type PhaseTimes } from "../lib/drafts/validators.js";
 
 const adminOnly = { preHandler: requireRole("ADMIN") };
+
+// Every sound serializer below passes ADMIN_ACCESS: the panel must see (and
+// preview) every audio URL whatever the admin's own DEEP Premium standing.
 
 /** Who staged the change. requireRole has already put the claims on the request. */
 function actor(req: FastifyRequest): string {
@@ -211,12 +215,15 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       categories: tree.categories.map((c) =>
         withPending(
-          serializeCategory({
-            ...c.row,
-            _count: {
-              collections: tree.collections.filter((col) => col.row.categoryId === c.row.id).length,
+          serializeCategory(
+            {
+              ...c.row,
+              _count: {
+                collections: tree.collections.filter((col) => col.row.categoryId === c.row.id).length,
+              },
             },
-          }),
+            ADMIN_ACCESS,
+          ),
           c.pending,
         ),
       ),
@@ -226,14 +233,14 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post("/admin/categories", adminOnly, async (req) => {
     const body = categoryBody.parse(req.body);
     const staged = await stageCreate<SoundCategory>("SOUND_CATEGORY", body, actor(req));
-    return { category: withPending(serializeCategory(staged.row), staged.pending) };
+    return { category: withPending(serializeCategory(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.patch("/admin/categories/:id", adminOnly, async (req) => {
     const { id } = idParam.parse(req.params);
     const body = categoryBody.partial().parse(req.body);
     const staged = await stageUpdate<SoundCategory>("SOUND_CATEGORY", id, body, actor(req));
-    return { category: withPending(serializeCategory(staged.row), staged.pending) };
+    return { category: withPending(serializeCategory(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.delete("/admin/categories/:id", adminOnly, async (req) => {
@@ -261,10 +268,13 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       collections: collections.map((c) =>
         withPending(
-          serializeCollection({
-            ...c.row,
-            _count: { tracks: tree.tracks.filter((t) => t.row.collectionId === c.row.id).length },
-          }),
+          serializeCollection(
+            {
+              ...c.row,
+              _count: { tracks: tree.tracks.filter((t) => t.row.collectionId === c.row.id).length },
+            },
+            ADMIN_ACCESS,
+          ),
           c.pending,
         ),
       ),
@@ -292,8 +302,8 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       collection: withPending(
         {
-          ...serializeCollection({ ...collection.row, _count: { tracks: tracks.length } }),
-          tracks: tracks.map((t) => withPending(serializeTrack(t), t.pending)),
+          ...serializeCollection({ ...collection.row, _count: { tracks: tracks.length } }, ADMIN_ACCESS),
+          tracks: tracks.map((t) => withPending(serializeTrack(t, ADMIN_ACCESS, collection.row), t.pending)),
         },
         collection.pending,
       ),
@@ -303,14 +313,14 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post("/admin/collections", adminOnly, async (req) => {
     const body = collectionBody.parse(req.body);
     const staged = await stageCreate<SoundCollection>("SOUND_COLLECTION", body, actor(req));
-    return { collection: withPending(serializeCollection(staged.row), staged.pending) };
+    return { collection: withPending(serializeCollection(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.patch("/admin/collections/:id", adminOnly, async (req) => {
     const { id } = idParam.parse(req.params);
     const body = collectionBody.partial().parse(req.body);
     const staged = await stageUpdate<SoundCollection>("SOUND_COLLECTION", id, body, actor(req));
-    return { collection: withPending(serializeCollection(staged.row), staged.pending) };
+    return { collection: withPending(serializeCollection(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.delete("/admin/collections/:id", adminOnly, async (req) => {
@@ -329,14 +339,14 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post("/admin/tracks", adminOnly, async (req) => {
     const body = trackBody.parse(req.body);
     const staged = await stageCreate<SoundTrack>("SOUND_TRACK", body, actor(req));
-    return { track: withPending(serializeTrack(staged.row), staged.pending) };
+    return { track: withPending(serializeTrack(staged.row, ADMIN_ACCESS, null), staged.pending) };
   });
 
   app.patch("/admin/tracks/:id", adminOnly, async (req) => {
     const { id } = idParam.parse(req.params);
     const body = trackBody.partial().parse(req.body);
     const staged = await stageUpdate<SoundTrack>("SOUND_TRACK", id, body, actor(req));
-    return { track: withPending(serializeTrack(staged.row), staged.pending) };
+    return { track: withPending(serializeTrack(staged.row, ADMIN_ACCESS, null), staged.pending) };
   });
 
   app.delete("/admin/tracks/:id", adminOnly, async (req) => {
@@ -371,7 +381,7 @@ export async function adminRoutes(app: FastifyInstance) {
       { audioPath: relPath },
       actor(req),
     );
-    return { track: withPending(serializeTrack(staged.row), staged.pending) };
+    return { track: withPending(serializeTrack(staged.row, ADMIN_ACCESS, null), staged.pending) };
   });
 
   // ---- Lyrics ----

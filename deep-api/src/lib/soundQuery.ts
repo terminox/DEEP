@@ -34,6 +34,9 @@ export const VISIBLE_CATEGORY_TREE = {
  * the shelves, so everything that resolves a track by id - direct fetch, the
  * completion award, a saved playlist row - filters through this.
  */
+//
+// Visibility is not entitlement: a premium track is visible here and LOCKED by
+// lib/premiumContent.ts (isTrackLocked), which withholds only its audio URL.
 export const VISIBLE_TRACK = {
   isActive: true,
   collection: { isActive: true, category: { isActive: true } },
