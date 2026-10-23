@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword } from "../auth/password.js";
 import { createSession, rotateSession, revokeSession } from "../auth/sessions.js";
 import { requireAuth } from "../auth/middleware.js";
 import { serializeUser } from "../lib/serialize.js";
+import { requestEntitlement } from "../lib/entitlement.js";
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -41,7 +42,11 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     const tokens = await createSession(user.id, user.role, device(req));
-    return { user: serializeUser(user), ...tokens };
+    return {
+      user: serializeUser(user),
+      entitlement: await requestEntitlement(req, user.id),
+      ...tokens,
+    };
   });
 
   app.post("/auth/login", async (req) => {
@@ -53,7 +58,11 @@ export async function authRoutes(app: FastifyInstance) {
       throw ApiError.unauthorized("Incorrect email or password", "invalid_credentials");
     }
     const tokens = await createSession(user.id, user.role, device(req));
-    return { user: serializeUser(user), ...tokens };
+    return {
+      user: serializeUser(user),
+      entitlement: await requestEntitlement(req, user.id),
+      ...tokens,
+    };
   });
 
   app.post("/auth/refresh", async (req) => {
@@ -69,7 +78,9 @@ export async function authRoutes(app: FastifyInstance) {
   app.get("/me", { preHandler: requireAuth }, async (req) => {
     const user = await prisma.user.findUnique({ where: { id: req.auth!.sub } });
     if (!user) throw ApiError.notFound("User not found");
-    return { user: serializeUser(user) };
+    // DEEP Premium rides beside `user`, never inside it: serializeUser is also
+    // the admin user list's shape, which must not pay to load subscriptions.
+    return { user: serializeUser(user), entitlement: await requestEntitlement(req, user.id) };
   });
 
   app.delete("/me", { preHandler: requireAuth }, async (req) => {

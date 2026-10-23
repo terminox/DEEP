@@ -52,6 +52,9 @@ model User {
   pauseAttendances PauseAttendance[]
   playlists        Playlist[]
   contentDrafts    ContentDraft[]
+  // DEEP Premium standing, as RevenueCat last reported it. A relation only —
+  // never loaded by serializeUser / the admin user list.
+  subscription     Subscription?
 
   @@map("users")
 }
@@ -665,4 +668,74 @@ model ContentTranslation {
   // The read path loads one whole language at a time; this is the index for it.
   @@index([languageCode])
   @@map("content_translations")
+}
+
+// ---- DEEP Premium (RevenueCat) ---------------------------------------------
+
+// The standing RevenueCat last reported for one user's DEEP Premium entitlement.
+// One row per user, rewritten whole by every applied webhook event or refresh.
+// Whether it grants access *right now* is answered only by isPremiumNow()
+// (src/lib/entitlement.ts) — never by reading these columns directly.
+model Subscription {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  // The RevenueCat entitlement identifier this row describes ("deep_premium").
+  entitlementId          String
+  productId              String
+  // RevenueCat store: APP_STORE | PLAY_STORE | PROMOTIONAL | STRIPE | ...
+  store                  String
+  // SANDBOX | PRODUCTION — kept so sandbox grants can be revoked in one query
+  // at public launch.
+  environment            String
+  // NORMAL | TRIAL | INTRO | PROMOTIONAL | PREPAID
+  periodType             String
+  // Null = a non-expiring grant.
+  expiresAt              DateTime?
+  gracePeriodExpiresAt   DateTime?
+  willRenew              Boolean
+  billingIssueDetectedAt DateTime?
+  unsubscribedAt         DateTime?
+  // Set by a refund / revoking event; beats any future expiresAt.
+  revokedAt              DateTime?
+  // Compare-and-set key: the timestamp of the event (or refresh) that last
+  // wrote this row. An older event arriving late changes nothing.
+  lastEventAt            DateTime
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// What happened to a received RevenueCat webhook event. (A re-delivered event
+// never gets a second row, so "duplicate" is a response, not an outcome.)
+enum RevenueCatEventOutcome {
+  APPLIED
+  STALE
+  UNKNOWN_USER
+  SANDBOX_IGNORED
+  UNRECOGNISED
+  // A known type that does not concern the configured entitlement.
+  IRRELEVANT
+}
+
+// Append-only log of every RevenueCat webhook delivery, keyed on RevenueCat's
+// own event id — the idempotency key (a re-delivery collides here and is a
+// no-op) and the forensic trail reconciliation repairs from. userId is not a
+// foreign key on purpose: the trail outlives a deleted account, and an event
+// for a user we do not recognise is still recorded.
+model RevenueCatEvent {
+  id          String                 @id
+  type        String
+  environment String
+  appUserId   String
+  userId      String?
+  eventAt     DateTime
+  payload     Json
+  outcome     RevenueCatEventOutcome
+  receivedAt  DateTime               @default(now())
+
+  @@index([userId])
+  @@map("revenuecat_events")
 }

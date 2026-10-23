@@ -2,6 +2,9 @@ config:
   gcp:project: graphite-girder-509905-i2
   gcp:region: asia-southeast1
   deep:adminBootstrapEmail: admin@deep.app
+  # DEEP Premium: apply RevenueCat SANDBOX events while shipping through
+  # TestFlight. Set to "false" at public launch.
+  deep:revenuecatAcceptSandbox: "true"
   # One warm instance: a cold start (~10.7s) outlasts the iOS client's 10s request
   # timeout. CPU stays throttled between requests (cpuIdle), so it bills at the idle rate.
   deep:minInstances: 1
