@@ -19,6 +19,11 @@ import { mediaUrl } from "./media.js";
 import { translate } from "./translations.js";
 import { deriveStageIndex } from "./awardRules.js";
 import type { AwardOutcome, WalletSummary } from "./awards.js";
+import {
+  isCollectionLocked,
+  isTrackLocked,
+  type ContentAccess,
+} from "./premiumContent.js";
 
 export function serializeUser(u: User) {
   return {
@@ -30,16 +35,35 @@ export function serializeUser(u: User) {
   };
 }
 
+// ---- DEEP Sound ----
+//
+// Every content serializer takes a REQUIRED `access` (see lib/premiumContent):
+// whether this response is the unlocked view. Locked content keeps every field
+// the lock UI renders and loses only `audioUrl` (null). `isLocked` is the
+// effective answer, so the client never re-derives collection-to-track
+// inheritance; `isPremium` stays for the badge.
+
+/**
+ * `collection` is the track's parent, needed because a premium collection
+ * locks its free tracks. Pass null only where the parent is not at hand (an
+ * admin write); a locked view then fails closed.
+ */
 export function serializeTrack(
   t: SoundTrack & { lyrics?: { languageCode: string }[] },
+  access: ContentAccess,
+  collection: Pick<SoundCollection, "isPremium"> | null,
 ) {
+  const isLocked = isTrackLocked(t, collection, access);
   return {
     id: t.id,
     title: translate("SOUND_TRACK", t.id, "title", t.title),
     durationSeconds: t.durationSeconds,
     kind: t.kind, // INSTRUMENTAL | GUIDED
-    audioUrl: mediaUrl(t.audioPath),
+    // Withheld rather than swapped for a placeholder: the file under /media is
+    // public to anyone holding the URL, so the URL is the thing we keep back.
+    audioUrl: isLocked ? null : mediaUrl(t.audioPath),
     isPremium: t.isPremium,
+    isLocked,
     displayOrder: t.displayOrder,
     lyricsLanguages: (t.lyrics ?? []).map((l) => l.languageCode),
   };
@@ -50,6 +74,7 @@ export function serializeCollection(
     tracks?: (SoundTrack & { lyrics?: { languageCode: string }[] })[];
     _count?: { tracks: number };
   },
+  access: ContentAccess,
 ) {
   return {
     id: c.id,
@@ -59,9 +84,10 @@ export function serializeCollection(
     palette: c.palette,
     imageUrl: mediaUrl(c.imageUrl),
     isPremium: c.isPremium,
+    isLocked: isCollectionLocked(c, access),
     displayOrder: c.displayOrder,
     trackCount: c._count?.tracks ?? c.tracks?.length,
-    tracks: c.tracks ? c.tracks.map(serializeTrack) : undefined,
+    tracks: c.tracks ? c.tracks.map((t) => serializeTrack(t, access, c)) : undefined,
   };
 }
 
@@ -73,6 +99,7 @@ export function serializeCategory(
     })[];
     _count?: { collections: number };
   },
+  access: ContentAccess,
 ) {
   return {
     id: cat.id,
@@ -81,7 +108,7 @@ export function serializeCategory(
     displayOrder: cat.displayOrder,
     collectionCount: cat._count?.collections,
     collections: cat.collections
-      ? cat.collections.map(serializeCollection)
+      ? cat.collections.map((c) => serializeCollection(c, access))
       : undefined,
   };
 }
@@ -106,17 +133,20 @@ type PlaylistItemWithTrack = PlaylistItem & {
   };
 };
 
-export function serializePlaylistItem(i: PlaylistItemWithTrack) {
+// Anyone may keep a premium track (the catalogue is visible), but a kept row
+// withholds its URL from a non-member exactly as the shelf does.
+export function serializePlaylistItem(i: PlaylistItemWithTrack, access: ContentAccess) {
   return {
     id: i.id,
     savedAt: i.createdAt.toISOString(),
-    track: serializeTrack(i.track),
-    collection: serializeCollection(i.track.collection),
+    track: serializeTrack(i.track, access, i.track.collection),
+    collection: serializeCollection(i.track.collection, access),
   };
 }
 
 export function serializePlaylist(
   p: Playlist & { items?: PlaylistItemWithTrack[] },
+  access: ContentAccess,
 ) {
   return {
     id: p.id,
@@ -124,7 +154,7 @@ export function serializePlaylist(
     isDefault: p.isDefault,
     trackCount: p.items?.length ?? 0,
     updatedAt: p.updatedAt.toISOString(),
-    items: p.items ? p.items.map(serializePlaylistItem) : undefined,
+    items: p.items ? p.items.map((i) => serializePlaylistItem(i, access)) : undefined,
   };
 }
 
@@ -158,7 +188,13 @@ export function serializeOnboardingConfig(
 
 // ---- Mind Garden plants + hearts ----
 
-export function serializePlant(p: Plant) {
+/**
+ * `isLocked` is required for the same reason ContentAccess is: the caller
+ * decides it through lib/premiumContent (isPlantLocked), so no route can ship a
+ * plant without having answered. A locked plant is fully visible; only
+ * selecting it is refused.
+ */
+export function serializePlant(p: Plant, isLocked: boolean) {
   return {
     id: p.id,
     name: translate("PLANT", p.id, "name", p.name),
@@ -167,6 +203,7 @@ export function serializePlant(p: Plant) {
     palette: p.palette,
     displayOrder: p.displayOrder,
     isPremium: p.isPremium,
+    isLocked,
     isDefault: p.isDefault,
     isActive: p.isActive,
   };
@@ -185,9 +222,12 @@ export function serializePlantStage(s: PlantStage) {
   };
 }
 
-export function serializePlantWithStages(p: Plant & { stages: PlantStage[] }) {
+export function serializePlantWithStages(
+  p: Plant & { stages: PlantStage[] },
+  isLocked: boolean,
+) {
   return {
-    ...serializePlant(p),
+    ...serializePlant(p, isLocked),
     stages: p.stages
       .slice()
       .sort((a, b) => a.displayOrder - b.displayOrder)
@@ -227,7 +267,10 @@ export function serializeGarden(
 ) {
   const ordered = stages.slice().sort((a, b) => a.displayOrder - b.displayOrder);
   return {
-    selectedPlant: serializePlant(plant),
+    // Never locked: it is the plant this person is growing. A selected plant
+    // is either one they were allowed to pick or one they hold progress on, and
+    // both stay theirs through a lapse (grandfathering, see isPlantLocked).
+    selectedPlant: serializePlant(plant, false),
     sunlight,
     currentStageIndex: deriveStageIndex(ordered, sunlight),
     stages: ordered.map(serializePlantStage),

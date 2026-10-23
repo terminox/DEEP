@@ -19,7 +19,8 @@
     "geoip:update": "bash scripts/geoip-update.sh",
     "seed:assets": "bash scripts/copy-garden-assets.sh",
     "verify:safe-publish": "node --import tsx scripts/verifySafePublish.ts",
-    "verify:revenuecat": "node --import tsx scripts/verifyRevenueCatWebhook.ts"
+    "verify:revenuecat": "node --import tsx scripts/verifyRevenueCatWebhook.ts",
+    "verify:premium": "node --import tsx scripts/verifyPremiumContent.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

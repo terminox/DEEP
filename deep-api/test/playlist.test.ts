@@ -9,6 +9,9 @@ const { serializePlaylist, serializePlaylistItem } = await import(
   "../src/lib/serialize.js"
 );
 
+// The member view: these tests are about shape, not locks (see premiumContent.test.ts).
+const MEMBER = { unlocked: true };
+
 const collection = {
   id: "c1",
   categoryId: "cat1",
@@ -55,7 +58,7 @@ const playlist = {
 };
 
 test("a kept item carries the track and where it came from", () => {
-  const kept = serializePlaylistItem(item("i1", "t1", "Low Tide", "2026-08-20T09:00:00.000Z"));
+  const kept = serializePlaylistItem(item("i1", "t1", "Low Tide", "2026-08-20T09:00:00.000Z"), MEMBER);
 
   assert.equal(kept.id, "i1");
   assert.equal(kept.savedAt, "2026-08-20T09:00:00.000Z");
@@ -66,7 +69,7 @@ test("a kept item carries the track and where it came from", () => {
 });
 
 test("relative media paths are served as absolute URLs", () => {
-  const kept = serializePlaylistItem(item("i1", "t1", "Low Tide", "2026-08-20T09:00:00.000Z"));
+  const kept = serializePlaylistItem(item("i1", "t1", "Low Tide", "2026-08-20T09:00:00.000Z"), MEMBER);
 
   assert.equal(kept.track.audioUrl, "https://deep.example.com/media/audio/t1.mp3");
   assert.equal(
@@ -78,7 +81,7 @@ test("relative media paths are served as absolute URLs", () => {
 test("the origin collection arrives without its own tracks", () => {
   // A kept-track row only needs artwork and a name; shipping the whole album
   // with every item would balloon the payload for nothing.
-  const kept = serializePlaylistItem(item("i1", "t1", "Low Tide", "2026-08-20T09:00:00.000Z"));
+  const kept = serializePlaylistItem(item("i1", "t1", "Low Tide", "2026-08-20T09:00:00.000Z"), MEMBER);
 
   assert.equal(kept.collection.tracks, undefined);
 });
@@ -90,7 +93,7 @@ test("a playlist keeps the order it was queried in", () => {
       item("i2", "t2", "High Tide", "2026-08-20T10:00:00.000Z"),
       item("i1", "t1", "Low Tide", "2026-08-20T09:00:00.000Z"),
     ],
-  });
+  }, MEMBER);
 
   assert.deepEqual(
     serialized.items?.map((i) => i.track.title),
@@ -103,14 +106,14 @@ test("a playlist keeps the order it was queried in", () => {
 });
 
 test("a playlist with nothing kept serializes as empty, not absent", () => {
-  const serialized = serializePlaylist({ ...playlist, items: [] });
+  const serialized = serializePlaylist({ ...playlist, items: [] }, MEMBER);
 
   assert.equal(serialized.trackCount, 0);
   assert.deepEqual(serialized.items, []);
 });
 
 test("a playlist loaded without its items reports no track count", () => {
-  const serialized = serializePlaylist(playlist);
+  const serialized = serializePlaylist(playlist, MEMBER);
 
   assert.equal(serialized.items, undefined);
   assert.equal(serialized.trackCount, 0);

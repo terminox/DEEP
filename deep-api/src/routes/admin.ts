@@ -23,6 +23,8 @@ import { ApiError } from "../lib/errors.js";
 import { verifyPassword } from "../auth/password.js";
 import { createSession } from "../auth/sessions.js";
 import { requireRole } from "../auth/middleware.js";
+import { ADMIN_ACCESS } from "../lib/premiumContent.js";
+import { serializeEntitlement } from "../lib/entitlement.js";
 import { MEDIA_RULES, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
 import { readAudioDurationSeconds } from "../lib/audioDuration.js";
 import {
@@ -61,6 +63,9 @@ import {
 import { scheduleProblems, type PhaseTimes } from "../lib/drafts/validators.js";
 
 const adminOnly = { preHandler: requireRole("ADMIN") };
+
+// Every sound serializer below passes ADMIN_ACCESS: the panel must see (and
+// preview) every audio URL whatever the admin's own DEEP Premium standing.
 
 /** Who staged the change. requireRole has already put the claims on the request. */
 function actor(req: FastifyRequest): string {
@@ -171,6 +176,68 @@ export async function adminRoutes(app: FastifyInstance) {
     return { users: users.map(serializeUser) };
   });
 
+  // One user's DEEP Premium standing, for support: the Subscription row as
+  // RevenueCat last reported it, plus the most recent webhook deliveries. Kept
+  // off the list above on purpose — /admin/users never loads subscriptions.
+  //
+  // Events match on the resolved userId OR the raw app user id, so a delivery
+  // that arrived before the account resolved (UNKNOWN_USER) still shows here.
+  app.get("/admin/users/:id/membership", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!user) throw ApiError.notFound("User not found", "user_not_found");
+
+    const now = new Date();
+    const [sub, events] = await Promise.all([
+      prisma.subscription.findUnique({ where: { userId: id } }),
+      prisma.revenueCatEvent.findMany({
+        where: { OR: [{ userId: id }, { appUserId: id }] },
+        orderBy: { receivedAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          type: true,
+          environment: true,
+          outcome: true,
+          eventAt: true,
+          receivedAt: true,
+        },
+      }),
+    ]);
+    const entitlement = serializeEntitlement(sub, now);
+    return {
+      membership: {
+        active: entitlement.active,
+        inGracePeriod: entitlement.inGracePeriod,
+        subscription: sub
+          ? {
+              entitlementId: sub.entitlementId,
+              productId: sub.productId,
+              store: sub.store,
+              environment: sub.environment,
+              periodType: sub.periodType,
+              expiresAt: sub.expiresAt?.toISOString() ?? null,
+              gracePeriodExpiresAt: sub.gracePeriodExpiresAt?.toISOString() ?? null,
+              willRenew: sub.willRenew,
+              billingIssueDetectedAt: sub.billingIssueDetectedAt?.toISOString() ?? null,
+              unsubscribedAt: sub.unsubscribedAt?.toISOString() ?? null,
+              revokedAt: sub.revokedAt?.toISOString() ?? null,
+              lastEventAt: sub.lastEventAt.toISOString(),
+              updatedAt: sub.updatedAt.toISOString(),
+            }
+          : null,
+        events: events.map((e) => ({
+          id: e.id,
+          type: e.type,
+          environment: e.environment,
+          outcome: e.outcome,
+          eventAt: e.eventAt.toISOString(),
+          receivedAt: e.receivedAt.toISOString(),
+        })),
+      },
+    };
+  });
+
   // ---- Pending changes: review, publish, discard ----
 
   app.get("/admin/changes", adminOnly, async () => {
@@ -211,12 +278,15 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       categories: tree.categories.map((c) =>
         withPending(
-          serializeCategory({
-            ...c.row,
-            _count: {
-              collections: tree.collections.filter((col) => col.row.categoryId === c.row.id).length,
+          serializeCategory(
+            {
+              ...c.row,
+              _count: {
+                collections: tree.collections.filter((col) => col.row.categoryId === c.row.id).length,
+              },
             },
-          }),
+            ADMIN_ACCESS,
+          ),
           c.pending,
         ),
       ),
@@ -226,14 +296,14 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post("/admin/categories", adminOnly, async (req) => {
     const body = categoryBody.parse(req.body);
     const staged = await stageCreate<SoundCategory>("SOUND_CATEGORY", body, actor(req));
-    return { category: withPending(serializeCategory(staged.row), staged.pending) };
+    return { category: withPending(serializeCategory(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.patch("/admin/categories/:id", adminOnly, async (req) => {
     const { id } = idParam.parse(req.params);
     const body = categoryBody.partial().parse(req.body);
     const staged = await stageUpdate<SoundCategory>("SOUND_CATEGORY", id, body, actor(req));
-    return { category: withPending(serializeCategory(staged.row), staged.pending) };
+    return { category: withPending(serializeCategory(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.delete("/admin/categories/:id", adminOnly, async (req) => {
@@ -261,10 +331,13 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       collections: collections.map((c) =>
         withPending(
-          serializeCollection({
-            ...c.row,
-            _count: { tracks: tree.tracks.filter((t) => t.row.collectionId === c.row.id).length },
-          }),
+          serializeCollection(
+            {
+              ...c.row,
+              _count: { tracks: tree.tracks.filter((t) => t.row.collectionId === c.row.id).length },
+            },
+            ADMIN_ACCESS,
+          ),
           c.pending,
         ),
       ),
@@ -292,8 +365,8 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       collection: withPending(
         {
-          ...serializeCollection({ ...collection.row, _count: { tracks: tracks.length } }),
-          tracks: tracks.map((t) => withPending(serializeTrack(t), t.pending)),
+          ...serializeCollection({ ...collection.row, _count: { tracks: tracks.length } }, ADMIN_ACCESS),
+          tracks: tracks.map((t) => withPending(serializeTrack(t, ADMIN_ACCESS, collection.row), t.pending)),
         },
         collection.pending,
       ),
@@ -303,14 +376,14 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post("/admin/collections", adminOnly, async (req) => {
     const body = collectionBody.parse(req.body);
     const staged = await stageCreate<SoundCollection>("SOUND_COLLECTION", body, actor(req));
-    return { collection: withPending(serializeCollection(staged.row), staged.pending) };
+    return { collection: withPending(serializeCollection(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.patch("/admin/collections/:id", adminOnly, async (req) => {
     const { id } = idParam.parse(req.params);
     const body = collectionBody.partial().parse(req.body);
     const staged = await stageUpdate<SoundCollection>("SOUND_COLLECTION", id, body, actor(req));
-    return { collection: withPending(serializeCollection(staged.row), staged.pending) };
+    return { collection: withPending(serializeCollection(staged.row, ADMIN_ACCESS), staged.pending) };
   });
 
   app.delete("/admin/collections/:id", adminOnly, async (req) => {
@@ -329,14 +402,14 @@ export async function adminRoutes(app: FastifyInstance) {
   app.post("/admin/tracks", adminOnly, async (req) => {
     const body = trackBody.parse(req.body);
     const staged = await stageCreate<SoundTrack>("SOUND_TRACK", body, actor(req));
-    return { track: withPending(serializeTrack(staged.row), staged.pending) };
+    return { track: withPending(serializeTrack(staged.row, ADMIN_ACCESS, null), staged.pending) };
   });
 
   app.patch("/admin/tracks/:id", adminOnly, async (req) => {
     const { id } = idParam.parse(req.params);
     const body = trackBody.partial().parse(req.body);
     const staged = await stageUpdate<SoundTrack>("SOUND_TRACK", id, body, actor(req));
-    return { track: withPending(serializeTrack(staged.row), staged.pending) };
+    return { track: withPending(serializeTrack(staged.row, ADMIN_ACCESS, null), staged.pending) };
   });
 
   app.delete("/admin/tracks/:id", adminOnly, async (req) => {
@@ -371,7 +444,7 @@ export async function adminRoutes(app: FastifyInstance) {
       { audioPath: relPath },
       actor(req),
     );
-    return { track: withPending(serializeTrack(staged.row), staged.pending) };
+    return { track: withPending(serializeTrack(staged.row, ADMIN_ACCESS, null), staged.pending) };
   });
 
   // ---- Lyrics ----

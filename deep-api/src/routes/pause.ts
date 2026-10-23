@@ -4,6 +4,7 @@ import { prisma } from "../prisma.js";
 import { optionalAuth } from "../auth/middleware.js";
 import { serializeCategory, serializeCollection } from "../lib/serialize.js";
 import { VISIBLE_CATEGORY_TREE } from "../lib/soundQuery.js";
+import { markVariesByCaller, requestContentAccess } from "../lib/premiumContent.js";
 
 type LoadedTrack = SoundTrack & { lyrics: { languageCode: string }[] };
 type LoadedCollection = SoundCollection & { tracks: LoadedTrack[] };
@@ -40,7 +41,11 @@ export async function pauseRoutes(app: FastifyInstance) {
   // (with tracks), so the app needs no follow-up fetch to open or play them.
   // Anonymous requests get deterministic fallbacks; a signed-in user with an
   // onboarding profile gets a personalized "Made for you".
-  app.get("/pause/home", { preHandler: optionalAuth }, async (req) => {
+  app.get("/pause/home", { preHandler: optionalAuth }, async (req, reply) => {
+    // Sections carry playable tracks, so the same premium lock as /sound/home
+    // applies (lib/premiumContent), decided once for the whole response.
+    const access = await requestContentAccess(req);
+    markVariesByCaller(reply);
     // Filtered in the query, not afterwards: the shelves below read
     // categories[].collections[0] and [1] positionally, so a hidden collection
     // removed after the fact would leave a hole in "Popular now".
@@ -151,22 +156,22 @@ export async function pauseRoutes(app: FastifyInstance) {
           key: "popular",
           title: "Popular now",
           personalized: false,
-          collections: popular.map(serializeCollection),
+          collections: popular.map((c) => serializeCollection(c, access)),
         },
         {
           key: "today",
           title: "Today's sessions",
           personalized: false,
-          collections: today.map(serializeCollection),
+          collections: today.map((c) => serializeCollection(c, access)),
         },
         {
           key: "forYou",
           title: "Made for you",
           personalized,
-          collections: forYou.map(serializeCollection),
+          collections: forYou.map((c) => serializeCollection(c, access)),
         },
       ],
-      categories: categories.map(serializeCategory),
+      categories: categories.map((c) => serializeCategory(c, access)),
     };
   });
 }

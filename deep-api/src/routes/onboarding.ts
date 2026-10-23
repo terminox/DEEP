@@ -27,6 +27,11 @@ export async function onboardingRoutes(app: FastifyInstance) {
   // Public: the quiz questions + mind trees that drive the onboarding UI.
   // "Mind trees" are the plant catalog's published, non-premium defaults —
   // the key and field shape are unchanged, so old clients keep working.
+  //
+  // Free-only deliberately, even though the garden picker now shows premium
+  // plants: onboarding runs before an account exists and before the paywall,
+  // so a locked tree here is a dead end. DEEP Premium plants are discovered in
+  // the garden picker, where the upsell lives.
   app.get("/onboarding/config", async () => {
     const [questions, trees] = await Promise.all([
       prisma.quizQuestion.findMany({
@@ -74,7 +79,9 @@ export async function onboardingRoutes(app: FastifyInstance) {
 
     // The onboarding pick seeds the Mind Garden selection — but only when the
     // user hasn't chosen a plant yet (the garden's own choice always wins) and
-    // the answer names a published, non-premium plant.
+    // the answer names a published, non-premium plant. Free-only for the same
+    // reason as the config's tree list (and the garden's starter): onboarding
+    // must never hand someone a plant a lapse could strand them on.
     if (body.mindTree) {
       const user = await prisma.user.findUnique({
         where: { id: userId },

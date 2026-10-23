@@ -180,8 +180,10 @@ function PlantDetailPage() {
 
           {data.isDefault && data.isPremium && (
             <div className="warning-banner">
-              This plant is Default but also Premium — premium plants are hidden from onboarding
-              entirely, so it won&apos;t appear there.
+              This plant is Default but also Premium. Premium plants never appear in onboarding,
+              and are never given to someone as their starter plant (the starter must be free).
+              Everyone still sees it in the garden picker, where only DEEP Premium members can
+              choose it.
             </div>
           )}
           {noActiveDefaults && (

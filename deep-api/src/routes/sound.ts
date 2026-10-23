@@ -2,7 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
-import { requireAuth } from "../auth/middleware.js";
+import { optionalAuth, requireAuth } from "../auth/middleware.js";
+import {
+  isTrackLocked,
+  markVariesByCaller,
+  requestContentAccess,
+} from "../lib/premiumContent.js";
 import { AWARD_CONFIG, listenAwardDayKey } from "../lib/awardRules.js";
 import { grantAward } from "../lib/awards.js";
 import { requestTimezone, rememberTimezone, userDayKey } from "../lib/clientDay.js";
@@ -20,12 +25,21 @@ export async function soundRoutes(app: FastifyInstance) {
   // One call builds the entire DEEP Sound home: ordered categories, each with
   // its ordered collections and their ordered tracks (with lyrics availability).
   // The payload is small, so the app needs no per-collection follow-up fetch.
-  app.get("/sound/home", async () => {
-    const categories = await prisma.soundCategory.findMany(VISIBLE_CATEGORY_TREE);
-    return { categories: categories.map(serializeCategory) };
+  //
+  // Optional auth: signed-out browsing still works and sees the whole
+  // catalogue, but premium audio URLs only go to a DEEP Premium caller (see
+  // lib/premiumContent). A present-but-expired token 401s, so a client learns to
+  // refresh instead of silently receiving the locked view.
+  app.get("/sound/home", { preHandler: optionalAuth }, async (req, reply) => {
+    const [categories, access] = await Promise.all([
+      prisma.soundCategory.findMany(VISIBLE_CATEGORY_TREE),
+      requestContentAccess(req),
+    ]);
+    markVariesByCaller(reply);
+    return { categories: categories.map((c) => serializeCategory(c, access)) };
   });
 
-  app.get("/sound/collections/:id", async (req) => {
+  app.get("/sound/collections/:id", { preHandler: optionalAuth }, async (req, reply) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
     // A hidden collection - or one under a hidden category - is a 404 here, the
     // same as one that does not exist. The app must not be able to reach content
@@ -35,9 +49,13 @@ export async function soundRoutes(app: FastifyInstance) {
       include: { tracks: VISIBLE_TRACKS },
     });
     if (!collection) throw ApiError.notFound("Collection not found");
-    return { collection: serializeCollection(collection) };
+    const access = await requestContentAccess(req);
+    markVariesByCaller(reply);
+    return { collection: serializeCollection(collection, access) };
   });
 
+  // Lyrics stay public on purpose, premium or not: they are words on a screen,
+  // part of what a locked track shows to sell itself, not the audio.
   app.get("/sound/tracks/:id/lyrics", async (req) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
     const { lang } = z
@@ -79,8 +97,15 @@ export async function soundRoutes(app: FastifyInstance) {
     // that names a plant the user is not allowed to select.
     const track = await prisma.soundTrack.findFirst({
       where: { id: trackId, ...VISIBLE_TRACK },
+      include: { collection: { select: { isPremium: true } } },
     });
     if (!track) throw ApiError.notFound("Track not found", "track_not_found");
+    // A track locked for this caller was never given to them to play, so a
+    // completion for it earns nothing. Same code the garden uses for a premium
+    // plant, so clients need one premium_locked branch.
+    if (isTrackLocked(track, track.collection, await requestContentAccess(req))) {
+      throw ApiError.forbidden("This track is DEEP Premium", "premium_locked");
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

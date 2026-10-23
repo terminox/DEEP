@@ -10,6 +10,7 @@ import type {
   DiscardResult,
   LoginResponse,
   Lyrics,
+  Membership,
   Palette,
   PauseConfig,
   PauseIntentionOption,
@@ -75,6 +76,15 @@ export async function login(
 export async function listUsers(): Promise<AdminUser[]> {
   const { data } = await http.get<{ users: AdminUser[] }>('/admin/users')
   return data.users
+}
+
+// DEEP Premium standing for one user. Loaded on demand from the Users page;
+// the list itself never carries subscription state.
+export async function getUserMembership(userId: string): Promise<Membership> {
+  const { data } = await http.get<{ membership: Membership }>(
+    `/admin/users/${encodeURIComponent(userId)}/membership`,
+  )
+  return data.membership
 }
 
 // ---- Categories ----
