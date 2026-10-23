@@ -9,8 +9,14 @@ import SwiftUI
 /// Nothing changes until it is confirmed. Tapping a row only stages a choice;
 /// the bar at the foot commits it, and a refused switch keeps the sheet open
 /// with a quiet caption rather than an alert.
+///
+/// A DEEP Premium plant the member doesn't grow wears the lock badge and can't
+/// be staged: tapping it opens the invitation (pushed over this sheet by
+/// `PlantPickerCoordinatorView`). The plant already growing is never locked.
 struct PlantPickerSheet: View {
   @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.premiumAccess) private var premiumAccess
+  @Environment(\.openPaywall) private var openPaywall
   @Environment(\.dismiss) private var dismiss
 
   /// The plant the confirm bar would grow. Nil until something is tapped —
@@ -21,7 +27,14 @@ struct PlantPickerSheet: View {
   /// the sheet leaves.
   @State private var isConfirming = false
 
-  private var stagedID: String? { draftID ?? gardenStore.plant?.id }
+  /// The staged plant — never a locked one. A draft that became locked under
+  /// the sheet (a lapse mid-session) falls back to the plant already growing.
+  private var stagedID: String? {
+    if let draftID, let draft = gardenStore.catalog.first(where: { $0.id == draftID }), !isLocked(draft) {
+      return draftID
+    }
+    return gardenStore.plant?.id
+  }
   private var stagedPlant: Plant? { gardenStore.catalog.first { $0.id == stagedID } }
   private var isGrowingStaged: Bool { stagedID == gardenStore.plant?.id }
 
@@ -50,9 +63,16 @@ struct PlantPickerSheet: View {
       confirmBar
     }
     .sensoryFeedback(.selection, trigger: stagedID)
-    .presentationDetents([.height(560), .large])
+    // Its own ground, drawn here rather than left to the presentation: inside
+    // the coordinator's navigation stack a presentation background would sit
+    // behind the stack, out of sight.
+    .background { AtmosphereBackground() }
     .presentationBackground { AtmosphereBackground() }
     .task { await gardenStore.loadCatalogIfNeeded() }
+  }
+
+  private func isLocked(_ plant: Plant) -> Bool {
+    PremiumGate.isLocked(plant, growing: gardenStore.plant?.id, hasPremium: premiumAccess.hasPremium)
   }
 
   // MARK: - Catalog
@@ -81,9 +101,15 @@ struct PlantPickerSheet: View {
             plant: plant,
             sunlight: gardenStore.sunlightByPlant[plant.id] ?? 0
           ),
-          isStaged: plant.id == stagedID
+          isStaged: plant.id == stagedID,
+          isLocked: isLocked(plant)
         ) {
-          withAnimation(.settle) { draftID = plant.id }
+          if isLocked(plant) {
+            // Asked for, so the invitation is earned.
+            openPaywall(.lockedPlant)
+          } else {
+            withAnimation(.settle) { draftID = plant.id }
+          }
         }
       }
     }
@@ -161,7 +187,7 @@ struct PlantPickerSheet: View {
 
       // A refused switch rolled back quietly; the next confirm clears it.
       if let failure = gardenStore.switchFailure {
-        Text(failure)
+        Text(failure.caption)
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
           .multilineTextAlignment(.center)
@@ -177,13 +203,23 @@ struct PlantPickerSheet: View {
   /// Switches, then holds for a beat so the bar can say what happened before
   /// the sheet leaves. A refusal keeps the sheet open and falls the staged
   /// choice back to whatever is actually growing.
+  ///
+  /// A locked plant can't get this far — it is never staged — and is refused
+  /// here regardless, so no path sends one to the server. Should the server
+  /// refuse anyway (the member lapsed mid-session), its own caption shows and
+  /// the invitation opens: they asked for this plant.
   private func confirm(_ plant: Plant) {
+    guard !isLocked(plant) else {
+      openPaywall(.lockedPlant)
+      return
+    }
     isConfirming = true
     Task {
       await gardenStore.selectPlant(plant)
-      guard gardenStore.switchFailure == nil else {
+      if let failure = gardenStore.switchFailure {
         isConfirming = false
         draftID = gardenStore.plant?.id
+        if failure == .premiumLocked { openPaywall(.lockedPlant) }
         return
       }
       try? await Task.sleep(for: .seconds(0.5))
@@ -237,6 +273,8 @@ private struct PlantChoiceRow: View {
   let earned: GardenGrowth
   /// Whether the confirm bar would grow this plant. Staged, not committed.
   let isStaged: Bool
+  /// DEEP Premium and not this member's: badged, never staged.
+  var isLocked = false
   let action: () -> Void
 
   var body: some View {
@@ -251,6 +289,7 @@ private struct PlantChoiceRow: View {
           ringGap: 4,
           ringWidth: 3
         )
+        .premiumLockBadge(isLocked, diameter: 22, alignment: .bottomTrailing, inset: 0)
 
         VStack(alignment: .leading, spacing: 2) {
           Text(plant.name)
@@ -290,12 +329,17 @@ private struct PlantChoiceRow: View {
     .accessibilityLabel(
       "\(plant.name), \(earned.stage.name), \(earned.sunlight) sunlight"
     )
+    .accessibilityHint(isLocked ? Text("Part of DEEP Premium") : Text(verbatim: ""))
     .accessibilityAddTraits(isStaged ? [.isSelected] : [])
   }
 
   @ViewBuilder
   private var selectionMark: some View {
-    if isStaged {
+    if isLocked {
+      // Nothing to select: the badge on the portrait says why. Same footprint,
+      // so locked and open rows line up.
+      Color.clear.frame(width: 22, height: 22)
+    } else if isStaged {
       Image(systemName: "checkmark.circle.fill")
         .font(.system(size: 22))
         .foregroundStyle(.lavenderMist)

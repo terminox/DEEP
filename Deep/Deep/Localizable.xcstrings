@@ -236,6 +236,16 @@
         }
       }
     },
+    "Couldn't switch plants — try again in a moment." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปลี่ยนต้นไม้ไม่สำเร็จ ลองใหม่อีกครั้งในอีกสักครู่"
+          }
+        }
+      }
+    },
     "Done" : {
       "localizations" : {
         "th" : {
@@ -292,6 +302,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ขอบคุณที่มอบหัวใจให้ %@"
+          }
+        }
+      }
+    },
+    "This plant is part of DEEP Premium, along with every sound in the library." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium พร้อมกับทุกเสียงในคลังเสียง"
+          }
+        }
+      }
+    },
+    "This plant is part of DEEP Premium." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium"
           }
         }
       }

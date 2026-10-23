@@ -368,6 +368,11 @@ struct PlantDTO: Decodable {
   let imageUrl: String?
   let palette: String?
   let stages: [PlantStageDTO]?
+  /// A DEEP Premium plant. Optional so an older server decodes.
+  let isPremium: Bool?
+  /// The server's verdict for this caller — never true for a plant they
+  /// already grow (grandfathered). Optional so an older server decodes.
+  let isLocked: Bool?
 }
 
 struct WalletDTO: Decodable {

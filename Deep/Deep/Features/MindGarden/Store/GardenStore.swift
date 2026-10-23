@@ -37,7 +37,7 @@ final class GardenStore {
   private(set) var isLoadingCatalog = false
   /// Set when a plant switch was rolled back — the picker shows it as a quiet
   /// caption. Cleared on the next attempt.
-  private(set) var switchFailure: String?
+  private(set) var switchFailure: PlantSwitchFailure?
 
   /// Wallet snapshots ride the garden fetch; `AppDependencies` points this at
   /// `HeartLedger.hydrate` so one fetch hydrates both stores.
@@ -110,7 +110,7 @@ final class GardenStore {
       withAnimation(.exhale) {
         plant = previousPlant
         sunlight = previousSunlight
-        switchFailure = "Couldn't switch plants — try again in a moment."
+        switchFailure = PlantSwitchFailure(error)
       }
       persist()
     }
@@ -242,7 +242,35 @@ extension GardenStore {
   /// failure caption.
   static var switchFailed: GardenStore {
     let store = pickerSample
-    store.switchFailure = "Couldn't switch plants — try again in a moment."
+    store.switchFailure = .unreachable
+    return store
+  }
+
+  /// A picker whose catalog holds a DEEP Premium plant the member doesn't
+  /// grow — the locked row.
+  static var pickerWithPremium: GardenStore {
+    let sunlightByPlant = [Plant.oakFixture.id: 240, Plant.sakuraFixture.id: 480]
+    let store = GardenStore(
+      remote: MockRewardsRemote(catalog: Plant.fixturesWithPremium, sunlightByPlant: sunlightByPlant),
+      defaults: UserDefaults(suiteName: "deep.garden.preview") ?? .standard
+    )
+    store.seed(plant: .oakFixture, sunlight: 240, sunlightByPlant: sunlightByPlant)
+    return store
+  }
+
+  /// A member whose DEEP Premium lapsed while growing the premium plant: it
+  /// stays theirs, unbadged and selectable.
+  static var lapsedGrowingPremium: GardenStore {
+    let sunlightByPlant = [Plant.moonflowerFixture.id: 360, Plant.oakFixture.id: 240]
+    let store = GardenStore(
+      remote: MockRewardsRemote(
+        catalog: Plant.fixturesWithPremium,
+        selectedPlantID: Plant.moonflowerFixture.id,
+        sunlightByPlant: sunlightByPlant
+      ),
+      defaults: UserDefaults(suiteName: "deep.garden.preview") ?? .standard
+    )
+    store.seed(plant: .moonflowerFixture, sunlight: 360, sunlightByPlant: sunlightByPlant)
     return store
   }
 }
@@ -251,4 +279,31 @@ extension EnvironmentValues {
   /// The shared garden. The shell injects the live store; the mock-backed
   /// default keeps previews hermetic (mirroring `\.heartLedger`).
   @Entry var gardenStore: GardenStore = .sample
+}
+
+/// Why a plant switch was rolled back. A premium refusal is the server's
+/// backstop — the picker never stages a locked plant, so it only fires on a
+/// genuine race (a lapse mid-session, a stale catalogue) — and reads
+/// differently from a server that couldn't be reached.
+enum PlantSwitchFailure: Equatable {
+  /// The server refused: the plant is DEEP Premium (403 `premium_locked`).
+  case premiumLocked
+  /// Anything else — offline, a timeout, a server error.
+  case unreachable
+
+  init(_ error: Error) {
+    if case APIError.http(_, "premium_locked", _) = error {
+      self = .premiumLocked
+    } else {
+      self = .unreachable
+    }
+  }
+
+  /// The quiet caption the picker shows.
+  var caption: LocalizedStringKey {
+    switch self {
+    case .premiumLocked: return "This plant is part of DEEP Premium."
+    case .unreachable: return "Couldn't switch plants — try again in a moment."
+    }
+  }
 }

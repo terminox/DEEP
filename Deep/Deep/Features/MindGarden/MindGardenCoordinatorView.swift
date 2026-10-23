@@ -34,7 +34,7 @@ struct MindGardenCoordinatorView: View {
           DeepSessionIntroView(session: session)
         }
     }
-    .sheet(isPresented: $isPickingPlant) { PlantPickerSheet() }
+    .sheet(isPresented: $isPickingPlant) { PlantPickerCoordinatorView() }
     // The plant catalogue carries the server's premium verdicts; a change in
     // the premium answer re-fetches it, picker open or not.
     .onChange(of: premiumAccess.contentEpoch) {
@@ -65,3 +65,13 @@ extension EnvironmentValues {
     .environment(\.practiceStore, MockPracticeStore.fresh)
     .environment(\.gardenStore, .fresh)
 }
+
+#if DEBUG
+#Preview("Mind Garden — lapsed, growing a premium plant") {
+  // The plant stays theirs: no badge, no lock, still growing.
+  MindGardenCoordinatorView()
+    .environment(\.practiceStore, MockPracticeStore())
+    .environment(\.gardenStore, .lapsedGrowingPremium)
+    .environment(\.premiumAccess, .free)
+}
+#endif

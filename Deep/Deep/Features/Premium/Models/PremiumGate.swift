@@ -65,6 +65,19 @@ enum PremiumGate {
     entries.filter { canStart($0.track, in: $0.collection, hasPremium: hasPremium) }
   }
 
+  // MARK: - Plants
+
+  /// Whether a plant is locked for this member. The plant they are already
+  /// growing never is — not even after a lapse: taking someone's garden away
+  /// is a punishment, and only switching *to* a premium plant needs the
+  /// membership.
+  static func isLocked(_ plant: Plant, growing growingID: String?, hasPremium: Bool) -> Bool {
+    guard plant.id != growingID, !hasPremium else { return false }
+    return plant.isLocked ?? plant.isPremium
+  }
+
+  // MARK: - Queues
+
   /// A collection's tracks as playable queue entries.
   static func playable(_ collection: SoundCollection, hasPremium: Bool) -> [SoundQueueEntry] {
     playable(
