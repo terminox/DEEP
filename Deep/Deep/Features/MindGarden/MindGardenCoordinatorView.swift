@@ -12,6 +12,7 @@ import SwiftUI
 struct MindGardenCoordinatorView: View {
   @Environment(\.practiceStore) private var practice
   @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.premiumAccess) private var premiumAccess
   @State private var path = NavigationPath()
   /// The plant picker is raised, not pushed — a choice made beside the garden
   /// rather than a place you travel to.
@@ -34,6 +35,11 @@ struct MindGardenCoordinatorView: View {
         }
     }
     .sheet(isPresented: $isPickingPlant) { PlantPickerSheet() }
+    // The plant catalogue carries the server's premium verdicts; a change in
+    // the premium answer re-fetches it, picker open or not.
+    .onChange(of: premiumAccess.contentEpoch) {
+      Task { await gardenStore.reloadCatalog() }
+    }
     .environment(\.openDeepSession, { session in path.append(session) })
     .environment(\.openPlantPicker, { isPickingPlant = true })
     .preferredColorScheme(.light)

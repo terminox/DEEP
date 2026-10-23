@@ -52,6 +52,13 @@ struct PlaylistView: View {
       }
     }
     .task { await store.refreshIfNeeded() }
+    // Saved sounds carry the server's withheld-audio verdicts too, so a change
+    // in the premium answer re-fetches them. Not a `.task(id:)`: its first run
+    // would turn the once-per-visit `refreshIfNeeded` into a fetch on every
+    // visit.
+    .onChange(of: premiumAccess.contentEpoch) {
+      Task { await store.refresh() }
+    }
     .alert("A premium sound", isPresented: $showPremiumGate) {
       Button("Maybe later", role: .cancel) {}
     } message: {

@@ -13,6 +13,7 @@ struct DeepSoundHomeView: View {
   var bottomInset: CGFloat
 
   @Environment(\.soundContentRepository) private var repository
+  @Environment(\.premiumAccess) private var premiumAccess
 
   private enum LoadState: Equatable { case loading, loaded, failed }
   @State private var shelves: [SoundShelf] = []
@@ -47,7 +48,9 @@ struct DeepSoundHomeView: View {
       title: "DEEP Sound",
       subtitle: "Breathe and listen"
     )
-    .task { await load() }
+    // Keyed on the premium answer changing: the shelves carry the server's withheld-audio
+    // verdicts, so becoming (or ceasing to be) a member re-fetches them.
+    .task(id: premiumAccess.contentEpoch) { await load() }
     .heroRefreshable { await load() }
   }
 

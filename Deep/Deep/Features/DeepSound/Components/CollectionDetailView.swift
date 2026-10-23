@@ -6,8 +6,18 @@ struct CollectionDetailView: View {
   @Environment(\.soundPlayer) private var player
   @Environment(\.premiumAccess) private var premiumAccess
   @Environment(\.playlistStore) private var playlistStore
+  @Environment(\.soundContentRepository) private var repository
+  /// The collection as it arrived from the screen that opened it.
   let collection: SoundCollection
   var bottomInset: CGFloat
+
+  /// The collection re-fetched after the listener's DEEP Premium answer
+  /// flipped — the copy that arrived carries the server's verdicts (and its
+  /// withheld audio) from before the flip.
+  @State private var latest: SoundCollection?
+
+  /// What this screen shows and plays: the fresh copy once there is one.
+  private var current: SoundCollection { latest ?? collection }
 
   @State private var showPremiumGate = false
 
@@ -23,9 +33,18 @@ struct CollectionDetailView: View {
     }
     .scrollBounceBehavior(.basedOnSize)
     .background { AtmosphereBackground() }
-    .navigationTitle(collection.title)
+    .navigationTitle(current.title)
     .navigationBarTitleDisplayMode(.inline)
     .toolbarBackground(.hidden, for: .navigationBar)
+    .onChange(of: premiumAccess.contentEpoch) {
+      Task {
+        // A failed fetch keeps the copy on screen; the gate still reads the
+        // new answer, so locks follow the flip either way.
+        if let fresh = try? await repository.collection(id: collection.id) {
+          latest = fresh
+        }
+      }
+    }
     .alert("A premium sound", isPresented: $showPremiumGate) {
       Button("Maybe later", role: .cancel) {}
     } message: {
@@ -34,19 +53,19 @@ struct CollectionDetailView: View {
   }
 
   private func isLocked(_ track: SoundTrack) -> Bool {
-    PremiumGate.isLocked(track, in: collection, hasPremium: premiumAccess.hasPremium)
+    PremiumGate.isLocked(track, in: current, hasPremium: premiumAccess.hasPremium)
   }
 
   /// The tracks this listener can play, in order. Play, Shuffle and a tapped
   /// row all queue these, so a run never carries on into a locked sound.
   private var playable: [SoundQueueEntry] {
-    PremiumGate.playable(collection, hasPremium: premiumAccess.hasPremium)
+    PremiumGate.playable(current, hasPremium: premiumAccess.hasPremium)
   }
 
   /// Play through the premium gate: locked content shows a gentle note instead.
   private func attemptPlay(at index: Int) {
-    guard collection.tracks.indices.contains(index) else { return }
-    let track = collection.tracks[index]
+    guard current.tracks.indices.contains(index) else { return }
+    let track = current.tracks[index]
     if isLocked(track) {
       showPremiumGate = true
     } else {
@@ -58,7 +77,7 @@ struct CollectionDetailView: View {
   /// Play sets off from the first track in order; Shuffle deals the whole
   /// collection in a random order.
   private func playAll(shuffled: Bool) {
-    guard !collection.tracks.isEmpty else { return }
+    guard !current.tracks.isEmpty else { return }
     let queue = playable
     if queue.isEmpty {
       showPremiumGate = true
@@ -69,20 +88,20 @@ struct CollectionDetailView: View {
 
   private var artworkHeader: some View {
     VStack(spacing: 16) {
-      SoundArtwork(palette: collection.palette, imageURL: collection.imageURL, cornerRadius: 24)
+      SoundArtwork(palette: current.palette, imageURL: current.imageURL, cornerRadius: 24)
         .frame(width: 220, height: 220)
         .shadow(color: Color.lavenderMist.opacity(0.35), radius: 28, x: 0, y: 16)
 
       VStack(spacing: 4) {
-        Text(collection.title)
+        Text(current.title)
           .font(DeepType.displayTitle)
           .foregroundStyle(.deepPlum)
           .multilineTextAlignment(.center)
-        Text(collection.subtitle)
+        Text(current.subtitle)
           .font(DeepType.body)
           .foregroundStyle(.driftGrey)
           .multilineTextAlignment(.center)
-        Text("\(collection.trackCount) tracks · \(collection.totalDuration.minutesString)")
+        Text("\(current.trackCount) tracks · \(current.totalDuration.minutesString)")
           .font(DeepType.caption)
           .foregroundStyle(.driftGrey)
           .padding(.top, 2)
@@ -105,7 +124,7 @@ struct CollectionDetailView: View {
 
   private var trackList: some View {
     VStack(spacing: 0) {
-      ForEach(Array(collection.tracks.enumerated()), id: \.element.id) { pair in
+      ForEach(Array(current.tracks.enumerated()), id: \.element.id) { pair in
         let (offset, track) = pair
         TrackRow(
           number: offset + 1,
@@ -113,7 +132,7 @@ struct CollectionDetailView: View {
           isCurrent: isCurrent(track),
           isLocked: isLocked(track),
           isSaved: playlistStore.isSaved(track),
-          save: { playlistStore.toggle(track, from: collection) }
+          save: { playlistStore.toggle(track, from: current) }
         ) {
           attemptPlay(at: offset)
         }

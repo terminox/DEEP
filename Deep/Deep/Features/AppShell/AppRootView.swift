@@ -146,6 +146,10 @@ struct AppRootView: View {
       // corrected either way.
       Task { await rescheduleReminder() }
       guard deps.accountStore.isSignedIn else { return }
+      // The server is the authority on DEEP Premium, and a membership can
+      // start, lapse or be refunded while the app sleeps. A flip re-fetches
+      // the content whose withheld audio was baked in (see `PremiumAccess.contentEpoch`).
+      Task { await deps.premiumAccess.refresh() }
       Task {
         async let garden: Void = deps.gardenStore.refresh()
         async let playlist: Void = deps.playlistStore.refresh()
@@ -204,6 +208,9 @@ struct AppRootView: View {
       async let playlistRefreshed: Void = deps.playlistStore.refresh()
       // Listens finished offline (or cut off by a kill) go out on launch.
       async let listensFlushed: Void = deps.listenReporter.flush()
+      // The session restore's `/me` usually carried the DEEP Premium answer
+      // already; ask only if it didn't (an older server, or offline).
+      async let premiumAnswered: Void = deps.premiumAccess.refreshIfUnanswered()
       if let profile = try? await deps.onboardingRemote.fetchProfile() {
         deps.onboardingStore.hydrate(
           quizAnswers: profile.quizAnswers,
@@ -215,6 +222,7 @@ struct AppRootView: View {
       await gardenRefreshed
       await playlistRefreshed
       await listensFlushed
+      await premiumAnswered
     }
     _ = await floor
     // The staged send-off: text exhales in place, the destination surfaces

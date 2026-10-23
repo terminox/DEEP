@@ -76,7 +76,15 @@ final class GardenStore {
 
   /// Fetches the picker catalog once; later calls are free.
   func loadCatalogIfNeeded() async {
-    guard catalog.isEmpty, !isLoadingCatalog else { return }
+    guard catalog.isEmpty else { return }
+    await reloadCatalog()
+  }
+
+  /// Fetches the picker catalog again, keeping what's on screen if the fetch
+  /// fails. The catalog carries the server's premium verdicts, so a premium
+  /// flip calls this.
+  func reloadCatalog() async {
+    guard !isLoadingCatalog else { return }
     isLoadingCatalog = true
     defer { isLoadingCatalog = false }
     guard let plants = try? await remote.fetchPlants() else { return }
