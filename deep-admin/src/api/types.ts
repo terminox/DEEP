@@ -103,6 +103,39 @@ export type AdminUser = {
   createdAt: string
 }
 
+// DEEP Premium standing for one user (GET /admin/users/:id/membership).
+export type MembershipSubscription = {
+  entitlementId: string
+  productId: string
+  store: string
+  environment: string
+  periodType: string
+  expiresAt: string | null
+  gracePeriodExpiresAt: string | null
+  willRenew: boolean
+  billingIssueDetectedAt: string | null
+  unsubscribedAt: string | null
+  revokedAt: string | null
+  lastEventAt: string
+  updatedAt: string
+}
+
+export type MembershipEvent = {
+  id: string
+  type: string
+  environment: string
+  outcome: string
+  eventAt: string
+  receivedAt: string
+}
+
+export type Membership = {
+  active: boolean
+  inGracePeriod: boolean
+  subscription: MembershipSubscription | null
+  events: MembershipEvent[]
+}
+
 export type Category = Pending & {
   id: string
   slug: string

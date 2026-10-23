@@ -24,6 +24,7 @@ import { verifyPassword } from "../auth/password.js";
 import { createSession } from "../auth/sessions.js";
 import { requireRole } from "../auth/middleware.js";
 import { ADMIN_ACCESS } from "../lib/premiumContent.js";
+import { serializeEntitlement } from "../lib/entitlement.js";
 import { MEDIA_RULES, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
 import { readAudioDurationSeconds } from "../lib/audioDuration.js";
 import {
@@ -173,6 +174,68 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get("/admin/users", adminOnly, async () => {
     const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
     return { users: users.map(serializeUser) };
+  });
+
+  // One user's DEEP Premium standing, for support: the Subscription row as
+  // RevenueCat last reported it, plus the most recent webhook deliveries. Kept
+  // off the list above on purpose — /admin/users never loads subscriptions.
+  //
+  // Events match on the resolved userId OR the raw app user id, so a delivery
+  // that arrived before the account resolved (UNKNOWN_USER) still shows here.
+  app.get("/admin/users/:id/membership", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+    if (!user) throw ApiError.notFound("User not found", "user_not_found");
+
+    const now = new Date();
+    const [sub, events] = await Promise.all([
+      prisma.subscription.findUnique({ where: { userId: id } }),
+      prisma.revenueCatEvent.findMany({
+        where: { OR: [{ userId: id }, { appUserId: id }] },
+        orderBy: { receivedAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          type: true,
+          environment: true,
+          outcome: true,
+          eventAt: true,
+          receivedAt: true,
+        },
+      }),
+    ]);
+    const entitlement = serializeEntitlement(sub, now);
+    return {
+      membership: {
+        active: entitlement.active,
+        inGracePeriod: entitlement.inGracePeriod,
+        subscription: sub
+          ? {
+              entitlementId: sub.entitlementId,
+              productId: sub.productId,
+              store: sub.store,
+              environment: sub.environment,
+              periodType: sub.periodType,
+              expiresAt: sub.expiresAt?.toISOString() ?? null,
+              gracePeriodExpiresAt: sub.gracePeriodExpiresAt?.toISOString() ?? null,
+              willRenew: sub.willRenew,
+              billingIssueDetectedAt: sub.billingIssueDetectedAt?.toISOString() ?? null,
+              unsubscribedAt: sub.unsubscribedAt?.toISOString() ?? null,
+              revokedAt: sub.revokedAt?.toISOString() ?? null,
+              lastEventAt: sub.lastEventAt.toISOString(),
+              updatedAt: sub.updatedAt.toISOString(),
+            }
+          : null,
+        events: events.map((e) => ({
+          id: e.id,
+          type: e.type,
+          environment: e.environment,
+          outcome: e.outcome,
+          eventAt: e.eventAt.toISOString(),
+          receivedAt: e.receivedAt.toISOString(),
+        })),
+      },
+    };
   });
 
   // ---- Pending changes: review, publish, discard ----

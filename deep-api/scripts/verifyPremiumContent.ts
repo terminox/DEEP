@@ -499,6 +499,46 @@ async function main() {
   );
   pass("18. grandfathering covers only plants the person has grown");
 
+  // ---- 19. Admin membership view ----
+  await prisma.revenueCatEvent.create({
+    data: {
+      id: `verify-${tag}`,
+      type: "INITIAL_PURCHASE",
+      environment: "SANDBOX",
+      appUserId: mia.user.id,
+      userId: mia.user.id,
+      eventAt: new Date(),
+      payload: {},
+      outcome: "APPLIED",
+    },
+  });
+  res = await get(`/admin/users/${mia.user.id}/membership`, asAdmin);
+  assert.equal(res.statusCode, 200);
+  const m = json(res).membership;
+  assert.equal(m.active, false, "lapsed");
+  assert.equal(m.subscription.store, "PROMOTIONAL");
+  assert.equal(m.subscription.environment, "SANDBOX");
+  assert.ok(m.subscription.revokedAt, "the dev lapse shows as revoked");
+  assert.deepEqual(
+    m.events.map((e: { type: string; outcome: string }) => [e.type, e.outcome]),
+    [["INITIAL_PURCHASE", "APPLIED"]],
+  );
+  const none = json(await get(`/admin/users/${nora.user.id}/membership`, asAdmin)).membership;
+  assert.equal(none.active, false);
+  assert.equal(none.subscription.revokedAt !== null, true, "nora's dev grant was revoked");
+  const fresh = json(await get(`/admin/users/${ola.user.id}/membership`, asAdmin)).membership;
+  assert.equal(fresh.active, true);
+  const never = await signup("neve");
+  const blank = json(await get(`/admin/users/${never.user.id}/membership`, asAdmin)).membership;
+  assert.equal(blank.subscription, null);
+  assert.deepEqual(blank.events, []);
+  assert.equal((await get(`/admin/users/${mia.user.id}/membership`, asMia)).statusCode, 403);
+  assert.equal(
+    (await get(`/admin/users/${crypto.randomUUID()}/membership`, asAdmin)).statusCode,
+    404,
+  );
+  pass("19. GET /admin/users/:id/membership shows the row and events, admin-only");
+
   console.log("\nAll DEEP Premium content-lock checks passed.");
   await app.close();
   await prisma.$disconnect();
