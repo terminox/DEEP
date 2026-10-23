@@ -1,6 +1,6 @@
 import Foundation
 
-/// The app's single HTTP seam to the Deep backend. Async/await over `URLSession`,
+/// The app's single HTTP seam to the DEEP backend. Async/await over `URLSession`,
 /// base URL from `AppConfig`, Bearer-token injection from the Keychain, and a
 /// single transparent refresh-then-retry on a 401. Repositories and the auth
 /// store are built on top of this; views never touch it directly.
@@ -13,6 +13,12 @@ final class APIClient {
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
   private var refreshTask: Task<Void, Error>?
+
+  /// Runs when the server rejects the refresh token and the pair has been
+  /// cleared — the session is over, whoever was in it. `APIAccountStore`
+  /// turns this into a sign-out. Never called for an outage: a timeout or an
+  /// unreachable host keeps the session.
+  var onSessionRejected: (@MainActor () -> Void)?
 
   init(baseURL: URL, tokens: KeychainTokenStore, session: URLSession = APIClient.makeSession()) {
     self.baseURL = baseURL
@@ -139,7 +145,7 @@ final class APIClient {
     }
 
     guard (200..<300).contains(http.statusCode) else {
-      throw apiError(from: data, status: http.statusCode)
+      throw Self.apiError(from: data, status: http.statusCode)
     }
     return data
   }
@@ -175,6 +181,7 @@ final class APIClient {
     } catch {
       if Self.isAuthRejection(error) {
         tokens.clear()
+        onSessionRejected?()
         throw APIError.unauthorized
       }
       // Transport / server hiccup: keep the token pair, surface the real
@@ -219,11 +226,22 @@ final class APIClient {
     }
   }
 
-  private func apiError(from data: Data, status: Int) -> APIError {
-    if status == 401 { return .unauthorized }
-    if let env = try? decoder.decode(APIErrorEnvelope.self, from: data) {
-      return .http(status: status, code: env.error.code, message: env.error.message)
+  /// A 401 only means "treat as signed out" when the server says the token
+  /// itself is the problem (`unauthorized`, or `token_reuse` from a refresh
+  /// rotation) — or when the body isn't a parseable envelope at all. A 401
+  /// with any other code, e.g. `invalid_credentials` from a bad login
+  /// attempt, is a plain request failure: the caller (a signed-out screen
+  /// like `LogInView`) should show the server's own message, not "Your
+  /// session has ended."
+  nonisolated static func apiError(from data: Data, status: Int) -> APIError {
+    guard let env = try? JSONDecoder().decode(APIErrorEnvelope.self, from: data) else {
+      return status == 401
+        ? .unauthorized
+        : .http(status: status, code: "http_\(status)", message: "Request failed (\(status)).")
     }
-    return .http(status: status, code: "http_\(status)", message: "Request failed (\(status)).")
+    if status == 401, env.error.code == "unauthorized" || env.error.code == "token_reuse" {
+      return .unauthorized
+    }
+    return .http(status: status, code: env.error.code, message: env.error.message)
   }
 }

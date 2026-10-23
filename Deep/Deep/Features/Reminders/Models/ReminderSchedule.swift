@@ -9,7 +9,7 @@ import Foundation
 /// the "you are behind" register `DESIGN.md` rules out. So the schedule is a
 /// window of individually dated requests, rebuilt every time the app comes
 /// forward. Eight weeks of them sits comfortably under the cap, and someone
-/// who hasn't opened Deep in eight weeks has a bigger gap than a notification
+/// who hasn't opened DEEP in eight weeks has a bigger gap than a notification
 /// closes.
 ///
 /// Kept free of `UNUserNotificationCenter` on purpose: the date maths is the
@@ -21,13 +21,15 @@ enum ReminderSchedule {
 
   /// The next `horizon` firing times after `now`.
   ///
-  /// - Parameter goalMetToday: today's practice is already complete, so
-  ///   today's occurrence is dropped. Only today can be known this way; every
-  ///   later day is scheduled and withdrawn later if it turns out the same.
+  /// - Parameter practisedToday: today is already practised (the daily goal's
+  ///   DEEP Session minutes met, or a Global Pause sat — see
+  ///   `PracticeStore.reminderRestsToday`), so today's occurrence is
+  ///   dropped. Only today can be known this way; every later day is
+  ///   scheduled and withdrawn later if it turns out the same.
   static func occurrences(
     after now: Date,
     reminder: DailyReminder,
-    goalMetToday: Bool,
+    practisedToday: Bool,
     calendar: Calendar = .current,
     limit: Int = horizon
   ) -> [Date] {
@@ -50,7 +52,7 @@ enum ReminderSchedule {
       // Strictly after `now`, so rescheduling at 21:00:30 doesn't re-queue the
       // 21:00 that just fired.
       guard fires > now else { continue }
-      if goalMetToday, calendar.isDate(fires, inSameDayAs: now) { continue }
+      if practisedToday, calendar.isDate(fires, inSameDayAs: now) { continue }
       found.append(fires)
     }
     return found

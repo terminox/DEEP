@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Deep's breathing skeleton primitives — never a shimmer-sweep or spinner.
+/// DEEP's breathing skeleton primitives — never a shimmer-sweep or spinner.
 /// Screen-specific skeleton layouts compose `SkeletonBlock` / `SkeletonTextLine`
 /// to mirror real content geometry, then apply `.skeletonBreath()` once at the root.
 

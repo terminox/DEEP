@@ -52,7 +52,7 @@ final class APIPlaylistRemote: PlaylistRemote {
   // MARK: Mapping
 
   /// Tracks and collections map through `APISoundContentRepository`'s existing
-  /// projections, so a saved sound is the same domain value the rest of Deep
+  /// projections, so a saved sound is the same domain value the rest of DEEP
   /// Sound plays.
   static func playlist(from dto: PlaylistDTO) -> Playlist {
     Playlist(

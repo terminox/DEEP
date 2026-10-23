@@ -7,11 +7,13 @@ import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 
 // MARK: - Curves (single source of truth)
 
 /**
- * Motion in Deep is always slower than expected. Defaults run 600–900ms against a
+ * Motion in DEEP is always slower than expected. Defaults run 600–900ms against a
  * typical 200–300, and the easing approximates an exhale — slow start, slow end,
  * no overshoot. See DESIGN.md.
  *
@@ -99,7 +101,7 @@ fun <T> settle(): SpringSpec<T> =
 
 /**
  * The breath itself — the exhale curve stretched over a whole breath phase, the
- * one motion in the app allowed to take entire seconds. Drives the Deep Session
+ * one motion in the app allowed to take entire seconds. Drives the DEEP Session
  * orb: 4s in, 6s out.
  */
 fun <T> breath(seconds: Float): TweenSpec<T> =
@@ -119,6 +121,42 @@ val exhaleEasing: Easing get() = DeepCurve.ExhaleEasing
  * flashes it.
  */
 const val BREATHE_FLOOR_MILLIS = 900L
+
+/**
+ * How long a confirmed choice stays on screen as "done" before its sheet leaves
+ * — long enough to be read as an acknowledgement, short enough not to stall.
+ * The plant picker holds its "Growing …" bar this long (iOS's 0.5s).
+ */
+const val CONFIRMATION_HOLD_MILLIS = 500L
+
+/**
+ * How long a card blooms in before the numbers on it start to move, so the
+ * eye has landed before anything counts. Each reward ritual step waits this
+ * long after its entrance (iOS's `Task.sleep(for: .milliseconds(350))`).
+ */
+const val ENTRANCE_HOLD_MILLIS = 350L
+
+// MARK: - Travel
+
+/**
+ * How far content drifts as a screen hands off — the soft drift's one
+ * magnitude. Going forward new content rises this far into place from below
+ * while the old drifts up by the same; going back mirrors it. Never under
+ * reduced motion.
+ *
+ * Ported from `SoftDrift.drop` in Deep/Deep/Shared/Transition/SoftDriftTransition.swift
+ * (16pt). A Dp extension, like the spacing tokens, so it reads
+ * `slideInVertically { Dp.drift.roundToPx() }`.
+ */
+val Dp.Companion.drift: Dp get() = 16.dp
+
+/**
+ * The breath of blur at the fully-veiled ends of the soft drift — the content
+ * resolving into focus as it settles. Ported from `SoftDrift.veil` (6pt).
+ * Only drawn where a real blur exists (API 31+), and never under reduced
+ * motion.
+ */
+val Dp.Companion.veil: Dp get() = 6.dp
 
 @Suppress("unused")
 private val springSentinel = Spring.StiffnessMedium

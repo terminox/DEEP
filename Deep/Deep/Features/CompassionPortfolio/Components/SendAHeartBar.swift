@@ -4,7 +4,7 @@ import SwiftUI
 /// whole cause in one tap.
 ///
 /// Once the balance is spent it stops being a dimmed button and becomes a quiet
-/// frosted note instead — a disabled CTA reads as something broken, and Deep
+/// frosted note instead — a disabled CTA reads as something broken, and DEEP
 /// would rather say "come back after a practice" than "you can't".
 struct SendAHeartBar: View {
   @Environment(\.heartLedger) private var ledger

@@ -5,7 +5,7 @@
 # Central Flight is a distribution vehicle, not an environment: the build talks to
 # production exactly as the Prod configuration does, but wears a reusable client-facing
 # App ID (com.kanekohouse.centralflight) so it can reach TestFlight without touching
-# Deep's own App Store record. See Deep/Config/CentralFlight.xcconfig.
+# DEEP's own App Store record. See Deep/Config/CentralFlight.xcconfig.
 #
 # The build number is Unix epoch seconds, stamped into that xcconfig so the tree records
 # what shipped and an Xcode Organizer archive agrees with a CLI one. Commit the stamp

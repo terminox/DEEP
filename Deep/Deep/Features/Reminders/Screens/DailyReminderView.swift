@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The daily reminder screen, pushed from Settings.
 ///
-/// This is the first system permission Deep has ever asked for, so the screen
+/// This is the first system permission DEEP has ever asked for, so the screen
 /// explains itself before the switch is touched rather than after — a refusal
 /// here can only be undone in iOS Settings, so it's worth one sentence to
 /// avoid earning one.
@@ -13,8 +13,8 @@ struct DailyReminderView: View {
 
   @State private var pickedTime = Date()
 
-  private var goalMetToday: Bool {
-    practiceStore.minutesToday >= practiceStore.dailyGoalMinutes
+  private var practisedToday: Bool {
+    practiceStore.reminderRestsToday
   }
 
   var body: some View {
@@ -59,7 +59,7 @@ struct DailyReminderView: View {
       await reminderStore.refreshPermission()
     }
     .onChange(of: pickedTime) { _, newValue in
-      Task { await reminderStore.setTime(newValue, goalMetToday: goalMetToday) }
+      Task { await reminderStore.setTime(newValue, practisedToday: practisedToday) }
     }
   }
 
@@ -106,7 +106,7 @@ struct DailyReminderView: View {
 
   private func setEnabled(_ wantsOn: Bool) async {
     if wantsOn {
-      await reminderStore.enable(goalMetToday: goalMetToday)
+      await reminderStore.enable(practisedToday: practisedToday)
       pickedTime = reminderStore.reminder.pickerDate()
     } else {
       await reminderStore.disable()

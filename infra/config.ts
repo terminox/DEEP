@@ -1,4 +1,4 @@
-// Typed, per-stack configuration for the Deep infrastructure. Non-secret values
+// Typed, per-stack configuration for the DEEP infrastructure. Non-secret values
 // live in `Pulumi.<stack>.yaml`; secrets are set encrypted with
 // `pulumi config set --secret deep:<key> <value>` and surfaced here as
 // `pulumi.Output<string>`. The GCP project + region come from the standard
@@ -25,6 +25,10 @@ export const config = {
   dbTier: cfg.get("dbTier") ?? "db-f1-micro",
   minInstances: cfg.getNumber("minInstances") ?? 0,
   maxInstances: cfg.getNumber("maxInstances") ?? 1,
+  // Throttle CPU between requests. Independent of minInstances: a warm min instance
+  // with throttled CPU is billed at Cloud Run's idle rate (~$10-15/mo here), while
+  // always-allocated CPU on that same instance is ~$50/mo for no benefit to this API.
+  cpuIdle: cfg.getBoolean("cpuIdle") ?? true,
   deletionProtection: cfg.getBoolean("deletionProtection") ?? true,
 
   // The container image to deploy. Set per build:

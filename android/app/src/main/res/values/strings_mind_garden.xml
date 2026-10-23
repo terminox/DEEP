@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Mind Garden tab: the home (feature/mindgarden/MindGardenHomeScreen.kt),
+  its two cards and the plant picker sheet. Verbatim from the iOS sources under
+  Deep/Deep/Features/MindGarden/Components/, typographic apostrophes included.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <!-- The collapsing header over the oak. -->
+  <string name="mind_garden_title">Mind Garden</string>
+  <string name="mind_garden_subtitle">Tend to your calm</string>
+
+  <!-- The quiet pill under the plant's portrait that opens the plant picker. -->
+  <string name="garden_change">Change</string>
+  <!-- The same pill, as a TalkBack action on the growth row. -->
+  <string name="garden_change_action">Change plant</string>
+  <!-- Sunlight is uncountable, so these never pluralise. The growth row spoken as one sentence: "Young Oak, 240 of 700 sunlight to Mature Oak". -->
+  <string name="garden_growth_summary" tools:ignore="PluralsCandidate">%1$s, %2$d of %3$d sunlight to %4$s</string>
+  <!-- The growth row once there is no next form: "Mature Oak, fully grown". -->
+  <string name="garden_growth_summary_fully_grown">%1$s, fully grown</string>
+
+  <!-- The daily practice card. -->
+  <string name="practice_eyebrow">TODAY’S PRACTICE</string>
+  <string name="practice_headline_tend">Tend your garden</string>
+  <string name="practice_headline_complete">Today’s goal complete</string>
+  <!-- %1$s is the selected plant's name, lowercased ("oak"), or practice_subtitle_garden. -->
+  <string name="practice_subtitle_feeds">Each session feeds your %1$s</string>
+  <!-- Stands in for the plant's name while the garden is still loading. -->
+  <string name="practice_subtitle_garden">garden</string>
+  <string name="practice_subtitle_complete">Return tomorrow for new growth</string>
+  <!-- Under the play ring: "7 of 10 min". -->
+  <string name="practice_minutes">%1$d of %2$d min</string>
+  <!-- Spoken for the whole card; the quantity is the daily goal. -->
+  <plurals name="practice_summary_complete">
+    <item quantity="one">Today’s goal complete, %1$d of %2$d minute</item>
+    <item quantity="other">Today’s goal complete, %1$d of %2$d minutes</item>
+  </plurals>
+  <plurals name="practice_summary_begin">
+    <item quantity="one">Begin today’s practice, %1$d of %2$d minute complete</item>
+    <item quantity="other">Begin today’s practice, %1$d of %2$d minutes complete</item>
+  </plurals>
+
+  <!-- The plant picker sheet. -->
+  <string name="picker_title">Choose your plant</string>
+  <string name="picker_subtitle">Sunlight stays with every plant — switch back any time and it grows on from where it left off.</string>
+  <!-- The confirm bar while the switch is in flight. -->
+  <string name="picker_growing">Growing %1$s</string>
+  <string name="picker_grow">Grow %1$s</string>
+  <!-- Spoken action for picker_grow. -->
+  <string name="picker_grow_hint">Switches your garden to this plant</string>
+  <!-- The confirm bar when the staged plant is the one already growing; it closes the sheet. -->
+  <string name="picker_keep">Keep %1$s</string>
+  <!-- One plant row spoken: "Sakura, Budding Sakura, 160 sunlight". -->
+  <string name="picker_row_summary" tools:ignore="PluralsCandidate">%1$s, %2$s, %3$d sunlight</string>
+  <!-- Android only: the catalog fetch failed. iOS holds the skeleton forever instead. -->
+  <string name="picker_failed">The garden didn’t answer</string>
+  <string name="picker_retry">Try again</string>
+  <!-- The garden's salutation by local hour (GardenGreeting.TimeOfDay). -->
+  <string name="garden_salutation_morning">Good morning</string>
+  <string name="garden_salutation_afternoon">Good afternoon</string>
+  <string name="garden_salutation_evening">Good evening</string>
+  <!-- The day's line of encouragement, rotated one per day. Order matters: GardenGreeting.quoteIndex
+       reproduces iOS's day-ordinal rotation, so the same date shows the same line on both platforms.
+       Must hold exactly GardenGreeting.QUOTE_COUNT entries. -->
+  <string-array name="garden_quotes">
+    <item>Every breath waters your garden.</item>
+    <item>Small moments grow tall.</item>
+    <item>You don’t have to rush a tree.</item>
+    <item>Stillness is how roots deepen.</item>
+    <item>A little calm, tended daily, becomes shade.</item>
+    <item>Grow at the pace of breath.</item>
+    <item>Every oak was once a quiet seed.</item>
+    <item>Today asks only a few soft minutes.</item>
+  </string-array>
+  <!-- The picker's quiet caption after the server refuses a plant switch. -->
+  <string name="picker_switch_failed">Couldn\'t switch plants — try again in a moment.</string>
+</resources>

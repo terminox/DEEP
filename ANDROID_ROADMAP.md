@@ -1,8 +1,8 @@
-# Deep for Android — Roadmap to v1.0.0
+# DEEP for Android — Roadmap to v1.0.0
 
 > *"Pause. Breathe. Connect. Heal — together."* — on a second platform.
 
-Deep ships on iOS today. This document is the route to shipping the same product on Android,
+DEEP ships on iOS today. This document is the route to shipping the same product on Android,
 in eight weeks, with a build in the client's hands at the end of every one of them.
 
 For what the product *is*, see `PRODUCT.md`. For how it should look and move, see `DESIGN.md`.
@@ -31,11 +31,11 @@ Settled before the first line of Kotlin. Recorded here so they are not re-litiga
 
 | Decision | Choice | Why |
 |---|---|---|
-| Stack | Kotlin + Jetpack Compose, native, in `android/` | Deep's whole differentiator is custom motion and custom surfaces. The shared layer between platforms is `deep-api`, not the UI — a cross-platform client would forfeit the ceiling on both and still need native audio and native GL. |
+| Stack | Kotlin + Jetpack Compose, native, in `android/` | DEEP's whole differentiator is custom motion and custom surfaces. The shared layer between platforms is `deep-api`, not the UI — a cross-platform client would forfeit the ceiling on both and still need native audio and native GL. |
 | minSdk | 26 | Reaches ~97% of devices, which matters where the audience is. Everything below is designed to degrade, not to require a newer floor. |
 | Globe renderer | OpenGL ES 3.0 via `GLSurfaceView` | `EarthSurface.metal` is a sphere-SDF raymarch feeding a threshold, ping-pong blur and composite bloom chain. That is a multi-pass pipeline, which GL does natively and AGSL does awkwardly — and AGSL is API 33+, which would raise the floor for the app's signature screen. |
-| Design policy | Deep's design language, Android's mechanics | Identical palette, typography, motion curves, radii, spacing and copy. Navigation, predictive back, edge-to-edge insets, haptics and the media notification follow Android convention. Deep should feel like Deep, and like it belongs on the phone. |
-| App shell | A custom Compose bottom bar wearing Deep's tokens | Not stock Material 3 — the tab bar frames every screen, and stock Material is the fastest way to look like a cheaper product. Not a reproduction of the iOS 26 Liquid Glass bar either; that is an OS affordance, and rebuilding it would cost a week and fight the platform. |
+| Design policy | DEEP's design language, Android's mechanics | Identical palette, typography, motion curves, radii, spacing and copy. Navigation, predictive back, edge-to-edge insets, haptics and the media notification follow Android convention. DEEP should feel like DEEP, and like it belongs on the phone. |
+| App shell | A custom Compose bottom bar wearing DEEP's tokens | Not stock Material 3 — the tab bar frames every screen, and stock Material is the fastest way to look like a cheaper product. Not a reproduction of the iOS 26 Liquid Glass bar either; that is an OS affordance, and rebuilding it would cost a week and fight the platform. |
 | Client delivery | A signed APK each week | No accounts, no review queues, nothing between a finished build and the client's hands. A proper distribution track is a v1.0.0 concern, not a week-one one. |
 
 ---
@@ -44,7 +44,7 @@ Settled before the first line of Kotlin. Recorded here so they are not re-litiga
 
 | Week | Ships | The story | Unblocks |
 |---|---|---|---|
-| 1 | `v0.0.1` | It moves like Deep, and it's talking to our server | Everything — the theme, the shell and the network layer are what every later week plugs into |
+| 1 | `v0.0.1` | It moves like DEEP, and it's talking to our server | Everything — the theme, the shell and the network layer are what every later week plugs into |
 | 2 | `v0.0.2` | Make an account, and the app shapes itself around you | Every authenticated endpoint |
 | 3 | `v0.0.3` | Sound that follows you across the app | The shared player the whole app leans on |
 | 4 | `v0.0.4` | Practice grows something | The earn loop that gives weeks 5 and 6 something to spend |
@@ -53,10 +53,10 @@ Settled before the first line of Kotlin. Recorded here so they are not re-litiga
 | 7 | `v0.0.7` | The globe lands, and the card lifts into the session | Feature parity reached |
 | 8 | `v1.0.0` | Release | — |
 
-### Week 1 — `v0.0.1` · It moves like Deep, and it's talking to our server
+### Week 1 — `v0.0.1` · It moves like DEEP, and it's talking to our server
 
 Week one is not "get something running". Three things sink an eight-week port, and all three are
-decided now: theming left placeheld and done properly later, which never converges because Deep's
+decided now: theming left placeheld and done properly later, which never converges because DEEP's
 identity *is* its atmosphere; the globe left until week six; and the audio model deferred so long
 that every screen is re-laid-out when it arrives.
 
@@ -83,11 +83,27 @@ The mini player's design is settled this week, before week three builds it.
 
 ### Week 3 — `v0.0.3` · Sound that follows you across the app
 
-Deep Sound: the shelves, collection detail, lyrics. Underneath, the real work — Media3, a
+DEEP Sound: the shelves, collection detail, lyrics. Underneath, the real work — Media3, a
 `MediaSessionService`, background playback and a proper media notification. Then the mini player
 docked above the tab bar and the full Now Playing above that.
 
 This is the week that changes the shape of every screen, which is why it is early.
+
+Decided while building it:
+
+- **Parity, deliberately.** The queue repeats forever, previous restarts after 3s, duration
+  comes from the server, and only a natural end reports a listen (`POST /me/sound/listens`,
+  when signed in — the hearts it earns surface in week 4). The Now Playing volume slider is the
+  player's own gain starting at 60%, exactly as iOS, not the system volume.
+- **Android on top of iOS.** Lock-screen and notification controls, audio focus (a call pauses
+  the track) and pausing when headphones are pulled. iOS has none of these for DEEP Sound.
+- **Divergences, on the record.** Premium sounds play for everyone on Android — no lock, no
+  "A premium sound" alert — until Premium itself is in scope. The dead AirPlay button is gone
+  from Now Playing, and gone from iOS too. Signing out stops the player and forgets the saved
+  sounds, so the next member never finds the last one's track on the lock screen.
+- **Scope pulled in.** The saved-sounds playlist became the You tab's root (as on iOS), Home's
+  tiles play their collection and its Explore tiles open a collection list, and Home took the
+  collapsing header and hero pull-to-refresh along with DEEP Sound.
 
 ### Week 4 — `v0.0.4` · Practice grows something
 
@@ -95,11 +111,57 @@ Mind Garden, the reward ritual, the practice journal with its offline sync queue
 By Friday a finished session banks sunlight, the plant grows toward its next form, and hearts
 land in a balance. The loop closes.
 
+Decided while building it:
+
+- **Parity, deliberately.** A session that runs to its end is journaled, earns one heart and one
+  sunlight while today holds four or fewer, and opens the ritual: garden, compassion, then the
+  day's rhythm once a day. Leaving early banks nothing. The journal syncs at launch, on every
+  return to the foreground, after sign-in, and on the Garden's pull. A natural end in DEEP Sound
+  feeds the same wallet silently, with no ritual. The wallet is shown only in the ritual until the
+  Compassion tab lands in week 5, exactly as on iOS.
+- **Fixed on Android, invisible to a member.** The journal pushes in batches of 200 (the
+  server's limit, which iOS would trip on a long offline backlog) and never two pushes at once. A
+  garden response with no plant still updates the balance. A plant catalog that fails to load
+  says so and offers a retry instead of an endless skeleton. A response that lands after sign-out
+  is dropped rather than writing the last member's figures back. Log out first offers unsynced
+  practice to the server for up to three seconds, where iOS drops it.
+- **Known and left alone.** A wallet refresh that lands while a heart is being given, followed by
+  that gift being refused, double-counts the gift — fixed in week 5, below. Yesterday's
+  earned-today figure arriving just after midnight is read as today's, matching iOS.
+- **The device timezone is read at launch.** The server reads it per request, so awards land on
+  the right day either way. Only the app's own "today" waits for a relaunch after a zone change.
+
 ### Week 5 — `v0.0.5` · Give a heart — and the app speaks Thai
 
 The Compassion Portfolio and the donate flow. The You tab, settings, account deletion, and the
 daily reminder. And the language switch — the iOS app carries 291 strings with Thai for 285 of
 them, and the server localizes content off `Accept-Language`, so Thai is parity, not a bonus.
+
+Decided while building it:
+
+- **Parity, deliberately.** The portfolio home, the donate sheet and its soft keypad, the five
+  causes with their partners, projects and field reports — kept local, as iOS keeps them. The
+  cause detail is ported but parked, exactly as on iOS: the route exists and nothing pushes it.
+  The community pool climbs only with this device's own gifts, as on iOS. The daily reminder's
+  copy rotates one line a day and skips a day whose practice is done.
+- **Fixed on Android, invisible to a member.** The week-4 double count is gone: the heart ledger
+  keeps the server's figures apart from gifts still in flight, so a refresh or an award landing
+  mid-gift followed by a refusal counts the gift once. The price is a brief undercount when a
+  refresh already counted the gift, until the gift's own answer lands a moment later.
+- **One title per action.** The donate sheet keeps "Donate hearts" on its button for the life of
+  the screen and dims it while there is nothing to commit, where iOS relabels it per amount
+  ("Donate 10 hearts", "Pick an amount", "Donated 10 hearts").
+- **The reminder rides AlarmManager, inexact.** One alarm at a time in a ten-minute window,
+  re-armed as it fires and on boot, clock and timezone changes. No `SCHEDULE_EXACT_ALARM`: it is
+  denied by default from Android 14 and is a second permission journey for a gentle nudge.
+  `POST_NOTIFICATIONS` is asked only when the member turns the reminder on. The channel is
+  quiet (no sound, no badge), matching iOS's passive interruption level.
+- **A spring-forward gap skips the day**, as iOS does. Settled; see below.
+- **The language switch** is the platform per-app locale (`LocaleManager` on API 33+, a wrapped
+  base context below), persisted in DataStore and mirrored into the system's per-app language
+  settings. Choosing one refetches the server-authored content in it.
+- **No Membership section in Settings.** DEEP Premium is out of scope, and iOS's two rows are App
+  Store actions with nothing behind them here; the plan chip still reads "Free plan".
 
 ### Week 6 — `v0.0.6` · The world pauses together
 
@@ -146,19 +208,34 @@ work, and pulling any of them in would mean shipping Android features the iPhone
 Deliberately unfinished. These are questions we can see coming but cannot yet state sharply
 enough to answer; each gets written up properly as the work reaches it.
 
-- **How the mini player docks.** iOS uses an OS-provided tab accessory. Android has no equivalent,
-  so this needs its own design pass — scheduled for week 2, before week 3 builds against it.
-- **The onboarding ripple-reveal.** iOS dissolves the welcome screen as an expanding water ripple
-  driven by a Metal shader. Android's `RuntimeShader` is API 33+, so this either degrades to a
-  crossfade below that floor or finds another route.
+- ~~**How the mini player docks.**~~ **Settled in week 2: a floating pill.** A frosted capsule
+  (`frostedCard`) 8dp above `DeepBottomBar`, shown with `AnimatedVisibility` only while a track is
+  loaded; it does not move on scroll, and scrolling screens add bottom padding while it shows.
+  Tap or swipe up opens Now Playing through a shared-element transform; swipe down or predictive
+  back shrinks it back into the pill. Hidden during a DEEP Session and Global Pause live. Chosen
+  over a tray fused into the bar (Android-conventional, but dense against DEEP's airy bottom edge)
+  and over an iOS-26-style collapsing pill (a nested-scroll inset every screen must track —
+  close to rebuilding the OS bar). The collapse can still layer on later without undoing this.
+  Built in week 3, with one adjustment: the pill rests on the bar's layout edge, because the
+  bar's 12dp bloom already reads as the gap — 8dp on top of it measured ~18dp on screen.
+- ~~**The onboarding ripple-reveal.**~~ **Settled in week 2:** `RippleReveal.metal` ported
+  one-to-one to AGSL for API 33+; below that the still fades out over the same duration. Not yet
+  seen on a real API 26–32 device — the emulator images here are 35 and 36.
+- **A lost refresh response signs the member out.** deep-api commits the refresh-token rotation
+  before it answers; if the answer never arrives, the client still holds the old token, and
+  presenting it next time reads as theft (`token_reuse`) and revokes the session. Both clients
+  share this. The fix is server-side — a short idempotency window on rotation — not a client
+  change.
+- **Finishing onboarding offline.** Both platforms complete onboarding locally even when the
+  shaping step's `PUT /me/onboarding` fails, so the next online launch hydrates the server's
+  `completed: false` and replays the flow. Parity for now; a pending-sync marker would fix both.
 - **The rounded-font substitute.** Three type tokens use SF Rounded, which Android has no
   equivalent for. Nunito is in place for week 1, but it ships no `tnum` table, and the 96sp session
   numeral rolls as the length slider moves — so either it has uniform figures by default, or that
   token needs a different face.
-- **A reminder in a spring-forward gap.** iOS skips the day when the chosen wall-clock time does
-  not exist; Kotlin's `ZonedDateTime` resolves forward by the gap instead. No test covers it
-  because Asia/Bangkok has no DST, but the two platforms would differ for a member elsewhere.
-  Settle it when reminders ship in week 5.
+- ~~**A reminder in a spring-forward gap.**~~ **Settled in week 5: the day is skipped,** as on
+  iOS. `ReminderSchedule` checks the wall time against the zone's rules before building it, and
+  tests pin New York's spring-forward and fall-back nights.
 - **The `versionCode` scheme.** iOS stamps Unix epoch seconds. `versionCode` is a signed 32-bit
   int that can never decrease on a store track, so that does not survive the port.
 - **Whether the two platforms share a version source** or diverge on the record.

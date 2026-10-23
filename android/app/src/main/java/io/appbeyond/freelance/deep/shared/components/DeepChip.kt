@@ -18,14 +18,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
@@ -49,9 +48,8 @@ private const val UNSELECTED_TEXT_ALPHA = 0.85f
 
 /** The selected chip's glow — iOS's `shadow(radius: 10, x: 0, y: 4)`. */
 private const val GLOW_ALPHA = 0.32f
-private val GLOW_SPREAD = 10.dp
+private val GLOW_RADIUS = 10.dp
 private val GLOW_OFFSET_Y = 4.dp
-private const val GLOW_STEPS = 5
 
 private val TAG_PADDING_HORIZONTAL = 10.dp
 private val TAG_PADDING_VERTICAL = 5.dp
@@ -106,23 +104,14 @@ fun DeepChip(
 }
 
 /** The soft lavender glow a selected chip lifts on. Drawn behind the fill, never clipped by it. */
-private fun Modifier.chipGlow(): Modifier = drawBehind {
-  val cornerPx = Dp.chip.toPx()
-  val spreadPx = GLOW_SPREAD.toPx()
-  val offsetYPx = GLOW_OFFSET_Y.toPx()
-
-  for (step in GLOW_STEPS downTo 1) {
-    val t = step / GLOW_STEPS.toFloat()
-    val spread = spreadPx * t
-    val alpha = GLOW_ALPHA * (1f - t) * (1f - t)
-    drawRoundRect(
-      color = Color.lavenderMist.copy(alpha = alpha),
-      topLeft = Offset(-spread, offsetYPx - spread),
-      size = Size(size.width + spread * 2f, size.height + spread * 2f),
-      cornerRadius = CornerRadius(cornerPx + spread),
-    )
-  }
-}
+private fun Modifier.chipGlow(): Modifier = dropShadow(
+  shape = RoundedCornerShape(Dp.chip),
+  shadow = Shadow(
+    radius = GLOW_RADIUS,
+    color = Color.lavenderMist.copy(alpha = GLOW_ALPHA),
+    offset = DpOffset(0.dp, GLOW_OFFSET_Y),
+  ),
+)
 
 // MARK: - DeepTagLabel
 

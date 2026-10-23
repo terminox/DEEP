@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A gentle "coming soon" screen for features that aren't built yet. Keeps the
-/// Deep atmosphere so an empty tab still feels like part of the app.
+/// DEEP atmosphere so an empty tab still feels like part of the app.
 struct FeaturePlaceholderView: View {
   let title: String
   let message: String

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The threshold before a Deep Session — a quiet page where you set how long
+/// The threshold before a DEEP Session — a quiet page where you set how long
 /// the practice runs, see what it holds (pattern, rounds), and step in. Pushed
 /// onto the launching tab's navigation (so the tab bar and mini player stay),
 /// where Begin lifts the practice up over the whole shell.
@@ -137,7 +137,7 @@ struct DeepSessionIntroView: View {
   /// the practice says about itself.
   ///
   /// The system slider, for the thumb: a value being placed by hand should show
-  /// what the hand is holding. Deep's own `SoundSlider` is a bare fill made for
+  /// what the hand is holding. DEEP's own `SoundSlider` is a bare fill made for
   /// scrubbing audio, where the fill *is* the position — here the fill alone
   /// leaves nothing to grab, and at one minute it empties out and reads as a
   /// rule drawn across the screen.
@@ -191,7 +191,7 @@ struct DeepSessionIntroView: View {
 }
 
 #if DEBUG
-#Preview("Deep session intro") {
+#Preview("DEEP Session intro") {
   // Inside a stack, the way it is really reached — pushed from an entry card.
   NavigationStack {
     DeepSessionIntroView(session: DeepSessionLibrary.balancingBreath)

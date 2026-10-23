@@ -1,5 +1,8 @@
 package io.appbeyond.freelance.deep.feature.reminders.model
 
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZonedDateTime
 
 /**
@@ -12,16 +15,21 @@ import java.time.ZonedDateTime
  * the "you are behind" register `DESIGN.md` rules out. So the schedule is a
  * window of individually dated requests, rebuilt every time the app comes
  * forward. Eight weeks of them sits comfortably under the cap, and someone
- * who hasn't opened Deep in eight weeks has a bigger gap than a notification
+ * who hasn't opened DEEP in eight weeks has a bigger gap than a notification
  * closes.
  *
  * Ported from Deep/Deep/Features/Reminders/Models/ReminderSchedule.swift,
- * date arithmetic unchanged. Android has no 64-pending-request cap the way
- * iOS's `UNUserNotificationCenter` does, so the *scheduling layer* that turns
- * these occurrences into actual system alarms/notifications will differ once
- * reminders ship in week 5 — it may not need the individually-dated-window
- * trick at all. This pure function is correct and tested as-is regardless of
- * which scheduling layer ends up consuming it.
+ * date arithmetic unchanged. Android has no 64-pending-request cap, and its
+ * scheduling layer (`AlarmReminderScheduler` in `:app`) arms only the first
+ * occurrence and re-arms from here each time one fires; the window is kept
+ * whole so the store and its tests read exactly as iOS's do.
+ *
+ * **A spring-forward gap skips the day,** as iOS's guarded
+ * `calendar.date(bySettingHour:)` does: a member who chose 02:30 gets nothing
+ * on the night 02:00 jumps to 03:00, rather than a nudge at 03:30 they never
+ * asked for. `ZonedDateTime.withHour` would resolve forward by the gap, so the
+ * wall time is checked against the zone's rules first. A fall-back overlap
+ * keeps the earlier of the two instants, as `ZonedDateTime` does by default.
  *
  * Kept free of any notification API on purpose: the date maths is the part
  * worth testing, and it tests as a pure function (the `PracticeMath`
@@ -32,6 +40,14 @@ import java.time.ZonedDateTime
 object ReminderSchedule {
   /** How many future occurrences to keep queued. */
   const val horizon = 56
+
+  /**
+   * How late the system may deliver an occurrence: Android arms the nudge as
+   * an inexact alarm in a window this long from the chosen minute (the
+   * shortest window `setWindow` honours). An occurrence inside it may not
+   * have fired yet; see `ReminderStore.reschedule`.
+   */
+  val deliveryWindow: Duration = Duration.ofMinutes(10)
 
   /**
    * The next [limit] firing times after [after].
@@ -53,13 +69,12 @@ object ReminderSchedule {
     // A bounded walk rather than an unbounded loop: an unrepresentable wall
     // time must never spin here.
     while (found.size < limit && dayOffset < limit + 7) {
-      val day = after.plusDays(dayOffset.toLong())
+      val day = after.toLocalDate().plusDays(dayOffset.toLong())
       dayOffset++
-      val fires = day
-        .withHour(reminder.hour)
-        .withMinute(reminder.minute)
-        .withSecond(0)
-        .withNano(0)
+      val wallTime = LocalDateTime.of(day, LocalTime.of(reminder.hour, reminder.minute))
+      // No valid offset means the clock jumps over this wall time today.
+      if (after.zone.rules.getValidOffsets(wallTime).isEmpty()) continue
+      val fires = ZonedDateTime.of(wallTime, after.zone)
       // Strictly after `now`, so rescheduling at 21:00:30 doesn't re-queue
       // the 21:00 that just fired.
       if (!fires.isAfter(after)) continue

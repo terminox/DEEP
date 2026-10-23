@@ -17,6 +17,7 @@ struct GlobalPauseCompletionView: View {
   @Environment(\.globalPauseSession) private var session
   @Environment(\.heartLedger) private var heartLedger
   @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.practiceStore) private var practiceStore
 
   /// Nil until the member leaves the reflection; setting it is what moves the
   /// ending on, so the ritual can never render on unsettled figures.
@@ -37,9 +38,6 @@ struct GlobalPauseCompletionView: View {
       if let receipt {
         RewardRitualView(
           receipt: receipt,
-          // A pause night adds no practice day, so the beat witnesses the run
-          // rather than crediting today.
-          continuityHeadline: "Your rhythm continues",
           paintsBackground: false,
           onFinish: onFinish
         )
@@ -53,13 +51,17 @@ struct GlobalPauseCompletionView: View {
     }
   }
 
-  /// Lets any claim still in flight land, then freezes the night into one
+  /// Lets any claim still in flight land — and the practice journal hydrate,
+  /// so the rhythm is the account's real one — then freezes the night into one
   /// receipt. The stores have already absorbed both grants through the shared
-  /// award sink, so "after" is simply what they now hold.
+  /// award sink (and a counted pause has already marked the day), so "after"
+  /// is simply what they now hold.
   private func showRewards() async {
     guard receipt == nil, !isPreparing else { return }
     isPreparing = true
-    await session.settlePauseAward()
+    async let settled: Void = session.settlePauseAward()
+    async let hydrated: Void = practiceStore.awaitHydration(timeout: .seconds(2))
+    _ = await (settled, hydrated)
     let composed = compose()
     withAnimation(.hush) { receipt = composed }
   }
@@ -70,7 +72,11 @@ struct GlobalPauseCompletionView: View {
       awards: [session.pauseAward, session.messageAward].compactMap { $0 },
       gardenAfter: gardenStore.growth,
       heartBalanceAfter: heartLedger.balance,
-      heartsEarnedTodayAfter: heartLedger.heartsEarnedToday
+      heartsEarnedTodayAfter: heartLedger.heartsEarnedToday,
+      continuity: practiceStore.continuityTransition(),
+      continuityKnown: practiceStore.isHydrated,
+      attendanceMissed: session.pauseAwardMissed,
+      attendancePending: session.pauseAwardPending
     )
   }
 }
@@ -81,6 +87,7 @@ struct GlobalPauseCompletionView: View {
     .environment(\.globalPauseSession, .previewAwarded())
     .environment(\.heartLedger, .sample)
     .environment(\.gardenStore, .sample)
+    .environment(\.practiceStore, MockPracticeStore(practicedToday: true))
     .environment(\.continuityWitness, .unwitnessed)
 }
 
@@ -89,6 +96,25 @@ struct GlobalPauseCompletionView: View {
     .environment(\.globalPauseSession, .previewAwarded())
     .environment(\.heartLedger, .sample)
     .environment(\.gardenStore, .sample)
+    .environment(\.practiceStore, MockPracticeStore(practicedToday: true))
     .environment(\.continuityWitness, .witnessed)
+}
+
+#Preview("Pause ending — claim still on its way") {
+  GlobalPauseCompletionView(before: .sample)
+    .environment(\.globalPauseSession, .previewPending())
+    .environment(\.heartLedger, .sample)
+    .environment(\.gardenStore, .sample)
+    .environment(\.practiceStore, MockPracticeStore())
+    .environment(\.continuityWitness, .unwitnessed)
+}
+
+#Preview("Pause ending — attendance missed") {
+  GlobalPauseCompletionView(before: .sample)
+    .environment(\.globalPauseSession, .previewMissed())
+    .environment(\.heartLedger, .sample)
+    .environment(\.gardenStore, .sample)
+    .environment(\.practiceStore, MockPracticeStore())
+    .environment(\.continuityWitness, .unwitnessed)
 }
 #endif

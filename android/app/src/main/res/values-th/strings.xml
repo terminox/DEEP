@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+
+  <!-- Tab bar -->
+  <string name="tab_home">หน้าแรก</string>
+  <string name="tab_sounds">เสียง</string>
+  <string name="tab_garden">สวน</string>
+  <string name="tab_compassion">ความเมตตา</string>
+  <string name="tab_you">ฉัน</string>
+
+  <!-- Placeholder tabs -->
+  <string name="placeholder_sounds_title">พื้นที่ให้ใจได้พัก</string> <!-- no iOS Thai -->
+  <string name="placeholder_sounds_body">คอลเลกชันเสียงบรรยากาศ และเครื่องเล่นที่อยู่กับคุณทุกที่ในแอป</string> <!-- no iOS Thai -->
+  <string name="placeholder_compassion_title">การฝึกที่ส่งต่อถึงผู้อื่น</string> <!-- no iOS Thai -->
+  <string name="placeholder_compassion_body">เวลาที่ใช้ใน DEEP จะกลายเป็นหัวใจ และหัวใจจะถูกมอบให้แก่โครงการเพื่อผู้อื่น</string> <!-- no iOS Thai -->
+  <string name="placeholder_you_title">พื้นที่ของคุณ</string> <!-- no iOS Thai -->
+  <string name="placeholder_you_body">เสียงที่คุณเก็บไว้ และ DEEP ที่ตั้งค่าไว้ในแบบของคุณ</string> <!-- no iOS Thai -->
+
+  <!-- Home feed -->
+  <string name="home_header_title">หน้าแรก</string>
+  <string name="home_header_subtitle">หายใจไปพร้อมกับโลกในวันนี้</string>
+  <string name="home_greeting">หยุดพัก หายใจ เชื่อมโยง</string> <!-- no iOS Thai -->
+  <string name="home_failed_title">เราเข้าถึง DEEP ไม่ได้</string> <!-- no iOS Thai -->
+  <string name="home_failed_body">ตรวจสอบการเชื่อมต่อ แล้วลองอีกครั้งเมื่อคุณพร้อม</string> <!-- no iOS Thai -->
+  <string name="home_retry">ลองอีกครั้ง</string>
+  <string name="home_session_card_title">เซสชัน DEEP</string>
+  <string name="home_session_card_body">การฝึกหายใจแบบมีผู้นำ นานเท่าที่คุณมีเวลา</string> <!-- no iOS Thai -->
+  <string name="home_lounge_card_title">เลานจ์ของ Fuku</string>
+  <string name="home_lounge_card_body">ทั้งโลกหยุดพักไปพร้อมกัน</string> <!-- no iOS Thai -->
+  <string name="home_explore_title">สำรวจ</string>
+  <string name="home_play_collection">เล่น %1$s</string>
+
+  <!-- DEEP Session -->
+  <string name="session_begin">เริ่ม</string>
+  <string name="session_minutes">นาที</string>
+  <string name="session_pattern">เข้า 4 วิ · ออก 6 วิ · %1$d รอบ</string>
+  <string name="session_breathe_in">หายใจเข้า</string> <!-- no iOS Thai -->
+  <string name="session_breathe_out">หายใจออก</string> <!-- no iOS Thai -->
+  <string name="session_round">รอบที่ %1$d จาก %2$d</string> <!-- no iOS Thai -->
+  <string name="session_ending">ตอนนี้คุณอยู่ตรงนี้แล้ว</string> <!-- no iOS Thai -->
+  <string name="session_pause">หยุดชั่วคราว</string>
+  <string name="session_resume">เล่นต่อ</string>
+  <string name="session_leave">ออก</string>
+  <string name="session_leave_confirm">ออกจากเซสชันนี้?</string>
+  <string name="session_leave_confirm_body">คุณกลับมาได้ทุกเมื่อที่ต้องการ</string> <!-- no iOS Thai -->
+  <string name="session_stay">อยู่ต่อ</string>
+
+  <!-- Loading -->
+  <string name="loading_beat">พักสักครู่</string> <!-- no iOS Thai -->
+
+</resources>

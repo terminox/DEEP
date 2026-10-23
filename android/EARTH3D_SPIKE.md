@@ -555,7 +555,7 @@ the prettiest work is last.
 | Stage | Lands | Demonstrable end state |
 |---|---|---|
 | **0** — week 2, 2 h | The prototype in §7 | A number, not a feature |
-| **1** — day 1 | `TextureView` + EGL + render thread + fullscreen triangle + three UBOs + R8 continent texture + the surface shader **without** glow, volumes or bloom | A rotating iridescent glass world with a rim. Recognisably Deep. Proves precision, texture orientation, UBO layout, the projection and the format probe. |
+| **1** — day 1 | `TextureView` + EGL + render thread + fullscreen triangle + three UBOs + R8 continent texture + the surface shader **without** glow, volumes or bloom | A rotating iridescent glass world with a rim. Recognisably DEEP. Proves precision, texture orientation, UBO layout, the projection and the format probe. |
 | **2** — day 2 | The bloom chain: threshold, blur H, blur V, composite; the `RGBA16F` FBOs; `glInvalidateFramebuffer` | The orb at rest, matching iOS side by side |
 | **3** — day 3 | `EarthGlowStore` in Kotlin with JUnit parity tests, UBO upload, `accumulateGlow` **with Fix B**, `volumetricShell` | The world lights where people are |
 | **4** — day 3-4 | `accumulateLightVolumes`: orb/dome/buried plus expanding shells, **with Fix A** | Parity with the shipped `.buried` default; sparks |
@@ -589,7 +589,7 @@ the hardware forces.
    (~1000 triangles), sample the same continent texture, apply the same latitude palette walk
    and a fresnel rim in the fragment shader, and draw glow as additive camera-facing billboards
    at each source. Cost is roughly a twentieth. It keeps what the screen is *for* — a rotating
-   world, lit where people are, in Deep's palette, spinnable, tappable — and loses the glass
+   world, lit where people are, in DEEP's palette, spinnable, tappable — and loses the glass
    body, the refracted back-bleed and the volumetric columns. A day's work, and a credible
    globe rather than a placeholder.
 7. **The week-6 2D placeholder.** Already exists. The floor, not the plan.

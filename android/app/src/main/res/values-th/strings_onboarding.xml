@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_onboarding.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+
+  <!-- Welcome -->
+  <string name="onboarding_logo_description">DEEP — ความสงบเริ่มจากภายใน</string>
+  <string name="onboarding_begin">เริ่ม</string>
+  <string name="onboarding_try_again">ลองอีกครั้ง</string>
+  <string name="onboarding_config_failed">เราเข้าถึง DEEP ไม่ได้ในตอนนี้</string> <!-- no iOS Thai -->
+  <!-- %1$s is onboarding_log_in_link, drawn bold and underlined. -->
+  <string name="onboarding_have_account">มีบัญชีอยู่แล้ว? %1$s</string>
+  <string name="onboarding_log_in_link">เข้าสู่ระบบ</string>
+
+  <!-- Chrome -->
+  <string name="onboarding_back">ย้อนกลับ</string>
+  <string name="onboarding_progress">ความคืบหน้า</string>
+  <string name="onboarding_progress_fraction">%1$d จาก %2$d</string>
+  <string name="onboarding_progress_percent">%1$d เปอร์เซ็นต์</string>
+
+  <!-- Quiz + Mind Tree -->
+  <string name="onboarding_continue">ต่อไป</string> <!-- no iOS Thai -->
+  <string name="onboarding_mind_tree_title">เลือกต้นไม้แห่งใจของคุณ</string>
+  <string name="onboarding_mind_tree_subtitle">เปลี่ยนได้ทุกเมื่อ</string>
+
+  <!-- Create account gateway -->
+  <string name="onboarding_create_account_title">สร้างบัญชีเพื่อเก็บความคืบหน้าไว้</string>
+  <string name="onboarding_continue_with_email">ดำเนินการต่อด้วยอีเมล</string> <!-- no iOS Thai -->
+  <!-- %1$s = onboarding_terms, %2$s = onboarding_privacy; both become links. -->
+  <string name="onboarding_legal">เมื่อดำเนินการต่อ แสดงว่าคุณยอมรับ%1$sและ%2$sของเรา</string> <!-- no iOS Thai -->
+  <string name="onboarding_terms">ข้อกำหนด</string> <!-- no iOS Thai -->
+  <string name="onboarding_privacy">นโยบายความเป็นส่วนตัว</string> <!-- no iOS Thai -->
+
+  <!-- Auth fields -->
+  <string name="onboarding_field_name">ชื่อของคุณ</string> <!-- no iOS Thai -->
+  <string name="onboarding_field_email">อีเมล</string> <!-- no iOS Thai -->
+  <string name="onboarding_field_password">รหัสผ่าน</string> <!-- no iOS Thai -->
+  <string name="onboarding_show_password">แสดงรหัสผ่าน</string>
+  <string name="onboarding_hide_password">ซ่อนรหัสผ่าน</string>
+
+  <!-- Sign up -->
+  <string name="onboarding_sign_up_title">สร้างพื้นที่ของคุณ</string>
+  <string name="onboarding_sign_up_subtitle">เพื่อให้การฝึกของคุณอยู่กับคุณต่อไป</string>
+  <string name="onboarding_password_rule">อย่างน้อย 8 ตัวอักษร</string>
+  <string name="onboarding_create_account">สร้างบัญชี</string> <!-- no iOS Thai -->
+  <string name="onboarding_sign_up_breathe">หายใจเข้าลึก ๆ\nเรากำลังสร้างพื้นที่ของคุณ</string> <!-- no iOS Thai -->
+  <string name="onboarding_sign_up_failed">เราสร้างพื้นที่ของคุณไม่ได้ในตอนนี้ ลองอีกครั้งได้เลย</string> <!-- no iOS Thai -->
+  <string name="onboarding_problem_missing_name">บอกชื่อที่อยากให้เราเรียกคุณหน่อยนะ</string> <!-- no iOS Thai -->
+  <string name="onboarding_problem_malformed_email">อีเมลนี้ดูยังไม่ค่อยถูกต้อง</string> <!-- no iOS Thai -->
+  <string name="onboarding_problem_short_password">ใช้อย่างน้อย 8 ตัวอักษร</string> <!-- no iOS Thai -->
+
+  <!-- Log in -->
+  <string name="onboarding_log_in_title">ยินดีต้อนรับกลับมา</string>
+  <string name="onboarding_log_in_subtitle">เริ่มต่อจากที่คุณค้างไว้</string>
+  <string name="onboarding_log_in">เข้าสู่ระบบ</string>
+  <string name="onboarding_log_in_breathe">หายใจเข้าลึก ๆ\nเรากำลังพาคุณเข้าสู่ระบบ</string> <!-- no iOS Thai -->
+  <string name="onboarding_log_in_failed">เราพาคุณเข้าสู่ระบบไม่ได้ในตอนนี้ ลองอีกครั้งได้เลย</string> <!-- no iOS Thai -->
+
+  <!-- Crafting -->
+  <string name="onboarding_crafting_title">เรากำลังจัดพื้นที่ของคุณ</string>
+  <string name="onboarding_crafting_step_1">กำลังรวบรวมความสงบเล็ก ๆ</string> <!-- no iOS Thai -->
+  <string name="onboarding_crafting_step_2">กำลังรับฟังสิ่งที่คุณแบ่งปัน</string> <!-- no iOS Thai -->
+  <string name="onboarding_crafting_step_3">กำลังเลือกเสียงที่เหมาะกับคุณ</string> <!-- no iOS Thai -->
+  <string name="onboarding_crafting_step_4">กำลังจัดพื้นที่ของคุณ</string> <!-- no iOS Thai -->
+  <string name="onboarding_crafting_step_5">ใกล้พร้อมแล้ว</string> <!-- no iOS Thai -->
+  <string name="onboarding_step_done">เสร็จแล้ว</string>
+  <string name="onboarding_step_in_progress">กำลังดำเนินอยู่</string>
+
+</resources>

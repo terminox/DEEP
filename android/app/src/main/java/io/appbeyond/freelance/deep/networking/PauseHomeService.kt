@@ -1,9 +1,6 @@
 package io.appbeyond.freelance.deep.networking
 
-import kotlinx.serialization.SerializationException
-import retrofit2.HttpException
 import retrofit2.http.GET
-import java.io.IOException
 
 /**
  * The Global Pause home endpoint.
@@ -43,30 +40,17 @@ sealed interface PauseHomeResult {
 /**
  * The seam between the Global Pause screens and the network.
  *
- * Its whole job is to turn the four ways a Retrofit call can fail into the one
- * error type the rest of the app understands. Nothing above it should ever have
- * to know that `HttpException` exists.
+ * A thin wrapper over [apiCall]: the load comes back as a [PauseHomeResult]
+ * rather than a thrown [DeepApiException], because on this screen a failure is
+ * a state to render — the retry cue — not an exceptional condition. The error
+ * carries copy a screen can show verbatim; see [DeepApiException].
  */
 class PauseHomeRepository(private val service: PauseHomeService) {
 
   suspend fun load(): PauseHomeResult =
     try {
-      PauseHomeResult.Loaded(service.pauseHome())
+      PauseHomeResult.Loaded(apiCall { service.pauseHome() })
     } catch (api: DeepApiException) {
-      // Already ours — raised by the refresh path underneath.
       PauseHomeResult.Failed(api)
-    } catch (http: HttpException) {
-      // Reading the error body can itself fail, and losing the envelope must not
-      // lose the status with it — `of` has copy for a body it cannot read.
-      val body = runCatching { http.response()?.errorBody()?.string() }.getOrNull()
-      PauseHomeResult.Failed(DeepApiException.of(http.code(), body))
-    } catch (malformed: SerializationException) {
-      PauseHomeResult.Failed(
-        DeepApiException.Decoding(malformed.message ?: "Unexpected response", malformed)
-      )
-    } catch (offline: IOException) {
-      PauseHomeResult.Failed(
-        DeepApiException.Transport(offline.message ?: "Network error", offline)
-      )
     }
 }

@@ -35,7 +35,7 @@ import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.tile
 
 /**
- * Deep's breathing skeleton primitives — never a shimmer sweep or a spinner.
+ * DEEP's breathing skeleton primitives — never a shimmer sweep or a spinner.
  * Screen-specific skeleton layouts compose [SkeletonBlock] / [SkeletonTextLine]
  * to mirror real content geometry, then apply [Modifier.skeletonBreath] once
  * at the root.

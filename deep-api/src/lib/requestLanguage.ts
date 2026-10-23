@@ -23,7 +23,7 @@ export function currentLanguage(): SupportedLanguage | null {
 /**
  * Picks a supported language out of an `Accept-Language` header.
  *
- * Deliberately small: the header is a quality-ordered list, and Deep only has
+ * Deliberately small: the header is a quality-ordered list, and DEEP only has
  * one translation, so the question is just "does Thai out-rank English here".
  * Anything unparseable falls through to English rather than throwing — a
  * malformed header should degrade, not fail the request.

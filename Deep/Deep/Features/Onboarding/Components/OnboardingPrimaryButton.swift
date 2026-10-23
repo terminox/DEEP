@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The soft full-width pill CTA used to advance through onboarding (the Calm
-/// reference's "Next" / "Continue" button, re-cast in Deep's palette).
+/// reference's "Next" / "Continue" button, re-cast in DEEP's palette).
 ///
 /// When `isEnabled` is false it fades and ignores taps — matching the reference's
 /// dimmed "Next" before a choice is made — but never feels like an error.

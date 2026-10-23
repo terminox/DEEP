@@ -1,8 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+  <!--
+    DEEP Sound plays on with the screen off and the app in the background, from
+    a media-playback foreground service that holds a wake lock while it streams.
+    No POST_NOTIFICATIONS: a media-session notification is exempt from it.
+  -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+  <!--
+    The daily reminder: asked for (API 33+) at the moment the member turns it
+    on, never at launch. Boot is heard so the alarm the system dropped across
+    a reboot is armed again. No SCHEDULE_EXACT_ALARM: the nudge rides an
+    inexact ten-minute window (AlarmReminderScheduler explains why).
+  -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
   <application
       android:name=".DeepApplication"
@@ -16,6 +35,7 @@
     <activity
         android:name=".MainActivity"
         android:exported="true"
+        android:launchMode="singleTop"
         android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
         android:screenOrientation="portrait"
         android:theme="@style/Theme.Deep.Starting"
@@ -25,6 +45,42 @@
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
     </activity>
+
+    <!--
+      Exported, with no permission, because system UI, Bluetooth and watches
+      must reach the session through it; DeepSoundSessionCallback limits what
+      they may do once in. That is lint's ExportedService, answered.
+    -->
+    <service
+        android:name=".feature.deepsound.player.DeepSoundService"
+        android:exported="true"
+        android:foregroundServiceType="mediaPlayback"
+        tools:ignore="ExportedService">
+      <intent-filter>
+        <action android:name="androidx.media3.session.MediaSessionService" />
+      </intent-filter>
+    </service>
+
+    <!-- The daily reminder's alarm: posts the nudge, arms tomorrow's. -->
+    <receiver
+        android:name=".feature.reminders.ReminderAlarmReceiver"
+        android:exported="false" />
+
+    <!--
+      Re-arms the reminder after a reboot, an update, or a clock or timezone
+      change. Exported because the system sends these; it only ever rebuilds
+      the schedule from DEEP's own stored settings.
+    -->
+    <receiver
+        android:name=".feature.reminders.ReminderRescheduleReceiver"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
   </application>
 
 </manifest>
