@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.vector.PathData
 import androidx.compose.ui.unit.dp
 
 /**
- * The tab bar's five glyphs, drawn rather than borrowed.
+ * The tab bar's five glyphs (plus the garden's sun), drawn rather than borrowed.
  *
  * iOS uses SF Symbols. Android's stock equivalent is Material's icon set, and
  * DESIGN.md rules both out for this surface: *"Custom rounded line icons, 1.5pt
@@ -88,6 +88,48 @@ object DeepIcons {
     curveTo(4.75f, 16.2f, 8f, 14f, 12f, 14f)
     curveTo(16f, 14f, 19.25f, 16.2f, 19.25f, 20f)
   }
+
+  /**
+   * Sunlight, the Mind Garden's currency — iOS's `sun.max.fill`. A solid disc
+   * with eight short rays: the one filled glyph here, because it marks a figure
+   * (the sunlight fact) rather than a destination, and a line sun at caption
+   * size reads as a gear.
+   */
+  val SunFill: ImageVector = ImageVector.Builder(
+    name = "DeepSunFill",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f,
+  ).addPath(
+    pathData = PathData {
+      // Disc, r = 4.5 at centre, as four cubics (k = r * 0.5523).
+      moveTo(12f, 7.5f)
+      curveTo(14.49f, 7.5f, 16.5f, 9.51f, 16.5f, 12f)
+      curveTo(16.5f, 14.49f, 14.49f, 16.5f, 12f, 16.5f)
+      curveTo(9.51f, 16.5f, 7.5f, 14.49f, 7.5f, 12f)
+      curveTo(7.5f, 9.51f, 9.51f, 7.5f, 12f, 7.5f)
+      close()
+    },
+    fill = SolidColor(Color.Black), // replaced by the Icon tint at the call site
+  ).addPath(
+    pathData = PathData {
+      // Eight rays from r = 7 to r = 10 (diagonals at r / sqrt 2).
+      moveTo(12f, 2f); lineTo(12f, 5f)
+      moveTo(12f, 19f); lineTo(12f, 22f)
+      moveTo(2f, 12f); lineTo(5f, 12f)
+      moveTo(19f, 12f); lineTo(22f, 12f)
+      moveTo(4.93f, 4.93f); lineTo(7.05f, 7.05f)
+      moveTo(16.95f, 16.95f); lineTo(19.07f, 19.07f)
+      moveTo(4.93f, 19.07f); lineTo(7.05f, 16.95f)
+      moveTo(16.95f, 7.05f); lineTo(19.07f, 4.93f)
+    },
+    fill = null,
+    stroke = SolidColor(Color.Black),
+    strokeLineWidth = 2.25f,
+    strokeLineCap = StrokeCap.Round,
+    strokeLineJoin = StrokeJoin.Round,
+  ).build()
 
   private fun lineIcon(name: String, path: PathBuilder.() -> Unit): ImageVector =
     ImageVector.Builder(

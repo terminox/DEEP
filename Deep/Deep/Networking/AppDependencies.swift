@@ -22,6 +22,8 @@ final class AppDependencies {
   let subscriptionStore: any SubscriptionStore
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  /// The durable queue between finished tracks and the hearts they earn.
+  let listenReporter: any ListenReporting
   let practiceStore: any PracticeStore
   /// The reward backend shared by every award producer and both stores.
   let rewardsRemote: any RewardsRemote
@@ -39,6 +41,10 @@ final class AppDependencies {
   let pauseRepository: any PauseEventRepository
   let pauseSession: GlobalPauseSession
   let imageLoader: any ImageLoading
+  /// The same disk cache decoded at screen size, for the one photograph that
+  /// fills the whole screen (Now Playing). Kept apart so a full-size decode
+  /// never lands in the shared tile cache's memory.
+  let fullScreenImageLoader: any ImageLoading
   /// Disk cache for the garden's stage hero footage — streamed once, played
   /// from disk on every later launch.
   let videoCache: VideoCache
@@ -49,8 +55,10 @@ final class AppDependencies {
     self.config = config
     self.apiClient = client
     self.languageStore = LanguageStore()
-    self.reminderStore = ReminderStore()
-    self.accountStore = APIAccountStore(client: client)
+    let reminderStore = ReminderStore()
+    self.reminderStore = reminderStore
+    let accountStore = APIAccountStore(client: client)
+    self.accountStore = accountStore
     self.onboardingStore = OnboardingProgressDefaultsStore()
     self.onboardingRemote = APIOnboardingRemote(client: client)
     self.subscriptionStore = StoreKitSubscriptionStore()
@@ -79,18 +87,35 @@ final class AppDependencies {
     practiceStore.awardSink = ingestAwards
     self.practiceStore = practiceStore
 
-    // A track played through to its end reports fire-and-forget: a lost
-    // report costs at most one heart, and the rules live server-side.
-    self.soundPlayer = StreamingSoundPlayer { track in
-      Task { @MainActor in
-        guard let grant = try? await rewards.reportListen(trackId: track.id) else { return }
-        ingestAwards(grant)
-      }
-    }
-
     // Keyed by environment so Dev and Staging artwork can never collide on a
     // shared /media path — see `ImageLoader.cacheKey(for:environmentKey:)`.
-    self.imageLoader = ImageLoader(environmentKey: config.environment.rawValue)
+    let imageLoader = ImageLoader(environmentKey: config.environment.rawValue)
+    self.imageLoader = imageLoader
+    // A full-bleed photo on a 3x phone is ~1200×2600 px; the tile cap of 1280
+    // would stretch it soft. Same directory, so bytes on disk are shared.
+    self.fullScreenImageLoader = ImageLoader(
+      environmentKey: config.environment.rawValue,
+      maxPixelSize: 2800
+    )
+
+    // A track played through to its end is queued durably and reported with
+    // its finish time, so a dropped connection never costs the heart; the
+    // rules themselves live server-side.
+    let listenReporter = ListenReporter(
+      report: { trackId, completedAt in
+        try await rewards.reportListen(trackId: trackId, completedAt: completedAt)
+      },
+      practiceStore: practiceStore
+    )
+    listenReporter.awardSink = ingestAwards
+    self.listenReporter = listenReporter
+    // The lock screen's artwork comes through the same image cache the app
+    // draws.
+    self.soundPlayer = StreamingSoundPlayer(
+      loadArtwork: { url in try? await imageLoader.image(for: url) }
+    ) { track, finishedAt in
+      listenReporter.record(trackId: track.id, finishedAt: finishedAt)
+    }
     self.videoCache = VideoCache(environmentKey: config.environment.rawValue)
 
     // Global Pause: one synced clock + one app-long phase engine, so the home
@@ -103,7 +128,34 @@ final class AppDependencies {
       clock: clock,
       repository: pauseRepository,
       rewards: rewards,
-      awardSink: ingestAwards
+      awardSink: ingestAwards,
+      // A pause the server counted keeps the day in the member's rhythm, and
+      // counts as today's practice for the reminder: the queue is rebuilt
+      // now, so tonight's nudge is withdrawn before it can fire rather than
+      // at the next foreground.
+      activitySink: { date in
+        practiceStore.recordActivity(.pause, at: date)
+        Task { await reminderStore.reschedule(practisedToday: practiceStore.reminderRestsToday) }
+      }
     )
+
+    // A session the server ended (rejected at launch, or its refresh refused)
+    // is a log out the member didn't ask for: everything the device held for
+    // the account leaves with it, mirroring `SettingsView.completeLogOut()`,
+    // so queued listens and unsynced practice can never be credited to the
+    // next account that signs in here. An outage never reaches this.
+    let onboardingStore = self.onboardingStore
+    let continuityWitness = self.continuityWitness
+    let playlistStore = self.playlistStore
+    accountStore.onSessionEnded = {
+      onboardingStore.reset()
+      practiceStore.reset()
+      listenReporter.reset()
+      garden.resetLocalState()
+      ledger.resetLocalState()
+      continuityWitness.resetLocalState()
+      playlistStore.resetLocalState()
+      Task { await reminderStore.disable() }
+    }
   }
 }

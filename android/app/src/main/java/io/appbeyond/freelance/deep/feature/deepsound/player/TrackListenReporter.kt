@@ -1,9 +1,12 @@
 package io.appbeyond.freelance.deep.feature.deepsound.player
 
 import android.util.Log
+import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.networking.ListenRequest
 import io.appbeyond.freelance.deep.networking.SoundListensService
 import io.appbeyond.freelance.deep.networking.apiCall
+import io.appbeyond.freelance.deep.networking.toGrant
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -26,18 +29,42 @@ fun interface TrackListenReporting {
  * rules live server-side, and nothing on screen waits on the answer, so a
  * failure is logged and dropped rather than retried.
  *
+ * The answer is not ignored, though: the award outcome and the wallet and
+ * plant snapshots riding it are folded into one [AwardGrant] and handed to
+ * [ingestAwards], so the heart ledger and the garden settle on the server's
+ * post-award absolutes — the same seam the practice sync feeds.
+ *
  * @param scope process-lifetime, so a report launched as the service winds down
  *   still completes.
+ * A report is bound to the member who sent it. [ingestAwards] only checks that
+ * *someone* is signed in, so a reply that settles after a sign-out and a new
+ * sign-in would otherwise credit the previous member's award to the next one
+ * (the listen path has no generation guard of its own, unlike the practice
+ * journal's). The account id is captured when the report goes out and the grant
+ * is dropped if [currentAccountId] has moved by the time it lands.
+ *
+ * @param currentAccountId the signed-in account's id, or null when signed out.
+ * @param ingestAwards the shared award ingest (`AppDependencies.ingestAwards`).
  */
 class ApiTrackListenReporter(
   private val service: SoundListensService,
   private val scope: CoroutineScope,
+  private val currentAccountId: () -> String?,
+  private val ingestAwards: suspend (AwardGrant) -> Unit,
 ) : TrackListenReporting {
 
   override fun trackFinished(trackId: String) {
+    val sentFor = currentAccountId()
     scope.launch {
-      runCatching { apiCall { service.report(ListenRequest(trackId)) } }
-        .onFailure { Log.i(TAG, "Listen report for $trackId was dropped: ${it.message}") }
+      val grant = try {
+        apiCall { service.report(ListenRequest(trackId)) }.toGrant()
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (dropped: Exception) {
+        Log.i(TAG, "Listen report for $trackId was dropped: ${dropped.message}")
+        return@launch
+      }
+      if (grant != null && currentAccountId() == sentFor) ingestAwards(grant)
     }
   }
 

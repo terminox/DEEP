@@ -14,6 +14,15 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+  <!--
+    The daily reminder: asked for (API 33+) at the moment the member turns it
+    on, never at launch. Boot is heard so the alarm the system dropped across
+    a reboot is armed again. No SCHEDULE_EXACT_ALARM: the nudge rides an
+    inexact ten-minute window (AlarmReminderScheduler explains why).
+  -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
   <application
       android:name=".DeepApplication"
       android:allowBackup="false"
@@ -51,6 +60,27 @@
         <action android:name="androidx.media3.session.MediaSessionService" />
       </intent-filter>
     </service>
+
+    <!-- The daily reminder's alarm: posts the nudge, arms tomorrow's. -->
+    <receiver
+        android:name=".feature.reminders.ReminderAlarmReceiver"
+        android:exported="false" />
+
+    <!--
+      Re-arms the reminder after a reboot, an update, or a clock or timezone
+      change. Exported because the system sends these; it only ever rebuilds
+      the schedule from DEEP's own stored settings.
+    -->
+    <receiver
+        android:name=".feature.reminders.ReminderRescheduleReceiver"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.TIME_SET" />
+        <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
   </application>
 
 </manifest>

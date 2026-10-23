@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The daily reminder and the language picker, both pushed from Settings.
+  Ported from Deep/Deep/Features/Reminders/ (DailyReminderView, ReminderCopy)
+  and Deep/Deep/Features/Profile/LanguageView.swift, with their keys in
+  Deep/Deep/Localizable.xcstrings. The Thai lives in values-th/strings_reminders.xml.
+-->
+<resources>
+
+  <!-- Daily reminder screen -->
+  <string name="reminder_title">Daily reminder</string>
+  <string name="reminder_intro_title">A quiet nudge, once a day</string>
+  <string name="reminder_intro_body">DEEP will send one gentle note at the time you choose. No streak to defend, nothing to catch up on.</string>
+  <string name="reminder_toggle">Daily reminder</string>
+  <string name="reminder_time">Time</string>
+  <string name="reminder_skip_note">On days you\'ve already practised, the reminder stays quiet.</string>
+  <string name="reminder_denied_note">Notifications are switched off for DEEP, so the reminder can\'t reach you. You can turn them back on in Android Settings.</string>
+  <string name="reminder_open_settings">Open Settings</string>
+  <string name="reminder_time_dialog_title">Remind me at</string>
+  <string name="reminder_time_set">Set</string>
+  <string name="reminder_time_cancel">Cancel</string>
+
+  <!-- The notification channel, as system settings name it -->
+  <string name="reminder_channel_name">Daily reminder</string>
+  <string name="reminder_channel_description">One gentle note a day, at the time you choose.</string>
+
+  <!-- The nudge's words, rotated one pair per day (ReminderCopy). Order matters: titles[i] goes with bodies[i]. -->
+  <string-array name="reminder_copy_titles">
+    <item>A few soft minutes</item>
+    <item>Time to breathe</item>
+    <item>Still here</item>
+    <item>Somewhere to rest</item>
+    <item>A pause is waiting</item>
+    <item>Whenever you\'re ready</item>
+    <item>Your garden is open</item>
+  </string-array>
+  <string-array name="reminder_copy_bodies">
+    <item>Your garden is here whenever you are.</item>
+    <item>Nothing to catch up on. Just a breath.</item>
+    <item>A quiet moment, if you\'d like one.</item>
+    <item>Small moments grow tall.</item>
+    <item>Stillness is how roots deepen.</item>
+    <item>You don\'t have to rush a tree.</item>
+    <item>Every breath waters it.</item>
+  </string-array>
+
+  <!-- Language picker -->
+  <string name="language_title">Language</string>
+  <string name="language_footnote">DEEP reads in this language everywhere, including the reminders it sends you.</string>
+
+</resources>

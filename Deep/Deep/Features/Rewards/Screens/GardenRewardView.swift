@@ -67,8 +67,19 @@ struct GardenRewardView: View {
   }
 
   private var title: String {
-    if receipt.gardenIsCatchingUp { return "Growth is on its way" }
-    return receipt.sunlightAwarded > 0 ? "Your garden grew" : "Your garden is resting"
+    if receipt.gardenIsCatchingUp {
+      return String(localized: "Growth is on its way", bundle: .app, locale: .app)
+    }
+    if receipt.sunlightAwarded > 0 {
+      return String(localized: "Your garden grew", bundle: .app, locale: .app)
+    }
+    // A pause night the server didn't count — or hasn't answered for yet —
+    // thank the member for the pause they did take rather than call the
+    // garden resting (see `rewardLine`).
+    if receipt.explainsMissedAttendance || receipt.awaitsAttendanceAward {
+      return String(localized: "Thank you for pausing", bundle: .app, locale: .app)
+    }
+    return String(localized: "Your garden is resting", bundle: .app, locale: .app)
   }
 
   private var gardenCard: some View {
@@ -93,9 +104,13 @@ struct GardenRewardView: View {
             .foregroundStyle(.deepPlum)
             .contentTransition(.opacity)
 
-          Text(rewardLine)
-            .font(DeepType.body.weight(.semibold))
-            .foregroundStyle(receipt.sunlightAwarded > 0 ? GardenColor.sunbeam : .driftGrey)
+          // Absent while the night's award is still on its way.
+          if let rewardLine {
+            Text(rewardLine)
+              .font(DeepType.body.weight(.semibold))
+              .foregroundStyle(receipt.sunlightAwarded > 0 ? GardenColor.sunbeam : .driftGrey)
+              .multilineTextAlignment(.center)
+          }
 
           Text(progressLine(for: displayedGrowth))
             .font(DeepType.caption)
@@ -138,29 +153,47 @@ struct GardenRewardView: View {
     .accessibilityHidden(true)
   }
 
-  private var rewardLine: String {
-    receipt.sunlightAwarded > 0
-      ? "+\(receipt.sunlightAwarded) sunlight"
-      : "Today is full"
+  /// The line under the stage name; nil while the night's award is unknown.
+  private var rewardLine: String? {
+    if receipt.sunlightAwarded > 0 {
+      return String(localized: "+\(receipt.sunlightAwarded) sunlight", bundle: .app, locale: .app)
+    }
+    if receipt.explainsMissedAttendance {
+      return String(localized: "Stay through the meditation to receive hearts", bundle: .app, locale: .app)
+    }
+    if receipt.awaitsAttendanceAward { return nil }
+    return String(localized: "Today is full", bundle: .app, locale: .app)
   }
 
   private func progressLine(for growth: GardenGrowth) -> String {
+    let sunlight = displayedSunlight.formatted(.number.locale(.app))
     guard let next = growth.nextStage,
           let goal = growth.sunlightToEvolve
     else {
-      return "\(displayedSunlight.formatted()) sunlight, fully grown"
+      return String(localized: "\(sunlight) sunlight, fully grown", bundle: .app, locale: .app)
     }
-    return "\(displayedSunlight.formatted()) of \(goal.formatted()) to \(next.name)"
+    let target = goal.formatted(.number.locale(.app))
+    return String(localized: "\(sunlight) of \(target) to \(next.name)", bundle: .app, locale: .app)
   }
 
   private var accessibilitySummary: String {
     guard let growth = receipt.gardenAfter else {
-      return "Your garden is catching up. Your practice is safely remembered."
+      let catchingUp = String(localized: "Your garden is catching up", bundle: .app, locale: .app)
+      let remembered = String(localized: "Your practice is safely remembered", bundle: .app, locale: .app)
+      return "\(catchingUp). \(remembered)."
     }
     if receipt.sunlightAwarded > 0 {
-      return "\(growth.stage.name). \(receipt.sunlightAwarded) sunlight received."
+      let received = String(
+        localized: "\(receipt.sunlightAwarded) sunlight received",
+        bundle: .app,
+        locale: .app
+      )
+      return "\(growth.stage.name). \(received)."
     }
-    return "\(growth.stage.name). Today is full."
+    if let rewardLine {
+      return "\(growth.stage.name). \(rewardLine)."
+    }
+    return "\(growth.stage.name). \(title)."
   }
 
   private func playEntrance() async {
@@ -234,4 +267,12 @@ struct GardenRewardView: View {
 
 #Preview("Garden reward — pause night") {
   GardenRewardView(receipt: .pauseNight, buttonTitle: "Continue", onContinue: {})
+}
+
+#Preview("Garden reward — pause claim on its way") {
+  GardenRewardView(receipt: .pausePending, buttonTitle: "Continue", onContinue: {})
+}
+
+#Preview("Garden reward — pause missed") {
+  GardenRewardView(receipt: .pauseMissed, buttonTitle: "Continue", onContinue: {})
 }

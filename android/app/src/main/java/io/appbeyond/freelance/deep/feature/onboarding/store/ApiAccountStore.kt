@@ -43,10 +43,11 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * @param onInvoluntarySignOut runs after a signed-in session is ended by the
  *   server rather than by the member — a refused refresh, or a restore the
- *   server rejects. The composition root resets onboarding progress here, as
- *   Settings does after a voluntary log out, so the next person on this device
- *   never inherits the last member's answers. Never runs for someone who was
- *   never signed in.
+ *   server rejects. The composition root resets onboarding progress and the
+ *   rewards stores here, as Settings does after a voluntary log out, so the
+ *   next person on this device never inherits the last member's answers,
+ *   garden or hearts. Runs after [account] has gone null. Never runs for
+ *   someone who was never signed in.
  */
 class ApiAccountStore(
   private val auth: AuthService,

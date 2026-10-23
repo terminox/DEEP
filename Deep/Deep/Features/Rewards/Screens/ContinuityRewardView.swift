@@ -4,10 +4,6 @@ import SwiftUI
 /// streak to defend: the count is continuity witnessed, never a warning.
 struct ContinuityRewardView: View {
   let receipt: RewardReceipt
-  /// How the return is named. A DEEP Session credits today ("You returned
-  /// today"); a Global Pause, which adds no practice day, witnesses the run
-  /// instead ("Your rhythm continues").
-  let headline: String
   let buttonTitle: String
   let onFinish: () -> Void
 
@@ -19,12 +15,10 @@ struct ContinuityRewardView: View {
 
   init(
     receipt: RewardReceipt,
-    headline: String,
     buttonTitle: String,
     onFinish: @escaping () -> Void
   ) {
     self.receipt = receipt
-    self.headline = headline
     self.buttonTitle = buttonTitle
     self.onFinish = onFinish
     _displayedDays = State(initialValue: receipt.continuityBefore)
@@ -108,6 +102,16 @@ struct ContinuityRewardView: View {
     .accessibilityLabel(accessibilitySummary)
   }
 
+  /// How the return is named. Any practice keeps the day — a DEEP Session, a
+  /// sound listened to its end, a Global Pause the server counted — so when
+  /// today's practice extended the run it is a return ("You returned today");
+  /// otherwise the run is witnessed as it stands ("Your rhythm continues").
+  private var headline: String {
+    receipt.returnedToday
+      ? String(localized: "You returned today", bundle: .app, locale: .app)
+      : String(localized: "Your rhythm continues", bundle: .app, locale: .app)
+  }
+
   private var accessibilitySummary: String {
     let unit = receipt.continuityAfter == 1 ? "day" : "days"
     return "\(headline). \(receipt.continuityAfter) \(unit) of returning. Each return is enough."
@@ -134,7 +138,6 @@ struct ContinuityRewardView: View {
 #Preview("Continuity reward") {
   ContinuityRewardView(
     receipt: .sample,
-    headline: "You returned today",
     buttonTitle: "Carry this calm",
     onFinish: {}
   )
@@ -143,7 +146,14 @@ struct ContinuityRewardView: View {
 #Preview("Continuity reward — pause night") {
   ContinuityRewardView(
     receipt: .pauseNight,
-    headline: "Your rhythm continues",
+    buttonTitle: "Carry this calm",
+    onFinish: {}
+  )
+}
+
+#Preview("Continuity reward — pause as the day's return") {
+  ContinuityRewardView(
+    receipt: .pauseReturn,
     buttonTitle: "Carry this calm",
     onFinish: {}
   )
@@ -152,7 +162,6 @@ struct ContinuityRewardView: View {
 #Preview("Continuity reward — first day") {
   ContinuityRewardView(
     receipt: .evolving,
-    headline: "You returned today",
     buttonTitle: "Carry this calm",
     onFinish: {}
   )
@@ -161,7 +170,6 @@ struct ContinuityRewardView: View {
 #Preview("Continuity reward — large type") {
   ContinuityRewardView(
     receipt: .sample,
-    headline: "You returned today",
     buttonTitle: "Carry this calm",
     onFinish: {}
   )

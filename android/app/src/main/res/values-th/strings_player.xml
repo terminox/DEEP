@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_player.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+  <!-- Mini player -->
+  <string name="player_not_playing">ไม่มีเสียงที่กำลังเล่น</string> <!-- no iOS Thai -->
+  <string name="player_now_playing_a11y">กำลังเล่น %1$s แตะเพื่อเปิดเครื่องเล่น</string>
+
+  <!-- Transport and utilities -->
+  <string name="player_play">เล่น</string>
+  <string name="player_pause">หยุดชั่วคราว</string>
+  <string name="player_next">ถัดไป</string> <!-- no iOS Thai -->
+  <string name="player_previous">ก่อนหน้า</string> <!-- no iOS Thai -->
+  <string name="player_lyrics">เนื้อเพลง</string>
+  <string name="player_volume">ระดับเสียง</string> <!-- no iOS Thai -->
+  <string name="player_position">ตำแหน่งการเล่น</string> <!-- no iOS Thai -->
+  <string name="player_close">ปิดเครื่องเล่น</string> <!-- no iOS Thai -->
+
+  <!-- Save to playlist -->
+  <string name="player_save_to_playlist">บันทึกลงเพลย์ลิสต์</string>
+  <string name="player_saved_to_playlist">บันทึกลงเพลย์ลิสต์แล้ว</string>
+  <string name="player_save_hint_add">เพิ่มเสียงนี้ลงในเพลย์ลิสต์</string>
+  <string name="player_save_hint_remove">นำเสียงนี้ออกจากเพลย์ลิสต์</string>
+
+  <!-- Playlist -->
+  <string name="playlist_title">เพลย์ลิสต์</string>
+  <string name="playlist_subtitle">เสียงที่คุณบันทึกไว้</string>
+  <string name="playlist_settings">การตั้งค่า</string>
+  <string name="playlist_empty_title">ยังไม่มีอะไรถูกบันทึก</string>
+  <string name="playlist_empty_body">บันทึกเสียงระหว่างที่กำลังเล่น แล้วมันจะรออยู่ตรงนี้</string>
+  <string name="playlist_explore">สำรวจ DEEP Sound</string>
+  <string name="playlist_failed">เราเข้าถึงเพลย์ลิสต์ของคุณไม่ได้ในตอนนี้</string>
+  <string name="playlist_try_again">ลองอีกครั้ง</string>
+  <string name="playlist_remove">นำออกจากเพลย์ลิสต์</string>
+  <string name="playlist_row_a11y">%1$s จาก %2$s</string>
+</resources>

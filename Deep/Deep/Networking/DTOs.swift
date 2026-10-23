@@ -193,6 +193,10 @@ struct PracticeSyncResponseDTO: Decodable {
 
 struct PracticeSessionsResponseDTO: Decodable {
   let sessions: [PracticeSessionDTO]
+  /// "YYYY-MM-DD" days (the member's own calendar) that other practice kept —
+  /// tracks listened to their end, counted Global Pauses. Optional: older
+  /// servers send sessions only.
+  let activityDays: [String]?
 }
 
 // MARK: - Global Pause event
@@ -399,11 +403,26 @@ struct SpendHeartsRequestDTO: Encodable {
 
 struct ListenRequestDTO: Encodable {
   let trackId: String
+  /// When playback finished on the device (ISO-8601 with offset), so a report
+  /// that waited in the offline queue still lands on the day it was earned.
+  let completedAt: String?
 }
 
-/// `POST /me/sound/listens` and any single-award response.
-struct AwardResponseDTO: Decodable {
+/// The day's listen tally riding `POST /me/sound/listens`.
+struct ListenTallyDTO: Decodable {
+  /// The local day the listen was judged against ("YYYY-MM-DD").
+  let dayKey: String
+  /// Track hearts earned that day, this listen included.
+  let earned: Int
+  /// The day's track-heart allowance.
+  let perDay: Int
+}
+
+/// `POST /me/sound/listens`. `award` and `listens` are both null when the
+/// listen finished too long ago (or too far ahead) for the server to place.
+struct ListenResponseDTO: Decodable {
   let award: AwardOutcomeDTO?
+  let listens: ListenTallyDTO?
   let wallet: WalletDTO?
   let plant: PlantProgressDTO?
 }

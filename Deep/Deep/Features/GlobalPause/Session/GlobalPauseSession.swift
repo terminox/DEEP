@@ -70,6 +70,20 @@ final class GlobalPauseSession {
   /// may still be in flight. Cleared as the next session visit begins.
   private(set) var pauseAward: AwardGrant?
 
+  /// True once the server has answered tonight's claim with `eligible: false`
+  /// — the member left early or joined late — so the ending can say why no
+  /// hearts came rather than calling the day full. Same lifetime as
+  /// `pauseAward`: survives `leaveSession()`, reset as the next visit begins.
+  private(set) var pauseAwardMissed = false
+
+  /// True while tonight's claim has gone out without an answer from the
+  /// server — still in flight (the closing beat, the retries and the request
+  /// can outlast the ending's wait), or given up on with no answer at all. The
+  /// ending then knows neither the hearts nor whether the day is kept, so it
+  /// claims neither rather than call the day full. A late answer still lands
+  /// through `awardSink` and clears this. Same lifetime as `pauseAward`.
+  private(set) var pauseAwardPending = false
+
   /// Tonight's peace-message award, when the first message of the night earned
   /// one. Held for the same reason as `pauseAward`: the ending ritual totals
   /// both, and it is composed after the composer has had its say.
@@ -120,6 +134,18 @@ final class GlobalPauseSession {
   /// Where settled awards (attendance claim, first peace message) are handed —
   /// `AppDependencies` points this at the shared ingest closure.
   @ObservationIgnored private let awardSink: (@MainActor (AwardGrant) -> Void)?
+  /// Told when the server counts tonight's attendance — `AppDependencies`
+  /// points this at the practice journal, so an eligible pause keeps the day
+  /// in the member's rhythm like any other practice.
+  @ObservationIgnored private let activitySink: (@MainActor (Date) -> Void)?
+  /// The pauses between claim attempts: one immediately, then backing off.
+  /// Injectable so tests needn't sit through the real waits.
+  @ObservationIgnored private let claimRetryDelays: [Duration]
+  /// How often presence is renewed while the session is open. Short enough
+  /// that one dropped beat costs the server's coverage rule little.
+  static let heartbeatInterval: Duration = .seconds(10)
+  /// The longest the closing heartbeat may hold up the claim behind it.
+  static let finalBeatTimeout: Duration = .seconds(3)
   /// The bundled intro clip's length, read off the file once (see
   /// `FukuClip.introDuration()`). Zero until it lands, which only makes the
   /// first moments of a very early visit treat the set as intro-less.
@@ -156,12 +182,16 @@ final class GlobalPauseSession {
     clock: SyncedClock,
     repository: any PauseEventRepository,
     rewards: (any RewardsRemote)? = nil,
-    awardSink: (@MainActor (AwardGrant) -> Void)? = nil
+    awardSink: (@MainActor (AwardGrant) -> Void)? = nil,
+    activitySink: (@MainActor (Date) -> Void)? = nil,
+    claimRetryDelays: [Duration] = [.zero, .seconds(1), .seconds(2), .seconds(4)]
   ) {
     self.clock = clock
     self.repository = repository
     self.rewards = rewards
     self.awardSink = awardSink
+    self.activitySink = activitySink
+    self.claimRetryDelays = claimRetryDelays
     foregroundObserver = NotificationCenter.default.addObserver(
       forName: UIApplication.willEnterForegroundNotification,
       object: nil,
@@ -334,6 +364,8 @@ final class GlobalPauseSession {
     pauseAwardTask?.cancel()
     pauseAwardTask = nil
     pauseAward = nil
+    pauseAwardMissed = false
+    pauseAwardPending = false
     messageAward = nil
     postedMessage = nil
     let country = Locale.current.region?.identifier.uppercased()
@@ -354,7 +386,7 @@ final class GlobalPauseSession {
         ) {
           self.myLocation = resolved
         }
-        try? await Task.sleep(for: .seconds(20))
+        try? await Task.sleep(for: Self.heartbeatInterval)
       }
     }
     pollTask = Task { [weak self] in
@@ -383,27 +415,84 @@ final class GlobalPauseSession {
   // MARK: - Awards
 
   /// Claims tonight's attendance award — called as reflection begins. Always
-  /// claims; the server judges eligibility (attended through the meditation,
-  /// once per pause night), so an ineligible claim just resolves to nothing.
+  /// claims; the server judges eligibility (present through most of the
+  /// meditation, once per pause night), so an ineligible claim resolves to no
+  /// grant and marks `pauseAwardMissed` instead.
+  ///
+  /// A closing heartbeat goes first, so the meditation's last seconds are on
+  /// the server's books before it judges them. The claim itself is retried
+  /// while the network is the problem — a blip at 20:42 must not cost the
+  /// night — and never once the server has answered.
   func claimPauseAward() {
     guard pauseAward == nil, pauseAwardTask == nil, let rewards else { return }
-    pauseAwardTask = Task { [weak self] in
-      let grant = try? await rewards.claimPauseAward()
+    let country = Locale.current.region?.identifier.uppercased()
+    pauseAwardPending = true
+    pauseAwardTask = Task { [weak self, repository, presenceID, claimRetryDelays] in
+      await Self.finalBeat(repository: repository, presenceID: presenceID, countryISO: country)
+      let claim = await Self.claim(from: rewards, retryingAfter: claimRetryDelays)
       // A cancelled claim (a fresh visit superseded it) must not touch state —
       // its `pauseAwardTask` slot may already belong to the new visit's claim.
       guard let self, !Task.isCancelled else { return }
       self.pauseAwardTask = nil
-      guard let grant else { return }
+      // No answer: the night's outcome stays unknown (`pauseAwardPending`).
+      guard let claim else { return }
+      self.pauseAwardPending = false
+      if claim.eligible {
+        self.activitySink?(Date.now)
+      } else {
+        self.pauseAwardMissed = true
+      }
+      guard let grant = claim.grant else { return }
       withAnimation(.exhale) { self.pauseAward = grant }
       self.awardSink?(grant)
     }
+  }
+
+  /// One last heartbeat as the meditation closes, bounded so a slow network
+  /// can only hold the claim behind it for `finalBeatTimeout`. Failures are
+  /// swallowed — the beats before it may already be enough.
+  private static func finalBeat(
+    repository: any PauseEventRepository,
+    presenceID: String,
+    countryISO: String?
+  ) async {
+    let beat = Task {
+      _ = try? await repository.heartbeat(presenceID: presenceID, countryISO: countryISO)
+    }
+    let deadline = Task {
+      try? await Task.sleep(for: finalBeatTimeout)
+      beat.cancel()
+    }
+    await beat.value
+    deadline.cancel()
+  }
+
+  /// Claims with a backoff, retrying only transport failures. Any answer from
+  /// the server — granted, ineligible, an HTTP error, an expired session —
+  /// ends it, as does cancellation. Nil when no answer ever arrived.
+  private static func claim(
+    from rewards: any RewardsRemote,
+    retryingAfter delays: [Duration]
+  ) async -> PauseAwardClaim? {
+    for delay in delays {
+      if delay > .zero { try? await Task.sleep(for: delay) }
+      guard !Task.isCancelled else { return nil }
+      do {
+        return try await rewards.claimPauseAward()
+      } catch APIError.transport {
+        continue
+      } catch {
+        return nil
+      }
+    }
+    return nil
   }
 
   /// Lets a claim already in flight land before the ending ritual reads the
   /// books, so the first reward screen opens on settled figures rather than
   /// zeros. Returns the moment it settles, or after `timeout` — a claim that
   /// never arrives simply reconciles the stores behind the ritual.
-  func settlePauseAward(timeout: Duration = .seconds(2)) async {
+  func settlePauseAward(timeout: Duration = .seconds(5)) async {
     guard pauseAwardTask != nil else { return }
     let tick = Duration.milliseconds(100)
     var waited = Duration.zero
@@ -542,6 +631,20 @@ extension GlobalPauseSession {
   static func previewAwarded() -> GlobalPauseSession {
     let session = preview()
     session.pauseAward = AwardGrant(hearts: 5, sunlight: 5, plantId: "oak")
+    return session
+  }
+
+  /// A session whose claim came back ineligible — the member left early.
+  static func previewMissed() -> GlobalPauseSession {
+    let session = preview()
+    session.pauseAwardMissed = true
+    return session
+  }
+
+  /// A session whose claim had no answer by the time the ending composed.
+  static func previewPending() -> GlobalPauseSession {
+    let session = preview()
+    session.pauseAwardPending = true
     return session
   }
 }

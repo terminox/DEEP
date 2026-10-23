@@ -7,6 +7,7 @@ import SwiftUI
 /// into Now Playing — see `PlayerAccessoryView`.
 struct MiniPlayerBar: View {
   @Environment(\.soundPlayer) private var player
+  @Environment(\.listenReporter) private var listenReporter
   var onExpand: () -> Void
 
   var body: some View {
@@ -26,10 +27,7 @@ struct MiniPlayerBar: View {
             .font(DeepType.caption.weight(.medium))
             .foregroundStyle(.deepPlum)
             .lineLimit(1)
-          Text(player.collection?.title ?? "")
-            .font(DeepType.micro)
-            .foregroundStyle(.driftGrey)
-            .lineLimit(1)
+          subtitle
         }
 
         Spacer(minLength: 8)
@@ -58,6 +56,28 @@ struct MiniPlayerBar: View {
     .buttonStyle(.plain)
     .accessibilityElement(children: .combine)
     .accessibilityLabel("Now playing \(player.currentTrack?.title ?? ""). Tap to open the player.")
+  }
+
+  /// The collection's name — giving way, for a few seconds, to a listen's
+  /// heart when one lands, in the compact wording this line has room for.
+  /// The reporter announces the full sentence to VoiceOver, and the haptic is
+  /// felt from `PlayerAccessoryView` — no bloom here, since the capsule clips
+  /// anything rising out of the artwork.
+  private var subtitle: some View {
+    ZStack(alignment: .leading) {
+      if let notice = listenReporter.notice {
+        ListenNoticeLabel(notice: notice, isCompact: true)
+          .id(notice.id)
+          .transition(.opacity)
+      } else {
+        Text(player.collection?.title ?? "")
+          .font(DeepType.micro)
+          .foregroundStyle(.driftGrey)
+          .lineLimit(1)
+          .transition(.opacity)
+      }
+    }
+    .animation(.exhale, value: listenReporter.notice)
   }
 
   private var progressLine: some View {
@@ -138,6 +158,37 @@ private func transportButton(
     .glassEffect(.regular, in: Capsule())
     .padding(.horizontal, .edge)
     .frame(maxHeight: .infinity)
+    .background { AtmosphereBackground() }
+}
+
+#Preview("Mini Player — Heart earned") {
+  MiniPlayerBar {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .environment(\.listenReporter, MockListenReporter.earned)
+    .glassEffect(.regular, in: Capsule())
+    .padding(.horizontal, .edge)
+    .frame(maxHeight: .infinity)
+    .background { AtmosphereBackground() }
+}
+
+#Preview("Mini Player — Today's hearts in") {
+  MiniPlayerBar {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .environment(\.listenReporter, MockListenReporter.dayComplete)
+    .glassEffect(.regular, in: Capsule())
+    .padding(.horizontal, .edge)
+    .frame(maxHeight: .infinity)
+    .background { AtmosphereBackground() }
+}
+
+#Preview("Mini Player — Today's hearts in, smallest iPhone") {
+  // iPhone SE: a 375pt screen leaves the accessory pill about 343pt.
+  MiniPlayerBar {}
+    .environment(\.soundPlayer, MockSoundPlayer.playing)
+    .environment(\.listenReporter, MockListenReporter.dayComplete)
+    .glassEffect(.regular, in: Capsule())
+    .frame(width: 343)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background { AtmosphereBackground() }
 }
 

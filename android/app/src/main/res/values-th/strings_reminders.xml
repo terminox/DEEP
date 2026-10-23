@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_reminders.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+
+  <!-- Daily reminder screen -->
+  <string name="reminder_title">การเตือนประจำวัน</string>
+  <string name="reminder_intro_title">เสียงเตือนเบา ๆ วันละครั้ง</string>
+  <string name="reminder_intro_body">DEEP จะส่งข้อความเบา ๆ หนึ่งครั้งในเวลาที่คุณเลือก ไม่มีสถิติให้รักษา ไม่มีอะไรให้ตามให้ทัน</string>
+  <string name="reminder_toggle">การเตือนประจำวัน</string>
+  <string name="reminder_time">เวลา</string> <!-- no iOS Thai -->
+  <string name="reminder_skip_note">ในวันที่คุณฝึกแล้ว ข้อความเตือนจะเงียบไว้</string>
+  <string name="reminder_denied_note">การแจ้งเตือนของ DEEP ถูกปิดอยู่ ข้อความเตือนจึงส่งถึงคุณไม่ได้ เปิดใหม่ได้ในการตั้งค่าของ Android</string> <!-- no iOS Thai -->
+  <string name="reminder_open_settings">เปิดการตั้งค่า</string>
+  <string name="reminder_time_dialog_title">เตือนฉันเวลา</string> <!-- no iOS Thai -->
+  <string name="reminder_time_set">ตั้งเวลา</string> <!-- no iOS Thai -->
+  <string name="reminder_time_cancel">ยกเลิก</string>
+
+  <!-- The notification channel, as system settings name it -->
+  <string name="reminder_channel_name">การเตือนประจำวัน</string>
+  <string name="reminder_channel_description">ข้อความเบา ๆ วันละครั้ง ในเวลาที่คุณเลือก</string> <!-- no iOS Thai -->
+
+  <!-- Same order as values/strings_reminders.xml: titles[i] goes with bodies[i]. -->
+  <string-array name="reminder_copy_titles">
+    <item>ไม่กี่นาทีอันอ่อนโยน</item>
+    <item>ถึงเวลาหายใจ</item>
+    <item>ยังอยู่ตรงนี้</item>
+    <item>ที่พักใจ</item>
+    <item>ช่วงหยุดพักรออยู่</item>
+    <item>เมื่อคุณพร้อม</item>
+    <item>สวนของคุณเปิดอยู่</item>
+  </string-array>
+  <string-array name="reminder_copy_bodies">
+    <item>สวนของคุณอยู่ตรงนี้เสมอ</item>
+    <item>ไม่มีอะไรให้ตามให้ทัน แค่ลมหายใจ</item>
+    <item>ช่วงเวลาเงียบสงบ หากคุณต้องการ</item>
+    <item>ช่วงเวลาเล็ก ๆ เติบโตได้สูงใหญ่</item>
+    <item>ความนิ่งคือสิ่งที่ทำให้รากหยั่งลึก</item>
+    <item>ไม่ต้องเร่งต้นไม้</item>
+    <item>ทุกลมหายใจคือการรดน้ำ</item>
+  </string-array>
+
+  <!-- Language picker -->
+  <string name="language_title">ภาษา</string>
+  <string name="language_footnote">DEEP จะใช้ภาษานี้ทุกที่ รวมถึงข้อความเตือนที่ส่งถึงคุณ</string>
+
+</resources>

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The bookmark that saves a sound to the playlist — Now Playing's one
-/// utility control, in the soft translucent circle the screen already draws.
+/// The bookmark that saves a sound to the playlist, set in moonlight over Now
+/// Playing's full-screen photograph.
 ///
 /// A bookmark rather than a heart on purpose: `heart.fill` in blush is the
 /// Compassion currency everywhere else in DEEP, and the same mark cannot mean
@@ -21,14 +21,13 @@ struct SaveTrackButton: View {
       store.toggle(track, from: collection)
     } label: {
       Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-        .font(.system(.subheadline, weight: .semibold))
-        // Plum when kept, the same ink this screen's transport wears, so the
-        // filled mark reads as *more* present than the empty one. Lavender
-        // would sink into Now Playing's own lavender wash and read as less.
-        .foregroundStyle(isSaved ? Color.deepPlum : .driftGrey)
+        .font(.system(size: 18, weight: .semibold))
+        // Full cream when kept, the ink the track title wears, so the filled
+        // mark reads as *more* present than the empty one, which steps back
+        // to the subtitle's softer cream.
+        .foregroundStyle(isSaved ? Color.moonCream : .moonCream.opacity(0.72))
         .contentTransition(.symbolEffect(.replace))
-        .frame(width: 34, height: 34)
-        .background(Circle().fill(.white.opacity(0.4)))
+        .frame(width: 44, height: 44)
         .contentShape(Circle())
     }
     .buttonStyle(.softPress)
@@ -42,7 +41,7 @@ struct SaveTrackButton: View {
 
 #Preview("Save track — saved and not") {
   ZStack {
-    AtmosphereBackground()
+    Color.deepPlum.ignoresSafeArea()
     HStack(spacing: 24) {
       SaveTrackButton(
         track: PlaylistFixtures.saved.entries[0].track,

@@ -50,10 +50,10 @@ private const val REST_OPACITY = 0.55f
  * The exhale send-off's upward travel. Ported from `SoftDrift.drop` in
  * Deep/Deep/Shared/Transition/SoftDriftTransition.swift (16pt) — the same
  * magnitude `BreatheLoadingView.swift` draws by hand for its own send-off, so
- * this view keeps the same feel until `SoftDrift` itself is ported to
- * Android. The matching `SoftDrift.veil` blur is dropped entirely rather than
- * approximated: `Modifier.blur` is a no-op below this app's API 26 floor, and
- * there is no token for it yet — flagged rather than invented.
+ * this view keeps the same feel. It still draws the travel itself rather than
+ * through `SoftDrift`, and the matching `SoftDrift.veil` blur (`Dp.veil`) is
+ * left out: `Modifier.blur` is a no-op below API 31, and the send-off is a
+ * single fade-and-rise that reads fine unblurred.
  */
 private val EXHALE_DRIFT = 16.dp
 

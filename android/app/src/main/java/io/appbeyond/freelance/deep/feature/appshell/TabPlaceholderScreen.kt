@@ -82,17 +82,10 @@ fun TabPlaceholderScreen(tab: DeepTab, modifier: Modifier = Modifier) {
 
 private fun DeepTab.placeholderCopy(): Pair<Int, Int> = when (this) {
   DeepTab.Sounds -> R.string.placeholder_sounds_title to R.string.placeholder_sounds_body
-  DeepTab.Garden -> R.string.placeholder_garden_title to R.string.placeholder_garden_body
   DeepTab.Compassion -> R.string.placeholder_compassion_title to R.string.placeholder_compassion_body
   DeepTab.You -> R.string.placeholder_you_title to R.string.placeholder_you_body
-  // Home is never a placeholder; it ships its feed in v0.0.1.
-  DeepTab.Home -> R.string.placeholder_sounds_title to R.string.placeholder_sounds_body
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun TabPlaceholderGardenPreview() {
-  DeepTheme { TabPlaceholderScreen(DeepTab.Garden) }
+  // Home ships its feed and Garden ships the Mind Garden; neither is ever a placeholder.
+  DeepTab.Home, DeepTab.Garden -> R.string.placeholder_sounds_title to R.string.placeholder_sounds_body
 }
 
 @Preview(showBackground = true, name = "Compassion")

@@ -19,6 +19,10 @@ final class MainTabController: UITabBarController {
   /// One player shared across the tabs, so a sound started in Global Pause and
   /// a sound started in Sounds drive the same bottom accessory and Now Playing.
   private let sharedPlayer: any SoundPlaying
+  /// The listen reporter behind the player chrome's heart notices — injected
+  /// into the accessory, Now Playing, and every hosted tab (sign-out flushes
+  /// it from the You tab).
+  private let listenReporter: any ListenReporting
 
   /// The shared practice journal, heart ledger, and garden, injected into
   /// every hosted tab: the DEEP Session flow presents from inside any tab's
@@ -45,6 +49,8 @@ final class MainTabController: UITabBarController {
   /// The shared artwork cache, injected into every hosted tab so all tiles
   /// draw from one memory/disk store.
   private let imageLoader: any ImageLoading
+  /// Screen-size decodes for Now Playing's full-bleed photograph.
+  private let fullScreenImageLoader: any ImageLoading
 
   /// The hero-footage disk cache, injected the same way — nil in previews,
   /// where remote heroes stream without caching.
@@ -85,6 +91,7 @@ final class MainTabController: UITabBarController {
     subscriptionStore: any SubscriptionStore,
     soundRepository: any SoundContentRepository,
     soundPlayer: any SoundPlaying,
+    listenReporter: any ListenReporting,
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
@@ -95,6 +102,7 @@ final class MainTabController: UITabBarController {
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
     imageLoader: any ImageLoading,
+    fullScreenImageLoader: any ImageLoading,
     videoCache: VideoCache? = nil
   ) {
     self.onboardingStore = onboardingStore
@@ -102,6 +110,7 @@ final class MainTabController: UITabBarController {
     self.subscriptionStore = subscriptionStore
     self.soundRepository = soundRepository
     self.sharedPlayer = soundPlayer
+    self.listenReporter = listenReporter
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
@@ -112,6 +121,7 @@ final class MainTabController: UITabBarController {
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
     self.imageLoader = imageLoader
+    self.fullScreenImageLoader = fullScreenImageLoader
     self.videoCache = videoCache
     super.init(nibName: nil, bundle: nil)
   }
@@ -227,8 +237,11 @@ final class MainTabController: UITabBarController {
   /// child of this controller so it participates in the view-controller
   /// hierarchy (traits, appearance callbacks) like any other tab chrome.
   private func makeAccessoryHost() -> PlayerAccessoryHostingController {
-    let host = PlayerAccessoryHostingController(player: sharedPlayer, imageLoader: imageLoader) {
-      [weak self] in
+    let host = PlayerAccessoryHostingController(
+      player: sharedPlayer,
+      listenReporter: listenReporter,
+      imageLoader: imageLoader
+    ) { [weak self] in
       self?.presentNowPlaying()
     }
     addChild(host)
@@ -261,12 +274,13 @@ final class MainTabController: UITabBarController {
       self?.dismiss(animated: true)
     }
     .environment(\.soundPlayer, sharedPlayer)
+    .environment(\.listenReporter, listenReporter)
     .environment(\.soundContentRepository, soundRepository)
     .environment(\.playlistStore, playlistStore)
-    .environment(\.imageLoader, imageLoader)
+    .environment(\.imageLoader, fullScreenImageLoader)
     .preferredColorScheme(.light)
 
-    let host = UIHostingController(rootView: root)
+    let host = LightStatusBarHostingController(rootView: root)
     host.modalPresentationStyle = .fullScreen
     host.preferredTransition = .zoom { [weak self] _ in
       self?.accessoryHost?.view
@@ -296,6 +310,7 @@ final class MainTabController: UITabBarController {
         self?.selectedIndex = Tab.sounds.rawValue
       }
       .environment(\.soundPlayer, sharedPlayer)
+      .environment(\.listenReporter, listenReporter)
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.subscriptionStore, subscriptionStore)
       .environment(\.practiceStore, practiceStore)

@@ -14,6 +14,12 @@ final class APIClient {
   private let encoder = JSONEncoder()
   private var refreshTask: Task<Void, Error>?
 
+  /// Runs when the server rejects the refresh token and the pair has been
+  /// cleared — the session is over, whoever was in it. `APIAccountStore`
+  /// turns this into a sign-out. Never called for an outage: a timeout or an
+  /// unreachable host keeps the session.
+  var onSessionRejected: (@MainActor () -> Void)?
+
   init(baseURL: URL, tokens: KeychainTokenStore, session: URLSession = APIClient.makeSession()) {
     self.baseURL = baseURL
     self.tokens = tokens
@@ -175,6 +181,7 @@ final class APIClient {
     } catch {
       if Self.isAuthRejection(error) {
         tokens.clear()
+        onSessionRejected?()
         throw APIError.unauthorized
       }
       // Transport / server hiccup: keep the token pair, surface the real

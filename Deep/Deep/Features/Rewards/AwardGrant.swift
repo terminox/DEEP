@@ -8,6 +8,9 @@ enum RewardRules {
   /// heart is gated on this so it never promises a fifth heart the practice
   /// sync will not deliver.
   static let deepSessionDailyLimit = 4
+  /// How many finished tracks can earn per day. The server sends the live
+  /// figure with every listen; this is only the fallback when it doesn't.
+  static let trackDailyLimit = 3
 }
 
 /// One settled award from the server, as every producer (practice sync, track

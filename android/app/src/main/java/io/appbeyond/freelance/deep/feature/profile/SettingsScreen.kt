@@ -46,7 +46,10 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgre
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.feature.reminders.model.DailyReminder
+import io.appbeyond.freelance.deep.shared.localization.AppFormat
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
+import io.appbeyond.freelance.deep.shared.localization.rememberAppLocale
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.blushPowder
@@ -100,31 +103,47 @@ private const val FOOTER_ALPHA = 0.8f
  *
  * Deliberate gaps against iOS, each a product decision rather than an
  * omission:
- * - **Preferences and Membership are UI only.** The rows are real, press, and
- *   do nothing: there is no language persistence, reminder scheduling or Play
- *   Billing on Android yet. The daily-reminder row shows the "off" chevron
- *   because nothing can be on. The restore row's progress / "Restored" states
- *   are not ported for the same reason.
- * - **The plan chip always reads "Free plan"** — no subscription store exists
- *   to ask. iOS's "Checking…" state has nothing to check.
- * - **Log out resets onboarding only.** iOS also clears the practice journal,
- *   garden, ledger, playlist and reminder queue; none of those stores exist on
- *   Android yet. Each must join both exits below as it lands.
+ * - **No Membership section.** DEEP Premium is out of scope on Android, and
+ *   iOS's two rows — Manage subscription and Restore purchases — are App
+ *   Store actions with nothing behind them here. Rather than rows that do
+ *   nothing, the section is left out, as the Premium paywall is; the plan chip
+ *   still reads "Free plan", which is what iOS shows a member without Premium.
+ * - **Both exits reset onboarding and every account store** (practice journal,
+ *   garden, heart ledger, continuity day, and the daily reminder —
+ *   [resetAccountState]); the playlist and the player are cleared by
+ *   `AppDependencies`' account watcher. A store that lands later must join
+ *   both exits below.
+ * - **DIVERGENCE: log out first offers the practice journal's unsynced
+ *   sessions to the server** ([flushPracticeJournal], at most three seconds),
+ *   while the token still works. iOS drops them. Account deletion skips it —
+ *   the server is about to delete the sessions anyway.
  *
  * The back control is our own frosted chevron. On iOS that choice would cost
  * the interactive edge-swipe pop; on Android system back is independent of the
  * control and pops the You tab's stack in `MainShellCoordinator`.
  *
  * @param language the language DEEP currently reads in, named by its endonym.
+ * @param reminder the daily reminder's settings — the row shows its time while on.
+ * @param onOpenLanguage / onOpenReminder push the two preference screens.
+ * @param flushPracticeJournal best-effort push of unsynced practice, run
+ *   before log out ends the session.
+ * @param resetAccountState forgets the member's account state (rewards and
+ *   the reminder), run after either exit succeeds.
  */
 @Composable
 fun SettingsScreen(
   accountStore: AccountStore,
   onboardingStore: OnboardingProgressStore,
   language: AppLanguage,
+  reminder: DailyReminder,
+  flushPracticeJournal: suspend () -> Unit,
+  resetAccountState: suspend () -> Unit,
+  onOpenLanguage: () -> Unit,
+  onOpenReminder: () -> Unit,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val locale = rememberAppLocale()
   val account by accountStore.account.collectAsStateWithLifecycle()
   val scope = rememberCoroutineScope()
 
@@ -135,16 +154,22 @@ fun SettingsScreen(
 
   // Both exits run NonCancellable. Signing out flips the root phase, which
   // retires this whole shell (and this screen's scope) as it crossfades away;
-  // the onboarding reset after it must still land, or a later launch would
-  // reopen a signed-out member on a "completed" onboarding.
+  // the resets after it must still land, or a later launch would reopen a
+  // signed-out member on a "completed" onboarding, or the next member on the
+  // last one's garden.
   fun logOut() {
     scope.launch {
       withContext(NonCancellable) {
+        // While the token still works: unsynced practice reaches the server
+        // instead of being dropped with the journal. Bounded, so a dead
+        // network delays the log out by seconds at most.
+        flushPracticeJournal()
         accountStore.logOut()
         // Resetting onboarding flips `hasCompletedOnboarding`, which AppRoot
         // observes — together with the now signed-out state it crossfades back
         // to the welcome flow.
         onboardingStore.reset()
+        resetAccountState()
       }
     }
   }
@@ -158,6 +183,7 @@ fun SettingsScreen(
           // Same exit as log out; the shell crossfades to the welcome flow, so
           // the in-flight state never needs resetting on success.
           onboardingStore.reset()
+          resetAccountState()
         } catch (cancelled: CancellationException) {
           throw cancelled
         } catch (_: Exception) {
@@ -173,7 +199,7 @@ fun SettingsScreen(
     AtmosphereBackground()
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-      SettingsTopBar(onBack = onBack)
+      SettingsTopBar(title = stringResource(R.string.settings_title), onBack = onBack)
 
       Column(
         Modifier
@@ -192,27 +218,19 @@ fun SettingsScreen(
             title = stringResource(R.string.settings_language),
             icon = DeepIcons.Globe,
             accessory = SettingsAccessory.Value(language.endonym),
-            onClick = {},
+            onClick = onOpenLanguage,
           )
           SettingsRow(
             title = stringResource(R.string.settings_daily_reminder),
             icon = ProfileIcons.Bell,
-            accessory = SettingsAccessory.Chevron,
-            onClick = {},
-          )
-        }
-
-        SettingsSection(title = stringResource(R.string.settings_section_membership)) {
-          SettingsRow(
-            title = stringResource(R.string.settings_manage_subscription),
-            icon = ProfileIcons.CreditCard,
-            accessory = SettingsAccessory.Chevron,
-            onClick = {},
-          )
-          SettingsRow(
-            title = stringResource(R.string.settings_restore_purchases),
-            icon = ProfileIcons.ArrowClockwise,
-            onClick = {},
+            // The time in the reading language's own clock — 24-hour in Thai,
+            // am/pm in US English — while it is on.
+            accessory = if (reminder.isEnabled) {
+              SettingsAccessory.Value(AppFormat.time(reminder.hour, reminder.minute, locale))
+            } else {
+              SettingsAccessory.Chevron
+            },
+            onClick = onOpenReminder,
           )
         }
 
@@ -290,7 +308,7 @@ fun SettingsScreen(
  * background.
  */
 @Composable
-private fun SettingsTopBar(onBack: () -> Unit) {
+internal fun SettingsTopBar(title: String, onBack: () -> Unit) {
   Box(
     Modifier
       .fillMaxWidth()
@@ -304,7 +322,7 @@ private fun SettingsTopBar(onBack: () -> Unit) {
       modifier = Modifier.align(Alignment.CenterStart),
     )
     Text(
-      text = stringResource(R.string.settings_title),
+      text = title,
       style = DeepType.sectionTitle,
       color = Color.deepPlum,
     )
@@ -405,6 +423,11 @@ private fun SettingsScreenPreview() {
         accountStore = MockAccountStore.emailUser,
         onboardingStore = MockOnboardingProgressStore.fresh,
         language = AppLanguage.English,
+        reminder = DailyReminder(isEnabled = true, hour = 21, minute = 0),
+        flushPracticeJournal = {},
+        resetAccountState = {},
+        onOpenLanguage = {},
+        onOpenReminder = {},
         onBack = {},
       )
     }
@@ -420,6 +443,11 @@ private fun SettingsScreenSignedOutPreview() {
         accountStore = MockAccountStore.signedOut,
         onboardingStore = MockOnboardingProgressStore.fresh,
         language = AppLanguage.Thai,
+        reminder = DailyReminder.initial,
+        flushPracticeJournal = {},
+        resetAccountState = {},
+        onOpenLanguage = {},
+        onOpenReminder = {},
         onBack = {},
       )
     }

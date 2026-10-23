@@ -73,6 +73,7 @@ struct AppRootView: View {
           subscriptionStore: deps.subscriptionStore,
           soundRepository: deps.soundRepository,
           soundPlayer: deps.soundPlayer,
+          listenReporter: deps.listenReporter,
           practiceStore: deps.practiceStore,
           heartLedger: deps.heartLedger,
           gardenStore: deps.gardenStore,
@@ -83,6 +84,7 @@ struct AppRootView: View {
           pauseSession: deps.pauseSession,
           pauseRepository: deps.pauseRepository,
           imageLoader: deps.imageLoader,
+          fullScreenImageLoader: deps.fullScreenImageLoader,
           videoCache: deps.videoCache
         )
         .ignoresSafeArea()
@@ -118,31 +120,36 @@ struct AppRootView: View {
     .environment(\.subscriptionStore, deps.subscriptionStore)
     .environment(\.soundContentRepository, deps.soundRepository)
     .environment(\.practiceStore, deps.practiceStore)
+    .environment(\.listenReporter, deps.listenReporter)
     .environment(\.heartLedger, deps.heartLedger)
     .environment(\.gardenStore, deps.gardenStore)
     .environment(\.playlistStore, deps.playlistStore)
     .environment(\.imageLoader, deps.imageLoader)
     .environment(\.videoCache, deps.videoCache)
     .task { await bootstrap() }
-    // Returning to the foreground retries the practice journal's offline
-    // queue, picks up sessions recorded on other installs, and re-pulls the
-    // garden (plant + sunlight + wallet) and the saved sounds from the server.
+    // Returning to the foreground retries the practice journal's and the
+    // listen reporter's offline queues, picks up sessions recorded on other
+    // installs, and re-pulls the garden (plant + sunlight + wallet) and the
+    // saved sounds from the server.
     .onChange(of: scenePhase) { _, phase in
       guard phase == .active, didRestore else { return }
       // The reminder queue is a rolling eight-week window of individually
       // dated requests, so coming forward is what rolls it on. It also
       // re-reads the permission (which can be switched off in iOS Settings
       // while the app sleeps) and drops today's nudge if the day's practice
-      // has since been done. Outside the signed-in guard: a queue left
-      // pointing at yesterday should be corrected either way.
+      // has since been done — a DEEP Session goal or a Global Pause. Outside
+      // the signed-in guard: a queue left pointing at yesterday should be
+      // corrected either way.
       Task { await rescheduleReminder() }
       guard deps.accountStore.isSignedIn else { return }
       Task {
         async let garden: Void = deps.gardenStore.refresh()
         async let playlist: Void = deps.playlistStore.refresh()
+        async let listens: Void = deps.listenReporter.flush()
         await deps.practiceStore.refresh()
         await garden
         await playlist
+        await listens
         // Practice may have arrived from another install, settling whether
         // today's goal is met — so the window is rebuilt on the fresh answer.
         await rescheduleReminder()
@@ -160,19 +167,22 @@ struct AppRootView: View {
       Task {
         async let garden: Void = deps.gardenStore.refresh()
         async let playlist: Void = deps.playlistStore.refresh()
+        async let listens: Void = deps.listenReporter.flush()
         await deps.practiceStore.refresh()
         await garden
         await playlist
+        await listens
       }
     }
   }
 
   /// Rebuilds the reminder window against today's practice. The store owns the
   /// rules; the shell only supplies the one fact the store deliberately
-  /// doesn't know — whether today's goal is already met.
+  /// doesn't know — whether today is already practised (the goal's minutes
+  /// met, or a Global Pause sat).
   private func rescheduleReminder() async {
     await deps.reminderStore.reschedule(
-      goalMetToday: deps.practiceStore.minutesToday >= deps.practiceStore.dailyGoalMinutes
+      practisedToday: deps.practiceStore.reminderRestsToday
     )
   }
 
@@ -188,6 +198,8 @@ struct AppRootView: View {
       async let refreshed: Void = deps.practiceStore.refresh()
       async let gardenRefreshed: Void = deps.gardenStore.refresh()
       async let playlistRefreshed: Void = deps.playlistStore.refresh()
+      // Listens finished offline (or cut off by a kill) go out on launch.
+      async let listensFlushed: Void = deps.listenReporter.flush()
       if let profile = try? await deps.onboardingRemote.fetchProfile() {
         deps.onboardingStore.hydrate(
           quizAnswers: profile.quizAnswers,
@@ -198,6 +210,7 @@ struct AppRootView: View {
       await refreshed
       await gardenRefreshed
       await playlistRefreshed
+      await listensFlushed
     }
     _ = await floor
     // The staged send-off: text exhales in place, the destination surfaces

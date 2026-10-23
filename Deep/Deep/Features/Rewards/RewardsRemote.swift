@@ -30,12 +30,55 @@ protocol RewardsRemote: AnyObject {
   /// Spends hearts. `id` is a client-generated UUID, so a retry of the same
   /// spend is idempotent server-side.
   func spendHearts(id: UUID, amount: Int, category: String, projectId: String?) async throws -> HeartsSummary
-  /// Reports a track played through to its end. `nil` when the server withheld
-  /// the award (per-day caps, repeat listens).
-  func reportListen(trackId: String) async throws -> AwardGrant?
-  /// Claims tonight's pause-attendance award. `nil` when not eligible or
-  /// already claimed — the server judges.
-  func claimPauseAward() async throws -> AwardGrant?
+  /// Reports a track played through to its end at `completedAt`, so a report
+  /// that waited offline still counts on the day it was earned. Throws
+  /// `APIError.http(404, …)` for a track the server no longer has.
+  func reportListen(trackId: String, completedAt: Date) async throws -> ListenOutcome
+  /// Claims tonight's pause-attendance award. The server judges: `eligible`
+  /// says whether tonight's attendance counted at all, `grant` carries the
+  /// award (nil when ineligible, or already claimed).
+  func claimPauseAward() async throws -> PauseAwardClaim
+}
+
+/// The server's answer to a pause-attendance claim. Kept apart from the grant
+/// because the two can disagree: a night already claimed is still *eligible*
+/// (it still counts as a practice day) yet carries no fresh grant, while an
+/// ineligible night is the one the ending has to explain honestly.
+struct PauseAwardClaim: Equatable {
+  /// Whether the server judged tonight's attendance complete. Older servers
+  /// that never sent the flag read as eligible — they only ever answered an
+  /// ineligible claim with an empty award.
+  var eligible: Bool
+  var grant: AwardGrant?
+}
+
+/// The server's answer to one listen report.
+struct ListenOutcome: Equatable {
+  /// Whether the server placed the listen on a day at all. False when it
+  /// finished too long ago (or too far ahead) to judge — nothing granted,
+  /// nothing to retry.
+  var judged: Bool
+  /// Whether this listen earned its heart.
+  var granted: Bool
+  /// Why it didn't: "duplicate" (this track already counted today),
+  /// "kind_cap" (today's track hearts are all in), "daily_cap" (the day's
+  /// overall hearts ceiling).
+  var cappedBy: String?
+  /// The day's track-heart tally; nil from older servers and unjudged listens.
+  var tally: ListenTally?
+  /// The settled grant for the ledger and garden — deltas plus the server's
+  /// absolute figures. Nil only when the response carried nothing to apply.
+  var grant: AwardGrant?
+}
+
+/// How many track hearts a day has earned, against its allowance.
+struct ListenTally: Equatable {
+  /// The local day the listen counted toward ("YYYY-MM-DD").
+  var dayKey: String
+  var earned: Int
+  var perDay: Int
+
+  var isComplete: Bool { earned >= perDay }
 }
 
 // MARK: - Mock
@@ -52,11 +95,23 @@ final class MockRewardsRemote: RewardsRemote {
   var sunlightByPlant: [String: Int]
   var wallet: HeartsSummary
   private(set) var pauseAwardClaimed = false
+  /// Tracks credited per day key — the server's once-per-track-per-day rule.
+  private var listensByDay: [String: Set<String>] = [:]
 
   /// Failure switches — the next matching call throws.
   var failsGarden = false
   var failsSelectPlant = false
   var failsSpend = false
+  /// Whether the server judges tonight's attendance complete.
+  var pauseEligible = true
+  /// How many pause claims fail before one lands — exercises the claim's
+  /// retry. Each failure throws `pauseClaimError`.
+  var pauseClaimFailures = 0
+  var pauseClaimError = APIError.transport("offline")
+  /// How long each pause claim takes to answer — a slow network at 20:42.
+  var pauseClaimDelay: Duration = .zero
+  /// Every pause claim attempted, failed ones included.
+  private(set) var pauseClaimAttempts = 0
 
   /// Spends the mock has accepted, newest last — lets tests assert the
   /// idempotency id and payload that would have gone over the wire.
@@ -111,14 +166,56 @@ final class MockRewardsRemote: RewardsRemote {
     return wallet
   }
 
-  func reportListen(trackId: String) async throws -> AwardGrant? {
-    grant(hearts: 1, sunlight: 1)
+  /// Mirrors the server's listen rules: one heart per track per day, at most
+  /// `RewardRules.trackDailyLimit` a day, listens older than 48h left
+  /// unjudged, and a finish stamped ahead of now (a fast clock) counted today.
+  func reportListen(trackId: String, completedAt: Date) async throws -> ListenOutcome {
+    let now = Date()
+    guard now.timeIntervalSince(completedAt) <= 48 * 60 * 60 else {
+      return ListenOutcome(judged: false, granted: false, tally: nil, grant: nil)
+    }
+    // ISO 8601 is always Gregorian, so the key reads the same on a Thai device.
+    let dayKey = min(completedAt, now).formatted(
+      Date.ISO8601FormatStyle(timeZone: .current).year().month().day()
+    )
+    let perDay = RewardRules.trackDailyLimit
+    var earned = listensByDay[dayKey, default: []]
+    let cappedBy: String?
+    var grant: AwardGrant?
+    if earned.contains(trackId) {
+      cappedBy = "duplicate"
+    } else if earned.count >= perDay {
+      cappedBy = "kind_cap"
+    } else if let granted = self.grant(hearts: 1, sunlight: 1) {
+      earned.insert(trackId)
+      listensByDay[dayKey] = earned
+      cappedBy = nil
+      grant = granted
+    } else {
+      cappedBy = "daily_cap"
+    }
+    return ListenOutcome(
+      judged: true,
+      granted: cappedBy == nil,
+      cappedBy: cappedBy,
+      tally: ListenTally(dayKey: dayKey, earned: earned.count, perDay: perDay),
+      grant: grant
+    )
   }
 
-  func claimPauseAward() async throws -> AwardGrant? {
-    guard !pauseAwardClaimed else { return nil }
+  func claimPauseAward() async throws -> PauseAwardClaim {
+    pauseClaimAttempts += 1
+    if pauseClaimDelay > .zero {
+      try await Task.sleep(for: pauseClaimDelay)
+    }
+    if pauseClaimFailures > 0 {
+      pauseClaimFailures -= 1
+      throw pauseClaimError
+    }
+    guard pauseEligible else { return PauseAwardClaim(eligible: false, grant: nil) }
+    guard !pauseAwardClaimed else { return PauseAwardClaim(eligible: true, grant: nil) }
     pauseAwardClaimed = true
-    return grant(hearts: 5, sunlight: 5)
+    return PauseAwardClaim(eligible: true, grant: grant(hearts: 5, sunlight: 5))
   }
 
   /// Applies an award to the mock's own books and returns it with absolutes,
@@ -198,21 +295,43 @@ final class APIRewardsRemote: RewardsRemote {
     return HeartsSummary(dto: dto.wallet)
   }
 
-  func reportListen(trackId: String) async throws -> AwardGrant? {
-    let dto: AwardResponseDTO = try await client.request(
+  func reportListen(trackId: String, completedAt: Date) async throws -> ListenOutcome {
+    let dto: ListenResponseDTO = try await client.request(
       "/me/sound/listens",
       method: "POST",
-      body: ListenRequestDTO(trackId: trackId)
+      body: ListenRequestDTO(
+        trackId: trackId,
+        completedAt: Self.isoFormatter.string(from: completedAt)
+      )
     )
-    return AwardGrant(outcomes: [dto.award].compactMap { $0 }, wallet: dto.wallet, plant: dto.plant)
+    return ListenOutcome(
+      judged: dto.award != nil,
+      granted: dto.award?.granted == true,
+      cappedBy: dto.award?.cappedBy,
+      tally: dto.listens.map {
+        ListenTally(dayKey: $0.dayKey, earned: $0.earned, perDay: $0.perDay)
+      },
+      grant: AwardGrant(outcomes: [dto.award].compactMap { $0 }, wallet: dto.wallet, plant: dto.plant)
+    )
   }
 
-  func claimPauseAward() async throws -> AwardGrant? {
+  /// UTC with fractional seconds ("2026-10-09T12:34:56.789Z") — what the
+  /// server's `datetime({ offset: true })` accepts, matching the practice sync.
+  private static let isoFormatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter
+  }()
+
+  func claimPauseAward() async throws -> PauseAwardClaim {
     let dto: PauseAwardResponseDTO = try await client.request(
       "/me/pause/award",
       method: "POST"
     )
-    return AwardGrant(outcomes: [dto.award].compactMap { $0 }, wallet: dto.wallet, plant: dto.plant)
+    return PauseAwardClaim(
+      eligible: dto.eligible ?? true,
+      grant: AwardGrant(outcomes: [dto.award].compactMap { $0 }, wallet: dto.wallet, plant: dto.plant)
+    )
   }
 }
 

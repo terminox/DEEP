@@ -1,6 +1,6 @@
 // DEEP GCP infrastructure (Pulumi, TypeScript).
 //
-// One stack (`production`) → GCP project `deep-production-app`. Provisions
+// One stack (`production`) → GCP project `graphite-girder-509905-i2`. Provisions
 // Artifact Registry, Cloud SQL Postgres, the private media bucket (FUSE-mounted
 // into the service at MEDIA_DIR), Secret Manager, a dedicated runtime service
 // account, the Cloud Run service, and a one-shot Prisma migrate Job.

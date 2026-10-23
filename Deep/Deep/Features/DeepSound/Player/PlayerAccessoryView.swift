@@ -15,6 +15,9 @@ struct PlayerAccessoryView: View {
   /// Injected explicitly (not read from the environment): the accessory tree
   /// hangs off the UIKit shell, outside any tab's SwiftUI environment.
   let player: any SoundPlaying
+  /// Same explicit injection as `player` — without it the mini player would
+  /// read the environment's mock reporter and never show a heart.
+  let listenReporter: any ListenReporting
   /// Same explicit injection as `player` — without it the mini player's
   /// artwork would resolve the environment's fixture loader.
   let imageLoader: any ImageLoading
@@ -33,7 +36,11 @@ struct PlayerAccessoryView: View {
         MiniPlayerBar(onExpand: onExpand)
       }
     }
+    // The heart is felt here, above the regular/inline swap, so it is felt
+    // whichever variant is showing — and only once alongside Now Playing.
+    .heartHaptic(for: listenReporter.notice)
     .environment(\.soundPlayer, player)
+    .environment(\.listenReporter, listenReporter)
     .environment(\.imageLoader, imageLoader)
     .preferredColorScheme(.light)
   }
@@ -43,7 +50,25 @@ struct PlayerAccessoryView: View {
 // The shipped view rides on the system accessory's glass; previews stand that
 // chrome in with a plain `glassEffect` capsule so the content reads in context.
 #Preview("Accessory — Regular") {
-  PlayerAccessoryView(player: MockSoundPlayer.playing, imageLoader: FixtureImageLoader(), onExpand: {})
+  PlayerAccessoryView(
+    player: MockSoundPlayer.playing,
+    listenReporter: MockListenReporter(),
+    imageLoader: FixtureImageLoader(),
+    onExpand: {}
+  )
+    .glassEffect(.regular, in: Capsule())
+    .padding(.horizontal, .edge)
+    .frame(maxHeight: .infinity)
+    .background { AtmosphereBackground() }
+}
+
+#Preview("Accessory — Heart earned") {
+  PlayerAccessoryView(
+    player: MockSoundPlayer.playing,
+    listenReporter: MockListenReporter.earned,
+    imageLoader: FixtureImageLoader(),
+    onExpand: {}
+  )
     .glassEffect(.regular, in: Capsule())
     .padding(.horizontal, .edge)
     .frame(maxHeight: .infinity)
@@ -51,7 +76,13 @@ struct PlayerAccessoryView: View {
 }
 
 #Preview("Accessory — Inline") {
-  PlayerAccessoryView(player: MockSoundPlayer.playing, imageLoader: FixtureImageLoader(), onExpand: {}, isInline: true)
+  PlayerAccessoryView(
+    player: MockSoundPlayer.playing,
+    listenReporter: MockListenReporter(),
+    imageLoader: FixtureImageLoader(),
+    onExpand: {},
+    isInline: true
+  )
     .glassEffect(.regular, in: Capsule())
     .frame(width: 240)
     .frame(maxHeight: .infinity)
