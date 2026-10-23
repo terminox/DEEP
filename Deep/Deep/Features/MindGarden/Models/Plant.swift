@@ -35,6 +35,33 @@ struct Plant: Identifiable, Equatable, Codable {
   /// The growth ladder in evolution order; thresholds strictly increasing
   /// from 0. Validated server-side; the derivation tolerates anything.
   var stages: [PlantStage]
+  /// A DEEP Premium plant.
+  var isPremium = false
+  /// The server's verdict for this member; `nil` when it never said (an older
+  /// server, or a plant cached before the field existed). See `PremiumGate`.
+  var isLocked: Bool? = nil
+
+  private enum CodingKeys: String, CodingKey {
+    case id, name, tagline, imageURL, palette, stages, isPremium, isLocked
+  }
+}
+
+extension Plant {
+  /// Hand-written so the garden blob persisted before premium existed still
+  /// decodes: a synthesized decoder would demand `isPremium` and fail the
+  /// whole blob, dropping the member's garden on the first launch after an
+  /// update. New fields are read with defaults; everything else as before.
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    name = try container.decode(String.self, forKey: .name)
+    tagline = try container.decode(String.self, forKey: .tagline)
+    imageURL = try container.decodeIfPresent(URL.self, forKey: .imageURL)
+    palette = try container.decodeIfPresent(ArtworkPalette.self, forKey: .palette) ?? .mist
+    stages = try container.decode([PlantStage].self, forKey: .stages)
+    isPremium = try container.decodeIfPresent(Bool.self, forKey: .isPremium) ?? false
+    isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked)
+  }
 }
 
 // The palette already carries a String raw value; declaring the conformance is
@@ -91,7 +118,24 @@ extension Plant {
     ]
   )
 
+  /// A DEEP Premium plant, for previews and tests of the locked state.
+  static let moonflowerFixture = Plant(
+    id: "moonflower",
+    name: "Moonflower",
+    tagline: "Opens quietly after dark",
+    palette: .dusk,
+    stages: [
+      PlantStage(id: "moonflower-stage-0", name: "Moonflower Bud", threshold: 0),
+      PlantStage(id: "moonflower-stage-1", name: "Opening Moonflower", threshold: 300),
+      PlantStage(id: "moonflower-stage-2", name: "Moonflower in Bloom", threshold: 800),
+    ],
+    isPremium: true
+  )
+
   /// The mock catalog — the four seeded slugs minus premium, matching what
   /// `GET /garden/plants` serves in seed data.
   static let fixtures: [Plant] = [oakFixture, sakuraFixture, lotusFixture]
+
+  /// The mock catalog with a DEEP Premium plant in it.
+  static let fixturesWithPremium: [Plant] = fixtures + [moonflowerFixture]
 }

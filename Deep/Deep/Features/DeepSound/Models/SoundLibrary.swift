@@ -4,6 +4,21 @@ import Foundation
 /// make the home, detail, and player screens feel alive. Collections are
 /// grouped into the five home-screen categories.
 enum SoundLibrary {
+  /// A DEEP Premium collection, for previews and tests of the locked state.
+  /// Not on any shelf: the bundled shelves stay free.
+  static let premiumSample = SoundCollection(
+    title: "Moonlit Tide",
+    subtitle: "Slow water under a quiet moon",
+    palette: .tide,
+    imageURL: URL(string: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=600&q=80"),
+    isPremium: true,
+    tracks: [
+      SoundTrack(title: "Low Water", duration: 8 * 60 + 12, isPremium: true),
+      SoundTrack(title: "Silver Swell", duration: 7 * 60 + 40, isPremium: true),
+      SoundTrack(title: "Night Shore", duration: 9 * 60 + 5, isPremium: true),
+    ]
+  )
+
   /// "Calm" — settled skies and still places.
   static let calm: [SoundCollection] = [
     SoundCollection(

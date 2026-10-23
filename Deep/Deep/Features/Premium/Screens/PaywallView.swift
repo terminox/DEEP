@@ -12,6 +12,7 @@ import SwiftUI
 /// is a quiet "Not right now" at the foot.
 struct PaywallView: View {
   @Environment(\.subscriptionStore) private var subscriptionStore
+  @Environment(\.premiumAccess) private var premiumAccess
   @Environment(\.locale) private var locale
 
   let source: PaywallSource
@@ -436,6 +437,9 @@ struct PaywallView: View {
       do {
         switch try await subscriptionStore.purchase(plan) {
         case .purchased:
+          // Unlock now, on the store's word, and have the server confirm it
+          // behind the welcome — content re-fetches when it does.
+          premiumAccess.didPurchase()
           withAnimation(.bloom) { purchase = .welcoming }
           // A beat to read the welcome, then out. No confetti.
           try? await Task.sleep(for: .seconds(1.8))
@@ -477,6 +481,9 @@ struct PaywallView: View {
       // which is the confirmation. One that finds nothing has to say so — a
       // Restore that answers with silence reads as a dead button.
       restore = subscriptionStore.isSubscribed ? .restored : .nothingFound
+      // The server has to hear about it too, or the audio it withholds stays
+      // withheld: confirm a restored membership the way a purchase is.
+      if subscriptionStore.isSubscribed { premiumAccess.didPurchase() }
       try? await Task.sleep(for: .seconds(2.5))
       if restore == .restored || restore == .nothingFound { restore = .idle }
     }

@@ -12,6 +12,19 @@ import UIKit
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
+  /// The premium answer and the stores behind it, injected into every hosted
+  /// screen: the SwiftUI environment doesn't cross into this UIKit tab, and on
+  /// its defaults a paying member would be told premium content is locked.
+  /// `legalLinks` and `playlistStore` ride along for the same reason — the
+  /// paywall's footer and a collection's save-to-playlist menu.
+  private let subscriptionStore: any SubscriptionStore
+  private let premiumAccess: PremiumAccess
+  private let legalLinks: LegalLinks
+  private let playlistStore: PlaylistStore
+  /// The picked language. Its locale is re-applied to every hosted screen for
+  /// the same reason as the rest: without it they resolve their copy against
+  /// the device language instead.
+  private let languageStore: LanguageStore
   /// Threaded through for the home feed's DEEP Session doorway — a session
   /// launched from this tab must credit the shared journal, ledger and garden.
   private let practiceStore: any PracticeStore
@@ -24,6 +37,10 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private let imageLoader: any ImageLoading
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
+  /// Pushed screens that draw their own top (the paywall), so the system bar
+  /// stays hidden over them as it does over the root feed. Weak, so a popped
+  /// screen leaves on its own.
+  private let barlessScreens = NSHashTable<UIViewController>.weakObjects()
 
   /// The session audio, alive only while the experience is presented.
   private var sessionAudio: GlobalPauseAudioPlayer?
@@ -54,6 +71,11 @@ final class GlobalPauseCoordinatorController: UIViewController {
   init(
     soundPlayer: any SoundPlaying,
     soundRepository: any SoundContentRepository,
+    subscriptionStore: any SubscriptionStore,
+    premiumAccess: PremiumAccess,
+    legalLinks: LegalLinks,
+    playlistStore: PlaylistStore,
+    languageStore: LanguageStore,
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
@@ -65,6 +87,11 @@ final class GlobalPauseCoordinatorController: UIViewController {
   ) {
     self.player = soundPlayer
     self.soundRepository = soundRepository
+    self.subscriptionStore = subscriptionStore
+    self.premiumAccess = premiumAccess
+    self.legalLinks = legalLinks
+    self.playlistStore = playlistStore
+    self.languageStore = languageStore
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
@@ -145,6 +172,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.globalPauseSession, pauseSession)
       .environment(\.pauseEventRepository, pauseRepository)
       .environment(\.imageLoader, imageLoader)
+      .modifier(hostedEnvironment)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
     host.view.backgroundColor = .clear
@@ -156,15 +184,31 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
   // MARK: - Routing
 
-  /// Pushes the real DEEP Sound collection detail. `subscriptionStore` stays on
-  /// its environment default here — the same behaviour the Sounds tab has today,
-  /// since the SwiftUI environment can't cross the UIKit tab boundary.
+  /// The premium answer, the stores behind it, the paywall's legal links and
+  /// door, the saved sounds and the picked language — re-applied to every
+  /// screen this tab hosts, because the SwiftUI environment can't cross the
+  /// UIKit boundary. Without it a hosted screen reads the hermetic defaults: a
+  /// paying member sees locks, and the copy follows the device language.
+  private var hostedEnvironment: HostedEnvironment {
+    HostedEnvironment(
+      locale: languageStore.locale,
+      subscriptionStore: subscriptionStore,
+      premiumAccess: premiumAccess,
+      legalLinks: legalLinks,
+      playlistStore: playlistStore,
+      openPaywall: { [weak self] source in self?.showPaywall(source) }
+    )
+  }
+
+  /// Pushes the real DEEP Sound collection detail, asking the real premium
+  /// answer rather than the environment's "not subscribed" default.
   private func showCollection(_ collection: SoundCollection) {
     push(
       CollectionDetailView(collection: collection, bottomInset: .rhythm)
         .environment(\.soundPlayer, player)
         .environment(\.soundContentRepository, soundRepository)
         .environment(\.imageLoader, imageLoader)
+        .modifier(hostedEnvironment)
     )
   }
 
@@ -176,13 +220,37 @@ final class GlobalPauseCoordinatorController: UIViewController {
           self?.showCollection(collection)
         }
         .environment(\.imageLoader, imageLoader)
+        .modifier(hostedEnvironment)
     )
   }
 
-  private func push(_ leaf: some View) {
+  /// - Parameter showsNavigationBar: `false` for a screen that draws its own
+  ///   top, like the paywall; the delegate keeps the bar hidden over it.
+  private func push(_ leaf: some View, showsNavigationBar: Bool = true) {
     let host = UIHostingController(rootView: leaf.preferredColorScheme(.light))
     host.view.backgroundColor = .clear
+    // Before the push: the delegate's `willShow` runs inside it.
+    if !showsNavigationBar { barlessScreens.add(host) }
     navigation.pushViewController(host, animated: true)
+  }
+
+  /// The DEEP Premium invitation, pushed like the Sounds and You tabs push it.
+  /// It draws its own atmosphere — a SwiftUI presentation background would
+  /// never reach a hosting controller — and hides the bar; "Not right now" and
+  /// a finished purchase both step back to whatever opened it.
+  private func showPaywall(_ source: PaywallSource) {
+    // A second tap during the push must not stack another one.
+    if let top = navigation.topViewController, barlessScreens.contains(top) { return }
+    push(
+      PaywallView(source: source) { [weak self] in self?.finishPaywall() }
+        .modifier(hostedEnvironment),
+      showsNavigationBar: false
+    )
+  }
+
+  private func finishPaywall() {
+    guard let top = navigation.topViewController, barlessScreens.contains(top) else { return }
+    navigation.popViewController(animated: true)
   }
 
   /// Fuku's Lounge rides the system push (the card-lift into the session is
@@ -195,6 +263,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         .environment(\.pauseEventRepository, pauseRepository)
         .environment(\.loungeRadio, loungeRadio)
         .environment(\.soundPlayer, player)
+        .modifier(hostedEnvironment)
     )
   }
 
@@ -211,6 +280,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
         .environment(\.gardenStore, gardenStore)
         .environment(\.continuityWitness, continuityWitness)
         .environment(\.accountStore, accountStore)
+        .modifier(hostedEnvironment)
     )
   }
 
@@ -314,16 +384,30 @@ extension GlobalPauseCoordinatorController: UIGestureRecognizerDelegate {
 
 extension GlobalPauseCoordinatorController: UINavigationControllerDelegate {
   /// The root feed owns its chrome (no bar); pushed leaves need the system bar
-  /// for the back button and their inline title, so visibility follows depth.
+  /// for the back button and their inline title, so visibility follows depth —
+  /// except over a screen that draws its own top (the paywall).
   func navigationController(
     _ navigationController: UINavigationController,
     willShow viewController: UIViewController,
     animated: Bool
   ) {
-    navigationController.setNavigationBarHidden(
-      viewController === navigationController.viewControllers.first,
-      animated: animated
-    )
+    navigationController.setNavigationBarHidden(hidesBar(over: viewController), animated: animated)
+    // An abandoned edge-swipe leaves the screen it started on in place, but
+    // the bar has already been set for the one it was heading to.
+    navigationController.transitionCoordinator?.notifyWhenInteractionChanges {
+      [weak self, weak navigationController] context in
+      guard context.isCancelled,
+            let self,
+            let navigationController,
+            let staying = context.viewController(forKey: .from)
+      else { return }
+      navigationController.setNavigationBarHidden(self.hidesBar(over: staying), animated: false)
+    }
+  }
+
+  /// The root feed and the screens that draw their own top go without a bar.
+  private func hidesBar(over viewController: UIViewController) -> Bool {
+    viewController === navigation.viewControllers.first || barlessScreens.contains(viewController)
   }
 
   func navigationController(
@@ -335,5 +419,27 @@ extension GlobalPauseCoordinatorController: UINavigationControllerDelegate {
     // transition — re-arm it whenever a pushed screen is on top.
     navigationController.interactivePopGestureRecognizer?.isEnabled =
       navigationController.viewControllers.count > 1
+  }
+}
+
+/// The environment the Global Pause tab re-applies to each hosted screen. One
+/// modifier, so no push site can forget a piece of it.
+private struct HostedEnvironment: ViewModifier {
+  let locale: Locale
+  let subscriptionStore: any SubscriptionStore
+  let premiumAccess: PremiumAccess
+  let legalLinks: LegalLinks
+  let playlistStore: PlaylistStore
+  /// Pushes the paywall onto this tab's stack — the door a locked sound opens.
+  let openPaywall: (PaywallSource) -> Void
+
+  func body(content: Content) -> some View {
+    content
+      .environment(\.locale, locale)
+      .environment(\.subscriptionStore, subscriptionStore)
+      .environment(\.premiumAccess, premiumAccess)
+      .environment(\.legalLinks, legalLinks)
+      .environment(\.playlistStore, playlistStore)
+      .environment(\.openPaywall, openPaywall)
   }
 }

@@ -10,6 +10,8 @@ struct RootTabView: UIViewControllerRepresentable {
   let onboardingStore: any OnboardingProgressStore
   let accountStore: any AccountStore
   let subscriptionStore: any SubscriptionStore
+  /// The premium answer every lock reads — threaded beside the store it wraps.
+  let premiumAccess: PremiumAccess
   /// Rides along with the subscription store: the paywall opens from inside the
   /// You tab and its footer has to link somewhere real.
   let legalLinks: LegalLinks
@@ -34,6 +36,7 @@ struct RootTabView: UIViewControllerRepresentable {
       onboardingStore: onboardingStore,
       accountStore: accountStore,
       subscriptionStore: subscriptionStore,
+      premiumAccess: premiumAccess,
       legalLinks: legalLinks,
       soundRepository: soundRepository,
       soundPlayer: soundPlayer,
@@ -61,6 +64,7 @@ struct RootTabView: UIViewControllerRepresentable {
     onboardingStore: OnboardingProgressDefaultsStore(),
     accountStore: PreviewAccountStore(),
     subscriptionStore: PreviewSubscriptionStore(),
+    premiumAccess: PremiumAccess(store: PreviewSubscriptionStore()),
     legalLinks: .placeholder,
     soundRepository: FixtureSoundContentRepository(),
     soundPlayer: SoundPlayer(),

@@ -54,6 +54,8 @@ struct AuthResponseDTO: Decodable {
   let accessToken: String
   let refreshToken: String
   let expiresIn: Int
+  /// DEEP Premium, sent beside `user`. Optional so an older server decodes.
+  let entitlement: EntitlementDTO?
 }
 
 struct TokenResponseDTO: Decodable {
@@ -64,6 +66,27 @@ struct TokenResponseDTO: Decodable {
 
 struct MeResponseDTO: Decodable {
   let user: UserDTO
+  /// DEEP Premium, sent beside `user`. Optional so an older server decodes.
+  let entitlement: EntitlementDTO?
+}
+
+/// The server's DEEP Premium answer for the caller. Everything past `active`
+/// is optional, read with defaults by `ServerEntitlement(dto:)`, so a leaner
+/// server still decodes.
+struct EntitlementDTO: Decodable {
+  let active: Bool
+  let productId: String?
+  /// ISO 8601.
+  let expiresAt: String?
+  let willRenew: Bool?
+  let periodType: String?
+  let inGracePeriod: Bool?
+  let store: String?
+}
+
+/// `POST /me/entitlement/refresh`.
+struct EntitlementResponseDTO: Decodable {
+  let entitlement: EntitlementDTO
 }
 
 struct OKResponseDTO: Decodable {
@@ -110,6 +133,9 @@ struct TrackDTO: Decodable {
   let kind: String // INSTRUMENTAL | GUIDED
   let audioUrl: String?
   let isPremium: Bool
+  /// The server's verdict for this caller: `audioUrl` is null when true.
+  /// Optional so an older server, which never sends it, still decodes.
+  let isLocked: Bool?
   let displayOrder: Int
   let lyricsLanguages: [String]?
 }
@@ -122,6 +148,8 @@ struct CollectionDTO: Decodable {
   let palette: String
   let imageUrl: String?
   let isPremium: Bool
+  /// The server's verdict for this caller. Optional, as on `TrackDTO`.
+  let isLocked: Bool?
   let displayOrder: Int
   let trackCount: Int?
   let tracks: [TrackDTO]?
@@ -137,6 +165,11 @@ struct CategoryDTO: Decodable {
 
 struct SoundHomeDTO: Decodable {
   let categories: [CategoryDTO]
+}
+
+/// `GET /sound/collections/:id`.
+struct CollectionResponseDTO: Decodable {
+  let collection: CollectionDTO
 }
 
 struct CollectionDetailDTO: Decodable {
@@ -335,6 +368,11 @@ struct PlantDTO: Decodable {
   let imageUrl: String?
   let palette: String?
   let stages: [PlantStageDTO]?
+  /// A DEEP Premium plant. Optional so an older server decodes.
+  let isPremium: Bool?
+  /// The server's verdict for this caller — never true for a plant they
+  /// already grow (grandfathered). Optional so an older server decodes.
+  let isLocked: Bool?
 }
 
 struct WalletDTO: Decodable {

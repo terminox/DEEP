@@ -16,6 +16,8 @@ struct SettingsView: View {
   @Environment(\.accountStore) private var accountStore
   @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.subscriptionStore) private var subscriptionStore
+  @Environment(\.premiumAccess) private var premiumAccess
+  @Environment(\.openURL) private var openURL
   @Environment(\.practiceStore) private var practiceStore
   @Environment(\.listenReporter) private var listenReporter
   @Environment(\.gardenStore) private var gardenStore
@@ -165,10 +167,11 @@ struct SettingsView: View {
       case DeepProduct.monthly: return "DEEP Premium, monthly"
       default: return "DEEP Premium"
       }
-    case .none:
-      return "Free plan"
-    case .unknown:
-      return "Checking…"
+    case .none, .unknown:
+      // A membership the store can't see — granted by the server, or carried
+      // by the server's last answer while RevenueCat checks — is still one.
+      if premiumAccess.hasPremium { return "DEEP Premium" }
+      return subscriptionStore.status == .none ? "Free plan" : "Checking…"
     }
   }
 
@@ -217,13 +220,17 @@ struct SettingsView: View {
         // there is something to sell — `.unknown` would put "Upgrade" directly
         // above a chip still reading "Checking…", and offer a paying member
         // what they already have.
-        if subscriptionStore.status == .none {
+        if subscriptionStore.status == .none, !premiumAccess.hasPremium {
           SettingsRow(icon: "sparkles", "Upgrade to DEEP Premium", accessory: .chevron) {
             openPaywall(.settings)
           }
         }
-        SettingsRow(icon: "creditcard", "Manage subscription", accessory: .chevron) {
-          showManageSubscriptions = true
+        // Members only: there is nothing to manage on the free plan, and the
+        // way in to buying is the row above.
+        if premiumAccess.hasPremium {
+          SettingsRow(icon: "creditcard", "Manage subscription", accessory: .chevron) {
+            manageSubscription()
+          }
         }
         SettingsRow(
           icon: "arrow.clockwise",
@@ -238,6 +245,17 @@ struct SettingsView: View {
           .foregroundStyle(.driftGrey)
           .padding(.horizontal, 8)
       }
+    }
+  }
+
+  /// Apple's own sheet for an App Store purchase; the page the purchasing
+  /// service names for anything bought elsewhere.
+  private func manageSubscription() {
+    switch subscriptionStore.management {
+    case .appStore:
+      showManageSubscriptions = true
+    case .web(let url):
+      openURL(url)
     }
   }
 
@@ -256,6 +274,9 @@ struct SettingsView: View {
       do {
         try await subscriptionStore.restore()
         restorePhase = .restored
+        // Confirmed with the server the way a purchase is, so the audio it
+        // withholds is released without waiting for the next foreground.
+        if subscriptionStore.isSubscribed { premiumAccess.didPurchase() }
       } catch is CancellationError {
         // Backing out of the App Store prompt — nothing happened, say nothing.
         restorePhase = .idle

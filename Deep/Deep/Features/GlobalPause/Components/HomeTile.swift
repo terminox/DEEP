@@ -8,6 +8,8 @@ import SwiftUI
 struct HomeTile: View {
   @Environment(\.openCollection) private var openCollection
   @Environment(\.soundPlayer) private var player
+  @Environment(\.premiumAccess) private var premiumAccess
+  @Environment(\.openPaywall) private var openPaywall
   let collection: SoundCollection
   var size: CGFloat = 150
 
@@ -18,6 +20,7 @@ struct HomeTile: View {
       VStack(alignment: .leading, spacing: 8) {
         SoundArtwork(palette: collection.palette, imageURL: collection.imageURL)
           .frame(width: size, height: size)
+          .premiumLockBadge(PremiumGate.isLocked(collection, hasPremium: premiumAccess.hasPremium))
           .overlay(alignment: .bottomTrailing) { playButton }
           .shadow(color: Color.lavenderMist.opacity(0.2), radius: 12, x: 0, y: 8)
 
@@ -41,7 +44,14 @@ struct HomeTile: View {
 
   private var playButton: some View {
     Button {
-      player.play(collection)
+      // Through the gate, like a collection's own Play: only what this
+      // listener may hear is queued, and nothing to hear opens the invitation.
+      let queue = PremiumGate.playable(collection, hasPremium: premiumAccess.hasPremium)
+      if queue.isEmpty {
+        openPaywall(.lockedSound)
+      } else {
+        player.play(queue, at: 0)
+      }
     } label: {
       Image(systemName: "play.fill")
         .font(.system(size: 12, weight: .semibold))
@@ -65,5 +75,18 @@ struct HomeTile: View {
   .background { AtmosphereBackground() }
   .environment(\.openCollection, { _ in })
   .environment(\.soundPlayer, MockSoundPlayer.idle)
+  .environment(\.premiumAccess, .free)
+}
+
+#Preview("Home Tile — locked") {
+  HStack(spacing: 16) {
+    HomeTile(collection: SoundLibrary.morning[0])
+    HomeTile(collection: SoundLibrary.premiumSample)
+  }
+  .padding()
+  .background { AtmosphereBackground() }
+  .environment(\.openCollection, { _ in })
+  .environment(\.soundPlayer, MockSoundPlayer.idle)
+  .environment(\.premiumAccess, .free)
 }
 #endif

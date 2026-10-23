@@ -4,8 +4,9 @@ import SwiftUI
 ///
 /// `kind` distinguishes instrumental soundscapes from spoken-word guided
 /// meditations. `audioURL` is the streaming source (served by the backend);
-/// `isPremium` gates the track behind a subscription. Ids are server-assigned
-/// strings (a stable default is generated for fixtures/bridges).
+/// `isPremium` marks the track as DEEP Premium, and `isLocked` is the server's
+/// own verdict for the listener who asked (see `PremiumGate`). Ids are
+/// server-assigned strings (a stable default is generated for fixtures/bridges).
 struct SoundTrack: Identifiable, Hashable, Codable {
   enum Kind: Hashable, Codable {
     case instrumental
@@ -19,6 +20,12 @@ struct SoundTrack: Identifiable, Hashable, Codable {
   /// Streaming audio source. `nil` for fixture/preview content (no real audio).
   var audioURL: URL? = nil
   var isPremium: Bool = false
+  /// Whether the server withheld this track from the listener who fetched it.
+  /// `nil` when the answer never came — an older server, or content cached
+  /// before the field existed — and `PremiumGate` falls back to the client rule.
+  /// Optional on purpose: the synthesized decoder reads optionals with
+  /// `decodeIfPresent`, so playlists cached without it still decode.
+  var isLocked: Bool? = nil
 
   init(
     id: String = UUID().uuidString,
@@ -26,7 +33,8 @@ struct SoundTrack: Identifiable, Hashable, Codable {
     duration: TimeInterval,
     kind: Kind = .instrumental,
     audioURL: URL? = nil,
-    isPremium: Bool = false
+    isPremium: Bool = false,
+    isLocked: Bool? = nil
   ) {
     self.id = id
     self.title = title
@@ -34,6 +42,7 @@ struct SoundTrack: Identifiable, Hashable, Codable {
     self.kind = kind
     self.audioURL = audioURL
     self.isPremium = isPremium
+    self.isLocked = isLocked
   }
 }
 
@@ -63,6 +72,9 @@ struct SoundCollection: Identifiable, Hashable, Codable {
   /// Owning category id (from the backend). Empty for bridged/fixture content.
   var categoryId: String = ""
   var isPremium: Bool = false
+  /// The server's verdict for the listener who fetched it; `nil` when it never
+  /// said. Optional for the same cache-compatibility reason as the track's.
+  var isLocked: Bool? = nil
   let tracks: [SoundTrack]
 
   init(
@@ -73,6 +85,7 @@ struct SoundCollection: Identifiable, Hashable, Codable {
     imageURL: URL?,
     categoryId: String = "",
     isPremium: Bool = false,
+    isLocked: Bool? = nil,
     tracks: [SoundTrack]
   ) {
     self.id = id
@@ -82,6 +95,7 @@ struct SoundCollection: Identifiable, Hashable, Codable {
     self.imageURL = imageURL
     self.categoryId = categoryId
     self.isPremium = isPremium
+    self.isLocked = isLocked
     self.tracks = tracks
   }
 
