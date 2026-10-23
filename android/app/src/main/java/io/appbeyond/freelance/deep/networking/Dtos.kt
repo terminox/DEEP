@@ -3,7 +3,7 @@ package io.appbeyond.freelance.deep.networking
 import kotlinx.serialization.Serializable
 
 /*
- * Wire shapes for the Deep API, ported from `DTOs.swift`.
+ * Wire shapes for the DEEP API, ported from `DTOs.swift`.
  *
  * These mirror the backend's JSON exactly — plain camelCase, so no naming
  * strategy is configured — and are mapped into the app's domain models by each

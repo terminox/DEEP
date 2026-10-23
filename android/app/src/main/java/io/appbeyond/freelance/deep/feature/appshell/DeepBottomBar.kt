@@ -35,11 +35,11 @@ import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
 
 /**
- * Deep's own bottom bar.
+ * DEEP's own bottom bar.
  *
  * Not `NavigationBar`. The bar frames every screen in the app, and stock Material
  * is the fastest way to make this look like a different product — so it is built
- * from Deep's tokens instead. It is also not a reproduction of the iOS 26 Liquid
+ * from DEEP's tokens instead. It is also not a reproduction of the iOS 26 Liquid
  * Glass bar, which is an OS affordance rather than a design: Android gets the
  * same *language* through its own mechanics.
  *

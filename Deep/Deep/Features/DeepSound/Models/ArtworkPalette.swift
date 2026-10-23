@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A named gradient pairing drawn from the Deep palette. Until real cover
+/// A named gradient pairing drawn from the DEEP palette. Until real cover
 /// imagery exists, every collection renders abstract gradient artwork — in
 /// keeping with DESIGN.md ("orbs, gradients, never photography of faces").
 enum ArtworkPalette: String, CaseIterable, Hashable {

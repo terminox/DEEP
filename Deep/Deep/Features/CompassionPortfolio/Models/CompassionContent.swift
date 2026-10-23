@@ -26,7 +26,7 @@ extension Array where Element == CompassionCategory {
     reduce(0) { $0 + $1.heartsShared }
   }
 
-  /// One cause's share of the pool — and therefore its share of Deep's real
+  /// One cause's share of the pool — and therefore its share of DEEP's real
   /// giving, which follows the pool (PRODUCT.md). This is the *only* place that
   /// ratio is worked out: a cause card, the pool legend and the cause detail all
   /// read it from here, so the figure can never say two different things in two

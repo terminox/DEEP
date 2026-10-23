@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Settings. Copy ported from
+  Deep/Deep/Features/Profile/SettingsView.swift. The Thai lives in
+  values-th/strings_profile.xml.
+-->
+<resources>
+
+  <!-- Settings -->
+  <string name="settings_title">Settings</string>
+  <string name="settings_back">Back</string>
+  <string name="settings_friend">Friend</string>
+  <string name="settings_free_plan">Free plan</string>
+  <string name="settings_section_preferences">Preferences</string>
+  <string name="settings_language">Language</string>
+  <string name="settings_daily_reminder">Daily reminder</string>
+  <string name="settings_section_account">Account</string>
+  <string name="settings_log_out">Log out</string>
+  <string name="settings_delete_account">Delete account</string>
+  <string name="settings_version">DEEP v%1$s (%2$d)</string>
+
+  <!-- Log out confirmation -->
+  <string name="settings_log_out_title">Log out of DEEP?</string>
+  <string name="settings_log_out_body">You\'ll start fresh from the welcome flow. What you\'ve shared stays safe.</string>
+  <string name="settings_log_out_confirm">Log out</string>
+  <string name="settings_log_out_stay">Stay</string>
+
+  <!-- Delete account -->
+  <string name="settings_delete_title">Delete your account?</string>
+  <string name="settings_delete_body">This permanently erases your account and everything you\'ve shared.</string>
+  <string name="settings_delete_confirm">Delete</string>
+  <string name="settings_delete_cancel">Cancel</string>
+  <string name="settings_delete_failed_title">Something went wrong</string>
+  <string name="settings_delete_failed_body">We couldn\'t delete your account. Please try again in a moment.</string>
+  <string name="settings_ok">OK</string>
+
+</resources>

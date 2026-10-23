@@ -12,7 +12,7 @@ import { mediaBucket } from "./storage";
 // Dedicated runtime identity (never the default compute SA).
 const sa = new gcp.serviceaccount.Account(
   "run-sa",
-  { accountId: "deep-api-run", displayName: "Deep API Cloud Run runtime" },
+  { accountId: "deep-api-run", displayName: "DEEP API Cloud Run runtime" },
   { provider, dependsOn: apis }
 );
 const member = pulumi.interpolate`serviceAccount:${sa.email}`;
@@ -112,7 +112,7 @@ export const service = new gcp.cloudrunv2.Service(
           volumeMounts: [cloudSqlMount, { name: "media", mountPath: "/media" }],
           resources: {
             limits: { cpu: "1", memory: "512Mi" },
-            cpuIdle: config.minInstances === 0 // throttle CPU between requests when scaling to zero
+            cpuIdle: config.cpuIdle // throttle CPU between requests; see config.ts
           },
           // Generous: bootstrapAdmin() talks to the DB before listen(), and a
           // db-f1-micro handshake through the socket proxy on a cold start can

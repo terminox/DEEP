@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 /// A single frosted text field for the auth screens, styled to match the
-/// onboarding surfaces (frosted glass, soft pill, Deep type). Kept minimal —
+/// onboarding surfaces (frosted glass, soft pill, DEEP type). Kept minimal —
 /// a label-less field with a gentle placeholder, per DESIGN.md's calm voice.
 ///
 /// Optional touches: a leading SF Symbol (`icon`), a soft trailing checkmark

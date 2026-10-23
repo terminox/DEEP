@@ -4,10 +4,13 @@ import Foundation
 /// promise honestly before the server has answered. The server remains the
 /// authority; these gates only stop the app promising what can never be granted.
 enum RewardRules {
-  /// How many Deep Sessions can earn per day. The completion beat's optimistic
+  /// How many DEEP Sessions can earn per day. The completion beat's optimistic
   /// heart is gated on this so it never promises a fifth heart the practice
   /// sync will not deliver.
   static let deepSessionDailyLimit = 4
+  /// How many finished tracks can earn per day. The server sends the live
+  /// figure with every listen; this is only the fallback when it doesn't.
+  static let trackDailyLimit = 3
 }
 
 /// One settled award from the server, as every producer (practice sync, track

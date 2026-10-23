@@ -25,6 +25,9 @@ plugins {
   // for a version here fails with "already on the classpath with an unknown
   // version". The version still lives in the catalog, at that single pin.
   id("org.jetbrains.kotlin.jvm")
+  // For the stores' persisted blobs (garden, practice journal, continuity
+  // stamp) — local shapes this module owns. Wire DTOs still live in :app.
+  alias(libs.plugins.kotlin.serialization)
 }
 
 java {
@@ -40,6 +43,7 @@ kotlin {
 
 dependencies {
   api(libs.kotlinx.coroutines.core)
+  implementation(libs.kotlinx.serialization.json)
 
   testImplementation(platform(libs.junit.bom))
   testImplementation(libs.junit.jupiter)

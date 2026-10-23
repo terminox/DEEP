@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension EnvironmentValues {
-  /// Pushes the Deep Session threshold (`DeepSessionIntroView`) onto whichever
+  /// Pushes the DEEP Session threshold (`DeepSessionIntroView`) onto whichever
   /// tab's navigation the entry card lives in. Injected by each tab's
   /// coordinator — `GlobalPauseCoordinatorController`, `DeepSoundCoordinatorView`,
   /// `MindGardenCoordinatorView` — so an entry card never hosts navigation of

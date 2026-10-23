@@ -1,4 +1,4 @@
-# Production image for the Deep backend.
+# Production image for the DEEP backend.
 #
 # Debian slim (not alpine): Prisma's query engine links OpenSSL and is unreliable
 # on musl. We run the app directly with `tsx` — matching the repo's own `start`

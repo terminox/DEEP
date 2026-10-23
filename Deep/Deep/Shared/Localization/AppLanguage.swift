@@ -2,11 +2,11 @@ import Foundation
 
 // MARK: - The choice
 
-/// The language Deep reads its copy in.
+/// The language DEEP reads its copy in.
 ///
-/// Deep matches the device by default — that is behaviour, not a setting, so
+/// DEEP matches the device by default — that is behaviour, not a setting, so
 /// there is no "follow the system" case to pick. Choosing one of these pins it
-/// in-app, so a member whose phone is set to English can still read Deep in
+/// in-app, so a member whose phone is set to English can still read DEEP in
 /// Thai without changing anything about their phone.
 enum AppLanguage: String, CaseIterable, Codable, Sendable, Identifiable {
   case english
@@ -22,7 +22,7 @@ extension AppLanguage {
   /// behind it.
   static let defaultsKey = "deep.language"
 
-  /// The language the device is asking for, narrowed to the two Deep speaks.
+  /// The language the device is asking for, narrowed to the two DEEP speaks.
   ///
   /// `preferredLocalizations` is iOS's own answer: it ranks the device's
   /// language preferences against the localizations actually in the bundle, so
@@ -79,7 +79,7 @@ extension AppLanguage {
 // MARK: - Ambient projections
 
 extension Locale {
-  /// The locale Deep formats and resolves copy in: the language this device
+  /// The locale DEEP formats and resolves copy in: the language this device
   /// reads in, rather than the one the phone is set to.
   ///
   /// Read this rather than `.current` anywhere a member sees the result — a
@@ -91,7 +91,7 @@ extension Locale {
 }
 
 extension Bundle {
-  /// The bundle Deep resolves its String Catalog against.
+  /// The bundle DEEP resolves its String Catalog against.
   ///
   /// The reading language's compiled `.lproj`, so
   /// `String(localized:bundle:locale:)` outside a view body matches the screen

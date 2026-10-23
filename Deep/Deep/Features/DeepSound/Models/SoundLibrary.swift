@@ -154,7 +154,7 @@ enum SoundLibrary {
     )
   ]
 
-  /// "Deep Teacher" — a steady voice to practice alongside.
+  /// "DEEP Teacher" — a steady voice to practice alongside.
   static let deepTeacher: [SoundCollection] = [
     SoundCollection(
       title: "Roots of Attention",
@@ -203,7 +203,7 @@ enum SoundLibrary {
     )
   ]
 
-  /// "Deep Kids" — small, kind soundscapes for little listeners.
+  /// "DEEP Kids" — small, kind soundscapes for little listeners.
   static let deepKids: [SoundCollection] = [
     SoundCollection(
       title: "Sleepy Stars",

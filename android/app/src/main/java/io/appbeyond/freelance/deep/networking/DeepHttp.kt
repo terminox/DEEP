@@ -24,10 +24,10 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 /**
- * The app's single HTTP seam to the Deep backend — the Android twin of
+ * The app's single HTTP seam to the DEEP backend — the Android twin of
  * `APIClient.swift`.
  *
- * It owns one [OkHttpClient] carrying everything every Deep request needs: the
+ * It owns one [OkHttpClient] carrying everything every DEEP request needs: the
  * two ambient headers, the bearer token, fail-fast timeouts, and a transparent
  * refresh-then-retry on a 401. Retrofit services and Coil both ride on it, so
  * the app has one connection pool, one DNS and TLS cache, and one place these
@@ -53,6 +53,21 @@ class DeepHttp(
 
   /** The client every repository and every Retrofit service makes its calls on. */
   val client: OkHttpClient
+
+  /**
+   * The client DEEP Sound streams audio on — [client]'s connection pool and
+   * dispatcher, none of its Deep-specific behaviour.
+   *
+   * Two things on [client] are wrong for a stream. Its interceptors attach the
+   * member's bearer token to every request, and an `audioUrl` is not always
+   * ours — a seeded track can point at any host, and a session token must never
+   * leave for one. And its 30-second call timeout caps the *whole* call: a
+   * nine-minute track streamed as one response would be cut off mid-play. So
+   * both go, the authenticator with them (there is no token to refresh), and a
+   * read timeout remains to notice a stream that has genuinely stalled.
+   * `AVPlayer` on iOS streams on its own session for the same reasons.
+   */
+  val mediaClient: OkHttpClient
 
   /**
    * The one place a session is rotated, shared by the authenticator and by
@@ -102,6 +117,19 @@ class DeepHttp(
     // and reads its token from the body (`routes/auth.ts`).
     val refreshClient = client.newBuilder().authenticator(Authenticator.NONE).build()
 
+    mediaClient = client.newBuilder()
+      .apply {
+        interceptors().clear()
+        networkInterceptors().clear()
+        // Request lines only — BASIC never buffers a body, so logging cannot
+        // hold a stream in memory.
+        if (logRequests) addInterceptor(wireLog())
+      }
+      .authenticator(Authenticator.NONE)
+      .callTimeout(0, TimeUnit.SECONDS)
+      .readTimeout(MEDIA_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      .build()
+
     tokenRefresher = TokenRefresher(tokens, AuthRefreshEndpoint(refreshClient, baseUrl, json))
     authenticator.refresher = tokenRefresher
   }
@@ -109,6 +137,7 @@ class DeepHttp(
   private companion object {
     const val CONNECT_READ_TIMEOUT_SECONDS = 10L
     const val CALL_TIMEOUT_SECONDS = 30L
+    const val MEDIA_READ_TIMEOUT_SECONDS = 30L
   }
 }
 
@@ -122,7 +151,7 @@ private fun wireLog(): HttpLoggingInterceptor =
   }
 
 /**
- * The two headers every Deep request carries, whether it is authorized or not.
+ * The two headers every DEEP request carries, whether it is authorized or not.
  *
  * The user's day boundary travels with every request: award day-keys and "earned
  * today" figures follow the device timezone server-side. The language travels
@@ -207,8 +236,9 @@ private class SessionAuthenticator : Authenticator {
     val access = try {
       runBlocking { refresher.refreshedAccessToken(failed) }
     } catch (ended: SessionEnded) {
-      // The server refused the refresh token itself. Tokens are already cleared;
-      // letting the 401 stand is what tells the caller the session is over.
+      // The request's session is over — refused by the server (tokens cleared,
+      // account store already signed out) or replaced by a newer sign-in or
+      // sign-out mid-flight. Letting the 401 stand is what tells the caller.
       return null
     } catch (offline: IOException) {
       // Not a revocation — a blip. Failing the call as a transport error rather

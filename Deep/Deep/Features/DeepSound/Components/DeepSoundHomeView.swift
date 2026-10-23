@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The standalone home — one scroll combining a stretchy video hero, the
-/// Breathe doorway into Deep Session, and the category carousels fetched from
+/// Breathe doorway into DEEP Session, and the category carousels fetched from
 /// the backend.
 ///
 /// This is the leaf screen, so it owns its screen-level styling: the video hero
@@ -44,7 +44,7 @@ struct DeepSoundHomeView: View {
     .ignoresSafeArea(edges: .top)
     .background { AtmosphereBackground() }
     .collapsibleHomeHeader(
-      title: "Deep Sound",
+      title: "DEEP Sound",
       subtitle: "Breathe and listen"
     )
     .task { await load() }
@@ -97,7 +97,7 @@ struct DeepSoundHomeView: View {
 }
 
 #if DEBUG
-#Preview("Deep Sound — Home") {
+#Preview("DEEP Sound — Home") {
   DeepSoundHomeView(bottomInset: .rhythm)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
 }

@@ -326,18 +326,18 @@ struct DeepSessionView: View {
   }
 }
 
-#Preview("Deep session — countdown") {
+#Preview("DEEP Session — countdown") {
   DeepSessionView(engine: .still(phase: .inhale))
 }
 
-#Preview("Deep session — inhale") {
+#Preview("DEEP Session — inhale") {
   DeepSessionView(engine: .still(phase: .inhale, cycle: 2), countdownSeconds: 0)
 }
 
-#Preview("Deep session — paused") {
+#Preview("DEEP Session — paused") {
   DeepSessionView(engine: .still(phase: .exhale, cycle: 4, isPaused: true), countdownSeconds: 0)
 }
 
-#Preview("Deep session — complete") {
+#Preview("DEEP Session — complete") {
   DeepSessionView(engine: .still(phase: .finished, cycle: 6), countdownSeconds: 0)
 }

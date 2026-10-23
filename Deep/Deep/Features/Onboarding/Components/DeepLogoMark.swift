@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Deep mark — a thin ring with a single dot resting at its centre, the
+/// The DEEP mark — a thin ring with a single dot resting at its centre, the
 /// same shape the app icon carries. Drawn rather than shipped as a raster so it
 /// can hold the palette and glow on its own terms: a crisp ring seated inside
 /// its own bloom, cream light over the welcome screen's sunrise.
@@ -61,7 +61,7 @@ struct DeepLogoMark: View {
   }
 }
 
-#Preview("Deep mark — cream over sunrise") {
+#Preview("DEEP mark — cream over sunrise") {
   ZStack {
     AtmosphereBackground()
 
@@ -73,7 +73,7 @@ struct DeepLogoMark: View {
   }
 }
 
-#Preview("Deep mark — flat backdrop, no halo") {
+#Preview("DEEP mark — flat backdrop, no halo") {
   ZStack {
     Color.moonCream
       .ignoresSafeArea()

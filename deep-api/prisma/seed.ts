@@ -1,5 +1,5 @@
 // Seeds the DB with the content the iOS app used to hardcode:
-//  - Deep Sound: 5 categories -> collections -> tracks (from SoundLibrary.swift)
+//  - DEEP Sound: 5 categories -> collections -> tracks (from SoundLibrary.swift)
 //  - Onboarding config: 2 quiz questions + 4 plants with growth stages (from the iOS fixtures)
 //  - A couple of multi-language lyrics to exercise the lyrics feature
 // Idempotent: wipes content tables and re-inserts. Plants/stages are upserted by
@@ -202,7 +202,7 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     slug: "deep-teacher",
-    title: "Deep Teacher",
+    title: "DEEP Teacher",
     kind: "GUIDED",
     collections: [
       {
@@ -255,7 +255,7 @@ const CATEGORIES: SeedCategory[] = [
   },
   {
     slug: "deep-kids",
-    title: "Deep Kids",
+    title: "DEEP Kids",
     kind: "INSTRUMENTAL",
     collections: [
       {
@@ -517,7 +517,7 @@ async function main() {
     });
   }
 
-  // Deep Sound
+  // DEEP Sound
   let firstGuidedTrackId: string | null = null;
   let audioCursor = 0;
   for (const [ci, cat] of CATEGORIES.entries()) {

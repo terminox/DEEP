@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Color
 // MARK: - Palette (single source of truth)
 
 /**
- * The Deep palette. Every colour the app uses originates here; the [Color]
+ * The DEEP palette. Every colour the app uses originates here; the [Color]
  * accessors below are thin projections of these values — never duplicate a hex
  * literal elsewhere.
  *

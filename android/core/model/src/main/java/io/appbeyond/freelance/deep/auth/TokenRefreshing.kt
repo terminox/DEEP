@@ -29,12 +29,16 @@ interface HttpStatusCarrying {
 }
 
 /**
- * The session is over: the server refused the refresh token itself, or there was
- * nothing stored to refresh with.
+ * The session is over: the server refused the refresh token itself, there was
+ * nothing stored to refresh with, or the session the refresh started from was
+ * replaced or signed out while it was in flight.
  *
- * Tokens have already been cleared by the time this is thrown. It is the only
- * failure out of [TokenRefresher] that means "sign the member out" — every other
- * one means "try again later, the session is still good".
+ * By the time this is thrown the store no longer holds the caller's session —
+ * [TokenRefresher] cleared it, or a newer sign-in or sign-out already replaced
+ * it. It is the only failure out of [TokenRefresher] that means "the request's
+ * session is gone" — every other one means "try again later, the session is
+ * still good". Signing the member out of the UI is not the catcher's job:
+ * [TokenRefresher.onSessionEnded] has already done it.
  */
 class SessionEnded(
   message: String,

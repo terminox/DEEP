@@ -11,7 +11,7 @@ import SwiftUI
 /// `PartnerOrganizationCard`) is one call to `openCategory` away from returning.
 ///
 /// The `HeartLedger` now lives app-wide (injected by the shell alongside
-/// `\.practiceStore`), so hearts earned in a Deep Session anywhere land in the
+/// `\.practiceStore`), so hearts earned in a DEEP Session anywhere land in the
 /// same balance this tab shows.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:

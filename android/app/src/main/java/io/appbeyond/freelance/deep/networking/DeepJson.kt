@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
 /**
- * The one `Json` every Deep response is decoded with.
+ * The one `Json` every DEEP response is decoded with.
  *
  * Configured to match `APIClient`'s bare `JSONDecoder()` exactly: the wire format
  * is plain camelCase with no key strategy, so nothing is transformed here either.
@@ -43,7 +43,7 @@ val DeepJson: Json = Json {
   }
 }
 
-/** The one content type Deep speaks, shared by the client and the converter. */
+/** The one content type DEEP speaks, shared by the client and the converter. */
 val DeepJsonMediaType: MediaType = "application/json; charset=utf-8".toMediaType()
 
 /**

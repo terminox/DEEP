@@ -13,7 +13,7 @@ APP_DISPLAY_NAME = DEEP Staging
 // app still knows which build it is: AppConfig maps it through
 // `AppEnvironment(rawValue:) ?? .dev`, and overriding it here would silently
 // downgrade the build — see CentralFlight.xcconfig.
-API_BASE_URL = https:/$()/deep-api-157102552469.asia-southeast1.run.app
+API_BASE_URL = https:/$()/deep-api-696592457470.asia-southeast1.run.app
 
 // ---- Release build profile ----
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym

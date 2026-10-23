@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Foliage and light for the Mind Garden. The core Deep palette (`DeepColor`)
+/// Foliage and light for the Mind Garden. The core DEEP palette (`DeepColor`)
 /// is intentionally floral pastel and carries neither green nor gold, so the
 /// garden introduces a small, restrained set of its own — muted sages for the
 /// plant, one honey for the sunlight that feeds it — that harmonise with the

@@ -2,7 +2,7 @@ import SwiftUI
 import Observation
 
 /// Remembers the day the continuity beat was last witnessed, so the rhythm is
-/// noticed once a day across every practice: a Deep Session and a Global Pause
+/// noticed once a day across every practice: a DEEP Session and a Global Pause
 /// on the same day share the one moment rather than each claiming it.
 ///
 /// A single `Date` in `UserDefaults` — the day it falls on is the whole state,

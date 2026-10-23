@@ -43,7 +43,8 @@ kotlinxSerialization = "1.11.0"
 kotlinxCoroutines = "1.11.0"
 datastore = "1.2.1"
 
-# Week 3. Declared now so the catalog is the full picture; unused until then.
+# ExoPlayer for the home hero video since week 1; the session and the OkHttp
+# data source for DEEP Sound since week 3.
 media3 = "1.11.1"
 
 coil = "3.6.2"
@@ -66,6 +67,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycle" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }

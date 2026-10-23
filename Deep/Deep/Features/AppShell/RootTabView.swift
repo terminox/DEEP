@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Bridges the UIKit `MainTabController` into the SwiftUI app entry point.
 ///
-/// The shared stores + Deep Sound dependencies are passed down explicitly: the
+/// The shared stores + DEEP Sound dependencies are passed down explicitly: the
 /// tab shell's hosting controllers don't inherit the SwiftUI environment across
 /// the UIKit boundary, so the Profile tab (sign-out / onboarding reset) and the
 /// Sounds tab (content + player) act on the same instances `AppRootView` owns.
@@ -15,6 +15,7 @@ struct RootTabView: UIViewControllerRepresentable {
   let legalLinks: LegalLinks
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
+  let listenReporter: any ListenReporting
   let practiceStore: any PracticeStore
   let heartLedger: HeartLedger
   let gardenStore: GardenStore
@@ -25,6 +26,7 @@ struct RootTabView: UIViewControllerRepresentable {
   let pauseSession: GlobalPauseSession
   let pauseRepository: any PauseEventRepository
   let imageLoader: any ImageLoading
+  let fullScreenImageLoader: any ImageLoading
   let videoCache: VideoCache?
 
   func makeUIViewController(context: Context) -> MainTabController {
@@ -35,6 +37,7 @@ struct RootTabView: UIViewControllerRepresentable {
       legalLinks: legalLinks,
       soundRepository: soundRepository,
       soundPlayer: soundPlayer,
+      listenReporter: listenReporter,
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       gardenStore: gardenStore,
@@ -45,6 +48,7 @@ struct RootTabView: UIViewControllerRepresentable {
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
       imageLoader: imageLoader,
+      fullScreenImageLoader: fullScreenImageLoader,
       videoCache: videoCache
     )
   }
@@ -60,6 +64,7 @@ struct RootTabView: UIViewControllerRepresentable {
     legalLinks: .placeholder,
     soundRepository: FixtureSoundContentRepository(),
     soundPlayer: SoundPlayer(),
+    listenReporter: MockListenReporter(),
     practiceStore: MockPracticeStore(),
     heartLedger: .sample,
     gardenStore: .sample,
@@ -73,6 +78,7 @@ struct RootTabView: UIViewControllerRepresentable {
     ),
     pauseRepository: FixturePauseEventRepository(),
     imageLoader: FixtureImageLoader(),
+    fullScreenImageLoader: FixtureImageLoader(),
     videoCache: nil
   )
   .ignoresSafeArea()

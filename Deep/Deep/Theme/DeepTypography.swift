@@ -63,7 +63,7 @@ private struct DeepTypeToken {
   }
 }
 
-/// The Deep type scale, aligned with DESIGN.md. Every style the app uses
+/// The DEEP type scale, aligned with DESIGN.md. Every style the app uses
 /// originates here; `DeepType` (SwiftUI) and the `UIFont` accessors below are
 /// thin projections of these entries — never declare a font inline elsewhere.
 private enum DeepTypePalette {
@@ -130,7 +130,7 @@ private enum DeepTypePalette {
     design: .rounded, uiDesign: .rounded,
     weight: .medium, uiWeight: .medium
   )
-  /// The one numeral a whole screen is about — the Deep Session length being
+  /// The one numeral a whole screen is about — the DEEP Session length being
   /// chosen. The scale's largest rung; mono digits so the roll between values
   /// never shifts the numeral sideways.
   static let heroNumber = DeepTypeToken(

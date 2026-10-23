@@ -1,9 +1,12 @@
 package io.appbeyond.freelance.deep.feature.appshell
 
+import android.util.Log
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,72 +19,273 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
+import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
+import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
+import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
+import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.MockAccountStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgressStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingRemote
+import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
+import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
+import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
+import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
+import io.appbeyond.freelance.deep.feature.reminders.store.MockReminderScheduler
+import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
+import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
+import java.time.Clock
+import java.time.ZoneId
+import io.appbeyond.freelance.deep.networking.DeepApiException
+import io.appbeyond.freelance.deep.onboarding.model.OnboardingState
+import io.appbeyond.freelance.deep.onboarding.model.RootPhase
+import io.appbeyond.freelance.deep.onboarding.model.rootPhase
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.BreatheLoadingView
+import io.appbeyond.freelance.deep.shared.localization.AppLanguage
 import io.appbeyond.freelance.deep.theme.BREATHE_FLOOR_MILLIS
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.hush
 import io.appbeyond.freelance.deep.theme.moonCream
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/**
+ * The launch beat's staged send-off. Private for the reason iOS keeps its
+ * `Handoff` enum private in `AppRootView.swift`: these values choreograph only
+ * this screen's hand-off; the exhale itself keeps the `exhale` motion token's
+ * tempo.
+ */
+private object Handoff {
+  /** The quiet between the text beginning its exhale and the destination surfacing. */
+  const val STILLNESS_MILLIS = 550L
+
+  /** Margin after the destination starts arriving before the invisible beat is unmounted. */
+  const val SETTLE_MILLIS = 300L
+}
 
 /**
  * The app's composition root and phase machine.
  *
- * iOS decides among three phases — restoring, the onboarding flow, and the main
- * shell. `v0.0.1` has two: onboarding and accounts land in week 2, so a launch
- * goes straight from the breathing beat into the shell.
+ * Decides among three phases, exactly as `AppRootView.swift` does, through the
+ * pure [rootPhase]:
+ *  - **Restoring** — a calm, breathing launch beat while any saved session is
+ *    confirmed with the backend, so a returning member never flashes the
+ *    welcome screen.
+ *  - **Flow** — onboarding and auth ([flowContent]).
+ *  - **Main** — the tab shell, once signed in *and* onboarding is complete.
  *
  * One moonCream and atmosphere backdrop persists beneath every phase, so
  * hand-offs crossfade atmosphere to atmosphere and never dip to white.
  *
- * The launch beat holds for [BREATHE_FLOOR_MILLIS] even when there is nothing to
- * wait for. That floor is the point: a fast start that flashes a loading state
- * for 80ms is worse than one that breathes once, and this app is about arriving
- * somewhere calmly rather than arriving fastest.
+ * Leaving the beat is the iOS staged exhale, conducted by the bootstrap rather
+ * than left to an exit transition: the text exhales in place
+ * ([BreatheLoadingView]'s `exhaled`), the destination surfaces beneath its
+ * tail after [Handoff.STILLNESS_MILLIS] of stillness, and the by-then
+ * invisible beat is unmounted [Handoff.SETTLE_MILLIS] later. iOS stages it
+ * because SwiftUI skips removal transitions on a self-updating timeline;
+ * Compose would not, but the choreography is the design, so it is kept.
+ *
+ * The beat holds for [BREATHE_FLOOR_MILLIS] even when there is nothing to wait
+ * for. A fast start that flashes a loading state for 80ms is worse than one
+ * that breathes once.
+ *
+ * Everything stateful arrives as a parameter — `MainActivity` is the one place
+ * that reads `AppDependencies` — so the preview runs on mocks.
+ *
+ * Deviation from iOS: every root destination crossfades on [hush]. iOS brings
+ * the flow in on a `softDrift` whose veil is a blur; `SoftDrift` now exists in
+ * `shared/transition/SoftDrift.kt`, but the root hand-offs have not been moved
+ * onto it, so they keep the plain crossfade.
+ *
+ * @param awaitOnboardingLoaded suspends until [onboardingStore]'s first real
+ *   load has landed, so a persisted "onboarding complete" is never missed for
+ *   one frame.
+ * @param soundPlayer paused as a practice opens: the session plays its own
+ *   bell and breath, and a track underneath would talk over both. It stays
+ *   loaded, so the mini player picks up where the member left off — iOS's
+ *   `pause()` on DEEP Session entry.
+ * @param soundLibrary / playlistStore handed on to the shell for DEEP Sound
+ *   and the You tab's saved sounds.
+ * @param syncRewards pulls the garden and wallet and syncs the practice
+ *   journal (`AppDependencies.syncRewards`). Called as the shell is composed —
+ *   which covers both a restored launch and a fresh sign-in or sign-up — and
+ *   on every process foreground while it stays composed: iOS's `bootstrap()`,
+ *   `.flow → .main` and scene-phase `.active` seams in one place.
+ * @param flushPracticeJournal / resetAccountState the rewards side of every
+ *   exit, handed on to Settings, and the reset is also run here when the
+ *   server rejects a restored session.
+ * @param reminderStore / preferences the daily reminder and the language
+ *   picker, handed on to Settings' preference screens.
+ * @param compassionContent / compassionCauseContent the Compassion tab's root
+ *   and its (parked) cause detail, handed on to the shell.
+ * @param flowContent the onboarding and auth flow. A slot rather than a direct
+ *   call so this file does not depend on the flow's wiring.
  */
 @Composable
 fun AppRoot(
+  accountStore: AccountStore,
+  onboardingStore: OnboardingProgressStore,
+  onboardingRemote: OnboardingRemote,
+  awaitOnboardingLoaded: suspend () -> Unit,
+  language: AppLanguage,
+  reminderStore: ReminderStore,
+  preferences: PreferenceActions,
+  soundPlayer: SoundPlaying,
+  soundLibrary: SoundLibrary,
+  playlistStore: PlaylistStore,
+  syncRewards: () -> Unit,
+  flushPracticeJournal: suspend () -> Unit,
+  resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
-  homeContent: @Composable (onOpenDeepSession: (DeepSession) -> Unit) -> Unit = {},
+  flowContent: @Composable () -> Unit = {},
+  homeContent: @Composable (actions: HomeActions) -> Unit = {},
+  gardenContent: @Composable (actions: HomeActions) -> Unit = {},
+  compassionContent: @Composable (openCause: (String) -> Unit) -> Unit = {},
+  compassionCauseContent: @Composable (causeId: String, onBack: () -> Unit) -> Unit = { _, _ -> },
   deepSessionContent: @Composable (session: DeepSession, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
 ) {
   var restored by remember { mutableStateOf(false) }
+  // The beat stays mounted (transparent) until dismissed, so its exhale is a
+  // plain state animation that finishes over whatever surfaces beneath it.
+  var beatExhaled by remember { mutableStateOf(false) }
+  var beatDismissed by remember { mutableStateOf(false) }
 
-  // Week 2 replaces the bare floor with the real session restore, which awaits
-  // both the backend and this floor.
+  val account by accountStore.account.collectAsStateWithLifecycle()
+  val onboarding by onboardingStore.state.collectAsStateWithLifecycle()
+  val phase = rootPhase(
+    restored = restored,
+    signedIn = account != null,
+    completedOnboarding = onboarding.hasCompletedOnboarding,
+  )
+
   LaunchedEffect(Unit) {
-    delay(BREATHE_FLOOR_MILLIS)
+    // Whatever happens in here, the beat must end: a launch that throws and
+    // never flips `restored` is a breathing screen the member can only escape
+    // by killing the app. Cancellation is the one thing let through — it means
+    // this composition is gone, and there is no beat left to end.
+    try {
+      coroutineScope {
+        // Hold the breathing beat at least this long, however fast restore
+        // runs — a flash of the loading screen reads as a glitch, not a breath.
+        val floor = launch { delay(BREATHE_FLOOR_MILLIS) }
+        val onboardingLoaded = async { awaitOnboardingLoaded() }
+        accountStore.restore()
+        onboardingLoaded.await()
+        if (accountStore.account.value != null) {
+          // The server's copy wins over this phone's: a member who finished
+          // onboarding on another install must land in the shell here too.
+          try {
+            val profile = onboardingRemote.fetchProfile()
+            onboardingStore.hydrate(
+              quizAnswers = profile.quizAnswers,
+              mindTree = profile.mindTree,
+              completed = profile.completed,
+            )
+          } catch (cancelled: CancellationException) {
+            throw cancelled
+          } catch (rejected: DeepApiException) {
+            // A refusal is the server saying this session is over, even though
+            // `/me` let it through a moment ago: sign out exactly as Settings
+            // does, answers and all. An outage — offline, a timeout, a 5xx —
+            // keeps what is on disk; restore never blocks on the network.
+            if (TokenRefresher.isAuthRejection(rejected)) {
+              accountStore.logOut()
+              onboardingStore.reset()
+              resetAccountState()
+            }
+          } catch (_: Exception) {
+            // A local write that failed: keep what is on disk and carry on.
+          }
+        }
+        floor.join()
+      }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (unexpected: Exception) {
+      Log.w("AppRoot", "Launch restore failed; leaving the beat with local state.", unexpected)
+    }
+    beatExhaled = true
+    delay(Handoff.STILLNESS_MILLIS)
     restored = true
+    delay(Handoff.SETTLE_MILLIS)
+    beatDismissed = true
   }
 
   // Owned here, above the shell, for the reason the iOS side owns its chime
   // outside the presentation: the practice's closing bell rings for several
   // seconds and has to outlive the screen being dismissed.
   var runningSession by remember { mutableStateOf<DeepSession?>(null) }
+  LaunchedEffect(phase) {
+    if (phase != RootPhase.Main) runningSession = null
+  }
 
   DeepTheme {
     Box(modifier.fillMaxSize().background(Color.moonCream)) {
       // The one persistent backdrop. It rests while the opaque shell covers it,
       // so the drift costs nothing per frame once you are in the app.
-      AtmosphereBackground(animated = !restored)
+      AtmosphereBackground(animated = phase != RootPhase.Main)
 
-      AnimatedVisibility(visible = restored, enter = fadeIn(hush()), exit = fadeOut(hush())) {
-        MainShellCoordinator(
-          homeContent = homeContent,
-          onOpenDeepSession = { runningSession = it },
-        )
+      // Each phase is its own composition: leaving Main disposes the shell and
+      // all of its remembered state, so a log out followed by a sign-in opens a
+      // fresh shell on Home rather than on the last member's Settings.
+      AnimatedContent(
+        targetState = phase,
+        transitionSpec = { fadeIn(hush()) togetherWith fadeOut(hush()) },
+        label = "root-phase",
+      ) { target ->
+        when (target) {
+          RootPhase.Restoring -> Box(Modifier.fillMaxSize())
+          RootPhase.Flow -> flowContent()
+          RootPhase.Main -> {
+            // The process's ON_START, not the activity's: a rotation or a
+            // language change recreates the activity without the member ever
+            // leaving. ON_START is replayed as the observer registers, so this
+            // one effect also fires as the shell first composes — once per
+            // entry into Main, whether from the launch beat or a fresh sign-in,
+            // and never twice at cold start.
+            LifecycleEventEffect(Lifecycle.Event.ON_START, ProcessLifecycleOwner.get()) {
+              syncRewards()
+            }
+            MainShellCoordinator(
+              accountStore = accountStore,
+              onboardingStore = onboardingStore,
+              language = language,
+              reminderStore = reminderStore,
+              preferences = preferences,
+              soundPlayer = soundPlayer,
+              soundLibrary = soundLibrary,
+              playlistStore = playlistStore,
+              flushPracticeJournal = flushPracticeJournal,
+              resetAccountState = resetAccountState,
+              homeContent = homeContent,
+              gardenContent = gardenContent,
+              compassionContent = compassionContent,
+              compassionCauseContent = compassionCauseContent,
+              onOpenDeepSession = {
+                soundPlayer.pause()
+                runningSession = it
+              },
+            )
+          }
+        }
       }
 
-      AnimatedVisibility(
-        visible = !restored,
-        enter = fadeIn(hush()),
-        exit = fadeOut(hush()),
-      ) {
-        // No backdrop of its own: the persistent moonCream and atmosphere above
-        // are already drawn, and a second one would double the wash.
-        BreatheLoadingView(drawsBackdrop = false)
+      // Above the destination, so the exhaling text finishes over whatever
+      // surfaces beneath it. No backdrop of its own: the persistent one above
+      // is already drawn, and a second would double the wash.
+      if (!beatDismissed) {
+        BreatheLoadingView(drawsBackdrop = false, exhaled = beatExhaled)
       }
 
       // The practice presents over the whole shell, tab bar included — which on
@@ -95,15 +299,61 @@ fun AppRoot(
         exit = fadeOut(hush()),
       ) {
         if (session != null) {
-          deepSessionContent(session) { runningSession = null }
+          // Opaque, as iOS's full-screen cover is. Every stage paints its own
+          // translucent atmosphere and they crossfade, so without this the
+          // shell showed through at mid-fade — the Garden's hero and cards
+          // ghosting behind the practice as it gave way to the reward ritual.
+          Box(Modifier.fillMaxSize().background(Color.moonCream)) {
+            deepSessionContent(session) { runningSession = null }
+          }
         }
       }
     }
   }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "App root — returning member")
 @Composable
 private fun AppRootPreview() {
-  AppRoot(homeContent = { TabPlaceholderScreen(DeepTab.Home) })
+  AppRoot(
+    accountStore = MockAccountStore.emailUser,
+    onboardingStore = MockOnboardingProgressStore(OnboardingState.Fresh.completed()),
+    onboardingRemote = MockOnboardingRemote(),
+    awaitOnboardingLoaded = {},
+    language = AppLanguage.English,
+    reminderStore = remember {
+      ReminderStore(MockReminderScheduler(), InMemoryBlobStore(), Clock.systemDefaultZone()) { ZoneId.systemDefault() }
+    },
+    preferences = PreferenceActions.none,
+    soundPlayer = MockSoundPlayer.idle(),
+    soundLibrary = remember { MockSoundLibrary.loaded },
+    playlistStore = MockPlaylistStore.empty,
+    syncRewards = {},
+    flushPracticeJournal = {},
+    resetAccountState = {},
+    homeContent = { TabPlaceholderScreen(DeepTab.Home) },
+  )
+}
+
+@Preview(showBackground = true, name = "App root — first launch")
+@Composable
+private fun AppRootFirstLaunchPreview() {
+  AppRoot(
+    accountStore = MockAccountStore.signedOut,
+    onboardingStore = MockOnboardingProgressStore.fresh,
+    onboardingRemote = MockOnboardingRemote(),
+    awaitOnboardingLoaded = {},
+    language = AppLanguage.English,
+    reminderStore = remember {
+      ReminderStore(MockReminderScheduler(), InMemoryBlobStore(), Clock.systemDefaultZone()) { ZoneId.systemDefault() }
+    },
+    preferences = PreferenceActions.none,
+    soundPlayer = MockSoundPlayer.idle(),
+    soundLibrary = remember { MockSoundLibrary.loaded },
+    playlistStore = MockPlaylistStore.empty,
+    syncRewards = {},
+    flushPracticeJournal = {},
+    resetAccountState = {},
+    flowContent = { TabPlaceholderScreen(DeepTab.Compassion) },
+  )
 }

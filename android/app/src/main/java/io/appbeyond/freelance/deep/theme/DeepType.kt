@@ -60,6 +60,15 @@ private val Sans = FontFamily(
     FontStyle.Normal,
     variationSettings = weightVariation(500),
   ),
+  // The semibold the reward CTA and the garden's sunlight figure use
+  // (`.weight(.semibold)` on iOS). Declared so a `copy(fontWeight = SemiBold)`
+  // lands on a real 600 instance rather than a synthesised fake bold of 500.
+  Font(
+    R.font.inter_variable,
+    FontWeight.SemiBold,
+    FontStyle.Normal,
+    variationSettings = weightVariation(600),
+  ),
 )
 
 /**
@@ -94,7 +103,7 @@ private const val TABULAR_FIGURES = "tnum"
 // MARK: - Type scale
 
 /**
- * The Deep type scale, aligned with DESIGN.md and with
+ * The DEEP type scale, aligned with DESIGN.md and with
  * Deep/Deep/Theme/DeepTypography.swift.
  *
  * Sizes are the iOS Dynamic Type text styles the tokens are anchored to, at their
@@ -191,7 +200,7 @@ object DeepType {
   )
 
   /**
-   * The one numeral a whole screen is about — the Deep Session length being
+   * The one numeral a whole screen is about — the DEEP Session length being
    * chosen. The scale's largest rung by a distance, which is the point: it stands
    * far above every other token rather than at the next step up.
    */

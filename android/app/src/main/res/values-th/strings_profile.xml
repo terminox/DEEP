@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_profile.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
+-->
+<resources>
+
+  <!-- Settings -->
+  <string name="settings_title">การตั้งค่า</string>
+  <string name="settings_back">ย้อนกลับ</string>
+  <string name="settings_friend">เพื่อน</string> <!-- no iOS Thai -->
+  <string name="settings_free_plan">แพ็กเกจฟรี</string> <!-- no iOS Thai -->
+  <string name="settings_section_preferences">การปรับแต่ง</string> <!-- no iOS Thai -->
+  <string name="settings_language">ภาษา</string>
+  <string name="settings_daily_reminder">การเตือนประจำวัน</string>
+  <string name="settings_section_account">บัญชี</string> <!-- no iOS Thai -->
+  <string name="settings_log_out">ออกจากระบบ</string>
+  <string name="settings_delete_account">ลบบัญชี</string> <!-- no iOS Thai -->
+  <string name="settings_version">DEEP v%1$s (%2$d)</string> <!-- no iOS Thai -->
+
+  <!-- Log out confirmation -->
+  <string name="settings_log_out_title">ออกจากระบบ DEEP?</string>
+  <string name="settings_log_out_body">คุณจะเริ่มใหม่จากหน้าต้อนรับ สิ่งที่คุณแบ่งปันไว้ยังปลอดภัย</string>
+  <string name="settings_log_out_confirm">ออกจากระบบ</string>
+  <string name="settings_log_out_stay">อยู่ต่อ</string>
+
+  <!-- Delete account -->
+  <string name="settings_delete_title">ลบบัญชีของคุณ?</string>
+  <string name="settings_delete_body">การดำเนินการนี้จะลบบัญชีของคุณและทุกสิ่งที่คุณแบ่งปันไว้อย่างถาวร</string> <!-- no iOS Thai -->
+  <string name="settings_delete_confirm">ลบ</string>
+  <string name="settings_delete_cancel">ยกเลิก</string>
+  <string name="settings_delete_failed_title">มีบางอย่างผิดพลาด</string>
+  <string name="settings_delete_failed_body">เราลบบัญชีของคุณไม่ได้ ลองอีกครั้งในอีกสักครู่</string>
+  <string name="settings_ok">ตกลง</string>
+
+</resources>

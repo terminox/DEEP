@@ -1,15 +1,13 @@
 package io.appbeyond.freelance.deep.shared.localization
 
-import java.util.Locale
-
 /**
- * The language Deep reads its copy in.
+ * The language DEEP reads its copy in.
  *
  * Ported from `Deep/Deep/Shared/Localization/AppLanguage.swift`, minus the pieces
- * that have no Android counterpart yet. Deep matches the device by default —
+ * that have no Android counterpart yet. DEEP matches the device by default —
  * that is behaviour, not a setting, so there is no "follow the system" case to
  * pick. Choosing one of these pins it in-app, so a member whose phone is set to
- * English can still read Deep in Thai without changing anything about their
+ * English can still read DEEP in Thai without changing anything about their
  * phone.
  *
  * That distinction is the whole reason `Accept-Language` is built from this enum
@@ -17,10 +15,10 @@ import java.util.Locale
  * titles, plant names, the pause's welcome lines — must arrive in the language
  * the member picked in-app.
  *
- * Not ported (yet): the persisted choice (`LanguageStore`), and the `Locale.app`
- * / `Bundle.app` ambient projections that resolve copy outside the view tree.
- * Until a store lands, [AppDependencies][io.appbeyond.freelance.deep.networking.AppDependencies]
- * holds the choice in memory, seeded from [deviceMatched].
+ * The choice is persisted and applied by [LanguageStore]. iOS's `Locale.app` /
+ * `Bundle.app` ambient projections have no counterpart: the per-app locale puts
+ * the choice into every context's configuration, so resources and
+ * [rememberAppLocale] already read in it.
  */
 enum class AppLanguage(val rawValue: String) {
   English("english"),
@@ -64,16 +62,5 @@ enum class AppLanguage(val rawValue: String) {
 
     /** Resolves a persisted raw value, or null if it is not one of ours. */
     fun of(rawValue: String): AppLanguage? = entries.firstOrNull { it.rawValue == rawValue }
-
-    /**
-     * The language the device is asking for, narrowed to the two Deep speaks.
-     *
-     * `Locale.getDefault()` already reflects a per-app language override on
-     * API 33+, and the device language below that, so a phone set to French
-     * lands on English without a case for it here — the same answer iOS gets
-     * from `Bundle.main.preferredLocalizations`.
-     */
-    fun deviceMatched(): AppLanguage =
-      if (Locale.getDefault().language == Thai.resourceLanguageCode) Thai else English
   }
 }

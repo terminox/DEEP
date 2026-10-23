@@ -17,7 +17,7 @@ import {
   localDate,
 } from "../lib/pauseSchedule.js";
 import { loadPauseConfig, loadPauseSchedule } from "../lib/pauseSlots.js";
-import { coveredOccurrence } from "../lib/awardRules.js";
+import { attendanceTarget, coveredOccurrence } from "../lib/awardRules.js";
 import { grantAward } from "../lib/awards.js";
 import { requestTimezone, rememberTimezone, userDayKey } from "../lib/clientDay.js";
 import { rewardSnapshot } from "../lib/rewardPayload.js";
@@ -181,14 +181,26 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       isNew ? (loc?.continent ?? null) : undefined,
     );
 
-    // Signed-in beats landing inside the meditation window also leave a
-    // durable attendance record — the evidence POST /me/pause/award judges.
+    // Signed-in beats landing inside the meditation window — or just either
+    // side of it, clamped to its edges — also leave a durable attendance
+    // record: the evidence POST /me/pause/award judges. Matched against all of
+    // today's occurrences rather than resolveOccurrence, which has already
+    // moved on when a zero-length feedback phase ends the occurrence with its
+    // meditation, while the closing beat is still inside the tail grace.
     const now = resolveNow();
     if (req.auth) {
       const { config, slots } = await loadPauseSchedule();
-      const occurrence = resolveOccurrence(config, slots, now);
-      if (occurrence && occurrence.phaseAt(now) === "meditation") {
-        await recordAttendance(req.auth.sub, occurrence.pauseDate, occurrence.slotId, now);
+      const target = attendanceTarget(
+        occurrencesOn(config, slots, localDate(now, config.timezone)),
+        now,
+      );
+      if (target) {
+        await recordAttendance(
+          req.auth.sub,
+          target.occurrence.pauseDate,
+          target.occurrence.slotId,
+          target.seenAt,
+        );
       }
     }
 
@@ -269,6 +281,32 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       where: { userId, pauseDate },
     });
     const eligible = coveredOccurrence(occurrences, attendances) != null;
+    if (!eligible) {
+      // Support diagnostics: when a member reports a pause that earned
+      // nothing, this is the evidence the rule saw.
+      req.log.info(
+        {
+          event: "pause_award_ineligible",
+          userId,
+          pauseDate,
+          attendances: attendances.map((a) => ({
+            slotId: a.slotId,
+            firstSeenAt: a.firstSeenAt.toISOString(),
+            lastSeenAt: a.lastSeenAt.toISOString(),
+            beats: a.beats,
+          })),
+          meditations: occurrences.map((o) => {
+            const window = meditationWindow(o);
+            return {
+              slotId: o.slotId,
+              startsAt: window.startsAt.toISOString(),
+              endsAt: window.endsAt.toISOString(),
+            };
+          }),
+        },
+        "pause_award_ineligible",
+      );
+    }
 
     const outcome = eligible
       ? await grantAward({

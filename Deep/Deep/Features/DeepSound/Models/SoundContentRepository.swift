@@ -14,7 +14,7 @@ struct Lyrics: Identifiable, Hashable {
   let content: String
 }
 
-/// The content seam for Deep Sound. The home reads shelves from here; the Now
+/// The content seam for DEEP Sound. The home reads shelves from here; the Now
 /// Playing screen reads lyrics; the Global Pause home reads its server-composed
 /// sections. Screens depend on the protocol so they preview against
 /// `FixtureSoundContentRepository` (the bundled `SoundLibrary`).
@@ -33,8 +33,8 @@ final class FixtureSoundContentRepository: SoundContentRepository {
       SoundShelf(id: "calm", title: "Calm", collections: SoundLibrary.calm),
       SoundShelf(id: "morning", title: "Morning", collections: SoundLibrary.morning),
       SoundShelf(id: "sleep", title: "Sleep", collections: SoundLibrary.sleep),
-      SoundShelf(id: "deep-teacher", title: "Deep Teacher", collections: SoundLibrary.deepTeacher),
-      SoundShelf(id: "deep-kids", title: "Deep Kids", collections: SoundLibrary.deepKids),
+      SoundShelf(id: "deep-teacher", title: "DEEP Teacher", collections: SoundLibrary.deepTeacher),
+      SoundShelf(id: "deep-kids", title: "DEEP Kids", collections: SoundLibrary.deepKids),
     ]
   }
 
@@ -46,8 +46,8 @@ final class FixtureSoundContentRepository: SoundContentRepository {
       ("calm", "Calm", SoundLibrary.calm),
       ("morning", "Morning", SoundLibrary.morning),
       ("sleep", "Sleep", SoundLibrary.sleep),
-      ("deep-teacher", "Deep Teacher", SoundLibrary.deepTeacher),
-      ("deep-kids", "Deep Kids", SoundLibrary.deepKids),
+      ("deep-teacher", "DEEP Teacher", SoundLibrary.deepTeacher),
+      ("deep-kids", "DEEP Kids", SoundLibrary.deepKids),
     ]
     return PauseHome(
       sections: [
@@ -156,7 +156,7 @@ final class APISoundContentRepository: SoundContentRepository {
 }
 
 extension EnvironmentValues {
-  /// The Deep Sound content source. Defaults to the bundled fixtures (hermetic
+  /// The DEEP Sound content source. Defaults to the bundled fixtures (hermetic
   /// previews); `AppRootView` injects the API-backed repository at runtime.
   @Entry var soundContentRepository: any SoundContentRepository = FixtureSoundContentRepository()
 }

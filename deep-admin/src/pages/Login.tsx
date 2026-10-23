@@ -29,7 +29,7 @@ function LoginPage() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>Deep Admin</h1>
+        <h1>DEEP Admin</h1>
         <div className="page-subtitle">Sign in to manage content</div>
 
         {error && <div className="error-banner">{error}</div>}

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A draggable 0...1 track used for both the scrubber and the volume slider.
 /// Matches Apple Music's behaviour: the track thickens while you drag and the
-/// fill follows your finger. Timing is softened to fit Deep's motion.
+/// fill follows your finger. Timing is softened to fit DEEP's motion.
 struct SoundSlider: View {
   @Binding var value: Double
   var activeColor: Color = .lavenderMist

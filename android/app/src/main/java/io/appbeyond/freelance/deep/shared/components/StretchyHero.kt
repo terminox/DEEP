@@ -86,10 +86,13 @@ fun StretchyHero(
           scaleY = (heightPx + stretch) / heightPx
           transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
 
-          // Cancel the frame's own ride down 1:1 with the RAW pull, not the
-          // damped stretch. Offsetting by the stretch instead leaves a gap that
-          // slides the hero down off the top edge on a deep drag.
-          translationY = -pullPx + scrolledUp * PARALLAX_DEPTH
+          // No ride to cancel. On iOS the frame rubber-bands down with the
+          // content and is offset back up by the raw pull; here
+          // rememberHeroPull consumes the overscroll, so the list — and this
+          // frame — never move. Offsetting by the pull anyway lifted the hero
+          // off the cards on any pull past FREE_STRETCH, leaving a pale band
+          // under the title while the refresh cue spun.
+          translationY = scrolledUp * PARALLAX_DEPTH
 
           alpha = 1f - min(1f, scrolledUp / with(density) { FADE_DISTANCE.toPx() })
           clip = true

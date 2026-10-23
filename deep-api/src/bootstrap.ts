@@ -22,7 +22,7 @@ export async function bootstrapAdmin(log: {
     create: {
       email,
       passwordHash: await hashPassword(env.ADMIN_BOOTSTRAP_PASSWORD),
-      displayName: "Deep Admin",
+      displayName: "DEEP Admin",
       role: "ADMIN",
     },
   });

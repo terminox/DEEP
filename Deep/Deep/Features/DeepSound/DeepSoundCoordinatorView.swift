@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Coordinator view for the Deep Sound flow — the business-specific composition
-/// root. It owns navigation (home → collection detail, home → Deep Session
+/// Coordinator view for the DEEP Sound flow — the business-specific composition
+/// root. It owns navigation (home → collection detail, home → DEEP Session
 /// threshold), and nothing else. The mini player lives in the tab bar's bottom
 /// accessory, owned by the app shell (`MainTabController`), not by this tab.
-/// The Deep Session threshold is a pushed leaf like any other; the practice
+/// The DEEP Session threshold is a pushed leaf like any other; the practice
 /// itself lifts up over the whole shell from there.
 ///
 /// Per the project's SwiftUI rules, a coordinator keeps styling to a minimum:
@@ -42,7 +42,7 @@ struct DeepSoundCoordinatorView: View {
 }
 
 extension EnvironmentValues {
-  /// Pushes a collection's detail onto the Deep Sound navigation path. The
+  /// Pushes a collection's detail onto the DEEP Sound navigation path. The
   /// coordinator injects the real append; leaf tiles call it from a `Button`
   /// instead of hosting a `NavigationLink`, so all routing flows through the
   /// coordinator's single `NavigationPath`. The default is a no-op fallback that
@@ -51,11 +51,11 @@ extension EnvironmentValues {
 }
 
 #if DEBUG
-#Preview("Deep Sound — Home") {
+#Preview("DEEP Sound — Home") {
   DeepSoundCoordinatorView(player: MockSoundPlayer.idle)
 }
 
-#Preview("Deep Sound — Now Playing") {
+#Preview("DEEP Sound — Now Playing") {
   DeepSoundCoordinatorView(player: MockSoundPlayer.playing)
 }
 #endif

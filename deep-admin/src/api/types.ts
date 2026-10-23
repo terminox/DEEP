@@ -20,7 +20,7 @@ export type Pending = { pending: PendingMarker | null }
 export type ChangeArea = 'sound' | 'garden' | 'pause'
 
 export const CHANGE_AREA_LABELS: Record<ChangeArea, string> = {
-  sound: 'Deep Sound',
+  sound: 'DEEP Sound',
   garden: 'Mind Garden',
   pause: 'Global Pause',
 }

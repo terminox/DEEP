@@ -79,7 +79,7 @@ final class ChimePlayer: ChimePlaying {
   /// it would both stall the main actor and undo the priming `prepareToPlay()`
   /// had just performed under the old category. `.playback` does not mix, so
   /// other apps' audio stops when the practice opens; that suits a screen which
-  /// already silences Deep's own ambience on arrival. Never deactivated: the
+  /// already silences DEEP's own ambience on arrival. Never deactivated: the
   /// session is process-wide and shared with both streamers.
   private func configureSessionIfNeeded() {
     guard !sessionConfigured else { return }

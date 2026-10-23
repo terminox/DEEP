@@ -43,7 +43,7 @@ struct DeepSession: Identifiable, Hashable {
   var durationMinutes: Int { max(1, Int((duration / 60).rounded(.up))) }
 }
 
-/// The lengths a Deep Session can be set to, in whole minutes.
+/// The lengths a DEEP Session can be set to, in whole minutes.
 enum DeepSessionLength {
   static let range = 1...10
   /// What a first visit opens on — the one-minute practice the app shipped
