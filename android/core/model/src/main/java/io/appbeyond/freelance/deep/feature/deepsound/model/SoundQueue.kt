@@ -34,6 +34,33 @@ object SoundQueue {
   fun progress(elapsed: Double, duration: Double): Double =
     if (duration > 0) (elapsed / duration).coerceIn(0.0, 1.0) else 0.0
 
+  /**
+   * The queue as it can actually play: [entries] with every locked track left
+   * out, starting on the entry asked for by [startIndex] — or, when that one
+   * is locked, the first unlocked entry after it, wrapping round. Null when
+   * nothing in [entries] is unlocked, which callers treat as "play nothing".
+   *
+   * iOS's `CollectionDetailView.playable` / `PlaylistView.playable`: a run
+   * never carries on into a locked sound. Leaving them out of the queue
+   * outright — rather than skipping them as the queue advances — is what keeps
+   * the lock screen's and a headset's next/previous, which drive the player
+   * directly, off them too.
+   */
+  fun playable(entries: List<SoundQueueEntry>, startIndex: Int): Start? {
+    if (entries.isEmpty()) return null
+    val asked = clampStart(startIndex, entries.size)
+    val first = (0 until entries.size)
+      .map { (asked + it) % entries.size }
+      .firstOrNull { !entries[it].track.isLocked }
+      ?: return null
+    // Locked entries before the start fall away, so its index shrinks by them.
+    val index = (0 until first).count { !entries[it].track.isLocked }
+    return Start(entries.filterNot { it.track.isLocked }, index)
+  }
+
+  /** What [playable] hands a player: the unlocked queue and where to begin. */
+  data class Start(val entries: List<SoundQueueEntry>, val index: Int)
+
   sealed interface Previous {
     /** Back to the start of the current track. */
     data object Restart : Previous

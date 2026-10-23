@@ -76,7 +76,7 @@ object PracticeMath {
     extraDays: Set<LocalDate> = emptySet(),
   ): Int {
     val days = practiceDays(completions, zone) + extraDays
-    val today = LocalDate.ofInstant(clock.instant(), zone)
+    val today = clock.instant().atZone(zone).toLocalDate()
     var cursor = if (days.contains(today)) today else today.minusDays(1)
 
     var streak = 0
@@ -121,7 +121,7 @@ object PracticeMath {
     extraDays: Set<LocalDate> = emptySet(),
   ): ContinuityTransition {
     val days = practiceDays(completions, zone) + extraDays
-    val today = LocalDate.ofInstant(clock.instant(), zone)
+    val today = clock.instant().atZone(zone).toLocalDate()
     var cursor = today.minusDays(1)
     var before = 0
     while (days.contains(cursor)) {
@@ -139,12 +139,12 @@ object PracticeMath {
    * Buddhist calendar never shifts them.
    */
   fun hasPauseDay(pauseDays: Set<LocalDate>, zone: ZoneId, clock: Clock): Boolean =
-    LocalDate.ofInstant(clock.instant(), zone) in pauseDays
+    clock.instant().atZone(zone).toLocalDate() in pauseDays
 
   /** Distinct local-midnight days with at least one completion. */
   private fun practiceDays(completions: List<PracticeCompletion>, zone: ZoneId): Set<LocalDate> =
-    completions.map { LocalDate.ofInstant(it.completedAt, zone) }.toSet()
+    completions.map { it.completedAt.atZone(zone).toLocalDate() }.toSet()
 
   private fun sameDay(a: Instant, b: Instant, zone: ZoneId): Boolean =
-    LocalDate.ofInstant(a, zone) == LocalDate.ofInstant(b, zone)
+    a.atZone(zone).toLocalDate() == b.atZone(zone).toLocalDate()
 }

@@ -60,6 +60,23 @@ interface SoundPlaying {
 
   /** The player's own gain, 0…1, independent of the system volume. */
   fun setVolume(volume: Double)
+
+  /**
+   * Holds DEEP Sound silent while a practice owns the audio — a DEEP Session,
+   * or a live Global Pause. Holding pauses whatever is playing (the track stays
+   * loaded, as [pause] leaves it) and then refuses every start until released:
+   * the app's own [play] and [togglePlayPause], and — on the real player — the
+   * notification, the lock screen and a headset, which drive the service's
+   * player directly and so never pass through here. Releasing starts nothing;
+   * the listener picks up from the mini player.
+   *
+   * No iOS counterpart is needed there: iOS's practices claim the audio
+   * session, and `MPRemoteCommandCenter` answers to the app.
+   */
+  fun holdPlayback(held: Boolean)
+
+  /** Whether [holdPlayback] is in force. */
+  val isPlaybackHeld: Boolean
 }
 
 /**

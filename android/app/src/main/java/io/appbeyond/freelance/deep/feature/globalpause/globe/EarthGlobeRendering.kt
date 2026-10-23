@@ -75,6 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -112,6 +113,10 @@ class EarthGlobeRendering(private val flight: GlobeFlight) : GlobeRendering {
     val engine = remember { EarthEngine.get(context) }
     val status by engine.status.collectAsState()
     if (status is EarthEngine.Status.Unavailable) {
+      // The 2D globe draws in the first frame it composes: the lift (and the
+      // reduced-motion cut) has no GL frame to wait for, and waiting for one
+      // left the whole session invisible over the lounge.
+      if (mode == GlobeMode.Session) LaunchedEffect(Unit) { flight.sessionReady = true }
       PlaceholderGlobeRendering.Globe(scene, mode, modifier)
       return
     }
@@ -164,6 +169,9 @@ private fun EarthGlobe(engine: EarthEngine, flight: GlobeFlight, scene: GlobeSce
     val landing = LocalGlobalPauseCardLift.current.landingMillis
     LaunchedEffect(engine) {
       delay(landing)
+      // A lift held for a slow first frame lands late: the arrival turn
+      // starts from the landing the member sees, as iOS's `viewDidAppear`.
+      withTimeoutOrNull(LANDING_WAIT_MILLIS) { snapshotFlow { flight.phase == GlobeFlight.Phase.Landed }.first { it } }
       engine.beginSession()
     }
     DisposableEffect(engine) { onDispose { engine.endSession() } }
@@ -380,6 +388,9 @@ private const val CARD_FRAME_NANOS = 33_333_333L
 /** iOS `NightSkyTuning.earthBackdropDim`: the cream-era halo, dimmed for the night. */
 private const val BACKDROP_DIM = 0.25f
 private const val REVEAL_HOLD_MILLIS = 2_400L
+
+/** Longest the arrival waits past the nominal landing for the lift to land. */
+private const val LANDING_WAIT_MILLIS = 6_000L
 private const val REVEAL_FILL_ALPHA = 0.78f
 
 @Preview(name = "Earth globe — preview stands in with the 2D globe")

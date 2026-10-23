@@ -49,6 +49,7 @@ import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.feature.profile.ProfileIcons
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.SectionHeader
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.shared.localization.AppFormat
 import io.appbeyond.freelance.deep.shared.localization.rememberAppLocale
 import io.appbeyond.freelance.deep.theme.DeepTheme
@@ -100,6 +101,7 @@ fun CompassionCategoryScreen(
   val state by ledger.state.collectAsStateWithLifecycle()
   val locale = rememberAppLocale()
   val scroll = rememberScrollState()
+  ScrollToTopOnReselect(scroll)
   val density = LocalDensity.current
   val overHero by remember {
     derivedStateOf {

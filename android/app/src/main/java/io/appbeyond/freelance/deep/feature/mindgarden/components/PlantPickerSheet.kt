@@ -48,9 +48,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.appshell.DeepIcons
+import io.appbeyond.freelance.deep.feature.deepsound.SoundIcons
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenGrowth
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
 import io.appbeyond.freelance.deep.feature.mindgarden.store.GardenStore
@@ -151,6 +154,10 @@ private val RETRY_PADDING_VERTICAL = 12.dp
 
 private const val SKELETON_ROWS = 3
 
+/** A locked plant's mark: the lock, centred in the selection mark's 22dp. */
+private val SELECTION_MARK = 22.dp
+private val LOCK_GLYPH = 14.dp
+
 // MARK: - Sheet
 
 /**
@@ -233,7 +240,9 @@ fun PlantPickerSheet(
         scope.launch {
           garden.selectPlant(plant)
           val settled = garden.state.value
-          if (settled.switchFailed) {
+          // Refused — with the caption, or (a DEEP Premium lock) by the row
+          // now wearing its lock. Either way the sheet stays, back on what grows.
+          if (settled.switchFailed || settled.plant?.id != plant.id) {
             isConfirming = false
             draftId = settled.plant?.id
             return@launch
@@ -347,7 +356,8 @@ private fun PlantList(
         // plant's current form rather than the selected plant's.
         earned = GardenGrowth(plant = plant, sunlight = sunlightByPlant[plant.id] ?: 0),
         isStaged = plant.id == stagedId,
-        onClick = { onStage(plant) },
+        // A locked plant is shown, never chosen.
+        onClick = { if (!plant.isLocked) onStage(plant) },
       )
     }
   }
@@ -361,6 +371,13 @@ private fun PlantList(
  * The card carries the plant's own palette as the frosted wash, so each row
  * reads as its plant before a word is read. Staged, it takes a lavender ring
  * and the filled check the onboarding pickers use.
+ *
+ * A DEEP Premium plant this member may not grow ([Plant.isLocked]) is listed
+ * like any other — the server shows it to everyone — but its mark is the
+ * grey lock DEEP Sound's track rows wear, and tapping it stages nothing.
+ * There is no iOS counterpart to copy at 705b6b4, where the catalog left
+ * premium plants out; Android has no way to become a member, so the lock is
+ * the whole story.
  */
 @Composable
 private fun PlantChoiceRow(
@@ -376,6 +393,7 @@ private fun PlantChoiceRow(
     label = "plant-row-border",
   )
   val summary = stringResource(R.string.picker_row_summary, plant.name, earned.stage.name, earned.sunlight)
+  val locked = stringResource(R.string.deepsound_locked)
   val shape = RoundedCornerShape(Dp.card)
 
   Row(
@@ -389,7 +407,12 @@ private fun PlantChoiceRow(
         contentDescription = summary
         role = Role.RadioButton
         selected = isStaged
-        onClick { onClick(); true }
+        if (plant.isLocked) {
+          stateDescription = locked
+          disabled()
+        } else {
+          onClick { onClick(); true }
+        }
       }
       .padding(vertical = ROW_PADDING_VERTICAL, horizontal = ROW_PADDING_HORIZONTAL),
     horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
@@ -427,7 +450,13 @@ private fun PlantChoiceRow(
       contentAlignment = Alignment.Center,
       label = "plant-row-mark",
     ) { staged ->
-      if (staged) FilledCheckMark() else HollowMark(alpha = HOLLOW_MARK_ALPHA)
+      when {
+        plant.isLocked -> Box(Modifier.size(SELECTION_MARK), contentAlignment = Alignment.Center) {
+          Icon(SoundIcons.Lock, contentDescription = null, tint = Color.driftGrey, modifier = Modifier.size(LOCK_GLYPH))
+        }
+        staged -> FilledCheckMark()
+        else -> HollowMark(alpha = HOLLOW_MARK_ALPHA)
+      }
     }
   }
 }
@@ -713,6 +742,21 @@ private fun PlantPickerGrowPreview() {
     PlantPickerBody(
       state = previewState(PlantCatalog.Loaded(Plant.fixtures)),
       stagedId = "sakura",
+      isConfirming = false,
+      onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Plant picker — DEEP Premium locked")
+@Composable
+private fun PlantPickerLockedPreview() {
+  PickerPreviewSurface {
+    PlantPickerBody(
+      state = previewState(
+        PlantCatalog.Loaded(Plant.fixtures.map { if (it.id == "lotus") it.copy(isLocked = true) else it }),
+      ),
+      stagedId = "oak",
       isConfirming = false,
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )

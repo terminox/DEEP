@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,8 +68,11 @@ import io.appbeyond.freelance.deep.theme.hush
 import io.appbeyond.freelance.deep.theme.moonCream
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Duration
 import java.util.Locale
 
@@ -135,16 +139,23 @@ fun GlobalPauseSessionCoordinator(
     }
   }
 
-  // The overlay arrives empty and cascades in once the presentation lands.
+  // The overlay arrives empty and cascades in once the presentation lands —
+  // and the night is up behind it: on a slow GPU the backdrop waits for the
+  // globe's first frame, and the close button and LIVE pill stood over the
+  // pale lounge until it came. iOS's backdrop is the card itself, so its
+  // landing (`viewDidAppear`) is always onto the night.
   LaunchedEffect(Unit) {
     delay(lift.landingMillis)
+    // Capped: a surface that never presents must not also withhold the way out.
+    withTimeoutOrNull(READY_GRACE_MILLIS) { snapshotFlow { lift.isTargetReady }.first { it } }
     revealed = true
   }
 
   // The world's lights wait for the landing, then follow the live poll; the
   // member's own light flares as the globe comes to rest on them.
   LaunchedEffect(session, scene) {
-    delay(lift.landingMillis + LIGHTS_DELAY_MILLIS)
+    snapshotFlow { revealed }.first { it }
+    delay(LIGHTS_DELAY_MILLIS)
     session.state
       .map { Triple(it.participantLocations, it.unlocatedByCountry, it.participantsByCountry) to it.myLocation }
       .distinctUntilChanged()
@@ -156,12 +167,19 @@ fun GlobalPauseSessionCoordinator(
       }
   }
   LaunchedEffect(session, scene) {
-    delay(lift.landingMillis + LIGHTS_DELAY_MILLIS)
+    snapshotFlow { revealed }.first { it }
+    delay(LIGHTS_DELAY_MILLIS)
     session.joins.collect { scene.enqueueJoins(it) }
   }
+  // The member's own light flares as the arrival turn lands on them (iOS
+  // `armArrivalTurn`): re-read at the turn's deadline, so the IP-resolved
+  // point that replaced the country centroid is the one that flares — or, if
+  // no location has come in by then, the moment the first one does.
   LaunchedEffect(session, scene) {
-    delay(lift.landingMillis + ARRIVAL_MILLIS)
-    session.state.value.myLocation?.let(scene::enqueueOwnJoin)
+    snapshotFlow { revealed }.first { it }
+    delay(ARRIVAL_TURN_MILLIS)
+    val home = session.state.map { it.myLocation }.filterNotNull().first()
+    if (visit.phase.value is GlobalPauseVisit.Phase.Meditating) scene.enqueueOwnJoin(home)
   }
 
   // Light icons over the night — flipped as the lift lands, not while the
@@ -329,7 +347,13 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 }
 
 private const val LIGHTS_DELAY_MILLIS = 2_500L
-private const val ARRIVAL_MILLIS = 6_000L
+
+/** Longest the overlay waits past the landing for the backdrop to be up —
+ * the lift's own first-frame wait (4s) plus its flight, and a little over. */
+private const val READY_GRACE_MILLIS = 6_000L
+/** iOS's `arrivalTurn`, and the Earth's (`EarthEngine`): the world turns for a
+ * minute after the landing and comes to rest on the member. */
+private const val ARRIVAL_TURN_MILLIS = 60_000L
 private const val ENDING_FADE_MILLIS = 1_500
 private const val CHROME_FADE_MILLIS = 220
 private const val GLOBE_WIDTH_SHARE = 0.92f

@@ -16,36 +16,51 @@
   <string name="placeholder_sounds_title">พื้นที่ให้ใจได้พัก</string> <!-- no iOS Thai -->
   <string name="placeholder_sounds_body">คอลเลกชันเสียงบรรยากาศ และเครื่องเล่นที่อยู่กับคุณทุกที่ในแอป</string> <!-- no iOS Thai -->
   <string name="placeholder_compassion_title">การฝึกที่ส่งต่อถึงผู้อื่น</string> <!-- no iOS Thai -->
-  <string name="placeholder_compassion_body">เวลาที่ใช้ใน DEEP จะกลายเป็นหัวใจ และหัวใจจะถูกมอบให้แก่โครงการเพื่อผู้อื่น</string> <!-- no iOS Thai -->
+  <string name="placeholder_compassion_body">เวลาที่ใช้ใน DEEP จะกลายเป็นหัวใจ และหัวใจจะถูกส่งต่อให้ด้านที่คุณเลือก</string> <!-- no iOS Thai -->
   <string name="placeholder_you_title">พื้นที่ของคุณ</string> <!-- no iOS Thai -->
   <string name="placeholder_you_body">เสียงที่คุณเก็บไว้ และ DEEP ที่ตั้งค่าไว้ในแบบของคุณ</string> <!-- no iOS Thai -->
 
   <!-- Home feed -->
   <string name="home_header_title">หน้าแรก</string>
   <string name="home_header_subtitle">หายใจไปพร้อมกับโลกในวันนี้</string>
-  <string name="home_greeting">หยุดพัก หายใจ เชื่อมโยง</string> <!-- no iOS Thai -->
-  <string name="home_failed_title">เราเข้าถึง DEEP ไม่ได้</string> <!-- no iOS Thai -->
-  <string name="home_failed_body">ตรวจสอบการเชื่อมต่อ แล้วลองอีกครั้งเมื่อคุณพร้อม</string> <!-- no iOS Thai -->
+  <string name="home_failed">เรารวบรวมเนื้อหาของวันนี้ไม่ได้ในตอนนี้</string>
   <string name="home_retry">ลองอีกครั้ง</string>
-  <string name="home_session_card_title">เซสชัน DEEP</string>
-  <string name="home_session_card_body">การฝึกหายใจแบบมีผู้นำ นานเท่าที่คุณมีเวลา</string> <!-- no iOS Thai -->
+  <string name="home_session_card_a11y">เริ่ม %1$s การฝึกหายใจแบบมีผู้นำ</string>
   <string name="home_explore_title">สำรวจ</string>
+  <string name="home_explore_category">สำรวจ %1$s</string>
+  <string name="home_see_all">ดูทั้งหมด</string>
+  <string name="home_kind_guided">แบบมีผู้นำ</string> <!-- no iOS Thai -->
+  <string name="home_kind_soundscape">เสียงบรรยากาศ</string> <!-- no iOS Thai -->
+  <string name="home_kind_subtitle">%1$s · %2$s</string>
   <string name="home_play_collection">เล่น %1$s</string>
 
   <!-- DEEP Session -->
   <string name="session_begin">เริ่ม</string>
+  <string name="session_begin_accessibility">เริ่ม %1$s %2$d นาที</string>
   <string name="session_minutes">นาที</string>
-  <string name="session_pattern">เข้า 4 วิ · ออก 6 วิ · %1$d รอบ</string>
+  <string name="session_pattern">เข้า %1$d วิ · ออก %2$d วิ · %3$d รอบ</string>
+  <string name="session_length">ความยาวเซสชัน</string>
+  <plurals name="session_length_minutes">
+    <item quantity="other">%1$d นาที</item>
+  </plurals>
+  <string name="session_settling_in">ตั้งลมหายใจ</string>
+  <string name="session_settling_in_announcement">ตั้งลมหายใจ %1$d</string> <!-- no iOS Thai -->
   <string name="session_breathe_in">หายใจเข้า</string> <!-- no iOS Thai -->
   <string name="session_breathe_out">หายใจออก</string> <!-- no iOS Thai -->
-  <string name="session_round">รอบที่ %1$d จาก %2$d</string> <!-- no iOS Thai -->
+  <string name="session_paused">หยุดไว้ก่อน</string> <!-- no iOS Thai -->
+  <string name="session_take_your_time">ไม่ต้องรีบ</string> <!-- no iOS Thai -->
+  <string name="session_time_left_almost">ใกล้แล้ว</string> <!-- no iOS Thai -->
+  <string name="session_time_left_minute">เหลืออีกราวหนึ่งนาที</string> <!-- no iOS Thai -->
+  <string name="session_time_left_minutes">เหลืออีกราว %1$d นาที</string> <!-- no iOS Thai -->
   <string name="session_ending">ตอนนี้คุณอยู่ตรงนี้แล้ว</string> <!-- no iOS Thai -->
+  <string name="session_complete">จบเซสชันแล้ว</string> <!-- no iOS Thai -->
   <string name="session_pause">หยุดชั่วคราว</string>
   <string name="session_resume">เล่นต่อ</string>
+  <string name="session_close">ปิด</string>
   <string name="session_leave">ออก</string>
-  <string name="session_leave_confirm">ออกจากเซสชันนี้?</string>
-  <string name="session_leave_confirm_body">คุณกลับมาได้ทุกเมื่อที่ต้องการ</string> <!-- no iOS Thai -->
-  <string name="session_stay">อยู่ต่อ</string>
+  <string name="session_leave_confirm">ออกจากเซสชัน?</string>
+  <string name="session_leave_confirm_body">ลมหายใจของคุณจะอยู่ตรงนี้ เมื่อคุณพร้อมกลับมา</string>
+  <string name="session_stay">หายใจต่อไป</string>
 
   <!-- Loading -->
   <string name="loading_beat">พักสักครู่</string> <!-- no iOS Thai -->

@@ -211,7 +211,7 @@ class HeartLedger(
 
   /** The local day the ledger reads "today" as — for screens that derive
    * [State.heartsEarnedOn] from a collected state. */
-  fun today(): LocalDate = LocalDate.ofInstant(clock.instant(), zone)
+  fun today(): LocalDate = clock.instant().atZone(zone).toLocalDate()
 
   // MARK: - Earning
 

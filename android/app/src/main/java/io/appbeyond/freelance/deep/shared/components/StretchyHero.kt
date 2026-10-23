@@ -95,7 +95,12 @@ fun StretchyHero(
           translationY = scrolledUp * PARALLAX_DEPTH
 
           alpha = 1f - min(1f, scrolledUp / with(density) { FADE_DISTANCE.toPx() })
-          clip = true
+          // No `clip = true`. The content fills this layer exactly and every
+          // transform here moves the bounds with it, so the clip cut nothing —
+          // but a hero rebuilt after a tab switch and brought back by a
+          // re-tapped tab's scroll to the top sometimes kept a stale clip
+          // from the layer's previous life (557×40, 110×63 at the corner), so
+          // only a sliver of the video showed until the screen was rebuilt.
         }
         .fillMaxSize()
         // The feathered bottom, as a destination-in mask so the media itself

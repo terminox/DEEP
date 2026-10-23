@@ -4,8 +4,10 @@ import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +16,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -41,6 +44,9 @@ import io.appbeyond.freelance.deep.theme.exhaleEasing
 import io.appbeyond.freelance.deep.theme.hush
 import io.appbeyond.freelance.deep.theme.land
 import io.appbeyond.freelance.deep.theme.lift
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The card lift, ported from iOS `GlobalPauseCardLiftTransition` +
@@ -82,14 +88,19 @@ class EarthCardLift(
   @Composable
   override fun Modifier.cardLiftTarget(visibility: AnimatedVisibilityScope): Modifier {
     val transition = visibility.transition
+    // The way in runs on its own clock, started by the session's first frame
+    // (below); the presentation's transition only carries the way home.
+    val rise = remember { Animatable(0f) }
+    val riseVeil = remember { Animatable(0f) }
     LaunchedEffect(transition) {
-      snapshotFlow { transition.currentState to transition.targetState }.collect { (current, target) ->
-        flight.phase = when {
-          target == EnterExitState.PostExit -> GlobeFlight.Phase.Returning
-          current == EnterExitState.Visible && target == EnterExitState.Visible -> GlobeFlight.Phase.Landed
-          else -> GlobeFlight.Phase.Lifting
+      snapshotFlow { Triple(transition.currentState, transition.targetState, reduceMotion || rise.value >= 1f) }
+        .collect { (current, target, risen) ->
+          flight.phase = when {
+            target == EnterExitState.PostExit -> GlobeFlight.Phase.Returning
+            current == EnterExitState.Visible && target == EnterExitState.Visible && risen -> GlobeFlight.Phase.Landed
+            else -> GlobeFlight.Phase.Lifting
+          }
         }
-      }
     }
     DisposableEffect(Unit) { onDispose { flight.reset() } }
     val tracked = onGloballyPositioned { flight.backdropBounds = it.unclippedRectInRoot() }
@@ -103,20 +114,49 @@ class EarthCardLift(
     val atRest = { state: EnterExitState ->
       state == EnterExitState.Visible || (state == EnterExitState.PostExit && flight.covered)
     }
-    val progress = transition.animateFloat(
-      transitionSpec = { if (targetState == EnterExitState.Visible) lift(delayMillis = PRE_BEAT_MILLIS) else land() },
+    // The way in waits for the session's first frame on screen. On a slow
+    // GPU that frame can take seconds (a software-rendered emulator: ~3s);
+    // a flight on a fixed clock ran its whole course while the backdrop was
+    // still invisible, and the night then cut in already landed. Capped, so a
+    // surface that never presents still lets the session in.
+    LaunchedEffect(Unit) {
+      withTimeoutOrNull(FIRST_FRAME_WAIT_MILLIS) { snapshotFlow { flight.sessionReady }.first { it } }
+      if (!lifts) {
+        rise.snapTo(1f)
+        riseVeil.animateTo(1f, hush())
+        return@LaunchedEffect
+      }
+      launch { riseVeil.animateTo(1f, tween(PRE_FADE_MILLIS, easing = exhaleEasing)) }
+      rise.animateTo(1f, lift(delayMillis = PRE_BEAT_MILLIS))
+    }
+    // The way home rides the presentation's transition, which holds the
+    // content up until it has landed. Its way in is instant: entering is the
+    // clock above's.
+    val homeward = transition.animateFloat(
+      transitionSpec = { if (targetState == EnterExitState.Visible) snap() else land() },
       label = "card-lift",
     ) { state -> if (!lifts || atRest(state)) 1f else 0f }
-    val veil = transition.animateFloat(
+    val homewardVeil = transition.animateFloat(
       transitionSpec = {
         when {
+          targetState == EnterExitState.Visible -> snap()
           !lifts -> hush()
-          targetState == EnterExitState.Visible -> tween(PRE_FADE_MILLIS, easing = exhaleEasing)
           else -> tween(RETURN_FADE_MILLIS, delayMillis = RETURN_FADE_DELAY_MILLIS, easing = exhaleEasing)
         }
       },
       label = "card-lift-veil",
     ) { state -> if (atRest(state)) 1f else 0f }
+    // Leaving mid-rise turns back from wherever the rise had got to.
+    val progress = remember {
+      derivedStateOf {
+        if (transition.targetState == EnterExitState.PostExit) minOf(homeward.value, rise.value) else rise.value
+      }
+    }
+    val veil = remember {
+      derivedStateOf {
+        if (transition.targetState == EnterExitState.PostExit) minOf(homewardVeil.value, riseVeil.value) else riseVeil.value
+      }
+    }
     val ready = animateFloatAsState(
       targetValue = if (flight.sessionReady) 1f else 0f,
       animationSpec = tween(READY_FADE_MILLIS, easing = exhaleEasing),
@@ -165,6 +205,11 @@ class EarthCardLift(
   override val exit: ExitTransition
     get() = if (reduceMotion || flight.covered) fadeOut(hush()) else ExitTransition.None
 
+  /** The backdrop is up only once the session's globe has a frame and the
+   * flight it waits for has landed. */
+  override val isTargetReady: Boolean
+    get() = flight.sessionReady && flight.phase == GlobeFlight.Phase.Landed
+
   override val landingMillis: Long =
     if (reduceMotion) hush<Float>().durationMillis.toLong() else (PRE_BEAT_MILLIS + lift<Float>().durationMillis).toLong()
 
@@ -186,6 +231,9 @@ class EarthCardLift(
     const val RETURN_FADE_MILLIS = 200
 
     const val READY_FADE_MILLIS = 120
+
+    /** Longest the way in waits for the session's first frame. */
+    const val FIRST_FRAME_WAIT_MILLIS = 4_000L
     const val PREPARING_ALPHA = 0.004f
 
     /** iOS's plum dim under the presentation. */

@@ -19,7 +19,8 @@ interface RewardsService {
   @GET("me/garden")
   suspend fun garden(): GardenResponseDto
 
-  /** Anonymous. Published, non-premium plants with their stage ladders. */
+  /** Optional auth. Every published plant with its stage ladder; DEEP Premium
+   * ones arrive `isLocked` unless the bearer may select them. */
   @GET("garden/plants")
   suspend fun plants(): PlantsResponseDto
 

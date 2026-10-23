@@ -16,7 +16,10 @@ import java.time.ZoneId
  * The daily reminder's alarm: post today's nudge, then arm tomorrow's.
  *
  * Reads the settings first, so an alarm that outlived a switch-off (or a log
- * out) posts nothing. Runs under `goAsync`, because the store reads DataStore.
+ * out) posts nothing. Reads today's practice too: the reschedule that would
+ * have quieted tonight runs as DEEP leaves the foreground, and a process that
+ * died before it left this alarm armed over a practised day. Runs under
+ * `goAsync`, because the stores read DataStore.
  */
 class ReminderAlarmReceiver : BroadcastReceiver() {
 
@@ -30,18 +33,25 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         if (store.reminder.isEnabled) {
           // The day the alarm was armed for, so one delivered late past
           // midnight is booked to the evening it belongs to.
+          val today = LocalDate.now(ZoneId.systemDefault())
           val day = intent.getStringExtra(AlarmReminderScheduler.EXTRA_DAY)
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-            ?: LocalDate.now(ZoneId.systemDefault())
-          AlarmReminderScheduler.post(
-            localized = dependencies.languageStore.localized(context.applicationContext),
-            day = day,
-          )
-          // Once a day: a later clock face set this evening arms tomorrow.
-          store.markPosted(day)
+            ?: today
+          val journal = dependencies.practiceJournal
+          journal.restore()
+          // Today already counts as practised: tonight rests, as the
+          // reschedule would have had it.
+          if (!(day == today && journal.reminderRestsToday())) {
+            AlarmReminderScheduler.post(
+              localized = dependencies.languageStore.localized(context.applicationContext),
+              day = day,
+            )
+            // Once a day: a later clock face set this evening arms tomorrow.
+            store.markPosted(day)
+          }
         }
-        // Strictly after now, so this arms tomorrow's occurrence.
-        store.reschedule(practisedToday = false)
+        // Against today's practice, so a rested or nudged day arms the next.
+        dependencies.rescheduleReminder()
       } catch (unexpected: Exception) {
         Log.w(TAG, "Reminder alarm failed", unexpected)
       } finally {

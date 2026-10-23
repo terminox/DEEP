@@ -25,7 +25,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.deepPlum
 import io.appbeyond.freelance.deep.theme.driftGrey
@@ -125,13 +129,43 @@ private fun DeepTabItem(
       )
       .padding(horizontal = Dp_ITEM_H, vertical = 4.dp),
   ) {
+    // The label beneath already names the tab inside the merged selectable;
+    // describing the glyph as well made TalkBack read every tab twice.
     Icon(
       imageVector = tab.icon,
-      contentDescription = label,
+      contentDescription = null,
       tint = tint,
       modifier = Modifier.size(24.dp),
     )
-    Text(text = label, style = DeepType.micro, color = labelColour)
+    Text(
+      text = label,
+      style = rememberTabLabelStyle(),
+      color = labelColour,
+      maxLines = 1,
+      softWrap = false,
+      overflow = TextOverflow.Clip,
+    )
+  }
+}
+
+/**
+ * The tab label at its design size whatever the font scale — iOS's tab bar
+ * draws its labels at a fixed 10pt (`MainTabController`'s composed tab
+ * images) and serves large type through the Large Content Viewer instead of
+ * growing them. At 2x a scaled label had no room: Thai's "ฉัน" wrapped into a
+ * vertical "ฉั/น". The micro token's size, unscaled, and without its
+ * all-caps tracking: iOS draws these plain, and tracking only spaces Thai's
+ * clusters apart.
+ */
+@Composable
+private fun rememberTabLabelStyle(): TextStyle {
+  val fontScale = LocalDensity.current.fontScale
+  return remember(fontScale) {
+    DeepType.micro.copy(
+      fontSize = DeepType.micro.fontSize / fontScale,
+      lineHeight = DeepType.micro.lineHeight / fontScale,
+      letterSpacing = 0.sp,
+    )
   }
 }
 

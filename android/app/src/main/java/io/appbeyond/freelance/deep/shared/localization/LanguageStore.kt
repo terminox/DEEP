@@ -55,16 +55,25 @@ class LanguageStore(
   /** The language DEEP reads in: the pinned choice, or the device's. */
   val selection: StateFlow<AppLanguage> = _selection.asStateFlow()
 
+  /**
+   * Whether a language has been chosen — in DEEP's picker or the system's
+   * per-app settings — rather than only matched to the device. Until it has,
+   * [selection] follows the device ([adoptSystemChoice]).
+   */
+  private var pinned = false
+
   /** Reads the stored choice and reconciles it with the system's per-app setting. */
   fun load() {
     val stored = runBlocking { runCatching { blob.read() }.getOrNull() }?.let(AppLanguage::of)
     val system = systemPerAppLanguage()
+    pinned = system != null || stored != null
     _selection.value = when {
       // Chosen in the system's per-app language settings while DEEP slept.
       system != null -> system.also { if (it != stored) persist(it) }
       stored != null -> stored.also { applySystemLocale(it) }
       else -> deviceMatched(context)
     }
+    applyProcessLocale(_selection.value)
   }
 
   /**
@@ -74,8 +83,12 @@ class LanguageStore(
    * keeps reading DEEP in the one they chose.
    */
   fun select(language: AppLanguage) {
+    pinned = true
     persist(language)
     applySystemLocale(language)
+    // Ahead of the selection, which below API 33 is what recreates the
+    // activity: the new one formats in the new language from its first frame.
+    applyProcessLocale(language)
     _selection.value = language
   }
 
@@ -85,11 +98,27 @@ class LanguageStore(
    * reads in it at once) but never re-runs [load], so the selection — which
    * drives the reminder's copy and `Accept-Language` — kept the old one (QA
    * round 1, B7). `MainActivity` calls this as it is created; [localized]
-   * calls it before the reminder posts. A no-op below API 33, where DEEP's
-   * own picker is the only way in.
+   * calls it before the reminder posts.
+   *
+   * With nothing chosen anywhere, it re-matches the device instead: from
+   * API 33 a device language change reaches the running activity as a
+   * configuration change (`MainActivity.onConfigurationChanged`), and the
+   * screens follow it — so the selection must too, or `Accept-Language`, the
+   * reminder and the notification channels stay in the language the process
+   * started in. That match is never persisted: it is not a choice. Both paths
+   * write only when the language actually changed, so a configuration change
+   * that leaves it alone (a font size, a rotation) touches nothing.
    */
   fun adoptSystemChoice() {
-    val system = systemPerAppLanguage() ?: return
+    val system = systemPerAppLanguage()
+    if (system == null) {
+      if (!pinned) {
+        val device = deviceMatched(context)
+        if (device != _selection.value) _selection.value = device
+      }
+      return
+    }
+    pinned = true
     if (system == _selection.value) return
     persist(system)
     _selection.value = system
@@ -100,6 +129,7 @@ class LanguageStore(
    * the reminder receiver, which posts outside any activity. */
   fun localized(base: Context): Context {
     adoptSystemChoice()
+    applyProcessLocale(_selection.value)
     return localized(base, _selection.value)
   }
 
@@ -112,6 +142,26 @@ class LanguageStore(
     val manager = context.getSystemService(LocaleManager::class.java) ?: return
     val wanted = LocaleList.forLanguageTags(language.localeIdentifier)
     if (manager.applicationLocales != wanted) manager.applicationLocales = wanted
+  }
+
+  /**
+   * Below API 33, makes the process's default locale read in [language] too.
+   * The wrapped base context ([localized]) reaches resources only; everything
+   * formatted through `Locale.getDefault()` — `DateUtils`' relative dates on
+   * the peace messages, a `NumberFormat` given no locale — stayed English on
+   * Thai screens. From 33 the per-app locale already sets the default, so this
+   * matches it there and does nothing itself.
+   *
+   * Left alone when the default already speaks [language], so a device in
+   * en-GB keeps its region rather than being narrowed to DEEP's bare tag.
+   * (Every date DEEP keys or parses is ISO `java.time` and every machine
+   * format pins `Locale.ROOT`/`US`, so th_TH's Buddhist calendar can't shift
+   * them.)
+   */
+  private fun applyProcessLocale(language: AppLanguage) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return
+    if (Locale.getDefault().language == language.resourceLanguageCode) return
+    Locale.setDefault(Locale.forLanguageTag(language.localeIdentifier))
   }
 
   private fun systemPerAppLanguage(): AppLanguage? {

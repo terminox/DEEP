@@ -5,7 +5,11 @@ import io.appbeyond.freelance.deep.feature.practice.store.PracticeJournal
 import io.appbeyond.freelance.deep.feature.reminders.model.DailyReminder
 import io.appbeyond.freelance.deep.feature.reminders.model.ReminderSchedule
 import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import java.time.Clock
@@ -32,7 +36,7 @@ class ReminderStoreTest {
   /** A prompt that must never be shown — the mock decides the answer. */
   private val prompt: suspend () -> Boolean = { true }
 
-  private fun store(scheduler: MockReminderScheduler, blob: InMemoryBlobStore = InMemoryBlobStore()) =
+  private fun store(scheduler: ReminderScheduling, blob: InMemoryBlobStore = InMemoryBlobStore()) =
     ReminderStore(scheduler = scheduler, blob = blob, clock = clock, zone = { zone })
 
   @Test
@@ -345,5 +349,43 @@ class ReminderStoreTest {
     store.enable(practisedToday = journal.reminderRestsToday(), prompt = prompt)
 
     assertEquals(now.toLocalDate(), scheduler.queue.first().toLocalDate())
+  }
+
+  /** Shows the screen's prompt for real, as the Android scheduler does. */
+  private class PromptingScheduler(
+    private val base: MockReminderScheduler = MockReminderScheduler(),
+  ) : ReminderScheduling by base {
+    override suspend fun requestPermission(prompt: suspend () -> Boolean): ReminderPermission =
+      if (prompt()) ReminderPermission.Granted else ReminderPermission.Denied
+
+    val queue: List<ZonedDateTime> get() = base.queue
+  }
+
+  @Test
+  @DisplayName("an unanswered permission prompt holds up no other change")
+  fun unansweredPromptHoldsNothingUp() = runTest {
+    val scheduler = PromptingScheduler(MockReminderScheduler(ReminderPermission.Granted))
+    val store = store(scheduler)
+    // The activity was recreated with the dialog up: nobody will ever answer.
+    val unanswered = CompletableDeferred<Boolean>()
+    val asking = launch { store.enable(practisedToday = false, prompt = { unanswered.await() }) }
+    runCurrent()
+
+    // A reschedule (the alarm receiver's, a foreground's) and a toggle still
+    // run to completion while the question hangs.
+    withTimeout(1_000) {
+      store.reschedule(practisedToday = false)
+      store.setTime(hour = 7, minute = 0, practisedToday = false)
+      store.disable()
+    }
+    assertFalse(store.reminder.isEnabled)
+    assertEquals(7, store.reminder.hour)
+
+    // The screen abandons the question; the store is left as it was.
+    unanswered.cancel()
+    asking.join()
+    assertTrue(asking.isCancelled)
+    assertFalse(store.reminder.isEnabled)
+    assertTrue(scheduler.queue.isEmpty())
   }
 }

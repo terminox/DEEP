@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.theme
 
+import android.view.ViewPropertyAnimator
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.Spring
@@ -155,6 +156,14 @@ fun <T> lift(delayMillis: Int = 0): TweenSpec<T> =
 /** The session's backdrop flying home onto the card — critically damped. */
 fun <T> land(): TweenSpec<T> =
   tween(durationMillis = DeepCurve.LandMillis, easing = DeepCurve.LandEasing)
+
+/**
+ * The exhale as a platform View animation, for the one surface Compose doesn't
+ * draw: the splash screen leaving. Same curve, same duration.
+ */
+fun ViewPropertyAnimator.exhale(): ViewPropertyAnimator =
+  setDuration(DeepCurve.ExhaleMillis.toLong())
+    .setInterpolator { DeepCurve.ExhaleEasing.transform(it) }
 
 /** The breath's easing alone, for sampling where the animation runs. */
 val breathEasing: Easing get() = DeepCurve.ExhaleEasing

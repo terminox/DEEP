@@ -41,18 +41,31 @@ class MockSoundPlayer(
   override val elapsed: StateFlow<Double> = _elapsed.asStateFlow()
 
   override fun play(entries: List<SoundQueueEntry>, startIndex: Int) {
-    _playback.value = _playback.value.copy(
-      entries = entries,
-      index = SoundQueue.clampStart(startIndex, entries.size),
-      isPlaying = entries.isNotEmpty(),
-    )
+    if (entries.isEmpty()) {
+      _playback.value = _playback.value.copy(entries = emptyList(), index = 0, isPlaying = false)
+      _elapsed.value = 0.0
+      return
+    }
+    if (isPlaybackHeld) return
+    // The real player's rule: locked tracks never join the queue.
+    val start = SoundQueue.playable(entries, startIndex) ?: return
+    _playback.value = _playback.value.copy(entries = start.entries, index = start.index, isPlaying = true)
     _elapsed.value = 0.0
   }
 
   override fun togglePlayPause() {
     val state = _playback.value
     if (!state.hasTrack) return
+    if (!state.isPlaying && isPlaybackHeld) return
     _playback.value = state.copy(isPlaying = !state.isPlaying)
+  }
+
+  override var isPlaybackHeld: Boolean = false
+    private set
+
+  override fun holdPlayback(held: Boolean) {
+    isPlaybackHeld = held
+    if (held) pause()
   }
 
   override fun pause() {

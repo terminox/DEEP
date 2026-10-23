@@ -77,6 +77,9 @@ private val DURATION_STYLE = DeepType.micro.copy(fontFeatureSettings = "tnum")
 /** The remove menu's glyph. */
 private val MENU_GLYPH = 18.dp
 
+/** The DEEP Premium lock — iOS's `lock.fill` at `.caption` size. */
+private val LOCK_GLYPH = 12.dp
+
 // MARK: - Row
 
 /**
@@ -91,11 +94,13 @@ private val MENU_GLYPH = 18.dp
  * can't discover. No destructive red on it: DEEP has no urgent reds, and taking
  * a sound out is one tap from saving it again.
  *
- * iOS also draws a lock for premium sounds here. Android plays everything, so
- * there is no lock — a deliberate divergence.
+ * A DEEP Premium sound this listener is locked out of keeps its row — anyone
+ * may keep one — and wears iOS's caption-size `lock.fill` at the trailing
+ * edge; the screen never plays it.
  *
  * @param isCurrent true while this is the sound playing, which tints the title
  *   the way a collection's track list does.
+ * @param isLocked the track is DEEP Premium and locked for this listener.
  */
 @Composable
 fun PlaylistTrackRow(
@@ -104,11 +109,14 @@ fun PlaylistTrackRow(
   onPlay: () -> Unit,
   onRemove: () -> Unit,
   modifier: Modifier = Modifier,
+  isLocked: Boolean = entry.track.isLocked,
 ) {
   var menuOpen by remember { mutableStateOf(false) }
   val haptics = LocalHapticFeedback.current
   val removeLabel = stringResource(R.string.playlist_remove)
-  val description = stringResource(R.string.playlist_row_a11y, entry.track.title, entry.collection.title)
+  val described = stringResource(R.string.playlist_row_a11y, entry.track.title, entry.collection.title)
+  // The row reads as one element, so the lock joins its sentence.
+  val description = if (isLocked) "$described, ${stringResource(R.string.deepsound_locked)}" else described
 
   Box(modifier) {
     Row(
@@ -170,6 +178,15 @@ fun PlaylistTrackRow(
           color = Color.driftGrey,
         )
       }
+
+      if (isLocked) {
+        Icon(
+          SoundIcons.Lock,
+          contentDescription = null,
+          tint = Color.driftGrey,
+          modifier = Modifier.size(LOCK_GLYPH).clearAndSetSemantics {},
+        )
+      }
     }
 
     DropdownMenu(
@@ -208,7 +225,7 @@ private fun PlaylistTrackRowPreview() {
       ) {
         PlaylistTrackRow(entry = PlaylistFixtures.saved[0], isCurrent = false, onPlay = {}, onRemove = {})
         PlaylistTrackRow(entry = PlaylistFixtures.saved[1], isCurrent = true, onPlay = {}, onRemove = {})
-        PlaylistTrackRow(entry = PlaylistFixtures.saved[2], isCurrent = false, onPlay = {}, onRemove = {})
+        PlaylistTrackRow(entry = PlaylistFixtures.saved[2], isCurrent = false, onPlay = {}, onRemove = {}, isLocked = true)
       }
     }
   }

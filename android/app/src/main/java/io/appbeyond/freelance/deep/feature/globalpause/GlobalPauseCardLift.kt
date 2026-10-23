@@ -54,6 +54,13 @@ interface GlobalPauseCardLift {
 
   /** How long after the presentation begins the overlay may reveal, in ms. */
   val landingMillis: Long
+
+  /**
+   * Whether the landed backdrop is actually on screen. The overlay waits for
+   * it as well as the landing, so its chrome never stands over the lounge
+   * before the night does. Snapshot-observable.
+   */
+  val isTargetReady: Boolean get() = true
 }
 
 /** No lift — a crossfade, and the overlay reveals as it lands. */

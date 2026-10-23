@@ -32,10 +32,10 @@
 
   <!-- The Global Pause card -->
   <string name="pause_card_title">Global Pause</string>
-  <string name="pause_card_resting">หายใจไปพร้อมกับโลก ด้วยกัน</string> <!-- no iOS Thai -->
+  <string name="pause_card_resting">หายใจไปพร้อมกับทั้งโลก</string> <!-- no iOS Thai -->
   <string name="pause_card_live_caption">โลกกำลังหยุดพัก</string> <!-- no iOS Thai -->
   <string name="pause_card_join">เข้าร่วมเลย</string> <!-- no iOS Thai -->
-  <string name="pause_card_countdown">สดในอีก %1$02d:%2$02d</string> <!-- no iOS Thai -->
+  <string name="pause_card_countdown">เริ่มในอีก %1$02d:%2$02d</string> <!-- no iOS Thai -->
   <string name="pause_card_a11y">%1$s %2$s</string>
   <string name="pause_schedule_today">วันนี้ · %1$s</string>
   <string name="pause_schedule_tomorrow">พรุ่งนี้ · %1$s</string>
@@ -68,7 +68,7 @@
   <string name="pause_reflection_tag_prompt">คุณกำลังโอบสิ่งใดไว้</string>
   <string name="pause_composer_placeholder">คืนนี้มีอะไรอยู่ในใจคุณ</string>
   <string name="pause_composer_friend">เพื่อน</string> <!-- no iOS Thai -->
-  <string name="pause_reflection_note_signed_out">ลงชื่อเข้าใช้จากแท็บ ฉัน เพื่อฝากข้อความ</string> <!-- no iOS Thai -->
+  <string name="pause_reflection_note_signed_out">เข้าสู่ระบบจากแท็บ “ฉัน” เพื่อฝากข้อความ</string> <!-- no iOS Thai -->
   <string name="pause_reflection_note_limit">สามข้อความต่อวันก็เพียงพอแล้ว พักผ่อนเถอะ</string> <!-- no iOS Thai -->
   <string name="pause_reflection_note_failed">ยังส่งข้อความของคุณไม่ได้ในตอนนี้</string> <!-- no iOS Thai -->
   <string name="pause_intention_peace">ความสงบ</string>

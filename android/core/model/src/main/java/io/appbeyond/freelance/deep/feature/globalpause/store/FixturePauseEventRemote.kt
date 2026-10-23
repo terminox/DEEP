@@ -51,7 +51,10 @@ class FixturePauseEventRemote(
 
   private var claimedTonight = false
 
-  /** Every presence call, in order — "beat:<id>" or "leave:<id>". */
+  /** How long a heartbeat takes to land. */
+  var heartbeatDelay: Duration = Duration.ZERO
+
+  /** Every presence call, in the order it lands — "beat:<id>" or "leave:<id>". */
   val presenceLog = mutableListOf<String>()
 
   var liveCalls = 0
@@ -86,6 +89,7 @@ class FixturePauseEventRemote(
   }
 
   override suspend fun heartbeat(presenceId: String, countryIso: String?): PauseJoinPoint? {
+    if (heartbeatDelay > Duration.ZERO) delay(heartbeatDelay.toMillis())
     presenceLog += "beat:$presenceId"
     // Bangkok — previews get a home to turn to.
     return PauseJoinPoint(13.8f, 100.5f)

@@ -5,7 +5,10 @@ import io.appbeyond.freelance.deep.feature.globalpause.model.PauseJoinPoint
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseLiveSnapshot
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseSchedule
 import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.DisplayName
@@ -424,6 +427,108 @@ class GlobalPauseSessionTest {
       session.leaveSession()
       advance(Duration.ofMillis(1))
       assertEquals("leave:$PRESENCE_ID", remote.presenceLog.last())
+    }
+
+    @Test
+    @DisplayName("A closing beat still in flight lands before the leave goes out")
+    fun leaveWaitsForTheClosingBeat() = runTest {
+      val remote = liveRemote().apply { heartbeatDelay = Duration.ofSeconds(2) }
+      val session = pauseSession(remote)
+
+      session.enterSession()
+      advance(Duration.ofSeconds(3))
+      session.claimPauseAward()
+      // The handback, while the closing beat is still on the wire.
+      session.leaveSession()
+      advance(Duration.ofSeconds(10))
+
+      assertEquals(
+        listOf("beat:$PRESENCE_ID", "beat:$PRESENCE_ID", "leave:$PRESENCE_ID"),
+        remote.presenceLog,
+      )
+    }
+
+    @Test
+    @DisplayName("A claim made after the leave sends no beat to bring presence back")
+    fun claimAfterLeaveSendsNoBeat() = runTest {
+      val remote = liveRemote()
+      val session = pauseSession(remote)
+
+      session.enterSession()
+      advance(Duration.ofMillis(1))
+      session.leaveSession()
+      session.claimPauseAward()
+      advanceUntil { session.state.value.pauseAward != null }
+
+      assertEquals(listOf("beat:$PRESENCE_ID", "leave:$PRESENCE_ID"), remote.presenceLog)
+      assertEquals(1, remote.pauseClaimAttempts)
+    }
+
+    @Test
+    @DisplayName("A claim still out when the member signs out lands on nobody's books")
+    fun claimOutlivingItsMemberIsDropped() = runTest {
+      val remote = liveRemote().apply { pauseClaimDelay = Duration.ofSeconds(3) }
+      var awards = 0
+      var attendances = 0
+      val session = pauseSession(remote, awardSink = { awards += 1 }, activitySink = { attendances += 1 })
+
+      session.enterSession()
+      session.claimPauseAward()
+      advance(Duration.ofSeconds(1))
+      session.leaveSession()
+      // Signed out — and someone else signed in — while the reply is delayed.
+      session.forgetAccount()
+      advance(Duration.ofSeconds(10))
+
+      assertEquals(0, awards)
+      assertEquals(0, attendances)
+      assertNull(session.state.value.pauseAward)
+      assertFalse(session.state.value.pauseAwardPending)
+    }
+
+    @Test
+    @DisplayName("A sign-out while the attendance is being recorded stops the award from publishing")
+    fun signOutMidPublicationPublishesNothing() = runTest {
+      var recording = false
+      var awards = 0
+      // The journal's persist, which the sign-out can't interrupt.
+      val session = pauseSession(
+        liveRemote(),
+        awardSink = { awards += 1 },
+        activitySink = {
+          recording = true
+          withContext(NonCancellable) { delay(2_000) }
+        },
+      )
+
+      session.enterSession()
+      session.claimPauseAward()
+      advanceUntil { recording }
+      session.forgetAccount()
+      advance(Duration.ofSeconds(10))
+
+      assertEquals(0, awards)
+      assertNull(session.state.value.pauseAward)
+    }
+
+    @Test
+    @DisplayName("A leave held behind a slow beat never deletes a rejoin's fresh presence")
+    fun rejoinCancelsAStaleLeave() = runTest {
+      val remote = liveRemote().apply { heartbeatDelay = Duration.ofSeconds(2) }
+      val session = pauseSession(remote)
+
+      session.enterSession()
+      advance(Duration.ofSeconds(3))
+      session.claimPauseAward()
+      // The leave waits on the closing beat — and the member is back first.
+      session.leaveSession()
+      session.enterSession()
+      advance(Duration.ofSeconds(10))
+
+      assertFalse(remote.presenceLog.contains("leave:$PRESENCE_ID"))
+      assertEquals("beat:$PRESENCE_ID", remote.presenceLog.last())
+      assertTrue(session.isInSession)
+      session.leaveSession()
     }
 
     @Test

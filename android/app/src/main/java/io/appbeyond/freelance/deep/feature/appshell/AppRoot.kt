@@ -12,13 +12,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
@@ -61,6 +64,17 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.UUID
+
+/**
+ * This process, as a value an activity can save. The launch beat records the
+ * process it played in, so a recreated activity — anything `configChanges`
+ * still lets through — opens straight on where it was instead of breathing
+ * the launch again and re-running restore. After process death the stores are
+ * empty again and the saved token no longer matches, so the beat (and the
+ * restore it covers) runs as it must.
+ */
+private val PROCESS_LAUNCH = UUID.randomUUID().toString()
 
 /**
  * The launch beat's staged send-off. Private for the reason iOS keeps its
@@ -113,10 +127,11 @@ private object Handoff {
  * @param awaitOnboardingLoaded suspends until [onboardingStore]'s first real
  *   load has landed, so a persisted "onboarding complete" is never missed for
  *   one frame.
- * @param soundPlayer paused as a practice opens: the session plays its own
- *   bell and breath, and a track underneath would talk over both. It stays
- *   loaded, so the mini player picks up where the member left off — iOS's
- *   `pause()` on DEEP Session entry.
+ * @param soundPlayer paused as a practice begins — at Begin, not as the
+ *   threshold opens: the threshold is an ordinary screen in the tab, but the
+ *   session plays its own bell and breath, and a track underneath would talk
+ *   over both. It stays loaded, so the mini player picks up where the member
+ *   left off — iOS's `pause()` in `DeepSessionCoordinatorView.onAppear`.
  * @param soundLibrary / playlistStore handed on to the shell for DEEP Sound
  *   and the You tab's saved sounds.
  * @param syncRewards pulls the garden and wallet and syncs the practice
@@ -165,11 +180,15 @@ fun AppRoot(
   globalPauseContent: @Composable (visibility: AnimatedVisibilityScope, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
 ) {
-  var restored by remember { mutableStateOf(false) }
+  // Saved with the activity, checked against this process (see
+  // [PROCESS_LAUNCH]): a recreate keeps the launch behind it.
+  var beatPlayedIn by rememberSaveable { mutableStateOf<String?>(null) }
+  val beatAlreadyPlayed = beatPlayedIn == PROCESS_LAUNCH
+  var restored by remember { mutableStateOf(beatAlreadyPlayed) }
   // The beat stays mounted (transparent) until dismissed, so its exhale is a
   // plain state animation that finishes over whatever surfaces beneath it.
-  var beatExhaled by remember { mutableStateOf(false) }
-  var beatDismissed by remember { mutableStateOf(false) }
+  var beatExhaled by remember { mutableStateOf(beatAlreadyPlayed) }
+  var beatDismissed by remember { mutableStateOf(beatAlreadyPlayed) }
 
   val account by accountStore.account.collectAsStateWithLifecycle()
   val onboarding by onboardingStore.state.collectAsStateWithLifecycle()
@@ -180,6 +199,7 @@ fun AppRoot(
   )
 
   LaunchedEffect(Unit) {
+    if (beatAlreadyPlayed) return@LaunchedEffect
     // Whatever happens in here, the beat must end: a launch that throws and
     // never flips `restored` is a breathing screen the member can only escape
     // by killing the app. Cancellation is the one thing let through — it means
@@ -230,12 +250,16 @@ fun AppRoot(
     restored = true
     delay(Handoff.SETTLE_MILLIS)
     beatDismissed = true
+    beatPlayedIn = PROCESS_LAUNCH
   }
 
-  // Owned here, above the shell, for the reason the iOS side owns its chime
-  // outside the presentation: the practice's closing bell rings for several
-  // seconds and has to outlive the screen being dismissed.
+  // The running practice, presented over the whole shell from Begin on its
+  // threshold (which stays on the tab's stack beneath). Its closing bell is
+  // owned above this, by `MainActivity`, so it rings on as the cover leaves.
   var runningSession by remember { mutableStateOf<DeepSession?>(null) }
+  // The last practice shown, held through the cover's exit fade so the fade
+  // has something to fade — `runningSession` is already null by then.
+  var shownSession by remember { mutableStateOf<DeepSession?>(null) }
   // The live Global Pause, presented over the shell the same way.
   var pauseOpen by remember { mutableStateOf(false) }
   LaunchedEffect(phase) {
@@ -261,6 +285,17 @@ fun AppRoot(
       // feed and all five tabs under the live session (QA round 1, B4) — the
       // modal semantics iOS's full-screen cover gets for free.
       val covered = runningSession != null || pauseOpen
+      // Held, not only paused, while either is up. Android puts DEEP Sound on
+      // the lock screen, the notification and a headset's buttons, and any of
+      // them would otherwise start the track under the breath — or, in Global
+      // Pause, take audio focus from the meditation. iOS has none of those
+      // controls for DEEP Sound, so a pause is enough there. Released on
+      // dispose too: the player outlives this activity, and a hold left behind
+      // would refuse every play for the rest of the process.
+      DisposableEffect(covered) {
+        soundPlayer.holdPlayback(covered)
+        onDispose { soundPlayer.holdPlayback(false) }
+      }
       AnimatedContent(
         targetState = phase,
         transitionSpec = { fadeIn(hush()) togetherWith fadeOut(hush()) },
@@ -295,10 +330,17 @@ fun AppRoot(
               gardenContent = gardenContent,
               compassionContent = compassionContent,
               compassionCauseContent = compassionCauseContent,
-              onOpenDeepSession = {
-                soundPlayer.pause()
-                runningSession = it
+              // A guided breath and ambient audio don't mix: the practice
+              // begins in silence. The track stays loaded, so the mini player
+              // is waiting on return.
+              onBeginDeepSession = {
+                if (runningSession == null) {
+                  soundPlayer.pause()
+                  shownSession = it
+                  runningSession = it
+                }
               },
+              deepSessionRunning = runningSession != null,
               // Only while the meditation is live — outside it the card rests,
               // its caption already carrying the countdown. The session owns
               // its own audio, so the shared player pauses (its track stays
@@ -327,9 +369,9 @@ fun AppRoot(
       // Android is simply a sibling in the same tree. The iOS equivalent needs a
       // zero-size UIViewControllerRepresentable that walks up the controller
       // hierarchy to find something able to present; none of that exists here.
-      val session = runningSession
+      val session = runningSession ?: shownSession
       AnimatedVisibility(
-        visible = session != null,
+        visible = runningSession != null,
         enter = fadeIn(hush()) + slideInVertically(hush()) { it / 24 },
         exit = fadeOut(hush()),
       ) {
@@ -338,7 +380,12 @@ fun AppRoot(
           // translucent atmosphere and they crossfade, so without this the
           // shell showed through at mid-fade — the Garden's hero and cards
           // ghosting behind the practice as it gave way to the reward ritual.
-          Box(Modifier.fillMaxSize().background(Color.moonCream)) {
+          Box(
+            Modifier
+              .fillMaxSize()
+              .background(Color.moonCream)
+              .blocksTouchesBeneath(),
+          ) {
             deepSessionContent(session) { runningSession = null }
           }
         }
@@ -352,9 +399,28 @@ fun AppRoot(
         enter = lift.enter,
         exit = lift.exit,
       ) {
-        globalPauseContent(this) { pauseOpen = false }
+        val visibility = this
+        Box(Modifier.fillMaxSize().blocksTouchesBeneath()) {
+          globalPauseContent(visibility) { pauseOpen = false }
+        }
       }
     }
+  }
+}
+
+/**
+ * Makes a full-screen cover the end of the line for touches, as iOS's
+ * full-screen presentations are: without it a tap on the cover's empty
+ * atmosphere fell through to the tab bar and shell beneath, which are only
+ * siblings here.
+ *
+ * Nothing is consumed — the cover's own controls see every event exactly as
+ * before. Being hit is the whole job: Compose stops hit-testing siblings
+ * below the first one whose pointer input is hit.
+ */
+private fun Modifier.blocksTouchesBeneath(): Modifier = pointerInput(Unit) {
+  awaitPointerEventScope {
+    while (true) awaitPointerEvent()
   }
 }
 

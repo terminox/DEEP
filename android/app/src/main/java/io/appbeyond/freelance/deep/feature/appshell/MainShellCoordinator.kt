@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionIntroScreen
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.CollectionDetailScreen
 import io.appbeyond.freelance.deep.feature.deepsound.DeepSoundHomeScreen
@@ -78,6 +79,7 @@ import java.time.ZoneId
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.LocalTabReselection
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.chip
@@ -86,6 +88,9 @@ import io.appbeyond.freelance.deep.theme.exhale
 import io.appbeyond.freelance.deep.theme.hush
 import io.appbeyond.freelance.deep.theme.settle
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -113,6 +118,13 @@ sealed interface DeepRoute {
   /** Fuku's Lounge, pushed from Home's lounge card — iOS's `openFukuLounge`. */
   data object FukuLounge : DeepRoute
 
+  /**
+   * A DEEP Session's threshold, pushed onto whichever tab's entry card opened
+   * it — iOS's `openDeepSession`, so the tab bar and mini player stay. Begin
+   * lifts the practice itself over the whole shell, from `AppRoot`.
+   */
+  data class SessionThreshold(val session: DeepSession) : DeepRoute
+
   /** A collection's tracks — pushed from Sounds' shelves or a Home list. */
   data class Collection(val collection: SoundCollection) : DeepRoute
 
@@ -131,6 +143,7 @@ sealed interface DeepRoute {
 @Immutable
 data class HomeActions(
   val openDeepSession: (DeepSession) -> Unit,
+  val openCollection: (SoundCollection) -> Unit,
   val openCollectionList: (title: String, collections: List<SoundCollection>) -> Unit,
   val openFukuLounge: () -> Unit = {},
 )
@@ -205,6 +218,10 @@ data class PreferenceActions(
  *   cause's detail; [compassionCauseContent] draws that detail.
  * @param fukuLoungeContent Fuku's Lounge, pushed on Home's stack, handed the
  *   way into the live session ([onOpenGlobalPause]) and back.
+ * @param onBeginDeepSession Begin on a session threshold, with the practice at
+ *   the chosen length: `AppRoot` presents it over the whole shell.
+ * @param deepSessionRunning true while that practice covers the shell — the
+ *   threshold answers with its half of the lift.
  * @param miniPlayerSuppressed true while a practice covers the shell — a DEEP
  *   Session or the live Global Pause (settled in week 2): the pill leaves
  *   rather than wait under the cover.
@@ -223,7 +240,8 @@ fun MainShellCoordinator(
   flushPracticeJournal: suspend () -> Unit,
   resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
-  onOpenDeepSession: (DeepSession) -> Unit = {},
+  onBeginDeepSession: (DeepSession) -> Unit = {},
+  deepSessionRunning: Boolean = false,
   homeContent: @Composable (actions: HomeActions) -> Unit = {},
   gardenContent: @Composable (actions: HomeActions) -> Unit = {},
   compassionContent: @Composable (openCause: (String) -> Unit) -> Unit = {},
@@ -272,10 +290,22 @@ fun MainShellCoordinator(
     if (tabStack.size > 1) dropAbove(tab, tabStack.lastIndex - 1)
   }
 
-  val currentOnOpenDeepSession by rememberUpdatedState(onOpenDeepSession)
+  /**
+   * Pushes a session's threshold onto the tab in front — the one whose entry
+   * card was tapped. A second tap landing before the first push has drawn is
+   * dropped rather than stacking two thresholds.
+   */
+  fun openSessionThreshold(session: DeepSession) {
+    val tabStack = stacks.getValue(selected)
+    if (tabStack.last().route !is DeepRoute.SessionThreshold) {
+      push(selected, DeepRoute.SessionThreshold(session))
+    }
+  }
+
   val homeActions = remember {
     HomeActions(
-      openDeepSession = { currentOnOpenDeepSession(it) },
+      openDeepSession = { openSessionThreshold(it) },
+      openCollection = { push(DeepTab.Home, DeepRoute.Collection(it)) },
       openCollectionList = { title, collections ->
         push(DeepTab.Home, DeepRoute.CollectionList(title, collections))
       },
@@ -350,6 +380,13 @@ fun MainShellCoordinator(
     }
   }
 
+  // Re-tapping the tab in front scrolls its front-most screen back to the top
+  // and never pops — iOS's `scrollSelectedTabToTop`. Each screen is handed only
+  // its own reselections (keyed by its stack entry), through
+  // [LocalTabReselection]; a screen that scrolls opts in with
+  // `ScrollToTopOnReselect`, and one that doesn't simply ignores them.
+  val reselections = remember { MutableSharedFlow<Long>(extraBufferCapacity = 1) }
+
   val flingThreshold = with(LocalDensity.current) { FLING_VELOCITY.toPx() }
   val clearance: Dp = if (showsPill) MiniPlayerPillHeight + PILL_GAP else 0.dp
 
@@ -370,70 +407,82 @@ fun MainShellCoordinator(
               transitionSpec = { fadeIn(exhale()) togetherWith fadeOut(exhale()) },
               label = "tab-content",
             ) { (tab, entry) ->
+              val reselected = remember(entry.id) {
+                reselections.filter { it == entry.id }.map { }
+              }
               screenStates.SaveableStateProvider(entry.id) {
-                when (val route = entry.route) {
-                  DeepRoute.Root -> when (tab) {
-                    DeepTab.Home -> homeContent(homeActions)
-                    DeepTab.Sounds -> DeepSoundHomeScreen(
-                      library = soundLibrary,
-                      onOpenCollection = { push(DeepTab.Sounds, DeepRoute.Collection(it)) },
-                      onOpenDeepSession = onOpenDeepSession,
-                    )
-                    DeepTab.Garden -> gardenContent(homeActions)
-                    DeepTab.Compassion -> compassionContent { causeId ->
-                      push(DeepTab.Compassion, DeepRoute.CompassionCause(causeId))
+                CompositionLocalProvider(LocalTabReselection provides reselected) {
+                  when (val route = entry.route) {
+                    DeepRoute.Root -> when (tab) {
+                      DeepTab.Home -> homeContent(homeActions)
+                      DeepTab.Sounds -> DeepSoundHomeScreen(
+                        library = soundLibrary,
+                        onOpenCollection = { push(DeepTab.Sounds, DeepRoute.Collection(it)) },
+                        onOpenDeepSession = { openSessionThreshold(it) },
+                      )
+                      DeepTab.Garden -> gardenContent(homeActions)
+                      DeepTab.Compassion -> compassionContent { causeId ->
+                        push(DeepTab.Compassion, DeepRoute.CompassionCause(causeId))
+                      }
+                      DeepTab.You -> PlaylistScreen(
+                        playlistStore = playlistStore,
+                        player = soundPlayer,
+                        onOpenSettings = { push(DeepTab.You, DeepRoute.Settings) },
+                        onExploreDeepSound = { selected = DeepTab.Sounds },
+                      )
                     }
-                    DeepTab.You -> PlaylistScreen(
-                      playlistStore = playlistStore,
+
+                    DeepRoute.Settings -> SettingsScreen(
+                      accountStore = accountStore,
+                      onboardingStore = onboardingStore,
+                      language = language,
+                      reminder = reminderState.reminder,
+                      flushPracticeJournal = flushPracticeJournal,
+                      resetAccountState = resetAccountState,
+                      onOpenLanguage = { push(DeepTab.You, DeepRoute.Language) },
+                      onOpenReminder = { push(DeepTab.You, DeepRoute.DailyReminder) },
+                      onBack = { pop(DeepTab.You) },
+                    )
+
+                    DeepRoute.Language -> LanguageScreen(
+                      selection = language,
+                      onSelect = preferences.selectLanguage,
+                      onBack = { pop(DeepTab.You) },
+                    )
+
+                    DeepRoute.DailyReminder -> DailyReminderScreen(
+                      store = reminderStore,
+                      enable = preferences.enableReminder,
+                      setTime = preferences.setReminderTime,
+                      disable = preferences.disableReminder,
+                      onBack = { pop(DeepTab.You) },
+                    )
+
+                    is DeepRoute.CompassionCause -> compassionCauseContent(route.causeId) { pop(tab) }
+
+                    DeepRoute.FukuLounge -> fukuLoungeContent(onOpenGlobalPause) { pop(tab) }
+
+                    is DeepRoute.SessionThreshold -> DeepSessionIntroScreen(
+                      session = route.session,
+                      onBegin = onBeginDeepSession,
+                      onBack = { pop(tab) },
+                      isRunning = deepSessionRunning,
+                    )
+
+                    is DeepRoute.Collection -> CollectionDetailScreen(
+                      collection = route.collection,
                       player = soundPlayer,
-                      onOpenSettings = { push(DeepTab.You, DeepRoute.Settings) },
-                      onExploreDeepSound = { selected = DeepTab.Sounds },
+                      playlistStore = playlistStore,
+                      onBack = { pop(tab) },
+                    )
+
+                    is DeepRoute.CollectionList -> CollectionListScreen(
+                      title = route.title,
+                      collections = route.collections,
+                      onOpenCollection = { push(tab, DeepRoute.Collection(it)) },
+                      onBack = { pop(tab) },
                     )
                   }
-
-                  DeepRoute.Settings -> SettingsScreen(
-                    accountStore = accountStore,
-                    onboardingStore = onboardingStore,
-                    language = language,
-                    reminder = reminderState.reminder,
-                    flushPracticeJournal = flushPracticeJournal,
-                    resetAccountState = resetAccountState,
-                    onOpenLanguage = { push(DeepTab.You, DeepRoute.Language) },
-                    onOpenReminder = { push(DeepTab.You, DeepRoute.DailyReminder) },
-                    onBack = { pop(DeepTab.You) },
-                  )
-
-                  DeepRoute.Language -> LanguageScreen(
-                    selection = language,
-                    onSelect = preferences.selectLanguage,
-                    onBack = { pop(DeepTab.You) },
-                  )
-
-                  DeepRoute.DailyReminder -> DailyReminderScreen(
-                    store = reminderStore,
-                    enable = preferences.enableReminder,
-                    setTime = preferences.setReminderTime,
-                    disable = preferences.disableReminder,
-                    onBack = { pop(DeepTab.You) },
-                  )
-
-                  is DeepRoute.CompassionCause -> compassionCauseContent(route.causeId) { pop(tab) }
-
-                  DeepRoute.FukuLounge -> fukuLoungeContent(onOpenGlobalPause) { pop(tab) }
-
-                  is DeepRoute.Collection -> CollectionDetailScreen(
-                    collection = route.collection,
-                    player = soundPlayer,
-                    playlistStore = playlistStore,
-                    onBack = { pop(tab) },
-                  )
-
-                  is DeepRoute.CollectionList -> CollectionListScreen(
-                    title = route.title,
-                    collections = route.collections,
-                    onOpenCollection = { push(tab, DeepRoute.Collection(it)) },
-                    onBack = { pop(tab) },
-                  )
                 }
               }
             }
@@ -472,11 +521,13 @@ fun MainShellCoordinator(
         DeepBottomBar(
           selected = selected,
           onSelect = { tab ->
-            // Re-tapping the tab you are on pops it to root, the way it does on iOS.
-            if (tab == selected) {
-              dropAbove(tab, 0)
-            } else {
+            // Re-tapping the tab you are on scrolls its front-most screen to
+            // the top, the way iOS's `scrollSelectedTabToTop` does — it never
+            // pops; back does that. Not underneath Now Playing.
+            if (tab != selected) {
               selected = tab
+            } else if (!expanded) {
+              reselections.tryEmit(stack.last().id)
             }
           },
         )
@@ -582,6 +633,7 @@ private val TabStacksSaver: Saver<Map<DeepTab, SnapshotStateList<StackEntry>>, A
 )
 
 private const val CAUSE_PREFIX = "cause:"
+private const val SESSION_PREFIX = "session:"
 
 /** This route as a saved key, or null when it can't be rebuilt from one. */
 private fun DeepRoute.savedKey(): String? = when (this) {
@@ -591,6 +643,7 @@ private fun DeepRoute.savedKey(): String? = when (this) {
   DeepRoute.DailyReminder -> "reminder"
   DeepRoute.FukuLounge -> "lounge"
   is DeepRoute.CompassionCause -> CAUSE_PREFIX + causeId
+  is DeepRoute.SessionThreshold -> SESSION_PREFIX + session.id
   is DeepRoute.Collection, is DeepRoute.CollectionList -> null
 }
 
@@ -601,6 +654,11 @@ private fun routeOf(key: String): DeepRoute? = when {
   key == "reminder" -> DeepRoute.DailyReminder
   key == "lounge" -> DeepRoute.FukuLounge
   key.startsWith(CAUSE_PREFIX) -> DeepRoute.CompassionCause(key.removePrefix(CAUSE_PREFIX))
+  // Only the pattern survives: the threshold titles the practice from
+  // resources and stretches it to the remembered length itself.
+  key.startsWith(SESSION_PREFIX) -> DeepRoute.SessionThreshold(
+    DeepSession(id = key.removePrefix(SESSION_PREFIX), title = "", tagline = "", cycles = 1),
+  )
   else -> null
 }
 

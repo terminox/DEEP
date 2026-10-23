@@ -47,6 +47,7 @@ import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.CollapsibleHomeHeader
 import io.appbeyond.freelance.deep.shared.components.HeroRefreshable
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.shared.components.LoopingVideoView
 import io.appbeyond.freelance.deep.shared.components.StretchyHero
 import io.appbeyond.freelance.deep.shared.components.rememberHeroPull
@@ -139,18 +140,19 @@ fun DeepSoundHomeScreen(
 ) {
   // Rebuilt on the way back from a collection or another tab, the screen
   // reopens on the shelves it already had — no skeleton, and rows for the
-  // restored scroll position to land on — and leaves refreshing to the pull.
+  // restored scroll position to land on — and reloads them silently behind.
+  // The kept copy is the signed-in account's own (the shelves vary by caller
+  // since DEEP Premium); see ApiSoundLibrary.
   val load = remember(library) {
     mutableStateOf<ShelvesLoad>(library.cachedShelves?.let(ShelvesLoad::Loaded) ?: ShelvesLoad.Loading)
   }
   var attempt by remember { mutableIntStateOf(0) }
 
-  LaunchedEffect(library, attempt) {
-    if (attempt > 0 || load.value !is ShelvesLoad.Loaded) loadShelves(library, load)
-  }
+  LaunchedEffect(library, attempt) { loadShelves(library, load) }
 
   val listState = rememberLazyListState()
   val (pull, nestedScroll) = rememberHeroPull(listState)
+  ScrollToTopOnReselect(listState)
   val session = rememberBalancingBreath()
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
 

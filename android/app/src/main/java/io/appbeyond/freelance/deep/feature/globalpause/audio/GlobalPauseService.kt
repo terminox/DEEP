@@ -12,6 +12,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import io.appbeyond.freelance.deep.DeepApplication
 import io.appbeyond.freelance.deep.MainActivity
 import io.appbeyond.freelance.deep.R
 
@@ -34,6 +35,21 @@ import io.appbeyond.freelance.deep.R
  * screen), which is when Android allows it.
  */
 class GlobalPauseService : Service() {
+
+  /**
+   * Below API 33 the per-app locale doesn't reach a service, so its channel
+   * and notification read in the chosen language only through `LanguageStore`
+   * — as `MainActivity` does; from 33 the system has already applied it.
+   */
+  override fun attachBaseContext(newBase: Context) {
+    val dependencies = (newBase.applicationContext as? DeepApplication)?.dependencies
+    val localized = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU && dependencies != null) {
+      dependencies.languageStore.localized(newBase)
+    } else {
+      newBase
+    }
+    super.attachBaseContext(localized)
+  }
 
   override fun onBind(intent: Intent?): IBinder? = null
 

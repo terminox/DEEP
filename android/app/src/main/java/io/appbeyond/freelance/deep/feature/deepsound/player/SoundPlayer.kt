@@ -95,7 +95,15 @@ class SoundPlayer(context: Context) : SoundPlaying {
       clear()
       return
     }
-    val index = SoundQueue.clampStart(startIndex, entries.size)
+    if (isPlaybackHeld) return
+    // DEEP Premium tracks this listener is locked out of never join the queue,
+    // so neither this class nor the lock screen can advance onto one. A queue
+    // that is all locked plays nothing, and leaves what was loaded alone.
+    val start = SoundQueue.playable(entries, startIndex) ?: return
+    queue(start.entries, start.index)
+  }
+
+  private fun queue(entries: List<SoundQueueEntry>, index: Int) {
     // A track with no audio loads paused, as iOS's `loadCurrent` does with a
     // nil `audioURL`; the service would pause it anyway, a frame later.
     val playable = entries[index].track.audioUrl != null
@@ -120,8 +128,8 @@ class SoundPlayer(context: Context) : SoundPlaying {
     }
     // Unlike iOS, which flips the flag and lets `AVPlayer` play nothing, a
     // track with no audio stays paused: the service would refuse it, and the
-    // play button would flicker on and off again.
-    if (!state.isCurrentPlayable) return
+    // play button would flicker on and off again. Held, nothing starts at all.
+    if (!state.isCurrentPlayable || isPlaybackHeld) return
     _playback.value = state.copy(isPlaying = true)
     withController { controller ->
       // After an error the player sits idle; play() alone would do nothing.
@@ -159,6 +167,25 @@ class SoundPlayer(context: Context) : SoundPlaying {
     val state = _playback.value
     if (!state.hasTrack) return
     seekToSeconds(SoundQueue.seekTarget(toProgress, state.duration))
+  }
+
+  private val _playbackHeld = MutableStateFlow(false)
+
+  /**
+   * The hold, for [DeepSoundService]: while it is set the service takes play
+   * away from the notification, the lock screen and a headset — they reach the
+   * service's player directly, never this class — and refuses it if a play
+   * arrives anyway.
+   */
+  val playbackHeld: StateFlow<Boolean> = _playbackHeld.asStateFlow()
+
+  override val isPlaybackHeld: Boolean get() = _playbackHeld.value
+
+  override fun holdPlayback(held: Boolean) {
+    // Paused first, so the pause still goes out on a session whose play
+    // command the hold is about to take away.
+    if (held) pause()
+    _playbackHeld.value = held
   }
 
   override fun setVolume(volume: Double) {

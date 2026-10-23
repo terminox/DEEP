@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -60,12 +61,28 @@ import io.appbeyond.freelance.deep.theme.softPress
 // MARK: - Constants
 
 /**
- * The pill's whole height — iOS's `.frame(height: 48)`. The capsule carries no
+ * The pill's whole height — iOS's `.frame(height: 48)` at the default text
+ * size, growing with it beyond: the two lines of titles plus the 12dp of air
+ * they have at 1×. iOS scales its type the same way (`UIFontMetrics`); a fixed
+ * 48 clips the second line at Android's 2× font scale. The capsule carries no
  * vertical padding of its own, so this is also what the shell reserves above
  * [io.appbeyond.freelance.deep.feature.appshell.DeepBottomBar] (plus its gap)
- * for content to clear.
+ * for content to clear — read in composition, so the clearance grows with it.
  */
-val MiniPlayerPillHeight: Dp = 48.dp
+val MiniPlayerPillHeight: Dp
+  @Composable get() {
+    val titles = with(LocalDensity.current) { (TITLE_STYLE.lineHeight.toDp() + SUBTITLE_STYLE.lineHeight.toDp()) }
+    return maxOf(BASE_PILL_HEIGHT, titles + TITLES_AIR)
+  }
+
+/** iOS's fixed frame, and the floor at any text size. */
+private val BASE_PILL_HEIGHT = 48.dp
+
+/** What the 36dp of titles leave of [BASE_PILL_HEIGHT] at 1×, kept as they grow. */
+private val TITLES_AIR = 12.dp
+
+/** The collection line — iOS's `DeepType.micro`. */
+private val SUBTITLE_STYLE = DeepType.micro
 
 /** The capsule silhouette — the frosted surface, the clip and the touch shape. */
 private val CAPSULE = RoundedCornerShape(Dp.chip)
@@ -233,7 +250,7 @@ fun MiniPlayerPill(
         )
         Text(
           text = collection?.title.orEmpty(),
-          style = DeepType.micro,
+          style = SUBTITLE_STYLE,
           color = Color.driftGrey,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
@@ -315,4 +332,10 @@ private fun MiniPlayerPillPausedPreview() {
 @Composable
 private fun MiniPlayerPillIdlePreview() {
   PillPreviewFrame(remember { MockSoundPlayer.idle() })
+}
+
+@Preview(showBackground = true, name = "Mini player — 2× text", fontScale = 2f)
+@Composable
+private fun MiniPlayerPillLargeTextPreview() {
+  PillPreviewFrame(remember { MockSoundPlayer.playing() })
 }

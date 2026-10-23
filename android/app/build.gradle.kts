@@ -35,12 +35,35 @@ val devApiHostName: String =
 // change per flavor.
 val cloudRunApi = "https://deep-api-696592457470.asia-southeast1.run.app"
 
+// The release version, the one number a person reads. iOS ships the same
+// marketing version; each platform keeps its own build number.
+//
+// versionCode is derived from it as major * 10000 + minor * 100 + patch, so
+// 1.0.0 is 10000 and the code can never drift from the name. iOS stamps Unix
+// epoch seconds instead, which doesn't fit: versionCode is a signed 32-bit int
+// that a store track never lets decrease. Weeks 1 to 7 shipped codes 1 to 7,
+// all below 10000.
+val deepVersion = "1.0.0"
+val deepVersionCode: Int =
+  deepVersion.split('.').map(String::toInt).let { (major, minor, patch) ->
+    require(minor < 100 && patch < 100) { "minor and patch must stay below 100: $deepVersion" }
+    major * 10_000 + minor * 100 + patch
+  }
+
 // Release signing, read from a gitignored keystore.properties.
 //
 // Absent — which it is on a fresh clone, and on any machine but the one holding
 // the key — the release build falls back to the debug signing config so it still
 // produces an installable APK. That graceful absence is the same trick
-// Dev.xcconfig plays with `#include? "Local.xcconfig"`.
+// Dev.xcconfig plays with `#include? "Local.xcconfig"`. A build meant for anyone
+// else goes through scripts/build-android-release.sh, which refuses one signed
+// with the debug key.
+//
+// The file names only the keystore and its alias. The password comes from
+// DEEP_ANDROID_KEYSTORE_PASSWORD, which the release script reads from the macOS
+// Keychain, so it is never written to disk in the clear. A storePassword in the
+// file is still honoured for a machine without a Keychain. The keystore is
+// PKCS12, so one password opens both the store and the key.
 //
 // terminox/DEEP is a public repository, so neither the keystore nor this
 // properties file may ever enter the tree. Both are gitignored.
@@ -62,11 +85,8 @@ android {
     minSdk = 26
     targetSdk = 36
 
-    // Week seven of eight. The versionCode scheme is still open — iOS stamps Unix
-    // epoch seconds, which does not survive the port because versionCode is a
-    // signed 32-bit int that can never decrease on a store track.
-    versionCode = 7
-    versionName = "0.0.7"
+    versionCode = deepVersionCode
+    versionName = deepVersion
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -107,12 +127,17 @@ android {
   }
 
   signingConfigs {
-    if (keystore != null) {
+    // Both halves, or neither: a keystore whose password isn't in this
+    // build's environment (an ordinary `./gradlew` on the machine that holds
+    // the key) gets the same debug fallback as no keystore at all.
+    val password = providers.environmentVariable("DEEP_ANDROID_KEYSTORE_PASSWORD").orNull
+      ?: keystore?.getProperty("storePassword")
+    if (keystore != null && password != null) {
       create("release") {
         storeFile = rootProject.file(keystore.getProperty("storeFile"))
-        storePassword = keystore.getProperty("storePassword")
+        storePassword = password
         keyAlias = keystore.getProperty("keyAlias")
-        keyPassword = keystore.getProperty("keyPassword")
+        keyPassword = password
       }
     }
   }

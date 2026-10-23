@@ -47,6 +47,12 @@ import java.time.Duration
  *    stall or an error, as a phone call's transient focus loss ends, and when
  *    the member comes back to the app.
  *
+ * **Stalls.** iOS re-seeks the moment `AVPlayerItem` reports a stall. Seeking
+ * a starved ExoPlayer only starts another buffer, so here the rejoin comes as
+ * a stall clears: back to ready, a stream that fell more than [STALL_DRIFT]
+ * behind the shared offset jumps to it. Only a stall counts — the buffering
+ * that follows a seek of our own already lands on the live edge.
+ *
  * **Audio focus** is the one place Android's contract wins over iOS's. The
  * player takes focus as it starts, which quiets anything else — DEEP Sound's
  * own player is paused before the session opens and never sees this audio, so
@@ -84,6 +90,12 @@ class GlobalPauseAudioPlayer(
   /** True once the member gave the audio to something else; rejoined on return. */
   private var yieldedFocus = false
 
+  /** A seek of our own is settling; its buffering is not a stall. */
+  private var seekSettling = false
+
+  /** Playback starved mid-stream, and is waiting for data. */
+  private var stalled = false
+
   private val foreground = object : DefaultLifecycleObserver {
     override fun onStart(owner: LifecycleOwner) {
       if (_isMeditating.value && (yieldedFocus || player?.isPlaying != true)) recoverToLiveEdge()
@@ -103,7 +115,19 @@ class GlobalPauseAudioPlayer(
     }
 
     override fun onPlaybackStateChanged(state: Int) {
-      if (state == Player.STATE_ENDED) _elapsed.value = duration
+      when (state) {
+        Player.STATE_ENDED -> _elapsed.value = duration
+        // An error's idle is the error listener's to recover.
+        Player.STATE_IDLE -> Unit
+        Player.STATE_BUFFERING -> if (!seekSettling && player?.playWhenReady == true) stalled = true
+        Player.STATE_READY -> {
+          seekSettling = false
+          if (stalled) {
+            stalled = false
+            rejoinIfBehind()
+          }
+        }
+      }
     }
 
     override fun onPlayerError(error: PlaybackException) {
@@ -134,6 +158,8 @@ class GlobalPauseAudioPlayer(
     exo.addListener(listener)
     exo.setMediaItem(MediaItem.fromUri(url))
     exo.prepare()
+    seekSettling = true
+    stalled = false
     exo.seekTo(offset.toMillis())
     exo.playWhenReady = true
     player = exo
@@ -148,8 +174,11 @@ class GlobalPauseAudioPlayer(
     ticker = scope.launch {
       while (isActive) {
         delay(TICK_MILLIS)
-        val position = player?.currentPosition ?: break
-        _elapsed.value = Duration.ofMillis(position)
+        val exo = player ?: break
+        _elapsed.value = Duration.ofMillis(exo.currentPosition)
+        // Playing again means any seek of ours has settled, whatever states
+        // it did or didn't pass through on the way.
+        if (exo.isPlaying) seekSettling = false
       }
     }
   }
@@ -164,6 +193,8 @@ class GlobalPauseAudioPlayer(
     _elapsed.value = offset
     yieldedFocus = false
     if (exo.playbackState == Player.STATE_IDLE) exo.prepare()
+    seekSettling = true
+    stalled = false
     exo.seekTo(offset.toMillis())
     exo.playWhenReady = true
   }
@@ -180,6 +211,14 @@ class GlobalPauseAudioPlayer(
     } else {
       player?.playWhenReady = true
     }
+  }
+
+  /** A stall just cleared: rejoin the shared offset if the wait cost more than a blip. */
+  private fun rejoinIfBehind() {
+    val exo = player ?: return
+    if (!_isMeditating.value) return
+    val offset = meditationOffsetProvider?.invoke() ?: return
+    if (offset.minusMillis(exo.currentPosition) > STALL_DRIFT) realignMeditation(offset)
   }
 
   /** Errors come in bursts on a dead network; one retry every few seconds. */
@@ -202,6 +241,8 @@ class GlobalPauseAudioPlayer(
       it.release()
     }
     player = null
+    seekSettling = false
+    stalled = false
     if (_isMeditating.value) GlobalPauseService.stop(context)
     _isMeditating.value = false
     _elapsed.value = Duration.ZERO
@@ -218,5 +259,9 @@ class GlobalPauseAudioPlayer(
     const val TAG = "GlobalPauseAudio"
     const val TICK_MILLIS = 500L
     const val RECOVERY_DELAY_MILLIS = 3_000L
+
+    /** Behind the shared offset by more than this after a stall, the stream
+     * jumps to it; less is a blip not worth an audible skip. */
+    val STALL_DRIFT: Duration = Duration.ofSeconds(2)
   }
 }

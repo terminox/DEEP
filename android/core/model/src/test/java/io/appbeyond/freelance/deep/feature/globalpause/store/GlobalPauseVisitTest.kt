@@ -3,6 +3,7 @@ package io.appbeyond.freelance.deep.feature.globalpause.store
 import io.appbeyond.freelance.deep.feature.globalpause.model.GlobalPauseRewardSnapshot
 import io.appbeyond.freelance.deep.feature.practice.model.ContinuityTransition
 import io.appbeyond.freelance.deep.feature.rewards.model.RewardReceipt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.DisplayName
@@ -33,6 +34,7 @@ class GlobalPauseVisitTest {
   private suspend fun TestScope.harness(
     startedAgo: Duration = Duration.ofMinutes(5),
     audioUrl: String? = "https://x/meditation.mp3",
+    snapshotDelay: Duration = Duration.ZERO,
   ): Harness {
     val remote = FixturePauseEventRemote(
       scheduleToServe = FixturePauseEventRemote.occurrence(meditationAt = now.minus(startedAgo))
@@ -46,7 +48,10 @@ class GlobalPauseVisitTest {
       session = session,
       audio = audio,
       scope = backgroundScope,
-      snapshot = { GlobalPauseRewardSnapshot.sample.also { snapshots += it } },
+      snapshot = {
+        if (snapshotDelay > Duration.ZERO) delay(snapshotDelay.toMillis())
+        GlobalPauseRewardSnapshot.sample.also { snapshots += it }
+      },
       receipt = { before ->
         val state = session.state.value
         RewardReceipt.pauseNight(
@@ -130,6 +135,25 @@ class GlobalPauseVisitTest {
     advance(GlobalPauseVisit.HANDBACK_DELAY)
     assertEquals("leave:$PRESENCE_ID", h.remote.presenceLog.last())
     assertEquals(1, h.audio.stopCount)
+  }
+
+  @Test
+  @DisplayName("Books slow to freeze never let a heartbeat follow the leave")
+  fun slowSnapshotLeavesNoGhost() = runTest {
+    // Slower than the handback: the leave goes out before the claim does.
+    val h = harness(startedAgo = Duration.ofMinutes(5), snapshotDelay = Duration.ofSeconds(3))
+    h.visit.begin()
+    advance(Duration.ofMillis(1))
+
+    h.audio.advance(Duration.ofMinutes(10))
+    advance(Duration.ofSeconds(10))
+    assertEquals(GlobalPauseVisit.Phase.Reflecting, h.visit.phase.value)
+    assertEquals("leave:$PRESENCE_ID", h.remote.presenceLog.last())
+    // The claim still went out — it just sent no beat after the leave.
+    assertEquals(1, h.remote.pauseClaimAttempts)
+
+    h.visit.continueToRewards()
+    assertIs<GlobalPauseVisit.Phase.Rewarding>(h.visit.phase.value)
   }
 
   @Test

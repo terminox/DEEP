@@ -1,10 +1,5 @@
 package io.appbeyond.freelance.deep.feature.playlist
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -18,9 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -54,7 +51,10 @@ import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.feature.profile.ProfileIcons
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
+import io.appbeyond.freelance.deep.shared.components.HeroRefreshable
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
+import io.appbeyond.freelance.deep.shared.components.rememberHeroPull
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.bloom
@@ -82,9 +82,6 @@ private val ROW_GAP = 14.dp
 
 /** Between Play and Shuffle — iOS's `HStack(spacing: 12)`. */
 private val ACTIONS_SPACING = 12.dp
-
-/** Content arriving blooms up from here — DESIGN.md's "scale 0.92 to 1.0". */
-private const val BLOOM_FROM_SCALE = 0.92f
 
 /**
  * The invitation's air, so it lands as a note in an empty room rather than a
@@ -120,10 +117,19 @@ private val CHIP_PADDING_VERTICAL = 12.dp
  * styling — [AtmosphereBackground] sits behind the list here rather than in
  * the shell, where the tab container would hide it.
  *
+ * Every state — loading, failed, empty, saved — is one scroll under the pinned
+ * header, as iOS's single `ScrollView` is, so the pull refreshes from any of
+ * them. That pull is iOS's `.heroRefreshable { await store.refresh() }`:
+ * [HeroRefreshable] around the whole screen, so its cue parks below the header
+ * where it does on every other tab. With no hero to stretch, the pull shows
+ * only the cue.
+ *
  * Tapping a sound — or Play, or Shuffle — starts the whole saved list as the
  * queue from that sound. Each entry carries its own collection, so the artwork
- * and origin line change track by track. iOS gates premium sounds behind a
- * note here; Android plays everything, a deliberate divergence.
+ * and origin line change track by track. A DEEP Premium sound locked for this
+ * listener shows its lock and is left out of the queue (the player drops
+ * locked tracks); tapping it does nothing more, since Android has no way to
+ * become a member.
  *
  * A leaf: navigation arrives as [onOpenSettings] (and [onExploreDeepSound],
  * the empty state's way out — `null` hides that button), and the shell owns
@@ -142,44 +148,59 @@ fun PlaylistScreen(
   val playback by player.playback.collectAsStateWithLifecycle()
   val scope = rememberCoroutineScope()
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
+  val listState = rememberLazyListState()
+  val (pull, nestedScroll) = rememberHeroPull(listState)
+  ScrollToTopOnReselect(listState)
 
   // iOS's `.task { await store.refreshIfNeeded() }`. A refresh that fails over
   // a cached playlist leaves it on screen; only a first load lands on Failed.
   LaunchedEffect(playlistStore) { playlistStore.load() }
 
-  Box(modifier.fillMaxSize()) {
-    AtmosphereBackground()
+  HeroRefreshable(
+    pull = pull,
+    onRefresh = { playlistStore.load() },
+    modifier = modifier,
+  ) {
+    Box(Modifier.fillMaxSize()) {
+      AtmosphereBackground()
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
-      PlaylistHeader(onOpenSettings)
+      Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        PlaylistHeader(onOpenSettings)
 
-      AnimatedContent(
-        targetState = state,
-        // Only a change of *kind* crossfades; a save or removal inside a loaded
-        // list is the rows' own `animateItem` to show.
-        contentKey = { it.kind },
-        transitionSpec = {
-          (fadeIn(bloom()) + scaleIn(bloom(), initialScale = BLOOM_FROM_SCALE)) togetherWith fadeOut(exhale())
-        },
-        label = "playlist-content",
-      ) { shown ->
-        when (shown) {
-          PlaylistState.Loading -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            PlaylistSkeleton(Modifier.padding(top = Dp.rhythm, bottom = bottomInset))
-          }
+        LazyColumn(
+          state = listState,
+          modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScroll),
+          contentPadding = PaddingValues(top = Dp.rhythm, bottom = bottomInset),
+          verticalArrangement = Arrangement.spacedBy(ROW_GAP),
+        ) {
+          // Only a change of *kind* fades; a save or removal inside a loaded
+          // list is the rows' own `animateItem` to show.
+          when (val shown = state) {
+            PlaylistState.Loading -> item(key = "skeleton") {
+              PlaylistSkeleton(Modifier.animateKind(this))
+            }
 
-          is PlaylistState.Failed -> Failure(onRetry = { scope.launch { playlistStore.load() } })
+            is PlaylistState.Failed -> item(key = "failed") {
+              Failure(
+                onRetry = { scope.launch { playlistStore.load() } },
+                modifier = Modifier.animateKind(this),
+              )
+            }
 
-          is PlaylistState.Loaded -> if (shown.entries.isEmpty()) {
-            Invitation(onExploreDeepSound)
-          } else {
-            SavedSounds(
-              entries = shown.entries,
-              playback = playback,
-              bottomInset = bottomInset,
-              onPlay = { index -> player.play(shown.entries, index) },
-              onRemove = { entry -> scope.launch { playlistStore.toggle(entry.track, entry.collection) } },
-            )
+            is PlaylistState.Loaded -> if (shown.entries.isEmpty()) {
+              item(key = "invitation") {
+                Invitation(onExploreDeepSound, Modifier.animateKind(this))
+              }
+            } else {
+              savedSounds(
+                entries = shown.entries,
+                playback = playback,
+                onPlay = { index -> player.play(shown.entries, index) },
+                onRemove = { entry -> scope.launch { playlistStore.toggle(entry.track, entry.collection) } },
+              )
+            }
           }
         }
       }
@@ -187,13 +208,10 @@ fun PlaylistScreen(
   }
 }
 
-/** The four things the content can be, for [AnimatedContent]'s key. */
-private val PlaylistState.kind: Int
-  get() = when (this) {
-    PlaylistState.Loading -> 0
-    is PlaylistState.Failed -> 1
-    is PlaylistState.Loaded -> if (entries.isEmpty()) 2 else 3
-  }
+/** One state of the list giving way to another — iOS's `.animation(.bloom, …)`. */
+private fun Modifier.animateKind(scope: LazyItemScope): Modifier = with(scope) {
+  this@animateKind.animateItem(fadeInSpec = bloom(), fadeOutSpec = exhale(), placementSpec = null)
+}
 
 // MARK: - Header
 
@@ -230,49 +248,51 @@ private fun PlaylistHeader(onOpenSettings: () -> Unit) {
 
 // MARK: - Content
 
-@Composable
-private fun SavedSounds(
+/** The saved sounds: Play and Shuffle, then a row per sound. */
+private fun LazyListScope.savedSounds(
   entries: List<SoundQueueEntry>,
   playback: SoundPlayback,
-  bottomInset: Dp,
   onPlay: (Int) -> Unit,
   onRemove: (SoundQueueEntry) -> Unit,
 ) {
-  LazyColumn(
-    Modifier.fillMaxSize(),
-    contentPadding = PaddingValues(start = Dp.edge, end = Dp.edge, top = Dp.rhythm, bottom = bottomInset),
-    verticalArrangement = Arrangement.spacedBy(ROW_GAP),
-  ) {
-    item(key = "actions") {
-      Row(
-        Modifier.padding(bottom = Dp.rhythm - ROW_GAP),
-        horizontalArrangement = Arrangement.spacedBy(ACTIONS_SPACING),
-      ) {
-        SoundActionButton(
-          title = stringResource(R.string.deepsound_play),
-          icon = PlayerIcons.Play,
-          onClick = { onPlay(0) },
-          modifier = Modifier.weight(1f),
-        )
-        SoundActionButton(
-          title = stringResource(R.string.deepsound_shuffle),
-          icon = SoundIcons.Shuffle,
-          // A random place to begin; the queue itself stays in saved order, as on iOS.
-          onClick = { onPlay(Random.nextInt(entries.size)) },
-          modifier = Modifier.weight(1f),
-        )
-      }
-    }
-
-    itemsIndexed(entries, key = { _, entry -> entry.track.id }) { index, entry ->
-      PlaylistTrackRow(
-        entry = entry,
-        isCurrent = playback.isCurrent(entry.track, entry.collection),
-        onPlay = { onPlay(index) },
-        onRemove = { onRemove(entry) },
-        modifier = Modifier.animateItem(),
+  item(key = "actions") {
+    Row(
+      Modifier.animateKind(this)
+        .padding(horizontal = Dp.edge)
+        .padding(bottom = Dp.rhythm - ROW_GAP),
+      horizontalArrangement = Arrangement.spacedBy(ACTIONS_SPACING),
+    ) {
+      SoundActionButton(
+        title = stringResource(R.string.deepsound_play),
+        icon = PlayerIcons.Play,
+        // From the top; the player skips ahead past any locked sound.
+        onClick = { onPlay(0) },
+        modifier = Modifier.weight(1f),
+      )
+      SoundActionButton(
+        title = stringResource(R.string.deepsound_shuffle),
+        icon = SoundIcons.Shuffle,
+        // A random place to begin among the sounds that can play; the queue
+        // itself stays in saved order, as on iOS.
+        onClick = {
+          val unlocked = entries.indices.filterNot { entries[it].track.isLocked }
+          if (unlocked.isNotEmpty()) onPlay(unlocked[Random.nextInt(unlocked.size)])
+        },
+        modifier = Modifier.weight(1f),
       )
     }
+  }
+
+  itemsIndexed(entries, key = { _, entry -> entry.track.id }) { index, entry ->
+    PlaylistTrackRow(
+      entry = entry,
+      isCurrent = playback.isCurrent(entry.track, entry.collection),
+      onPlay = { if (!entry.track.isLocked) onPlay(index) },
+      onRemove = { onRemove(entry) },
+      modifier = Modifier
+        .animateItem()
+        .padding(horizontal = Dp.edge),
+    )
   }
 }
 
@@ -286,13 +306,12 @@ private fun SavedSounds(
  * the frosted chip the failure note also wears, hugging its text.
  */
 @Composable
-private fun Invitation(onExploreDeepSound: (() -> Unit)?) {
+private fun Invitation(onExploreDeepSound: (() -> Unit)?, modifier: Modifier = Modifier) {
   Column(
-    Modifier
-      .fillMaxSize()
-      .verticalScroll(rememberScrollState())
+    modifier
+      .fillMaxWidth()
       .padding(horizontal = Dp.edge)
-      .padding(top = Dp.rhythm + INVITATION_TOP_AIR),
+      .padding(top = INVITATION_TOP_AIR),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(INVITATION_SPACING),
   ) {
@@ -316,13 +335,11 @@ private fun Invitation(onExploreDeepSound: (() -> Unit)?) {
 }
 
 @Composable
-private fun Failure(onRetry: () -> Unit) {
+private fun Failure(onRetry: () -> Unit, modifier: Modifier = Modifier) {
   Column(
-    Modifier
-      .fillMaxSize()
-      .verticalScroll(rememberScrollState())
+    modifier
+      .fillMaxWidth()
       .padding(horizontal = Dp.edge)
-      .padding(top = Dp.rhythm)
       .padding(vertical = FAILURE_PADDING_VERTICAL),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(FAILURE_SPACING),

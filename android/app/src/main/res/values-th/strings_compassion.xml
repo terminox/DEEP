@@ -25,7 +25,7 @@
   <string name="compassion_summary_none_left">ไม่มีหัวใจเหลือให้มอบแล้ว</string> <!-- no iOS Thai -->
   <string name="compassion_summary_given">มอบไปแล้ว %1$d ดวง</string> <!-- no iOS Thai -->
   <plurals name="compassion_summary_today_full"> <!-- no iOS Thai -->
-    <item quantity="other">วันนี้ได้รับครบแล้ว %1$d ดวง</item>
+    <item quantity="other">วันนี้ได้รับหัวใจครบแล้ว %1$d ดวง</item>
   </plurals>
   <plurals name="compassion_summary_today"> <!-- no iOS Thai -->
     <item quantity="other">วันนี้ได้รับหัวใจ %1$d จาก %2$d ดวง</item>

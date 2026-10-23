@@ -32,6 +32,7 @@ import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
 import io.appbeyond.freelance.deep.shared.components.LoopingVideoView
 import io.appbeyond.freelance.deep.shared.components.StretchyHero
 import io.appbeyond.freelance.deep.shared.components.rememberHeroPull
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.moonCream
@@ -78,6 +79,7 @@ fun CompassionPortfolioHomeScreen(
   val state by ledger.state.collectAsStateWithLifecycle()
   val content = rememberCompassionContent()
   val listState = rememberLazyListState()
+  ScrollToTopOnReselect(listState)
   val (pull, nestedScroll) = rememberHeroPull(listState)
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
 

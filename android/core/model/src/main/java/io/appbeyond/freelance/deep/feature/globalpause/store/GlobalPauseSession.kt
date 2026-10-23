@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Everything the Global Pause screens read, as one value: the occurrence in
@@ -153,6 +154,21 @@ class GlobalPauseSession(
   private var heartbeatJob: Job? = null
   private var pollJob: Job? = null
   private var claimJob: Job? = null
+
+  /** The claim's closing heartbeat while it is out; the leave waits behind it. */
+  private var closingBeat: Job? = null
+
+  /** A leave still waiting to go out. A rejoin cancels it, or it would delete
+   * the fresh presence once the old beats finally settle. */
+  private var leaveJob: Job? = null
+
+  /** Bumped by [forgetAccount]: a claim or post started under an older value
+   * belongs to a member who has gone, and must not touch state or a sink. */
+  private val accountGeneration = AtomicInteger(0)
+
+  /** True from [leaveSession] until the next [enterSession]: presence is gone,
+   * and no beat — not even a claim's closing one — may bring it back. */
+  private var presenceReleased = false
   private var isInBackground = false
 
   /** Joins already turned into sparks, so a poll never replays old ones. */
@@ -348,6 +364,11 @@ class GlobalPauseSession(
     // leave, which runs mid-reflection.
     claimJob?.cancel()
     claimJob = null
+    closingBeat?.cancel()
+    closingBeat = null
+    leaveJob?.cancel()
+    leaveJob = null
+    presenceReleased = false
     val country = countryIso()
     _state.update { state ->
       state.copy(
@@ -387,16 +408,28 @@ class GlobalPauseSession(
     }
   }
 
-  /** Ends presence: the loops stop, and the server is told (best-effort). */
+  /**
+   * Ends presence: the loops stop, and the server is told (best-effort).
+   *
+   * The leave goes out only once every beat already in flight has finished —
+   * the loop's, and the claim's closing one — so none can land after it and
+   * re-register a ghost presence for the server to sweep a minute later.
+   */
   fun leaveSession() {
-    heartbeatJob?.cancel()
+    val beats = heartbeatJob
+    // Left referenced, so a rejoin can still cancel a beat on a slow network.
+    val closing = closingBeat
+    beats?.cancel()
     heartbeatJob = null
+    presenceReleased = true
     pollJob?.cancel()
     pollJob = null
     seenJoins.clear()
     hasSwallowedOwnJoin = false
     _state.update { it.copy(myLocation = null) }
-    scope.launch {
+    leaveJob = scope.launch {
+      beats?.join()
+      closing?.join()
       try {
         remote.leave(presenceId())
       } catch (cancelled: CancellationException) {
@@ -474,22 +507,43 @@ class GlobalPauseSession(
     // so the visit still reads as in session until it leaves.
     heartbeatJob?.cancel()
     _state.update { it.copy(pauseAwardPending = true) }
+    // Presence already released (the books were slow to freeze, and the
+    // handback left first): the loop's beats covered the meditation's end, and
+    // a beat now would only re-register the member after their leave.
+    val closing = if (presenceReleased) null else scope.launch { finalBeat(country) }
+    closingBeat = closing
+    val generation = accountGeneration.get()
     claimJob = scope.launch {
-      finalBeat(country)
-      val claim = claim()
-      // A cancelled claim (a fresh visit superseded it) must not touch state —
-      // its slot may already belong to the new visit's claim.
-      if (!currentCoroutineContext().isActive) return@launch
-      claimJob = null
-      // No answer: the night's outcome stays unknown (pending).
-      if (claim == null) return@launch
-      _state.update { it.copy(pauseAwardPending = false, pauseAwardMissed = !claim.eligible) }
-      if (claim.eligible) activitySink?.invoke(clock.now())
-      val grant = claim.grant ?: return@launch
-      _state.update { it.copy(pauseAward = grant) }
-      awardSink?.invoke(grant)
+      // Referenced until the award is fully published, so a sign-out midway
+      // can still cancel it and [settlePauseAward] waits for all of it.
+      val self = currentCoroutineContext()[Job]
+      try {
+        closing?.join()
+        if (closingBeat === closing) closingBeat = null
+        val claim = claim(generation)
+        // A cancelled claim (a fresh visit superseded it) must not touch
+        // state — its slot may already belong to the new visit's claim. Nor
+        // may one that outlived its member: a reply landing after a sign-out
+        // would hand the last member's attendance and absolute balances to
+        // the next one. Asked again after every suspension below.
+        if (!stillCurrent(generation)) return@launch
+        // No answer: the night's outcome stays unknown (pending).
+        if (claim == null) return@launch
+        _state.update { it.copy(pauseAwardPending = false, pauseAwardMissed = !claim.eligible) }
+        if (claim.eligible) activitySink?.invoke(clock.now())
+        if (!stillCurrent(generation)) return@launch
+        val grant = claim.grant ?: return@launch
+        _state.update { it.copy(pauseAward = grant) }
+        awardSink?.invoke(grant)
+      } finally {
+        if (claimJob === self) claimJob = null
+      }
     }
   }
+
+  /** Whether a claim started under [generation] may still publish. */
+  private suspend fun stillCurrent(generation: Int): Boolean =
+    currentCoroutineContext().isActive && accountGeneration.get() == generation
 
   /** One last beat, bounded so a slow network can only hold the claim behind
    * it for [FINAL_BEAT_TIMEOUT]. Failures are swallowed. */
@@ -507,9 +561,11 @@ class GlobalPauseSession(
 
   /** Claims with a backoff, retrying only transport failures. Null when no
    * answer ever arrived. */
-  private suspend fun claim(): PauseAwardClaim? {
+  private suspend fun claim(generation: Int): PauseAwardClaim? {
     for (wait in claimRetryDelays) {
       if (wait > Duration.ZERO) delay(wait.toMillis())
+      // Never retried under someone else's sign-in.
+      if (accountGeneration.get() != generation) return null
       try {
         return remote.claimPauseAward()
       } catch (cancelled: CancellationException) {
@@ -519,6 +575,25 @@ class GlobalPauseSession(
       }
     }
     return null
+  }
+
+  /**
+   * The member signed out (or another signed in): any claim still out for
+   * them is abandoned, and tonight's award state is forgotten. Safe from any
+   * thread — the account exit doesn't run on the session's.
+   */
+  fun forgetAccount() {
+    accountGeneration.incrementAndGet()
+    claimJob?.cancel()
+    _state.update {
+      it.copy(
+        pauseAward = null,
+        pauseAwardMissed = false,
+        pauseAwardPending = false,
+        messageAward = null,
+        postedMessage = null,
+      )
+    }
   }
 
   /**
@@ -540,7 +615,9 @@ class GlobalPauseSession(
    * the whole feedback phase). The first message of the night carries an award.
    */
   suspend fun post(message: String, intention: String?): PostedPeaceMessage {
+    val generation = accountGeneration.get()
     val posted = remote.postMessage(message, countryIso(), intention)
+    if (accountGeneration.get() != generation) return posted
     _state.update { it.copy(postedMessage = posted.message) }
     posted.award?.let { award ->
       _state.update { it.copy(messageAward = award) }

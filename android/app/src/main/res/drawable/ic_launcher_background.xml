@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The iOS app icon's sky: lavender at the top, rose through the middle, peach at
+  the bottom. The stops are sampled from DEEP_logo.png down its margins, so they
+  are the artwork's colours, not DeepPalette tokens, in the same way a PNG would
+  be.
+
+  The icon's 1024px height maps onto the 72dp an adaptive icon shows (18dp to
+  90dp). The gradient clamps beyond that, into the part a launcher can reveal
+  during its parallax and press animations.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+  <path android:pathData="M 0,0 H 108 V 108 H 0 Z">
+    <aapt:attr name="android:fillColor">
+      <gradient
+          android:type="linear"
+          android:startX="54"
+          android:startY="18"
+          android:endX="54"
+          android:endY="90"
+          android:tileMode="clamp">
+        <item android:offset="0.000" android:color="#FFA997E3" />
+        <item android:offset="0.195" android:color="#FFB599DB" />
+        <item android:offset="0.391" android:color="#FFC79ED0" />
+        <item android:offset="0.586" android:color="#FFDCA2C4" />
+        <item android:offset="0.781" android:color="#FFF2A8B6" />
+        <item android:offset="1.000" android:color="#FFFBB1A9" />
+      </gradient>
+    </aapt:attr>
+  </path>
+
+</vector>

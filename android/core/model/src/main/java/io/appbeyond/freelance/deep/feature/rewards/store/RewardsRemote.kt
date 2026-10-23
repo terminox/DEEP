@@ -20,12 +20,14 @@ interface RewardsRemote {
   /** `GET /me/garden` — the selected plant and the wallet riding it. */
   suspend fun garden(): GardenSnapshot
 
-  /** `GET /garden/plants` — the picker catalog: active, non-premium plants
-   * with their stages. */
+  /** `GET /garden/plants` — the picker catalog: every active plant with its
+   * stages, DEEP Premium ones marked [Plant.isLocked] for a caller who may
+   * not select them. */
   suspend fun plants(): List<Plant>
 
   /** `PUT /me/garden/plant` — switches the selected plant; sunlight already
-   * banked is preserved. */
+   * banked is preserved. Throws [PlantLockedException] when the server
+   * refuses a DEEP Premium plant (403 `premium_locked`). */
   suspend fun selectPlant(id: String): GardenSnapshot
 
   /** `GET /me/wallet`. */
@@ -37,3 +39,10 @@ interface RewardsRemote {
    */
   suspend fun spend(id: UUID, amount: Int, category: String, projectId: String?): WalletSummary
 }
+
+/**
+ * [RewardsRemote.selectPlant]'s refusal of a DEEP Premium plant this member may
+ * not grow — deep-api's 403 `premium_locked`. Its own type, so `GardenStore`
+ * can tell "locked" from "couldn't reach the server" without knowing HTTP.
+ */
+class PlantLockedException : Exception("premium_locked")

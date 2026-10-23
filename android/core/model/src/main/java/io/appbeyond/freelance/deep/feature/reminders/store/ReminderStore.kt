@@ -96,12 +96,17 @@ class ReminderStore(
    * Returns the settled permission so the screen can explain a refusal rather
    * than leaving a toggle that silently springs back.
    *
+   * The prompt is answered before the lock is taken, and stays cancellable: it
+   * waits on a person, and on an activity that may be recreated (or never
+   * answer) while the dialog is up. Holding the lock across it stalled every
+   * reschedule, toggle and alarm behind an answer that might never come.
+   *
    * @param prompt shows the system's notification permission dialog.
    */
   suspend fun enable(practisedToday: Boolean, prompt: suspend () -> Boolean): ReminderPermission {
     restore()
+    val permission = scheduler.requestPermission(prompt)
     return mutate {
-      val permission = scheduler.requestPermission(prompt)
       _state.value = _state.value.copy(permission = permission)
       if (permission != ReminderPermission.Granted) {
         // Never leave the toggle on over a queue that can't exist.

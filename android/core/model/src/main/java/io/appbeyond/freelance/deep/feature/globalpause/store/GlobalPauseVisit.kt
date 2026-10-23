@@ -130,6 +130,8 @@ class GlobalPauseVisit(
 
     // The meditation is over; presence goes once the claim's closing beat has
     // had its moment — iOS releases it after the reflection's 1.5s crossfade.
+    // Books slow to freeze don't hold it: the leave then goes first, and the
+    // claim follows it with no beat of its own (`leaveSession`).
     scope.launch {
       delay(HANDBACK_DELAY.toMillis())
       tearDown()

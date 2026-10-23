@@ -52,6 +52,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -81,6 +84,7 @@ import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
 import io.appbeyond.freelance.deep.shared.components.LoopingVideoView
 import io.appbeyond.freelance.deep.shared.components.StretchyHero
 import io.appbeyond.freelance.deep.shared.components.rememberHeroPull
+import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.deepPlum
@@ -181,6 +185,7 @@ fun GlobalPauseLobbyScreen(
   }
 
   val listState = rememberLazyListState()
+  ScrollToTopOnReselect(listState)
   val (pull, nestedScroll) = rememberHeroPull(listState)
   val bottomInset = Dp.rhythm * 2 + LocalMiniPlayerClearance.current
   val shown = PeaceMessageFeed.displayed(feedState.messages, pause.postedMessage)
@@ -223,6 +228,18 @@ fun GlobalPauseLobbyScreen(
                   startAt = intro.elapsed,
                   isMuted = isMuted,
                   onEnded = { resolveStage(afterIntro = true) },
+                  rejoinAt = {
+                    // Back from the background: the broadcast moved on without
+                    // us. Still in the intro, rejoin it where it is now;
+                    // otherwise hand the room to whatever comes next.
+                    val now = session.loungeBroadcast?.stage(session.clock.now())
+                    if (now is LoungeBroadcast.Stage.Intro) {
+                      now.elapsed
+                    } else {
+                      resolveStage()
+                      null
+                    }
+                  },
                   modifier = Modifier.fillMaxSize(),
                 )
               } else {
@@ -365,6 +382,11 @@ private fun LoungeTopBar(onBack: () -> Unit, scrolledUnder: Boolean, modifier: M
 /**
  * Fuku's intro, once, with its own voice, joined [startAt] in. Reports its end
  * so the room hands off to the ambient loop; [isMuted] silences it in place.
+ *
+ * Silent while DEEP is in the background, as [LoopingVideoView] is — Fuku
+ * talking from a pocket is nobody's broadcast. Coming back, it asks
+ * [rejoinAt] where the broadcast is now and seeks there, the way a radio
+ * would; null means the intro is over and the room is handing off.
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -372,10 +394,12 @@ private fun FukuIntroVideo(
   startAt: Duration,
   isMuted: Boolean,
   onEnded: () -> Unit,
+  rejoinAt: () -> Duration?,
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
   val ended by rememberUpdatedState(onEnded)
+  val currentRejoinAt by rememberUpdatedState(rejoinAt)
   val player = remember {
     ExoPlayer.Builder(context)
       // Media, with focus: Fuku talking quiets whatever else is playing.
@@ -404,6 +428,29 @@ private fun FukuIntroVideo(
       player.removeListener(listener)
       player.release()
     }
+  }
+  val lifecycleOwner = LocalLifecycleOwner.current
+  DisposableEffect(lifecycleOwner, player) {
+    // Registering replays the current ON_START; only a real return rejoins.
+    var stopped = false
+    val observer = LifecycleEventObserver { _, event ->
+      when (event) {
+        Lifecycle.Event.ON_STOP -> {
+          stopped = true
+          player.pause()
+        }
+        Lifecycle.Event.ON_START -> if (stopped) {
+          stopped = false
+          currentRejoinAt()?.let { offset ->
+            player.seekTo(offset.toMillis())
+            player.play()
+          }
+        }
+        else -> Unit
+      }
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
   AndroidView(modifier = modifier, factory = { TextureView(it).also(player::setVideoTextureView) })
 }

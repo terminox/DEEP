@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nothing of DEEP's leaves the device: no cloud backup, no device-to-device
+  transfer.
+
+  allowBackup="false" covers both below Android 12. From 12 it no longer stops
+  a device-to-device transfer, so these rules do. A transferred copy would carry
+  the onboarding state and the cached account, but not the session tokens: they
+  are sealed with a Keystore key that never leaves the old phone. The new phone
+  would then believe it was signed in when it wasn't. The server holds
+  everything that matters, so a fresh phone signs in and is whole again.
+-->
+<data-extraction-rules>
+  <cloud-backup>
+    <exclude domain="root" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="external" path="." />
+  </cloud-backup>
+  <device-transfer>
+    <exclude domain="root" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="external" path="." />
+  </device-transfer>
+</data-extraction-rules>

@@ -196,12 +196,12 @@ class PracticeJournal(
    */
   suspend fun recordPauseDay(at: Instant) {
     restore()
-    val day = LocalDate.ofInstant(at, zone)
+    val day = at.atZone(zone).toLocalDate()
     val changed = synchronized(lock) {
       val state = _state.value
       val key = day.toString()
       if (key in state.pauseDays) return@synchronized false
-      val cutoff = LocalDate.ofInstant(clock.instant(), zone).minusDays(PAUSE_DAY_RETENTION_DAYS)
+      val cutoff = clock.instant().atZone(zone).toLocalDate().minusDays(PAUSE_DAY_RETENTION_DAYS)
       val kept = state.pauseDays.filter { existing ->
         runCatching { !LocalDate.parse(existing).isBefore(cutoff) }.getOrDefault(false)
       }

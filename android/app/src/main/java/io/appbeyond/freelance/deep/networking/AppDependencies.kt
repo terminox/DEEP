@@ -203,8 +203,15 @@ class AppDependencies(context: Context) {
 
   private val soundService: SoundService = retrofit.create(SoundService::class.java)
 
-  /** The shelves and the lyrics. `/sound/home` is anonymous-tolerant, like `pauseHome`. */
-  val soundLibrary: SoundLibrary = ApiSoundLibrary(soundService)
+  /**
+   * The shelves and the lyrics. `/sound/home` is anonymous-tolerant, like
+   * `pauseHome`, but answers each account differently (DEEP Premium locks), so
+   * the library keys what it keeps by the signed-in account.
+   */
+  val soundLibrary: SoundLibrary = ApiSoundLibrary(
+    service = soundService,
+    currentAccountId = { accountStore.account.value?.id },
+  )
 
   /**
    * The member's saved sounds, cached on disk so the You tab opens on them
@@ -508,6 +515,8 @@ class AppDependencies(context: Context) {
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
       continuityWitness.resetLocalState()
+      // A pause-night claim still out lands on nobody's books.
+      globalPause.forgetAccount()
       // The nudge is about practice, and practice leaves with the account —
       // so the alarm goes too, and its time with it: the next member starts
       // at 21:00, not at the last one's hour. The *language* stays: what you

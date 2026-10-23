@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The splash screen's icon: the launcher icon's two layers flattened into one
+  drawable, the iOS app icon's sky with the white ring and dot over it.
+
+  The splash shows its icon at 288dp inside a circle two thirds across, which
+  is the middle 72dp of the 108dp canvas: the same part a launcher shows. It
+  needs a single drawable for that. Left unset, the splash library falls back
+  to the platform's generic robot below Android 12, which every build before
+  1.0.0 showed on older phones.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+  <item android:drawable="@drawable/ic_launcher_background" />
+  <item android:drawable="@drawable/ic_launcher_foreground" />
+</layer-list>
