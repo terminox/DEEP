@@ -1,0 +1,15 @@
+{
+  "api_version": "1.0",
+  "event": {
+    "app_id": "app4f1e2d3c4b",
+    "app_user_id": "0b8e4c2a-6d1f-4a3e-9b7c-5e2d8f1a4c6b",
+    "environment": "PRODUCTION",
+    "event_timestamp_ms": 1791500000000,
+    "id": "5F7B9D1E-3A5C-4E7A-9D2B-4F6A8C0E2B4D",
+    "store": "APP_STORE",
+    "subscriber_attributes": {},
+    "transferred_from": ["6f1c2b9e-3d4a-4f5b-8c7d-1e2f3a4b5c6d", "$RCAnonymousID:8069238d6049ce87cc529853916d624c"],
+    "transferred_to": ["0b8e4c2a-6d1f-4a3e-9b7c-5e2d8f1a4c6b"],
+    "type": "TRANSFER"
+  }
+}

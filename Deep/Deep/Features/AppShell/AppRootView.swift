@@ -71,6 +71,7 @@ struct AppRootView: View {
           onboardingStore: deps.onboardingStore,
           accountStore: deps.accountStore,
           subscriptionStore: deps.subscriptionStore,
+          legalLinks: deps.config.legal,
           soundRepository: deps.soundRepository,
           soundPlayer: deps.soundPlayer,
           listenReporter: deps.listenReporter,
@@ -118,6 +119,7 @@ struct AppRootView: View {
     .environment(\.onboardingStore, deps.onboardingStore)
     .environment(\.onboardingRemote, deps.onboardingRemote)
     .environment(\.subscriptionStore, deps.subscriptionStore)
+    .environment(\.legalLinks, deps.config.legal)
     .environment(\.soundContentRepository, deps.soundRepository)
     .environment(\.practiceStore, deps.practiceStore)
     .environment(\.listenReporter, deps.listenReporter)
@@ -137,8 +139,9 @@ struct AppRootView: View {
       // dated requests, so coming forward is what rolls it on. It also
       // re-reads the permission (which can be switched off in iOS Settings
       // while the app sleeps) and drops today's nudge if the day's practice
-      // has since been done. Outside the signed-in guard: a queue left
-      // pointing at yesterday should be corrected either way.
+      // has since been done — a DEEP Session goal or a Global Pause. Outside
+      // the signed-in guard: a queue left pointing at yesterday should be
+      // corrected either way.
       Task { await rescheduleReminder() }
       guard deps.accountStore.isSignedIn else { return }
       Task {
@@ -177,10 +180,11 @@ struct AppRootView: View {
 
   /// Rebuilds the reminder window against today's practice. The store owns the
   /// rules; the shell only supplies the one fact the store deliberately
-  /// doesn't know — whether today's goal is already met.
+  /// doesn't know — whether today is already practised (the goal's minutes
+  /// met, or a Global Pause sat).
   private func rescheduleReminder() async {
     await deps.reminderStore.reschedule(
-      goalMetToday: deps.practiceStore.minutesToday >= deps.practiceStore.dailyGoalMinutes
+      practisedToday: deps.practiceStore.reminderRestsToday
     )
   }
 

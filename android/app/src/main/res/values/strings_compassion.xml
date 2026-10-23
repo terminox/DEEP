@@ -47,12 +47,12 @@
 
   <!-- Causes shelf -->
   <string name="compassion_causes_title">Where your hearts go</string>
-  <string name="compassion_causes_subtitle">Send them to a cause and we give, for real, on your behalf.</string>
+  <string name="compassion_causes_subtitle">Each heart is a vote for the causes you\'d like DEEP to support.</string>
   <!-- A compact count, e.g. "18.5K hearts" -->
   <string name="compassion_hearts_compact">%1$s hearts</string>
   <string name="compassion_of_giving">of giving</string>
-  <string name="compassion_donate_hearts">Donate hearts</string>
-  <string name="compassion_donate_hearts_to">Donate hearts to %1$s</string>
+  <string name="compassion_donate_hearts">Send hearts</string>
+  <string name="compassion_donate_hearts_to">Send hearts to %1$s</string>
   <string name="compassion_tile_facts" tools:ignore="PluralsCandidate">%1$s hearts pooled, %2$d percent of giving</string>
 
   <!-- Field reports -->
@@ -60,7 +60,7 @@
 
   <!-- Donate sheet -->
   <string name="donate_hearts_you_hold">of %1$s hearts you hold</string>
-  <string name="donate_amount_label">Hearts to donate</string>
+  <string name="donate_amount_label">Hearts to send</string>
   <string name="donate_amount_value">%1$d of %2$d</string>
   <string name="donate_all">All</string>
   <string name="donate_all_hearts" tools:ignore="PluralsCandidate">All %1$d hearts</string>
@@ -69,8 +69,8 @@
     <item quantity="other">%1$d hearts</item>
   </plurals>
   <plurals name="donate_action_to">
-    <item quantity="one">Donate %1$d heart to %2$s</item>
-    <item quantity="other">Donate %1$d hearts to %2$s</item>
+    <item quantity="one">Send %1$d heart to %2$s</item>
+    <item quantity="other">Send %1$d hearts to %2$s</item>
   </plurals>
   <string name="donate_no_hearts">No hearts to give yet</string>
   <string name="donate_today_full">Today is full — more tomorrow.</string>

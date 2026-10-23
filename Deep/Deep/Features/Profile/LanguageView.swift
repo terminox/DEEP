@@ -59,7 +59,7 @@ struct LanguageView: View {
     guard changed else { return }
     Task {
       await reminderStore.reschedule(
-        goalMetToday: practiceStore.minutesToday >= practiceStore.dailyGoalMinutes
+        practisedToday: practiceStore.reminderRestsToday
       )
     }
   }

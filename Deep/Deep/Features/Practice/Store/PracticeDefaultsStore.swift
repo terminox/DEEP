@@ -87,6 +87,10 @@ final class PracticeDefaultsStore: PracticeStore {
     PracticeMath.minutesToday(in: state.completions, calendar: calendar, now: now())
   }
 
+  var hasSatGlobalPauseToday: Bool {
+    PracticeMath.hasActivity(.pause, in: state.activities ?? [], calendar: calendar, now: now())
+  }
+
   var currentStreakDays: Int {
     PracticeMath.currentStreakDays(days: practiceDays, calendar: calendar, now: now())
   }

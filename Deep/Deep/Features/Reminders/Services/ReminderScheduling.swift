@@ -102,8 +102,14 @@ struct ReminderScheduler: ReminderScheduling {
 
   /// One identifier per calendar day, so a rebuild replaces a day's nudge
   /// rather than stacking a second one on it.
+  ///
+  /// The day key is always Gregorian, in `calendar`'s timezone: on a Thai
+  /// device `Calendar.current` is Buddhist, and its year would read 2569.
   static func identifier(for date: Date, calendar: Calendar = .current) -> String {
-    let parts = calendar.dateComponents([.year, .month, .day], from: date)
+    var gregorian = Calendar(identifier: .gregorian)
+    gregorian.timeZone = calendar.timeZone
+    gregorian.locale = Locale(identifier: "en_US_POSIX")
+    let parts = gregorian.dateComponents([.year, .month, .day], from: date)
     return String(
       format: "%@%04d-%02d-%02d",
       identifierPrefix,

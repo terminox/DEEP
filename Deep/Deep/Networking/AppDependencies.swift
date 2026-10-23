@@ -55,12 +55,25 @@ final class AppDependencies {
     self.config = config
     self.apiClient = client
     self.languageStore = LanguageStore()
-    self.reminderStore = ReminderStore()
+    let reminderStore = ReminderStore()
+    self.reminderStore = reminderStore
     let accountStore = APIAccountStore(client: client)
     self.accountStore = accountStore
     self.onboardingStore = OnboardingProgressDefaultsStore()
     self.onboardingRemote = APIOnboardingRemote(client: client)
-    self.subscriptionStore = StoreKitSubscriptionStore()
+    #if DEBUG
+    // This launch argument swaps in the in-memory store so the whole purchase
+    // mechanic — plans, selection, the welcome beat, the flipped plan chip — is
+    // drivable without RevenueCat or a network. It compiles out of every
+    // shipping build.
+    if ProcessInfo.processInfo.arguments.contains("-DeepMockSubscriptions") {
+      self.subscriptionStore = MockSubscriptionStore.free
+    } else {
+      self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
+    }
+    #else
+    self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
+    #endif
     self.soundRepository = APISoundContentRepository(client: client)
 
     // Rewards: remote → ledger → garden → the one ingest seam. Every award
@@ -128,8 +141,14 @@ final class AppDependencies {
       repository: pauseRepository,
       rewards: rewards,
       awardSink: ingestAwards,
-      // A pause the server counted keeps the day in the member's rhythm.
-      activitySink: { date in practiceStore.recordActivity(.pause, at: date) }
+      // A pause the server counted keeps the day in the member's rhythm, and
+      // counts as today's practice for the reminder: the queue is rebuilt
+      // now, so tonight's nudge is withdrawn before it can fire rather than
+      // at the next foreground.
+      activitySink: { date in
+        practiceStore.recordActivity(.pause, at: date)
+        Task { await reminderStore.reschedule(practisedToday: practiceStore.reminderRestsToday) }
+      }
     )
 
     // A session the server ended (rejected at launch, or its refresh refused)
@@ -140,7 +159,6 @@ final class AppDependencies {
     let onboardingStore = self.onboardingStore
     let continuityWitness = self.continuityWitness
     let playlistStore = self.playlistStore
-    let reminderStore = self.reminderStore
     accountStore.onSessionEnded = {
       onboardingStore.reset()
       practiceStore.reset()
@@ -151,5 +169,21 @@ final class AppDependencies {
       playlistStore.resetLocalState()
       Task { await reminderStore.disable() }
     }
+  }
+
+  /// RevenueCat, speaking for the DEEP user id from the first moment: it starts
+  /// as the last signed-in member, and follows every sign-in and sign-out after.
+  private static func liveSubscriptionStore(
+    config: AppConfig,
+    accountStore: APIAccountStore
+  ) -> RevenueCatSubscriptionStore {
+    let store = RevenueCatSubscriptionStore(
+      apiKey: config.revenueCatAPIKey,
+      appUserID: accountStore.lastKnownUserID
+    )
+    accountStore.identitySink = { userID in
+      Task { await store.identify(userID: userID) }
+    }
+    return store
   }
 }

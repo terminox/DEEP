@@ -62,10 +62,13 @@ const plainEnv: gcp.types.input.cloudrunv2.ServiceTemplateContainerEnv[] = [
   { name: "NODE_ENV", value: "production" },
   { name: "MEDIA_DIR", value: "/media" },
   { name: "PUBLIC_BASE_URL", value: publicBaseUrl },
-  { name: "ADMIN_BOOTSTRAP_EMAIL", value: config.adminBootstrapEmail }
-  // Deliberately unset: ALLOW_TIME_OVERRIDE (dev-only time-travel routes must
-  // not exist in prod) and GEOIP_DB_PATH / MAXMIND_LICENSE_KEY (GeoIP degrades
-  // gracefully to country-only presence without the mmdb).
+  { name: "ADMIN_BOOTSTRAP_EMAIL", value: config.adminBootstrapEmail },
+  { name: "REVENUECAT_ENTITLEMENT_ID", value: config.revenuecatEntitlementId },
+  { name: "REVENUECAT_ACCEPT_SANDBOX", value: String(config.revenuecatAcceptSandbox) }
+  // Deliberately unset: ALLOW_TIME_OVERRIDE and ALLOW_DEV_ENTITLEMENT (dev-only
+  // time-travel and premium-flip routes must not exist in prod) and
+  // GEOIP_DB_PATH / MAXMIND_LICENSE_KEY (GeoIP degrades gracefully to
+  // country-only presence without the mmdb).
 ];
 
 const secretEnv = (s: (typeof secrets)[number]): gcp.types.input.cloudrunv2.ServiceTemplateContainerEnv => ({

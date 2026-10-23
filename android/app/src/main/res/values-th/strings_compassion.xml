@@ -37,12 +37,12 @@
   <string name="compassion_hearts_pooled">หัวใจที่รวมกัน</string>
 
   <!-- Causes shelf -->
-  <string name="compassion_causes_title">ที่ที่หัวใจของคุณไปถึง</string> <!-- no iOS Thai -->
-  <string name="compassion_causes_subtitle">ส่งหัวใจให้ด้านที่คุณเลือก แล้วเราจะบริจาคจริงในนามของคุณ</string> <!-- no iOS Thai -->
+  <string name="compassion_causes_title">ที่ที่หัวใจของคุณไปถึง</string>
+  <string name="compassion_causes_subtitle">หัวใจแต่ละดวงคือเสียงโหวตให้ด้านที่คุณอยากให้ DEEP สนับสนุน</string>
   <string name="compassion_hearts_compact">%1$s หัวใจ</string>
   <string name="compassion_of_giving">ของการให้</string>
-  <string name="compassion_donate_hearts">บริจาคหัวใจ</string>
-  <string name="compassion_donate_hearts_to">บริจาคหัวใจให้ %1$s</string>
+  <string name="compassion_donate_hearts">ส่งหัวใจ</string>
+  <string name="compassion_donate_hearts_to">ส่งหัวใจให้ %1$s</string>
   <string name="compassion_tile_facts">รวมหัวใจแล้ว %1$s ดวง %2$d เปอร์เซ็นต์ของการให้</string> <!-- no iOS Thai -->
 
   <!-- Field reports -->
@@ -50,7 +50,7 @@
 
   <!-- Donate sheet -->
   <string name="donate_hearts_you_hold">จาก %1$s หัวใจที่คุณมี</string>
-  <string name="donate_amount_label">หัวใจที่จะบริจาค</string>
+  <string name="donate_amount_label">หัวใจที่จะส่ง</string>
   <string name="donate_amount_value">%1$d จาก %2$d</string>
   <string name="donate_all">ทั้งหมด</string>
   <string name="donate_all_hearts">ทั้งหมด %1$d หัวใจ</string>
@@ -58,7 +58,7 @@
     <item quantity="other">%1$d หัวใจ</item>
   </plurals>
   <plurals name="donate_action_to">
-    <item quantity="other">บริจาค %1$d หัวใจให้ %2$s</item>
+    <item quantity="other">ส่ง %1$d หัวใจให้ %2$s</item>
   </plurals>
   <string name="donate_no_hearts">ยังไม่มีหัวใจให้มอบ</string>
   <string name="donate_today_full">วันนี้ได้รับครบแล้ว — พรุ่งนี้มีเพิ่มอีก</string> <!-- no iOS Thai -->

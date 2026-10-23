@@ -15,6 +15,10 @@ struct Account: Codable, Equatable {
   /// `ASAuthorizationAppleIDCredential.user` — stable across sign-ins, present
   /// only for Apple accounts.
   var appleUserID: String?
+  /// The DEEP backend's `User.id` — the identity RevenueCat attaches purchases
+  /// to. Optional so identities cached before it existed still decode; the
+  /// next `/me` fills it in.
+  var userID: String? = nil
 }
 
 /// A framework-agnostic projection of an Apple sign-in result, so `AccountStore`

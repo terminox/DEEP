@@ -205,6 +205,38 @@ struct PracticeMathTests {
     #expect(days.count == 1)
   }
 
+  // MARK: - A Global Pause sat today
+
+  @Test("A pause marked today counts; a track or yesterday's pause does not")
+  func pauseSatTodayIsKindAndDaySpecific() {
+    let pauseToday = [PracticeActivity(kind: .pause, at: Self.date(year: 2026, month: 7, day: 23, hour: 9))]
+    let trackToday = [PracticeActivity(kind: .track, at: Self.now)]
+    let pauseYesterday = [
+      PracticeActivity(kind: .pause, at: Self.date(year: 2026, month: 7, day: 22, hour: 23, minute: 59)),
+    ]
+
+    #expect(PracticeMath.hasActivity(.pause, in: pauseToday, calendar: Self.calendar, now: Self.now))
+    #expect(!PracticeMath.hasActivity(.pause, in: trackToday, calendar: Self.calendar, now: Self.now))
+    #expect(!PracticeMath.hasActivity(.pause, in: pauseYesterday, calendar: Self.calendar, now: Self.now))
+  }
+
+  @Test("A pause that ends past midnight belongs to the day its marker landed in")
+  func pauseCrossingMidnightCountsOnTheNewDay() {
+    // Meditation from 23:52; the server counted it as reflection began, 00:03.
+    let marker = [PracticeActivity(kind: .pause, at: Self.date(year: 2026, month: 7, day: 24, hour: 0, minute: 3))]
+    let lateOnTheEve = Self.date(year: 2026, month: 7, day: 23, hour: 23, minute: 58)
+    let nextMorning = Self.date(year: 2026, month: 7, day: 24, hour: 8)
+
+    #expect(!PracticeMath.hasActivity(.pause, in: marker, calendar: Self.calendar, now: lateOnTheEve))
+    #expect(PracticeMath.hasActivity(.pause, in: marker, calendar: Self.calendar, now: nextMorning))
+  }
+
+  @Test("A pause sat today still counts on a Thai device's Buddhist calendar")
+  func pauseSatTodayUnderBuddhistCalendar() {
+    let pauseToday = [PracticeActivity(kind: .pause, at: Self.date(year: 2026, month: 7, day: 23, hour: 20, minute: 42))]
+    #expect(PracticeMath.hasActivity(.pause, in: pauseToday, calendar: Self.buddhist, now: Self.now))
+  }
+
   // MARK: - Calendars
 
   /// What a Thai device's `Calendar.current` is: Buddhist era, Thai locale.
