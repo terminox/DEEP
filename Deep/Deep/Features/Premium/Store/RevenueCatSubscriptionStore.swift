@@ -14,14 +14,19 @@ import Observation
 //      (store the key in config, not source).
 //   3. Implement the methods below:
 //        - loadPlans():  fetch `Purchases.shared.offerings()`, map the current
-//          offering's `availablePackages` → `SubscriptionPlan`
-//          (`package.storeProduct.localizedPriceString`, identifiers, etc.).
+//          offering's `availablePackages` → `SubscriptionPlan`, building the
+//          labels with `SubscriptionPlanFormatting` — the same recipe the
+//          StoreKit conformer uses, so the two can never quote a price
+//          differently.
 //        - purchase(_:): `Purchases.shared.purchase(package:)`, then map
-//          `CustomerInfo.entitlements` → `SubscriptionState`.
+//          `CustomerInfo.entitlements` → `SubscriptionState`, and report
+//          `userCancelled` as `.cancelled` rather than throwing.
 //        - restore():    `Purchases.shared.restorePurchases()`.
-//        - status:       derive from `entitlements["pro"]?.isActive`.
-//   4. Swap the injection in `AppRootView` from `StoreKitSubscriptionStore()`
-//      to `RevenueCatSubscriptionStore()`.
+//        - status:       derive from `entitlements["pro"]?.isActive`, and
+//          remember it through `SubscriptionStatusCache` so a build that
+//          switches conformers still reads the last-known entitlement.
+//   4. Swap the construction in `AppDependencies` from
+//      `StoreKitSubscriptionStore()` to `RevenueCatSubscriptionStore()`.
 //
 // Keeping it import-free means the project builds without the SDK present.
 @MainActor
@@ -34,8 +39,9 @@ final class RevenueCatSubscriptionStore: SubscriptionStore {
     assertionFailure("RevenueCat adapter not wired — see RevenueCatSubscriptionStore.swift")
   }
 
-  func purchase(_ plan: SubscriptionPlan) async throws {
+  func purchase(_ plan: SubscriptionPlan) async throws -> PurchaseOutcome {
     assertionFailure("RevenueCat adapter not wired — see RevenueCatSubscriptionStore.swift")
+    return .cancelled
   }
 
   func restore() async throws {

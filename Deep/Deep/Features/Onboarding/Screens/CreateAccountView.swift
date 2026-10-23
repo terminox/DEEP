@@ -6,6 +6,8 @@ import SwiftUI
 /// The email form itself lives in `SignUpView`.
 struct CreateAccountView: View {
   @Environment(\.onboardingAdvance) private var advance
+  @Environment(\.legalLinks) private var legalLinks
+  @Environment(\.locale) private var locale
 
   var body: some View {
     ZStack {
@@ -52,7 +54,11 @@ struct CreateAccountView: View {
           }
           .buttonStyle(.plain)
 
-          Text(.init("By continuing, you agree to our [Terms](https://deep.app/terms) and [Privacy Policy](https://deep.app/privacy)."))
+          // The URLs come from the build config, and the sentence from the
+          // shared legal copy: the paywall's footer links the same two
+          // documents, and one being updated without the other is the whole
+          // reason they have a pipeline.
+          Text(LegalCopy.agreement(legalLinks, locale: locale))
             .font(DeepType.micro)
             .foregroundStyle(.driftGrey)
             .tint(.deepPlum)

@@ -10,6 +10,9 @@ struct RootTabView: UIViewControllerRepresentable {
   let onboardingStore: any OnboardingProgressStore
   let accountStore: any AccountStore
   let subscriptionStore: any SubscriptionStore
+  /// Rides along with the subscription store: the paywall opens from inside the
+  /// You tab and its footer has to link somewhere real.
+  let legalLinks: LegalLinks
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
   let listenReporter: any ListenReporting
@@ -31,6 +34,7 @@ struct RootTabView: UIViewControllerRepresentable {
       onboardingStore: onboardingStore,
       accountStore: accountStore,
       subscriptionStore: subscriptionStore,
+      legalLinks: legalLinks,
       soundRepository: soundRepository,
       soundPlayer: soundPlayer,
       listenReporter: listenReporter,
@@ -57,6 +61,7 @@ struct RootTabView: UIViewControllerRepresentable {
     onboardingStore: OnboardingProgressDefaultsStore(),
     accountStore: PreviewAccountStore(),
     subscriptionStore: PreviewSubscriptionStore(),
+    legalLinks: .placeholder,
     soundRepository: FixtureSoundContentRepository(),
     soundPlayer: SoundPlayer(),
     listenReporter: MockListenReporter(),

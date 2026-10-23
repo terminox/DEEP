@@ -37,6 +37,10 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>DEEP connects to a development server running on your Mac.</string>
+	<key>PrivacyURL</key>
+	<string>$(PRIVACY_URL)</string>
+	<key>TermsURL</key>
+	<string>$(TERMS_URL)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

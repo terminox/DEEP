@@ -12,10 +12,10 @@ import StoreKit
 @MainActor
 @Observable
 final class StoreKitSubscriptionStore: SubscriptionStore {
-  private static let statusKey = "deep.subscription.status"
+  @ObservationIgnored private let cache: SubscriptionStatusCache
 
   private(set) var status: SubscriptionState {
-    didSet { cacheStatus() }
+    didSet { cache.save(status) }
   }
   private(set) var plans: [SubscriptionPlan] = []
 
@@ -24,8 +24,15 @@ final class StoreKitSubscriptionStore: SubscriptionStore {
   private var products: [String: Product] = [:]
   private var updatesTask: Task<Void, Never>?
 
-  init() {
-    status = Self.cachedStatus() ?? .unknown
+  /// The cache is built here rather than as a default argument: a default
+  /// argument is evaluated at the call site, which is nonisolated, and this
+  /// type is not.
+  init(cache: SubscriptionStatusCache? = nil) {
+    let cache = cache ?? SubscriptionStatusCache()
+    self.cache = cache
+    // The local binding, not `self.cache`: nothing may touch `self` until every
+    // stored property is initialised.
+    status = cache.load() ?? .unknown
     // Stay current with renewals, refunds, and purchases made elsewhere.
     updatesTask = Task { [weak self] in
       for await update in Transaction.updates {
@@ -48,11 +55,21 @@ final class StoreKitSubscriptionStore: SubscriptionStore {
       let storeProducts = try await Product.products(for: DeepProduct.all)
       products = Dictionary(uniqueKeysWithValues: storeProducts.map { ($0.id, $0) })
       // Preserve the canonical order (yearly first) regardless of store order.
-      plans = DeepProduct.all.compactMap { products[$0].map(Self.plan(from:)) }
+      var loaded: [SubscriptionPlan] = []
+      for id in DeepProduct.all {
+        guard let product = products[id] else { continue }
+        loaded.append(await Self.plan(from: product))
+      }
+      plans = loaded
       await refreshStatus()
     } catch {
+      // Walking away is not the store being unreachable. `loadPlans()` is
+      // driven from `.task`, so popping Settings or swiping the paywall away
+      // mid-query cancels it — and clearing below would then cache `.none` for
+      // a real subscriber, locking their sounds until something re-queries.
+      if Task.isCancelled || error is CancellationError { return }
       // Offline or misconfigured store — leave plans empty; the paywall shows a
-      // gentle fallback and "Maybe later" still works.
+      // gentle fallback and "Not right now" still works.
       plans = []
       // With the store unreachable `.unknown` would never resolve, leaving
       // status UI on "Checking…" forever. No cached entitlement + no store =
@@ -62,19 +79,26 @@ final class StoreKitSubscriptionStore: SubscriptionStore {
     }
   }
 
-  func purchase(_ plan: SubscriptionPlan) async throws {
-    guard let product = products[plan.id] else { return }
+  func purchase(_ plan: SubscriptionPlan) async throws -> PurchaseOutcome {
+    // Nothing loaded to buy. Nothing happened, so say nothing — the same
+    // standing-down the member's own "cancel" produces.
+    guard let product = products[plan.id] else { return .cancelled }
     let result = try await product.purchase()
     switch result {
     case .success(let verification):
       if case .verified(let transaction) = verification {
         await transaction.finish()
         await refreshStatus()
+        return .purchased
       }
-    case .userCancelled, .pending:
-      break
+      // An unverified transaction is not an entitlement we will honour.
+      return .cancelled
+    case .userCancelled:
+      return .cancelled
+    case .pending:
+      return .pending
     @unknown default:
-      break
+      return .cancelled
     }
   }
 
@@ -105,65 +129,55 @@ final class StoreKitSubscriptionStore: SubscriptionStore {
 
   // MARK: - Mapping
 
-  private static func plan(from product: Product) -> SubscriptionPlan {
+  private static func plan(from product: Product) async -> SubscriptionPlan {
     let period: SubscriptionPlan.Period =
       product.id == DeepProduct.yearly ? .yearly : .monthly
+    let trial = await trial(for: product)
     return SubscriptionPlan(
       id: product.id,
       period: period,
       displayPrice: product.displayPrice,
-      perMonthLabel: perMonthLabel(for: product, period: period),
-      trialNote: trialNote(for: product)
+      price: product.price,
+      currency: product.priceFormatStyle,
+      perMonthLabel: SubscriptionPlanFormatting.perMonthLabel(
+        period: period,
+        displayPrice: product.displayPrice,
+        price: product.price,
+        currency: product.priceFormatStyle
+      ),
+      trialNote: trial.map {
+        SubscriptionPlanFormatting.trialNote(count: $0.count, unit: $0.unit)
+      },
+      freeTrialDays: trial.flatMap {
+        SubscriptionPlanFormatting.trialDays(count: $0.count, unit: $0.unit)
+      }
     )
   }
 
-  /// For a yearly plan, show the effective per-month cost; for monthly, the
-  /// price itself.
-  private static func perMonthLabel(for product: Product, period: SubscriptionPlan.Period) -> String? {
-    switch period {
-    case .monthly:
-      return "\(product.displayPrice)/mo"
-    case .yearly:
-      let monthly = product.price / 12
-      let formatted = product.priceFormatStyle.format(monthly)
-      return "\(formatted)/mo"
-    }
+  /// The free trial this member can still take, narrowed to plain values.
+  ///
+  /// `introductoryOffer` is non-nil even for someone who has already used
+  /// theirs, so eligibility is asked for explicitly: promising free days to a
+  /// member who cannot have them is both a lie and an App Review rejection.
+  private static func trial(for product: Product) async -> (count: Int, unit: SubscriptionPlanFormatting.PeriodUnit)? {
+    guard let subscription = product.subscription,
+          let offer = subscription.introductoryOffer,
+          offer.paymentMode == .freeTrial,
+          await subscription.isEligibleForIntroOffer else { return nil }
+    return (offer.period.value, unit(offer.period.unit))
   }
 
-  private static func trialNote(for product: Product) -> String? {
-    guard let offer = product.subscription?.introductoryOffer,
-          offer.paymentMode == .freeTrial else { return nil }
-    let unit = offer.period.unit
-    let count = offer.period.value
-    let unitName: String
+  /// Narrow StoreKit's period unit to our own.
+  ///
+  /// Internal rather than private so the mapping — including StoreKit's
+  /// unknown-unit fallback — is reachable from the tests.
+  static func unit(_ unit: Product.SubscriptionPeriod.Unit) -> SubscriptionPlanFormatting.PeriodUnit {
     switch unit {
-    case .day: unitName = "day"
-    case .week: unitName = "week"
-    case .month: unitName = "month"
-    case .year: unitName = "year"
-    @unknown default: unitName = "day"
+    case .day: return .day
+    case .week: return .week
+    case .month: return .month
+    case .year: return .year
+    @unknown default: return .day
     }
-    return "\(count)-\(unitName) free trial"
-  }
-
-  // MARK: - Cached status
-
-  private func cacheStatus() {
-    let raw: String
-    switch status {
-    case .subscribed(let id): raw = "subscribed:\(id)"
-    case .none: raw = "none"
-    case .unknown: return // don't cache the transient unknown state
-    }
-    UserDefaults.standard.set(raw, forKey: Self.statusKey)
-  }
-
-  private static func cachedStatus() -> SubscriptionState? {
-    guard let raw = UserDefaults.standard.string(forKey: statusKey) else { return nil }
-    if raw == "none" { return SubscriptionState.none }
-    if raw.hasPrefix("subscribed:") {
-      return .subscribed(productID: String(raw.dropFirst("subscribed:".count)))
-    }
-    return nil
   }
 }

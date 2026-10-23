@@ -18,6 +18,17 @@ DEVELOPMENT_TEAM = D45XUJ5XY2
 MARKETING_VERSION = 1.0
 CURRENT_PROJECT_VERSION = 1
 
+// ---- Legal ----
+// One set of documents for every environment: a Dev build's paywall has to link
+// where a shipped one does, or the footer under QA isn't the footer App Review
+// sees. A per-env file can still override either by re-assigning it *after* its
+// `#include "Base.xcconfig"`, the way Prod overrides API_BASE_URL.
+// `$()` keeps xcconfig from reading `//` as a comment — without it the value
+// silently becomes "https:", which still parses as a URL and fails at tap time.
+// TODO: swap for the real published URLs before submission.
+TERMS_URL = https:/$()/deep.app/terms
+PRIVACY_URL = https:/$()/deep.app/privacy
+
 // ---- Platform / Swift ----
 SDKROOT = iphoneos
 IPHONEOS_DEPLOYMENT_TARGET = 26.2

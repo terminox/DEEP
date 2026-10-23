@@ -45,13 +45,50 @@ struct SettingsRow: View {
   /// Optional because a screen whose rows are all one kind of choice reads
   /// cleaner without a symbol column repeating itself down the card.
   var icon: String? = nil
-  let title: String
+  private let titleLabel: Text
   var accessory: Accessory = .none
   var role: ButtonRole? = nil
   /// Overrides the plum icon/title colour — e.g. `.duskRose` for rows whose
   /// action is irreversible.
   var tint: Color? = nil
   var action: (() -> Void)? = nil
+
+  /// For a title chosen at runtime — a language's own name, an account's email.
+  /// Such a title does not pass through the String Catalog, which is right for
+  /// a proper noun and wrong for anything else.
+  init(
+    icon: String? = nil,
+    title: String,
+    accessory: Accessory = .none,
+    role: ButtonRole? = nil,
+    tint: Color? = nil,
+    action: (() -> Void)? = nil
+  ) {
+    self.icon = icon
+    self.titleLabel = Text(title)
+    self.accessory = accessory
+    self.role = role
+    self.tint = tint
+    self.action = action
+  }
+
+  /// For a literal title, which resolves through the String Catalog against the
+  /// view's locale.
+  init(
+    icon: String? = nil,
+    _ titleKey: LocalizedStringKey,
+    accessory: Accessory = .none,
+    role: ButtonRole? = nil,
+    tint: Color? = nil,
+    action: (() -> Void)? = nil
+  ) {
+    self.icon = icon
+    self.titleLabel = Text(titleKey)
+    self.accessory = accessory
+    self.role = role
+    self.tint = tint
+    self.action = action
+  }
 
   var body: some View {
     if let action {
@@ -70,7 +107,7 @@ struct SettingsRow: View {
           .foregroundStyle((tint ?? .deepPlum).opacity(0.7))
           .frame(width: 24, height: 24)
       }
-      Text(title)
+      titleLabel
         .font(DeepType.body)
         .foregroundStyle(tint ?? .deepPlum)
         .multilineTextAlignment(.leading)
@@ -114,7 +151,7 @@ struct SettingsRow: View {
     AtmosphereBackground()
     VStack(spacing: .rhythm) {
       SettingsSection(title: "Membership") {
-        SettingsRow(icon: "sparkles", title: "DEEP Pro", accessory: .value("Yearly"))
+        SettingsRow(icon: "sparkles", title: "DEEP Premium", accessory: .value("Yearly"))
         SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {}
         SettingsRow(icon: "arrow.clockwise", title: "Restore purchases", accessory: .progress) {}
       }

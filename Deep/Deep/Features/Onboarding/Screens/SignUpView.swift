@@ -131,7 +131,10 @@ struct SignUpView: View {
         )
         // Awaited before advancing: routing on would cut the beat short.
         _ = await floor
-        advance(.craftingSpace)
+        // The account now exists, so there is something to attach a membership
+        // to. The invitation is skippable, and it routes on to the crafting
+        // beat either way.
+        advance(.premium)
       } catch {
         _ = await floor
         withAnimation(.exhale) { errorMessage = message(for: error) }

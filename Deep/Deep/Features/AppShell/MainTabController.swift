@@ -10,6 +10,10 @@ final class MainTabController: UITabBarController {
   private let onboardingStore: any OnboardingProgressStore
   private let accountStore: any AccountStore
   private let subscriptionStore: any SubscriptionStore
+  /// The Terms and Privacy links the paywall's footer must carry. Threaded in
+  /// for the same reason as everything else here — the environment dies at the
+  /// UIKit boundary — and read from the build config, never hardcoded.
+  private let legalLinks: LegalLinks
 
   /// Backend-backed DEEP Sound content, injected into every hosted tab (and the
   /// Now Playing lyrics sheet) since the SwiftUI environment can't cross the
@@ -89,6 +93,7 @@ final class MainTabController: UITabBarController {
     onboardingStore: any OnboardingProgressStore,
     accountStore: any AccountStore,
     subscriptionStore: any SubscriptionStore,
+    legalLinks: LegalLinks,
     soundRepository: any SoundContentRepository,
     soundPlayer: any SoundPlaying,
     listenReporter: any ListenReporting,
@@ -108,6 +113,7 @@ final class MainTabController: UITabBarController {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
     self.subscriptionStore = subscriptionStore
+    self.legalLinks = legalLinks
     self.soundRepository = soundRepository
     self.sharedPlayer = soundPlayer
     self.listenReporter = listenReporter
@@ -298,7 +304,10 @@ final class MainTabController: UITabBarController {
     // inside a tab's tree, pauses playback on entry, and records its
     // completion — without these it would reach the environment's throwaway
     // defaults and credit nobody. `subscriptionStore` rides along for the same
-    // reason: the premium gate on a collection has to ask the real one.
+    // reason: the premium gate on a collection has to ask the real one, and the
+    // paywall it opens onto has to offer the real plans. `legalLinks` travels
+    // with it, because that paywall's footer must link the documents this build
+    // actually ships.
     //
     // `openDeepSound` rides along too: it is the only navigation action that
     // crosses tabs, so the shell owns it where a coordinator owns the rest, and
@@ -313,6 +322,7 @@ final class MainTabController: UITabBarController {
       .environment(\.listenReporter, listenReporter)
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.subscriptionStore, subscriptionStore)
+      .environment(\.legalLinks, legalLinks)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)
       .environment(\.gardenStore, gardenStore)
