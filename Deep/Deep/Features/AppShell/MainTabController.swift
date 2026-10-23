@@ -10,6 +10,9 @@ final class MainTabController: UITabBarController {
   private let onboardingStore: any OnboardingProgressStore
   private let accountStore: any AccountStore
   private let subscriptionStore: any SubscriptionStore
+  /// The one premium answer every lock decision reads, threaded beside the
+  /// store it wraps.
+  private let premiumAccess: PremiumAccess
   /// The Terms and Privacy links the paywall's footer must carry. Threaded in
   /// for the same reason as everything else here — the environment dies at the
   /// UIKit boundary — and read from the build config, never hardcoded.
@@ -93,6 +96,7 @@ final class MainTabController: UITabBarController {
     onboardingStore: any OnboardingProgressStore,
     accountStore: any AccountStore,
     subscriptionStore: any SubscriptionStore,
+    premiumAccess: PremiumAccess,
     legalLinks: LegalLinks,
     soundRepository: any SoundContentRepository,
     soundPlayer: any SoundPlaying,
@@ -113,6 +117,7 @@ final class MainTabController: UITabBarController {
     self.onboardingStore = onboardingStore
     self.accountStore = accountStore
     self.subscriptionStore = subscriptionStore
+    self.premiumAccess = premiumAccess
     self.legalLinks = legalLinks
     self.soundRepository = soundRepository
     self.sharedPlayer = soundPlayer
@@ -159,6 +164,10 @@ final class MainTabController: UITabBarController {
     let globalPause = GlobalPauseCoordinatorController(
       soundPlayer: sharedPlayer,
       soundRepository: soundRepository,
+      subscriptionStore: subscriptionStore,
+      premiumAccess: premiumAccess,
+      legalLinks: legalLinks,
+      playlistStore: playlistStore,
       practiceStore: practiceStore,
       heartLedger: heartLedger,
       gardenStore: gardenStore,
@@ -283,6 +292,9 @@ final class MainTabController: UITabBarController {
     .environment(\.listenReporter, listenReporter)
     .environment(\.soundContentRepository, soundRepository)
     .environment(\.playlistStore, playlistStore)
+    .environment(\.subscriptionStore, subscriptionStore)
+    .environment(\.premiumAccess, premiumAccess)
+    .environment(\.legalLinks, legalLinks)
     .environment(\.imageLoader, fullScreenImageLoader)
     .preferredColorScheme(.light)
 
@@ -303,11 +315,12 @@ final class MainTabController: UITabBarController {
     // sounds: the DEEP Session flow presents itself as a full-screen cover from
     // inside a tab's tree, pauses playback on entry, and records its
     // completion — without these it would reach the environment's throwaway
-    // defaults and credit nobody. `subscriptionStore` rides along for the same
-    // reason: the premium gate on a collection has to ask the real one, and the
-    // paywall it opens onto has to offer the real plans. `legalLinks` travels
-    // with it, because that paywall's footer must link the documents this build
-    // actually ships.
+    // defaults and credit nobody. `premiumAccess` rides along for the same
+    // reason: every lock (`PremiumGate`) reads its `hasPremium`, and on the
+    // environment default — the hermetic preview store — a paying member would
+    // be shown locks everywhere. `subscriptionStore` travels with it so the
+    // paywall a lock opens onto offers the real plans, and `legalLinks` so that
+    // paywall's footer links the documents this build actually ships.
     //
     // `openDeepSound` rides along too: it is the only navigation action that
     // crosses tabs, so the shell owns it where a coordinator owns the rest, and
@@ -322,6 +335,7 @@ final class MainTabController: UITabBarController {
       .environment(\.listenReporter, listenReporter)
       .environment(\.soundContentRepository, soundRepository)
       .environment(\.subscriptionStore, subscriptionStore)
+      .environment(\.premiumAccess, premiumAccess)
       .environment(\.legalLinks, legalLinks)
       .environment(\.practiceStore, practiceStore)
       .environment(\.heartLedger, heartLedger)

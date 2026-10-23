@@ -110,6 +110,9 @@ struct TrackDTO: Decodable {
   let kind: String // INSTRUMENTAL | GUIDED
   let audioUrl: String?
   let isPremium: Bool
+  /// The server's verdict for this caller: `audioUrl` is null when true.
+  /// Optional so an older server, which never sends it, still decodes.
+  let isLocked: Bool?
   let displayOrder: Int
   let lyricsLanguages: [String]?
 }
@@ -122,6 +125,8 @@ struct CollectionDTO: Decodable {
   let palette: String
   let imageUrl: String?
   let isPremium: Bool
+  /// The server's verdict for this caller. Optional, as on `TrackDTO`.
+  let isLocked: Bool?
   let displayOrder: Int
   let trackCount: Int?
   let tracks: [TrackDTO]?

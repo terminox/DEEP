@@ -139,6 +139,7 @@ final class APISoundContentRepository: SoundContentRepository {
       imageURL: dto.imageUrl.flatMap(URL.init(string:)),
       categoryId: dto.categoryId,
       isPremium: dto.isPremium,
+      isLocked: dto.isLocked,
       tracks: (dto.tracks ?? []).map(Self.track(from:))
     )
   }
@@ -150,7 +151,8 @@ final class APISoundContentRepository: SoundContentRepository {
       duration: TimeInterval(dto.durationSeconds),
       kind: dto.kind == "GUIDED" ? .guided : .instrumental,
       audioURL: dto.audioUrl.flatMap(URL.init(string:)),
-      isPremium: dto.isPremium
+      isPremium: dto.isPremium,
+      isLocked: dto.isLocked
     )
   }
 }

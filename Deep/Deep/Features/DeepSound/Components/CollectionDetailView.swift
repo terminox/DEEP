@@ -4,7 +4,7 @@ import SwiftUI
 /// Play / Shuffle actions, then the track list.
 struct CollectionDetailView: View {
   @Environment(\.soundPlayer) private var player
-  @Environment(\.subscriptionStore) private var subscriptionStore
+  @Environment(\.premiumAccess) private var premiumAccess
   @Environment(\.playlistStore) private var playlistStore
   let collection: SoundCollection
   var bottomInset: CGFloat
@@ -34,15 +34,13 @@ struct CollectionDetailView: View {
   }
 
   private func isLocked(_ track: SoundTrack) -> Bool {
-    (collection.isPremium || track.isPremium) && !subscriptionStore.isSubscribed
+    PremiumGate.isLocked(track, in: collection, hasPremium: premiumAccess.hasPremium)
   }
 
   /// The tracks this listener can play, in order. Play, Shuffle and a tapped
   /// row all queue these, so a run never carries on into a locked sound.
   private var playable: [SoundQueueEntry] {
-    collection.tracks
-      .filter { !isLocked($0) }
-      .map { SoundQueueEntry(track: $0, collection: collection) }
+    PremiumGate.playable(collection, hasPremium: premiumAccess.hasPremium)
   }
 
   /// Play through the premium gate: locked content shows a gentle note instead.

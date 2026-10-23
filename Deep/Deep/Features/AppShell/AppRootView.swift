@@ -71,6 +71,7 @@ struct AppRootView: View {
           onboardingStore: deps.onboardingStore,
           accountStore: deps.accountStore,
           subscriptionStore: deps.subscriptionStore,
+          premiumAccess: deps.premiumAccess,
           legalLinks: deps.config.legal,
           soundRepository: deps.soundRepository,
           soundPlayer: deps.soundPlayer,
@@ -119,6 +120,7 @@ struct AppRootView: View {
     .environment(\.onboardingStore, deps.onboardingStore)
     .environment(\.onboardingRemote, deps.onboardingRemote)
     .environment(\.subscriptionStore, deps.subscriptionStore)
+    .environment(\.premiumAccess, deps.premiumAccess)
     .environment(\.legalLinks, deps.config.legal)
     .environment(\.soundContentRepository, deps.soundRepository)
     .environment(\.practiceStore, deps.practiceStore)

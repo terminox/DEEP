@@ -12,6 +12,15 @@ import UIKit
 final class GlobalPauseCoordinatorController: UIViewController {
   private let player: any SoundPlaying
   private let soundRepository: any SoundContentRepository
+  /// The premium answer and the stores behind it, injected into every hosted
+  /// screen: the SwiftUI environment doesn't cross into this UIKit tab, and on
+  /// its defaults a paying member would be told premium content is locked.
+  /// `legalLinks` and `playlistStore` ride along for the same reason — the
+  /// paywall's footer and a collection's save-to-playlist menu.
+  private let subscriptionStore: any SubscriptionStore
+  private let premiumAccess: PremiumAccess
+  private let legalLinks: LegalLinks
+  private let playlistStore: PlaylistStore
   /// Threaded through for the home feed's DEEP Session doorway — a session
   /// launched from this tab must credit the shared journal, ledger and garden.
   private let practiceStore: any PracticeStore
@@ -54,6 +63,10 @@ final class GlobalPauseCoordinatorController: UIViewController {
   init(
     soundPlayer: any SoundPlaying,
     soundRepository: any SoundContentRepository,
+    subscriptionStore: any SubscriptionStore,
+    premiumAccess: PremiumAccess,
+    legalLinks: LegalLinks,
+    playlistStore: PlaylistStore,
     practiceStore: any PracticeStore,
     heartLedger: HeartLedger,
     gardenStore: GardenStore,
@@ -65,6 +78,10 @@ final class GlobalPauseCoordinatorController: UIViewController {
   ) {
     self.player = soundPlayer
     self.soundRepository = soundRepository
+    self.subscriptionStore = subscriptionStore
+    self.premiumAccess = premiumAccess
+    self.legalLinks = legalLinks
+    self.playlistStore = playlistStore
     self.practiceStore = practiceStore
     self.heartLedger = heartLedger
     self.gardenStore = gardenStore
@@ -145,6 +162,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
       .environment(\.globalPauseSession, pauseSession)
       .environment(\.pauseEventRepository, pauseRepository)
       .environment(\.imageLoader, imageLoader)
+      .modifier(premiumEnvironment)
       .preferredColorScheme(.light)
     let host = UIHostingController(rootView: root)
     host.view.backgroundColor = .clear
@@ -156,15 +174,28 @@ final class GlobalPauseCoordinatorController: UIViewController {
 
   // MARK: - Routing
 
-  /// Pushes the real DEEP Sound collection detail. `subscriptionStore` stays on
-  /// its environment default here — the same behaviour the Sounds tab has today,
-  /// since the SwiftUI environment can't cross the UIKit tab boundary.
+  /// The premium answer, the stores behind it, the paywall's legal links and
+  /// the saved sounds — re-applied to every screen this tab hosts, because the
+  /// SwiftUI environment can't cross the UIKit boundary. Without it a hosted
+  /// screen reads the hermetic defaults, and a paying member sees locks.
+  private var premiumEnvironment: PremiumEnvironment {
+    PremiumEnvironment(
+      subscriptionStore: subscriptionStore,
+      premiumAccess: premiumAccess,
+      legalLinks: legalLinks,
+      playlistStore: playlistStore
+    )
+  }
+
+  /// Pushes the real DEEP Sound collection detail, asking the real premium
+  /// answer rather than the environment's "not subscribed" default.
   private func showCollection(_ collection: SoundCollection) {
     push(
       CollectionDetailView(collection: collection, bottomInset: .rhythm)
         .environment(\.soundPlayer, player)
         .environment(\.soundContentRepository, soundRepository)
         .environment(\.imageLoader, imageLoader)
+        .modifier(premiumEnvironment)
     )
   }
 
@@ -176,6 +207,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
           self?.showCollection(collection)
         }
         .environment(\.imageLoader, imageLoader)
+        .modifier(premiumEnvironment)
     )
   }
 
@@ -335,5 +367,22 @@ extension GlobalPauseCoordinatorController: UINavigationControllerDelegate {
     // transition — re-arm it whenever a pushed screen is on top.
     navigationController.interactivePopGestureRecognizer?.isEnabled =
       navigationController.viewControllers.count > 1
+  }
+}
+
+/// The premium-facing environment the Global Pause tab re-applies to each
+/// hosted screen. One modifier, so no push site can forget a piece of it.
+private struct PremiumEnvironment: ViewModifier {
+  let subscriptionStore: any SubscriptionStore
+  let premiumAccess: PremiumAccess
+  let legalLinks: LegalLinks
+  let playlistStore: PlaylistStore
+
+  func body(content: Content) -> some View {
+    content
+      .environment(\.subscriptionStore, subscriptionStore)
+      .environment(\.premiumAccess, premiumAccess)
+      .environment(\.legalLinks, legalLinks)
+      .environment(\.playlistStore, playlistStore)
   }
 }

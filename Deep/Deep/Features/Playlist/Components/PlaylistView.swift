@@ -17,7 +17,7 @@ struct PlaylistView: View {
 
   @Environment(\.playlistStore) private var store
   @Environment(\.soundPlayer) private var player
-  @Environment(\.subscriptionStore) private var subscriptionStore
+  @Environment(\.premiumAccess) private var premiumAccess
   @Environment(\.openSettings) private var openSettings
   @Environment(\.openDeepSound) private var openDeepSound
 
@@ -174,13 +174,13 @@ struct PlaylistView: View {
   }
 
   private func isLocked(_ entry: PlaylistEntry) -> Bool {
-    (entry.collection.isPremium || entry.track.isPremium) && !subscriptionStore.isSubscribed
+    PremiumGate.isLocked(entry.track, in: entry.collection, hasPremium: premiumAccess.hasPremium)
   }
 
   /// The saved sounds this listener can play, in order. Play, Shuffle and a
   /// tapped row all queue these, so a run never carries on into a locked one.
-  private var playable: [PlaylistEntry] {
-    entries.filter { !isLocked($0) }
+  private var playable: [SoundQueueEntry] {
+    PremiumGate.playable(entries.map(\.queueEntry), hasPremium: premiumAccess.hasPremium)
   }
 
   /// Starts the whole playlist from one sound, so what follows is the rest of
@@ -194,7 +194,12 @@ struct PlaylistView: View {
       showPremiumGate = true
     } else {
       let queue = playable
-      player.play(queue.map(\.queueEntry), at: queue.firstIndex { $0.id == entry.id } ?? 0)
+      // Matched on the track and its origin: a queue entry carries no
+      // playlist id, and the same sound is saved at most once.
+      let index = queue.firstIndex {
+        $0.track.id == entry.track.id && $0.collection.id == entry.collection.id
+      }
+      player.play(queue, at: index ?? 0)
     }
   }
 
@@ -206,7 +211,7 @@ struct PlaylistView: View {
     if queue.isEmpty {
       showPremiumGate = true
     } else {
-      player.play(queue.map(\.queueEntry), at: shuffled ? nil : 0, shuffled: shuffled)
+      player.play(queue, at: shuffled ? nil : 0, shuffled: shuffled)
     }
   }
 }

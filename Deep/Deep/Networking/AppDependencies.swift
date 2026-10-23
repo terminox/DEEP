@@ -20,6 +20,9 @@ final class AppDependencies {
   let onboardingStore: any OnboardingProgressStore
   let onboardingRemote: any OnboardingRemote
   let subscriptionStore: any SubscriptionStore
+  /// The one premium answer every lock decision reads — the store's, and (once
+  /// it is asked) the server's.
+  let premiumAccess: PremiumAccess
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
   /// The durable queue between finished tracks and the hearts they earn.
@@ -74,6 +77,7 @@ final class AppDependencies {
     #else
     self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
     #endif
+    self.premiumAccess = PremiumAccess(store: subscriptionStore)
     self.soundRepository = APISoundContentRepository(client: client)
 
     // Rewards: remote → ledger → garden → the one ingest seam. Every award
