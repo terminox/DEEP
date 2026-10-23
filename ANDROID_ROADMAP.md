@@ -98,12 +98,14 @@ Decided while building it:
 - **Android on top of iOS.** Lock-screen and notification controls, audio focus (a call pauses
   the track) and pausing when headphones are pulled. iOS has none of these for DEEP Sound.
 - **Divergences, on the record.** Premium sounds play for everyone on Android — no lock, no
-  "A premium sound" alert — until Premium itself is in scope. The dead AirPlay button is gone
+  "A premium sound" alert — until Premium itself is in scope. (Week 8: the server now locks
+  them, so Android shows iOS's lock and skips them; still no purchase path.) The dead AirPlay button is gone
   from Now Playing, and gone from iOS too. Signing out stops the player and forgets the saved
   sounds, so the next member never finds the last one's track on the lock screen.
 - **Scope pulled in.** The saved-sounds playlist became the You tab's root (as on iOS), Home's
   tiles play their collection and its Explore tiles open a collection list, and Home took the
-  collapsing header and hero pull-to-refresh along with DEEP Sound.
+  collapsing header and hero pull-to-refresh along with DEEP Sound. (Week 8 corrected the
+  tiles to iOS's: the tile opens its collection, and only its round button plays.)
 
 ### Week 4 — `v0.0.4` · Practice grows something
 
@@ -184,6 +186,64 @@ splash that has to land on the app's first frame without a jump. Release signing
 build-and-verify script that checks the artifact against every rejection a store would report
 after upload — the same job `scripts/archive-central-flight.sh` does for iOS.
 
+Decided while building it:
+
+- **Everything rechecked against the line iOS stood on when this roadmap began (`705b6b4`).**
+  Every week's promises were audited against the code and against iOS screen by screen; two
+  reviewers then read the whole diff. iOS work shipped since (Repeat and Shuffle, the
+  full-screen player, listen retries and "+1 heart", the rising hearts) stays out of v1.0.0.
+- **The worst find: weeks 4 to 7 crashed at launch below Android 14.** `LocalDate.ofInstant`
+  is Java 9 but API 34, and `:core:model` compiled against JDK 17, where lint's NewApi never
+  looks. Confirmed on an API 26 emulator, fixed, and guarded: `:core:model` now compiles
+  against Java 8's class library (`-Xjdk-release=1.8`), so such a call fails the build.
+- **Parity gaps closed.**
+  - The DEEP Session threshold now lives inside the tab, as on iOS, with the iOS practice
+    screen's copy, close button and play circle.
+  - The practice pauses in the background, and a finished one is banked the instant it ends.
+  - Home's shelves match iOS: tiles and feature cards open their collection, a round button
+    plays it, and every shelf has "See all".
+  - Re-tapping a tab scrolls to the top instead of popping.
+  - The You tab has pull-to-refresh, and lyrics open at half height.
+- **Android-only fixes.**
+  - DEEP Sound is held, not just paused, under a practice or a live Global Pause, so the lock
+    screen, the notification and a headset can't start it under the breath.
+  - Covers no longer pass taps to the tab bar beneath.
+  - A language, font-size or display change no longer restarts the activity mid-session.
+  - A reminder can no longer deadlock behind a permission prompt the activity lost, and no
+    longer nudges on a practised day.
+  - A Global Pause claim can't land on the next account after a sign-out.
+- **DEEP Premium locks, defensively.** Tracks, collections and plants read the server's
+  `isLocked`, missing meaning unlocked. A locked item shows iOS's lock and is skipped by the
+  queue or can't be chosen. There is no purchase path on Android.
+- **Accessibility.**
+  - Reduced motion follows the system setting live.
+  - Increased contrast is the system's colour-contrast level from Android 14 (`UiModeManager`),
+    applied where iOS applies Increase Contrast, the welcome screen. Below 14 there is no public
+    signal.
+  - Font scaling is unclamped, as on iOS, and walked at 1.3× and 2×.
+- **The icon is the iOS icon, rebuilt as vectors.** It is a gradient background sampled from
+  `DEEP_logo.png`, with the white ring and dot measured from it. The same white layer is the
+  themed (monochrome) icon.
+- **The splash lands without a jump.** The DEEP mark on moonCream fades over the first frame,
+  the atmosphere, on the exhale. Below Android 12 the splash had shown the platform's generic
+  robot, because no splash icon was set, until a real phone caught it.
+- **Signing and verifying.**
+  - The release key is RSA 4096, valid for 30 years, so it can later be handed to Play as the
+    app signing key. It lives outside the repository, with its password in the macOS Keychain.
+  - `scripts/build-android-release.sh` builds the APK and the bundle, then checks:
+    - the package, version and SDK levels, and that the build isn't debuggable
+    - that the signature is the release key's and not the debug key's
+    - 16 KB alignment
+    - the manifest's cleartext, exports and foreground-service types
+    - the production API host
+    - the globe's assets, the R8 mapping, and `bundletool validate`
+  - The client gets the APK, and the bundle waits for Play.
+- **Real hardware: a Redmi 8** (Android 10, Adreno 505, 60 Hz).
+  - It covered install, cold start (about 1.8 s), no crash, and the splash.
+  - The globe's frame-time and thermal checks still need a phone that accepts adb input. MIUI
+    refuses injected taps without a SIM card, so those checks ran on API 26 and API 36
+    emulators.
+
 ---
 
 ## Out of scope for v1.0.0
@@ -236,11 +296,14 @@ enough to answer; each gets written up properly as the work reaches it.
 - ~~**A reminder in a spring-forward gap.**~~ **Settled in week 5: the day is skipped,** as on
   iOS. `ReminderSchedule` checks the wall time against the zone's rules before building it, and
   tests pin New York's spring-forward and fall-back nights.
-- **The `versionCode` scheme.** iOS stamps Unix epoch seconds. `versionCode` is a signed 32-bit
-  int that can never decrease on a store track, so that does not survive the port.
-- **Whether the two platforms share a version source** or diverge on the record.
-- **CI.** The repo has none for any platform. Whether Android is the excuse to add it, or whether
-  that waits, is a week-8 question.
+- ~~**The `versionCode` scheme.**~~ **Settled in week 8:** `major * 10000 + minor * 100 + patch`,
+  derived in Gradle from the version name, so 1.0.0 is 10000 and the two can't drift. Weeks 1
+  to 7 shipped codes 1 to 7, all below it.
+- ~~**Whether the two platforms share a version source.**~~ **Settled in week 8:** they share
+  the marketing version (1.0.0 on both) and keep their own build numbers, epoch seconds on iOS.
+- ~~**CI.**~~ **Settled in week 8: not yet.** The release script is the gate, run by hand as
+  iOS's is. CI waits for the client's Play account, when an upload track gives it something to
+  feed.
 
 ---
 
@@ -251,8 +314,8 @@ enough to answer; each gets written up properly as the work reaches it.
 | **The globe.** ~900 lines of Metal plus a multi-pass bloom chain, with no mechanical translation. The single largest unknown in the effort. | A spike in week 1 that answers the feasibility question seven weeks before the work is due, and a 2D placeholder in week 6 so Global Pause ships even if the globe slips. |
 | **`maxInstances = 1` on Cloud Run.** Global Pause presence lives in an in-memory `Map` (`deep-api/src/lib/pausePresence.ts`), so a second instance splits participant counts. A second client platform, polling every five seconds, presses directly on that ceiling. | Not an Android problem to fix, but an Android problem to surface. Flag before week 6 load-tests it. |
 | **Typography diverges from iOS by necessity.** iOS ships no font files; Android must bundle real ones. | Settled in week 1, reviewed side by side against iOS, and recorded here rather than discovered on a client call. |
-| **No CI anywhere.** Every build and release step in this repo is a local script run by hand. | Accepted for the eight weeks. Revisited in week 8. |
-| **Emulator-only testing until late.** Frame timings, blur cost and audio behaviour all mislead on an emulator. | Hardware checkpoint scheduled into the globe work; kept visible here until it happens. |
+| **No CI anywhere.** Every build and release step in this repo is a local script run by hand. | Accepted for the eight weeks; revisited in week 8 and deferred until there is a Play account to upload to. `scripts/build-android-release.sh` is the gate. |
+| **Emulator-only testing until late.** Frame timings, blur cost and audio behaviour all mislead on an emulator. | Partly retired in week 8. A Redmi 8 (Android 10, Adreno 505) proved install, launch and the splash, and caught the robot splash icon. The globe's frame time and thermals on real hardware still need a phone that accepts adb input. |
 
 ---
 
