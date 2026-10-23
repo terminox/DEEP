@@ -12,8 +12,14 @@ const {
   isPlantLocked,
   isTrackLocked,
 } = await import("../src/lib/premiumContent.js");
-const { serializeCategory, serializeCollection, serializePlaylistItem, serializeTrack } =
-  await import("../src/lib/serialize.js");
+const {
+  serializeCategory,
+  serializeCollection,
+  serializeGarden,
+  serializePlantWithStages,
+  serializePlaylistItem,
+  serializeTrack,
+} = await import("../src/lib/serialize.js");
 
 const MEMBER = { unlocked: true };
 const NON_MEMBER = { unlocked: false };
@@ -189,4 +195,45 @@ test("a kept track inherits its origin collection's lock", () => {
 
   const open = serializePlaylistItem(item, MEMBER);
   assert.equal(open.track.audioUrl, "https://deep.example.com/media/audio/t1.mp3");
+});
+
+// ---- Plants ----
+
+const lotus = {
+  id: "lotus",
+  name: "Lotus",
+  tagline: "Opens slowly",
+  imageUrl: "/media/garden/images/lotus.png",
+  palette: "dusk",
+  displayOrder: 0,
+  isPremium: true,
+  isDefault: false,
+  isActive: true,
+  createdAt: T0,
+  updatedAt: T0,
+};
+const seed = {
+  id: "s1",
+  plantId: "lotus",
+  name: "Seed",
+  displayOrder: 0,
+  sunlightRequired: 0,
+  mascotPath: null,
+  mascotBgPath: null,
+  heroVideoPath: null,
+};
+
+test("a locked plant is fully described, carrying isPremium and isLocked", () => {
+  const out = serializePlantWithStages({ ...lotus, stages: [seed] }, true);
+  assert.equal(out.isPremium, true);
+  assert.equal(out.isLocked, true);
+  assert.equal(out.name, "Lotus");
+  assert.equal(out.imageUrl, "https://deep.example.com/media/garden/images/lotus.png");
+  assert.equal(out.stages.length, 1);
+});
+
+test("the garden's own selected plant never serializes as locked", () => {
+  const garden = serializeGarden(lotus, [seed], 12, { lotus: 12 });
+  assert.equal(garden.selectedPlant.isPremium, true);
+  assert.equal(garden.selectedPlant.isLocked, false);
 });

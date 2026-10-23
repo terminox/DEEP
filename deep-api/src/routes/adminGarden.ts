@@ -4,6 +4,7 @@ import type { Plant, PlantStage } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireRole } from "../auth/middleware.js";
+import { ADMIN_ACCESS, isPlantLocked } from "../lib/premiumContent.js";
 import { serializePlant, serializePlantStage, serializePlantWithStages } from "../lib/serialize.js";
 import { MEDIA_RULES, mediaRefSchema, requireUploadedFile, saveUploadedMedia } from "../lib/upload.js";
 import { resolveMany, resolveOne, withPending } from "../lib/drafts/overlay.js";
@@ -27,6 +28,10 @@ import { stageCreate, stageDelete, stageReorder, stageUpdate } from "../lib/draf
 //    invalid ladder.
 
 const adminOnly = { preHandler: requireRole("ADMIN") };
+
+// The panel never sees a plant as locked: isLocked is a member-facing answer,
+// and the admin's own DEEP Premium standing is irrelevant here.
+const ADMIN_UNLOCKED = isPlantLocked({ isPremium: true }, ADMIN_ACCESS, false);
 
 function actor(req: FastifyRequest): string {
   return req.auth!.sub;
@@ -95,7 +100,7 @@ export async function adminGardenRoutes(app: FastifyInstance) {
       plants: plants.map((p) =>
         withPending(
           {
-            ...serializePlant(p.row),
+            ...serializePlant(p.row, ADMIN_UNLOCKED),
             stageCount: stages.filter((s) => s.row.plantId === p.row.id).length,
           },
           p.pending,
@@ -113,7 +118,10 @@ export async function adminGardenRoutes(app: FastifyInstance) {
     return {
       plant: withPending(
         {
-          ...serializePlantWithStages({ ...plant.row, stages: stages.map((s) => s.row) }),
+          ...serializePlantWithStages(
+            { ...plant.row, stages: stages.map((s) => s.row) },
+            ADMIN_UNLOCKED,
+          ),
           stages: stages.map((s) => withPending(serializePlantStage(s.row), s.pending)),
         },
         plant.pending,
@@ -127,7 +135,7 @@ export async function adminGardenRoutes(app: FastifyInstance) {
     const staged = await stageCreate<Plant>("PLANT", body, actor(req));
     return {
       plant: withPending(
-        serializePlantWithStages({ ...staged.row, stages: [] }),
+        serializePlantWithStages({ ...staged.row, stages: [] }, ADMIN_UNLOCKED),
         staged.pending,
       ),
     };
@@ -140,7 +148,10 @@ export async function adminGardenRoutes(app: FastifyInstance) {
     const stages = (await resolvedStages()).filter((s) => s.row.plantId === id);
     return {
       plant: withPending(
-        serializePlantWithStages({ ...staged.row, stages: stages.map((s) => s.row) }),
+        serializePlantWithStages(
+          { ...staged.row, stages: stages.map((s) => s.row) },
+          ADMIN_UNLOCKED,
+        ),
         staged.pending,
       ),
     };
@@ -173,7 +184,7 @@ export async function adminGardenRoutes(app: FastifyInstance) {
     const relPath = await saveUploadedMedia(file, "image", "garden/images");
 
     const staged = await stageUpdate<Plant>("PLANT", id, { imageUrl: relPath }, actor(req));
-    return { plant: withPending(serializePlant(staged.row), staged.pending) };
+    return { plant: withPending(serializePlant(staged.row, ADMIN_UNLOCKED), staged.pending) };
   });
 
   // ---- Stages ----

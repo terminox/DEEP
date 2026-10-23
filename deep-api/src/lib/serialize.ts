@@ -188,7 +188,13 @@ export function serializeOnboardingConfig(
 
 // ---- Mind Garden plants + hearts ----
 
-export function serializePlant(p: Plant) {
+/**
+ * `isLocked` is required for the same reason ContentAccess is: the caller
+ * decides it through lib/premiumContent (isPlantLocked), so no route can ship a
+ * plant without having answered. A locked plant is fully visible; only
+ * selecting it is refused.
+ */
+export function serializePlant(p: Plant, isLocked: boolean) {
   return {
     id: p.id,
     name: translate("PLANT", p.id, "name", p.name),
@@ -197,6 +203,7 @@ export function serializePlant(p: Plant) {
     palette: p.palette,
     displayOrder: p.displayOrder,
     isPremium: p.isPremium,
+    isLocked,
     isDefault: p.isDefault,
     isActive: p.isActive,
   };
@@ -215,9 +222,12 @@ export function serializePlantStage(s: PlantStage) {
   };
 }
 
-export function serializePlantWithStages(p: Plant & { stages: PlantStage[] }) {
+export function serializePlantWithStages(
+  p: Plant & { stages: PlantStage[] },
+  isLocked: boolean,
+) {
   return {
-    ...serializePlant(p),
+    ...serializePlant(p, isLocked),
     stages: p.stages
       .slice()
       .sort((a, b) => a.displayOrder - b.displayOrder)
@@ -257,7 +267,10 @@ export function serializeGarden(
 ) {
   const ordered = stages.slice().sort((a, b) => a.displayOrder - b.displayOrder);
   return {
-    selectedPlant: serializePlant(plant),
+    // Never locked: it is the plant this person is growing. A selected plant
+    // is either one they were allowed to pick or one they hold progress on, and
+    // both stay theirs through a lapse (grandfathering, see isPlantLocked).
+    selectedPlant: serializePlant(plant, false),
     sunlight,
     currentStageIndex: deriveStageIndex(ordered, sunlight),
     stages: ordered.map(serializePlantStage),

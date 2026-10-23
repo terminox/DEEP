@@ -345,6 +345,160 @@ async function main() {
   assert.equal(json(res).lyrics[0].content, "Breathe in.");
   pass("12. lyrics of a locked track stay public");
 
+  // =========================================================================
+  // Mind Garden: premium plants visible and locked (#30)
+  // =========================================================================
+  //
+  // The premium plant is ALSO flagged isDefault and sorted FIRST, so any path
+  // that forgot its free-only filter (starter, sunlight fallback, onboarding)
+  // would pick it and fail loudly here.
+  const mkPlant = (id: string, isPremium: boolean, isDefault: boolean, displayOrder: number) =>
+    prisma.plant.create({
+      data: {
+        id,
+        name: id,
+        tagline: "verify",
+        palette: "mist",
+        isPremium,
+        isDefault,
+        displayOrder,
+        stages: { create: [{ name: "Seed", displayOrder: 0, sunlightRequired: 0 }] },
+      },
+    });
+  const lotus = await mkPlant(`v-lotus-${tag}`, true, true, -1);
+  const oak = await mkPlant(`v-oak-${tag}`, false, true, 0);
+  const fern = await mkPlant(`v-fern-${tag}`, false, false, 1);
+
+  type PlantOut = { id: string; isPremium: boolean; isLocked: boolean };
+  const plantsFor = async (headers: Record<string, string> = {}) => {
+    const r = await get("/garden/plants", headers);
+    assert.equal(r.statusCode, 200);
+    const byId = new Map((json(r).plants as PlantOut[]).map((p) => [p.id, p]));
+    return { lotus: byId.get(lotus.id), oak: byId.get(oak.id), fern: byId.get(fern.id), res: r };
+  };
+  const choose = (plantId: string, headers: Record<string, string>) =>
+    app.inject({ method: "PUT", url: "/me/garden/plant", headers, payload: { plantId } });
+
+  // ---- 13. Visible to everyone, locked for non-members ----
+  let p = await plantsFor();
+  assert.ok(p.lotus, "premium plant listed for anonymous");
+  assert.equal(p.lotus.isPremium, true);
+  assert.equal(p.lotus.isLocked, true);
+  assert.equal(p.oak?.isLocked, false);
+  assert.equal(p.res.headers["cache-control"], "no-store");
+  assert.match(String(p.res.headers.vary), /authorization/i);
+  p = await plantsFor(asNora);
+  assert.equal(p.lotus?.isLocked, true, "non-member sees it locked");
+  res = await get("/garden/plants", { authorization: "Bearer not-a-token" });
+  assert.equal(res.statusCode, 401);
+  pass("13. a premium plant is listed for everyone, isLocked for anonymous and non-members");
+
+  // ---- 14. A non-member cannot select it ----
+  res = await choose(lotus.id, asNora);
+  assert.equal(res.statusCode, 403);
+  assert.equal(json(res).error.code, "premium_locked");
+  assert.equal(
+    (await prisma.user.findUnique({ where: { id: nora.user.id } }))!.selectedPlantId,
+    null,
+    "selection unchanged",
+  );
+  assert.equal(
+    await prisma.userPlantProgress.count({ where: { userId: nora.user.id, plantId: lotus.id } }),
+    0,
+    "no progress row minted by a refused selection",
+  );
+  pass("14. selecting a premium plant as a non-member is refused with premium_locked");
+
+  // ---- 15. The starter, the sunlight fallback and onboarding stay free-only ----
+  const sam = await signup("sam");
+  const asSam = { authorization: `Bearer ${sam.accessToken}` };
+  const samGarden = json(await get("/me/garden", asSam)).garden;
+  assert.equal(samGarden.selectedPlant.id, oak.id, "starter skips the premium default");
+  assert.equal(samGarden.selectedPlant.isLocked, false);
+
+  await setPremium(sam.user.id, true);
+  const lee = await signup("lee");
+  await setPremium(lee.user.id, true);
+  const asLee = { authorization: `Bearer ${lee.accessToken}` };
+  res = await listen(freeTrack.id, asLee);
+  assert.equal(json(res).award.plantId, oak.id, "sunlight fallback is free-only, even for a member");
+  assert.equal(
+    (await prisma.user.findUnique({ where: { id: lee.user.id } }))!.selectedPlantId,
+    oak.id,
+  );
+
+  const config = json(await get("/onboarding/config"));
+  const trees = (config.mindTrees as { id: string }[]).map((t) => t.id);
+  assert.ok(trees.includes(oak.id));
+  assert.ok(!trees.includes(lotus.id), "onboarding tree list stays free-only");
+  const ola = await signup("ola");
+  await setPremium(ola.user.id, true);
+  res = await app.inject({
+    method: "PUT",
+    url: "/me/onboarding",
+    headers: { authorization: `Bearer ${ola.accessToken}` },
+    payload: { quizAnswers: {}, mindTree: lotus.id, completed: true },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(
+    (await prisma.user.findUnique({ where: { id: ola.user.id } }))!.selectedPlantId,
+    null,
+    "onboarding never seeds a premium plant",
+  );
+  pass("15. starter plant, sunlight fallback and onboarding stay free-only, member or not");
+
+  // ---- 16. A member can select it and grow it ----
+  p = await plantsFor(asMia);
+  assert.equal(p.lotus?.isLocked, false, "a member sees it unlocked");
+  res = await choose(lotus.id, asMia);
+  assert.equal(res.statusCode, 200);
+  let garden = json(res).garden;
+  assert.equal(garden.selectedPlant.id, lotus.id);
+  assert.equal(garden.selectedPlant.isLocked, false);
+  res = await listen(premiumTrack.id, asMia);
+  assert.equal(json(res).award.plantId, lotus.id, "sunlight lands on the premium plant");
+  const grown = (await prisma.userPlantProgress.findUnique({
+    where: { userId_plantId: { userId: mia.user.id, plantId: lotus.id } },
+  }))!.sunlight;
+  assert.ok(grown > 0);
+  pass("16. a member selects the premium plant and it receives sunlight");
+
+  // ---- 17. After a lapse the grown plant stays theirs ----
+  await setPremium(mia.user.id, false);
+  garden = json(await get("/me/garden", asMia)).garden;
+  assert.equal(garden.selectedPlant.id, lotus.id, "keeps serving");
+  assert.equal(garden.selectedPlant.isLocked, false, "never serializes as locked");
+  assert.equal(garden.sunlight, grown);
+  p = await plantsFor(asMia);
+  assert.equal(p.lotus?.isLocked, false, "grandfathered in the picker");
+  assert.equal((await plantsFor(asNora)).lotus?.isLocked, true, "still locked for others");
+  res = await listen(freeTrack.id, asMia);
+  assert.equal(json(res).award.plantId, lotus.id, "a lapsed member's premium plant still grows");
+
+  res = await choose(fern.id, asMia);
+  assert.equal(res.statusCode, 200, "switch away");
+  assert.equal(json(res).garden.selectedPlant.id, fern.id);
+  res = await choose(lotus.id, asMia);
+  assert.equal(res.statusCode, 200, "and back, after the lapse");
+  garden = json(res).garden;
+  assert.equal(garden.selectedPlant.id, lotus.id);
+  assert.equal(garden.sunlight, grown + 1, "sunlight preserved across the switch");
+  pass("17. after a lapse the grown plant serves unlocked and can be switched away from and back to");
+
+  // ---- 18. Grandfathering is per plant, not a blanket pass ----
+  const lily = await mkPlant(`v-lily-${tag}`, true, false, 2);
+  res = await choose(lily.id, asMia);
+  assert.equal(res.statusCode, 403, "a lapsed member cannot pick a premium plant they never grew");
+  assert.equal(json(res).error.code, "premium_locked");
+  assert.equal((await plantsFor(asMia)).fern?.isLocked, false);
+  const mixed = await plantsFor(asMia);
+  assert.equal(mixed.lotus?.isLocked, false);
+  assert.equal(
+    (json(mixed.res).plants as PlantOut[]).find((x) => x.id === lily.id)?.isLocked,
+    true,
+  );
+  pass("18. grandfathering covers only plants the person has grown");
+
   console.log("\nAll DEEP Premium content-lock checks passed.");
   await app.close();
   await prisma.$disconnect();
