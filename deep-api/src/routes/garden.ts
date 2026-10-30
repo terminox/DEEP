@@ -2,7 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
-import { requireAuth } from "../auth/middleware.js";
+import { optionalAuth, requireAuth } from "../auth/middleware.js";
+import {
+  isPlantLocked,
+  markVariesByCaller,
+  requestContentAccess,
+} from "../lib/premiumContent.js";
 import { requestTimezone, rememberTimezone, userDayKey } from "../lib/clientDay.js";
 import { walletSummary } from "../lib/awards.js";
 import { resolveNow } from "../lib/pauseSchedule.js";
@@ -21,8 +26,11 @@ import {
  * non-premium default plant is assigned (and persisted, matching the award
  * engine's resolveCreditPlant) so a fresh account sees a plant immediately.
  * A selected plant that later went premium or inactive keeps serving — the
- * user's progress is never yanked out from under them. `garden` is null only
- * when the catalog has no eligible plant at all.
+ * user's progress is never yanked out from under them. This is deliberate,
+ * and it is DEEP Premium's grandfathering: the selected plant is loaded with
+ * no premium filter, serializes as never locked, and (via its progress row)
+ * stays selectable after a lapse. `garden` is null only when the catalog has
+ * no eligible plant at all.
  */
 async function gardenPayload(
   userId: string,
@@ -31,6 +39,10 @@ async function gardenPayload(
 ) {
   let plantId = selectedPlantId;
   if (!plantId) {
+    // The auto-assigned starter is free-only, member or not, deliberately: a
+    // premium starter would strand the person on a plant they cannot reselect
+    // the moment their membership lapsed. Premium plants are chosen, never
+    // assigned.
     const fallback = await prisma.plant.findFirst({
       where: { isActive: true, isDefault: true, isPremium: false },
       orderBy: { displayOrder: "asc" },
@@ -80,14 +92,30 @@ export async function gardenRoutes(app: FastifyInstance) {
     return gardenPayload(userId, user.selectedPlantId, userDayKey(resolveNow(), tz));
   });
 
-  // Public catalog for the plant picker: published, non-premium plants only.
-  app.get("/garden/plants", async () => {
-    const plants = await prisma.plant.findMany({
-      where: { isActive: true, isPremium: false },
-      orderBy: { displayOrder: "asc" },
-      include: { stages: true },
-    });
-    return { plants: plants.map(serializePlantWithStages) };
+  // Public catalog for the plant picker: every published plant, premium ones
+  // included and marked `isLocked` for a caller who may not select them. The
+  // picker is where DEEP Premium plants are discovered and sold, so they are
+  // visible to everyone (see lib/premiumContent: isPlantLocked).
+  app.get("/garden/plants", { preHandler: optionalAuth }, async (req, reply) => {
+    const userId = req.auth?.sub;
+    const [plants, access, grown] = await Promise.all([
+      prisma.plant.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: "asc" },
+        include: { stages: true },
+      }),
+      requestContentAccess(req),
+      userId
+        ? prisma.userPlantProgress.findMany({ where: { userId }, select: { plantId: true } })
+        : Promise.resolve([]),
+    ]);
+    const grownIds = new Set(grown.map((g) => g.plantId));
+    markVariesByCaller(reply);
+    return {
+      plants: plants.map((p) =>
+        serializePlantWithStages(p, isPlantLocked(p, access, grownIds.has(p.id))),
+      ),
+    };
   });
 
   app.put("/me/garden/plant", { preHandler: requireAuth }, async (req) => {
@@ -108,8 +136,21 @@ export async function gardenRoutes(app: FastifyInstance) {
     if (!plant || !plant.isActive) {
       throw ApiError.notFound("Plant not found", "plant_not_found");
     }
+    // Same code as before premium plants were selectable, so no client error
+    // handling changes. Let through a member, or anyone already holding
+    // progress on this plant (grandfathered: switching away and back after a
+    // lapse must keep working).
     if (plant.isPremium) {
-      throw ApiError.forbidden("This plant is premium", "premium_locked");
+      const [access, progress] = await Promise.all([
+        requestContentAccess(req),
+        prisma.userPlantProgress.findUnique({
+          where: { userId_plantId: { userId, plantId: plant.id } },
+          select: { plantId: true },
+        }),
+      ]);
+      if (isPlantLocked(plant, access, progress !== null)) {
+        throw ApiError.forbidden("This plant is premium", "premium_locked");
+      }
     }
 
     // Selection + progress land together; sunlight already earned on this

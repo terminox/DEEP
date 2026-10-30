@@ -134,7 +134,10 @@ model Plant {
   imageUrl     String?
   palette      String
   displayOrder Int      @default(0)
-  // Premium plants are hidden from ALL user-facing endpoints until premium ships.
+  // DEEP Premium plant: visible in the garden picker to everyone, selectable
+  // only by a member or by someone already holding progress on it
+  // (grandfathered). Never offered in onboarding, never auto-assigned as a
+  // starter or sunlight fallback. See src/lib/premiumContent.ts.
   isPremium    Boolean  @default(false)
   // Shown in onboarding (multiple allowed).
   isDefault    Boolean  @default(false)

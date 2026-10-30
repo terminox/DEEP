@@ -47,6 +47,13 @@ class DuplicateAwardSignal extends Error {
  * active, non-premium default by displayOrder — persisted as the selection
  * (with a progress row) so the lazy assignment sticks. Null when the catalog
  * has no eligible plant (hearts still grant; sunlight has nowhere to land).
+ *
+ * DEEP Premium: a selected premium plant keeps receiving sunlight after the
+ * membership lapses, on purpose. That is grandfathering, the same promise as
+ * the garden payload and the picker's isPlantLocked: a plant someone has grown
+ * stays theirs. The FALLBACK stays free-only, entitled or not, for the same
+ * reason the garden's starter does: an assigned premium plant would strand the
+ * person on a plant they could not reselect after a lapse.
  */
 async function resolveCreditPlant(
   tx: Prisma.TransactionClient,

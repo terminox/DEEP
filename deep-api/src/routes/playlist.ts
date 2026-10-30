@@ -6,6 +6,7 @@ import { ApiError } from "../lib/errors.js";
 import { requireAuth } from "../auth/middleware.js";
 import { serializePlaylist } from "../lib/serialize.js";
 import { VISIBLE_TRACK } from "../lib/soundQuery.js";
+import { markVariesByCaller, requestContentAccess } from "../lib/premiumContent.js";
 
 // Playlists: the tracks a listener kept for later.
 //
@@ -87,7 +88,7 @@ export async function playlistRoutes(app: FastifyInstance) {
   // Every playlist with its items, in one call. With a single playlist the
   // payload is a handful of rows, so the client needs no follow-up fetch —
   // the same reasoning behind /sound/home returning the whole tree.
-  app.get("/me/playlists", { preHandler: requireAuth }, async (req) => {
+  app.get("/me/playlists", { preHandler: requireAuth }, async (req, reply) => {
     const userId = req.auth!.sub;
     await ensureDefaultPlaylist(userId);
     const playlists = await prisma.playlist.findMany({
@@ -95,19 +96,23 @@ export async function playlistRoutes(app: FastifyInstance) {
       orderBy: [{ isDefault: "desc" }, { displayOrder: "asc" }, { createdAt: "asc" }],
       include: playlistInclude,
     });
-    return { playlists: playlists.map(serializePlaylist) };
+    const access = await requestContentAccess(req);
+    markVariesByCaller(reply);
+    return { playlists: playlists.map((p) => serializePlaylist(p, access)) };
   });
 
   // Keeping a track is idempotent: keeping one twice is the same as keeping it
   // once, and both answers are the whole playlist so the client reconciles
   // against server truth rather than guessing.
-  app.post("/me/playlists/:id/items", { preHandler: requireAuth }, async (req) => {
+  app.post("/me/playlists/:id/items", { preHandler: requireAuth }, async (req, reply) => {
     const { id } = playlistParams.parse(req.params);
     const { trackId } = z.object({ trackId: z.string().uuid() }).parse(req.body);
     const userId = req.auth!.sub;
 
     await ownedPlaylist(id, userId);
 
+    // A premium track may be kept by anyone, member or not: the catalogue is
+    // visible, and keeping is a wish, not a play. The read withholds its URL.
     const track = await prisma.soundTrack.findFirst({
       where: { id: trackId, ...VISIBLE_TRACK },
       select: { id: true },
@@ -124,10 +129,12 @@ export async function playlistRoutes(app: FastifyInstance) {
       }
     }
 
-    return { playlist: serializePlaylist(await ownedPlaylist(id, userId)) };
+    markVariesByCaller(reply);
+    const access = await requestContentAccess(req);
+    return { playlist: serializePlaylist(await ownedPlaylist(id, userId), access) };
   });
 
-  app.delete("/me/playlists/:id/items/:trackId", { preHandler: requireAuth }, async (req) => {
+  app.delete("/me/playlists/:id/items/:trackId", { preHandler: requireAuth }, async (req, reply) => {
     const { id, trackId } = playlistParams
       .extend({ trackId: z.string().uuid() })
       .parse(req.params);
@@ -144,6 +151,8 @@ export async function playlistRoutes(app: FastifyInstance) {
       await prisma.playlist.update({ where: { id }, data: { updatedAt: new Date() } });
     }
 
-    return { playlist: serializePlaylist(await ownedPlaylist(id, userId)) };
+    markVariesByCaller(reply);
+    const access = await requestContentAccess(req);
+    return { playlist: serializePlaylist(await ownedPlaylist(id, userId), access) };
   });
 }
