@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.getValue
@@ -28,6 +29,7 @@ import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseLobbyScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseSessionCoordinator
 import io.appbeyond.freelance.deep.feature.globalpause.audio.GlobalPauseAudioPlayer
+import io.appbeyond.freelance.deep.feature.globalpause.audio.LoungeRadioPlayer
 import io.appbeyond.freelance.deep.feature.globalpause.EarthCardLift
 import io.appbeyond.freelance.deep.feature.globalpause.LocalGlobalPauseCardLift
 import io.appbeyond.freelance.deep.feature.globalpause.globe.EarthGlobeRendering
@@ -142,6 +144,12 @@ class MainActivity : ComponentActivity() {
       // iOS's `DeepSessionRunModifier` owns it outside the presentation too.
       val chime = remember { ChimePlayer(applicationContext) }
       DisposableEffect(chime) { onDispose { chime.release() } }
+      // Fuku's radio, owned out here rather than by the lounge so the Global
+      // Pause can silence it on its way in: the lounge stays composed under
+      // the session's cover, so its own teardown never runs then — iOS's
+      // coordinator owns it for the same reason.
+      val loungeRadio = remember { LoungeRadioPlayer(applicationContext, dependencies.http.mediaClient) }
+      DisposableEffect(loungeRadio) { onDispose { loungeRadio.release() } }
       CompositionLocalProvider(
         LocalVideoCache provides videoCache,
         LocalGlobeRendering provides globeRendering,
@@ -246,12 +254,16 @@ class MainActivity : ComponentActivity() {
               scene = globeScene,
               fetchMessages = dependencies.pauseEvents::messages,
               soundPlayer = dependencies.soundPlayer,
+              radio = loungeRadio,
               onJoin = onJoin,
               onBack = onBack,
             )
           },
           canJoinGlobalPause = { dependencies.globalPause.state.value.isMeditationLive },
           globalPauseContent = { visibility, onFinish ->
+            // Fuku hands the room over: the lounge may still be underneath this
+            // cover, and its set must not play under the meditation.
+            LaunchedEffect(Unit) { loungeRadio.stop() }
             val context = LocalContext.current
             val audio = remember { GlobalPauseAudioPlayer(context.applicationContext, dependencies.http.mediaClient) }
             DisposableEffect(audio) { onDispose { audio.release() } }
