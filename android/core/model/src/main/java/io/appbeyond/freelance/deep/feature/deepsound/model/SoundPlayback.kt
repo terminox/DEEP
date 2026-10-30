@@ -10,13 +10,22 @@ package io.appbeyond.freelance.deep.feature.deepsound.model
  * backend's `durationSeconds`, never from the media, exactly as iOS does.
  */
 data class SoundPlayback(
-  val entries: List<SoundQueueEntry> = emptyList(),
-  val index: Int = 0,
+  /** The queue in list order, its play order, and its Repeat and Shuffle settings. */
+  val queue: SoundQueue<SoundQueueEntry> = SoundQueue.empty(canPlay = SoundQueue.hasAudio),
   val isPlaying: Boolean = false,
   /** The player's own gain, 0…1, independent of the system volume. */
   val volume: Double = DEFAULT_VOLUME,
 ) {
-  val currentEntry: SoundQueueEntry? get() = entries.getOrNull(index)
+  /** The queue in the order it arrived — the order a player's list holds it in. */
+  val entries: List<SoundQueueEntry> get() = queue.entries
+
+  /** Where the current entry sits in [entries]. */
+  val index: Int get() = queue.currentIndex ?: 0
+
+  val repeatMode: RepeatMode get() = queue.repeatMode
+  val isShuffled: Boolean get() = queue.isShuffled
+
+  val currentEntry: SoundQueueEntry? get() = queue.current
   val currentTrack: SoundTrack? get() = currentEntry?.track
   val collection: SoundCollection? get() = currentEntry?.collection
   val hasTrack: Boolean get() = currentEntry != null

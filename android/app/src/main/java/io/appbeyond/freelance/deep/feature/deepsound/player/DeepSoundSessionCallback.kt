@@ -38,15 +38,17 @@ class DeepSoundSessionCallback(
 ) : MediaSession.Callback {
 
   /**
-   * Foreign controllers get transport and nothing else.
+   * Foreign controllers get transport, Repeat and Shuffle — nothing else.
    *
    * Everything outside this app — the system's media controls, Bluetooth, a
-   * watch — can play, pause, skip and seek, which is exactly what the lock
-   * screen can do on iOS. What they lose is the power to rewrite the queue or
-   * change how it repeats: the queue is [SoundPlayer]'s, it mirrors it
-   * index-for-index, and an outside edit would leave the app showing one track
-   * while another plays. The media notification's own controller runs in this
-   * package, so it keeps the full set.
+   * watch, a car — can play, pause, skip, seek, and set Repeat and Shuffle,
+   * which is exactly what iOS's remote commands allow. Those all land on
+   * `SoundQueuePlayer`, so they follow the same queue rules as the app's own
+   * buttons, and [SoundPlayer] mirrors what they changed. What foreign
+   * controllers lose is the power to rewrite the queue: it is [SoundPlayer]'s,
+   * the session mirrors it index-for-index, and an outside edit would leave the
+   * app showing one track while another plays. The media notification's own
+   * controller runs in this package, so it keeps the full set.
    *
    * The narrowing starts from `AcceptedResultBuilder(session, controller)` —
    * the defaults Media3 grants that controller — never from
@@ -89,8 +91,6 @@ class DeepSoundSessionCallback(
       commands.removeAll(
         Player.COMMAND_CHANGE_MEDIA_ITEMS,
         Player.COMMAND_SET_MEDIA_ITEM,
-        Player.COMMAND_SET_REPEAT_MODE,
-        Player.COMMAND_SET_SHUFFLE_MODE,
       )
     }
     if (isHeld()) commands.remove(Player.COMMAND_PLAY_PAUSE)

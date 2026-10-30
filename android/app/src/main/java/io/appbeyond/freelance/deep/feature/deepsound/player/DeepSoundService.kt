@@ -21,6 +21,7 @@ import androidx.core.app.ServiceCompat
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -59,7 +60,8 @@ import kotlinx.coroutines.launch
  * The app never touches this player directly. [SoundPlayer] drives it through a
  * `MediaController`, exactly as the notification, the lock screen and a
  * Bluetooth headset do, so there is one player and every surface sees the same
- * state.
+ * state. Every one of them reaches it through [SoundQueuePlayer], so Repeat,
+ * Shuffle and the skip buttons follow iOS's queue rules whoever presses them.
  *
  * Runs in the app's own process, so it reads its dependencies from the one
  * composition root rather than building a second HTTP stack of its own.
@@ -105,9 +107,9 @@ class DeepSoundService : MediaSessionService() {
       // Streams keep buffering with the screen off: CPU and Wi-Fi both stay up
       // while playing, released the moment playback stops.
       .setWakeMode(C.WAKE_MODE_NETWORK)
-      // iOS's `previous()`: past three seconds in, it restarts the track. The
-      // notification's and the headset's previous buttons go through the
-      // player, not through SoundPlayer, so the rule has to live here too.
+      // iOS's `previous()`: past three seconds in, it restarts the track.
+      // SoundQueuePlayer answers Previous itself; this is what a controller
+      // reads to predict it.
       .setMaxSeekToPreviousPositionMs((SoundQueue.RESTART_THRESHOLD_SECONDS * 1_000).toLong())
       // Audio streams on the media client: the shared pool and dispatcher, but
       // none of the API's headers, bearer token or call timeout (see
@@ -120,12 +122,16 @@ class DeepSoundService : MediaSessionService() {
       )
       .build()
       .apply {
-        // The queue repeats forever, as every iOS player does.
-        repeatMode = Player.REPEAT_MODE_ALL
+        // Repeat and Shuffle start off; SoundPlayer sets the listener's with
+        // every queue it loads.
         volume = SoundPlayback.DEFAULT_VOLUME.toFloat()
       }
 
-    player.addListener(PlaybackWatcher(dependencies.trackListens, dependencies.accountStore))
+    val watcher = PlaybackWatcher(dependencies.trackListens, dependencies.accountStore)
+    player.addListener(watcher)
+
+    // Repeat, Shuffle, the skip buttons and failed streams, by iOS's rules.
+    val queued = SoundQueuePlayer(player, onTrackFinished = watcher::trackFinished)
 
     setMediaNotificationProvider(
       DefaultMediaNotificationProvider.Builder(this).build().apply {
@@ -146,7 +152,7 @@ class DeepSoundService : MediaSessionService() {
     // Every controller reaches the player through this one — the app's own
     // SoundPlayer and the notification, lock screen and headset alike — so a
     // practice's hold (SoundPlaying.holdPlayback) is refused in one place.
-    val guarded = HoldingPlayer(player, isHeld = { dependencies.soundPlayer.isPlaybackHeld })
+    val guarded = HoldingPlayer(queued, isHeld = { dependencies.soundPlayer.isPlaybackHeld })
 
     val callback = DeepSoundSessionCallback(
       ownPackage = packageName,
@@ -320,18 +326,12 @@ class DeepSoundService : MediaSessionService() {
     private var hadQueue = false
 
     /**
-     * An auto-transition is the one discontinuity that means "played to the
-     * end" — iOS's `AVPlayerItemDidPlayToEndTime`. With the queue repeating it
-     * fires for the last track too, and for a one-track queue looping on itself.
-     * Seeks and skips arrive with other reasons and never report.
+     * [finished] played through to its natural end — iOS's
+     * `AVPlayerItemDidPlayToEndTime`, as [SoundQueuePlayer] hears it: moving
+     * on, looping in Repeat One, or ending the queue. Seeks, skips and failed
+     * streams never report.
      */
-    override fun onPositionDiscontinuity(
-      oldPosition: Player.PositionInfo,
-      newPosition: Player.PositionInfo,
-      reason: Int,
-    ) {
-      if (reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION) return
-      val finished = oldPosition.mediaItem ?: return
+    fun trackFinished(finished: MediaItem) {
       val report = ListenRules.shouldReportListen(
         advance = Advance.Natural,
         playable = finished.mediaMetadata.isPlayable == true,
@@ -341,8 +341,9 @@ class DeepSoundService : MediaSessionService() {
     }
 
     override fun onEvents(player: Player, events: Player.Events) {
-      // A track with no audio carries a second of silence so the queue keeps
-      // its shape; it must never actually play. Checked on every event, not
+      // A track with no audio (queued only when nothing in the queue has any —
+      // see `SoundQueue.playable`) carries a second of silence so the queue
+      // keeps its shape; it must never actually play. Checked on every event, not
       // just transitions, because a `play()` on it arrives as a change to
       // playWhenReady with no transition at all.
       val current = player.currentMediaItem
