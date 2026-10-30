@@ -61,9 +61,10 @@ private val GLOW_OFFSET_Y = 2.dp
 /**
  * A filled heart drawn to its box: the outline of `DeepIcons.Heart`, its
  * 3.75…20.25 × 3.75…20 extent stretched to fill the shape's bounds, so the
- * glow hugs the heart rather than a padded square.
+ * glow hugs the heart rather than a padded square. Shared with the donate
+ * sheet's `RisingHearts`, so every giving heart is the same heart.
  */
-private val HeartShape = GenericShape { size, _ ->
+internal val HeartShape = GenericShape { size, _ ->
   val minX = 3.75f
   val minY = 3.75f
   val sx = size.width / (20.25f - minX)
