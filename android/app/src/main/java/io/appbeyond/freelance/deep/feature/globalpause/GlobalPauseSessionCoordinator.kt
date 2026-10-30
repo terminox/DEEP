@@ -1,8 +1,6 @@
 package io.appbeyond.freelance.deep.feature.globalpause
 
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -35,12 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.globalpause.components.GlobalPauseIcons
@@ -61,6 +57,7 @@ import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.feature.rewards.model.RewardReceipt
 import io.appbeyond.freelance.deep.feature.rewards.screens.RewardRitualScreen
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
+import io.appbeyond.freelance.deep.shared.components.LightStatusBarIcons
 import io.appbeyond.freelance.deep.shared.localization.DeviceRegion
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.edge
@@ -321,29 +318,6 @@ fun GlobalPauseSessionCoordinator(
 private fun devicePlace(context: Context, locale: Locale): String {
   val region = DeviceRegion.isoCode(context) ?: return ""
   return Locale("", region).getDisplayCountry(locale).ifBlank { region }
-}
-
-/**
- * The night sky wants light status-bar icons; the cream ending wants them dark
- * again. Restored as the session leaves.
- */
-@Composable
-private fun LightStatusBarIcons(enabled: Boolean) {
-  val view = LocalView.current
-  if (view.isInEditMode) return
-  DisposableEffect(enabled) {
-    val window = view.context.findActivity()?.window
-    val controller = window?.let { WindowCompat.getInsetsController(it, view) }
-    val before = controller?.isAppearanceLightStatusBars
-    controller?.isAppearanceLightStatusBars = !enabled
-    onDispose { if (before != null) controller.isAppearanceLightStatusBars = before }
-  }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-  is Activity -> this
-  is ContextWrapper -> baseContext.findActivity()
-  else -> null
 }
 
 private const val LIGHTS_DELAY_MILLIS = 2_500L

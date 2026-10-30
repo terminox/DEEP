@@ -3,9 +3,12 @@ package io.appbeyond.freelance.deep.theme
 import android.view.ViewPropertyAnimator
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.InfiniteRepeatableSpec
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.Dp
@@ -43,6 +46,10 @@ private object DeepCurve {
   /** A wave set loose and left to calm — quick launch, long deceleration. */
   val RippleEasing = CubicBezierEasing(0.25f, 0.45f, 0.35f, 1.0f)
   const val RippleMillis = 1350
+
+  /** A photograph breathing on its own — SwiftUI's `easeInOut`, over 18s each way. */
+  val DriftEasing = CubicBezierEasing(0.42f, 0.0f, 0.58f, 1.0f)
+  const val DriftMillis = 18_000
 
   /*
    * SwiftUI's spring(response:dampingFraction:) is parameterised differently from
@@ -136,6 +143,18 @@ fun <T> settle(): SpringSpec<T> =
     dampingRatio = DeepCurve.SettleDampingRatio,
     stiffness = DeepCurve.SettleStiffness,
     visibilityThreshold = null,
+  )
+
+/**
+ * A photograph breathing on its own — Now Playing's full-screen artwork
+ * drifting in and out while a sound plays. Slow enough to feel like air, not
+ * motion; runs there and back until replaced, which is how it stops (hand the
+ * value a finite [settle]). Never under reduced motion.
+ */
+fun <T> drift(): InfiniteRepeatableSpec<T> =
+  infiniteRepeatable(
+    animation = tween(durationMillis = DeepCurve.DriftMillis, easing = DeepCurve.DriftEasing),
+    repeatMode = RepeatMode.Reverse,
   )
 
 /**
