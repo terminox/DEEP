@@ -1,5 +1,8 @@
 package io.appbeyond.freelance.deep.feature.profile
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,7 +34,11 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
@@ -44,6 +52,14 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockAccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
+import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.LocalSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.model.DeepProduct
+import io.appbeyond.freelance.deep.feature.premium.model.PlanLabel
+import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionManagement
+import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionState
+import io.appbeyond.freelance.deep.feature.premium.store.FakePremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.store.PreviewSubscriptionStore
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
 import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
@@ -52,6 +68,7 @@ import io.appbeyond.freelance.deep.shared.localization.AppFormat
 import io.appbeyond.freelance.deep.shared.localization.AppLanguage
 import io.appbeyond.freelance.deep.shared.localization.rememberAppLocale
 import io.appbeyond.freelance.deep.theme.DeepTheme
+import io.appbeyond.freelance.deep.theme.NOTE_HOLD_MILLIS
 import io.appbeyond.freelance.deep.theme.DeepType
 import io.appbeyond.freelance.deep.theme.blushPowder
 import io.appbeyond.freelance.deep.theme.chip
@@ -62,8 +79,10 @@ import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.lavenderMist
 import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
+import io.appbeyond.freelance.deep.theme.settle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -90,6 +109,13 @@ private val PLAN_CHIP_GLYPH = 12.dp
 
 private const val FOOTER_ALPHA = 0.8f
 
+/** The gap between the membership card and the quiet line under it — iOS's `VStack(spacing: 8)`. */
+private val MEMBERSHIP_NOTE_SPACING = 8.dp
+private val MEMBERSHIP_NOTE_INSET = 8.dp
+
+/** Where a restore stands — iOS's `RestorePhase`. */
+private enum class RestorePhase { Idle, Working, Restored, Failed }
+
 // MARK: - Screen
 
 /**
@@ -102,13 +128,22 @@ private const val FOOTER_ALPHA = 0.8f
  * crossfades back to the welcome flow — this screen never navigates anywhere
  * itself on the way out.
  *
+ * **Membership.** The plan chip reads the store and the one premium answer
+ * ([LocalSubscriptionStore], [LocalPremiumAccess]): the plan by name when the
+ * store sees it, "DEEP Premium" for a membership only the server knows,
+ * "Free plan" once the store has answered, "Checking…" until then. The
+ * Membership card offers "Manage subscription" to members only — Google
+ * Play's page for a Play purchase, the page RevenueCat names for one made
+ * elsewhere ([SubscriptionManagement.forMember]) — and "Restore purchases" to
+ * everyone; a restore that finds a membership is confirmed with the server
+ * the way a purchase is (`PremiumAccess.didPurchase`), so withheld audio
+ * arrives without waiting for the next foreground.
+ *
  * Deliberate gaps against iOS, each a product decision rather than an
  * omission:
- * - **No Membership section.** DEEP Premium is out of scope on Android, and
- *   iOS's two rows — Manage subscription and Restore purchases — are App
- *   Store actions with nothing behind them here. Rather than rows that do
- *   nothing, the section is left out, as the Premium paywall is; the plan chip
- *   still reads "Free plan", which is what iOS shows a member without Premium.
+ * - **Upgrade to DEEP Premium** shows only once [onUpgrade] is handed in —
+ *   the paywall's own work. Until then a member on the free plan sees Restore
+ *   alone.
  * - **Both exits reset onboarding and every account store** (practice journal,
  *   listen queue, garden, heart ledger, continuity day, and the daily reminder —
  *   [resetAccountState]); the playlist and the player are cleared by
@@ -134,6 +169,9 @@ private const val FOOTER_ALPHA = 0.8f
  *   ends the session.
  * @param resetAccountState forgets the member's account state (rewards and
  *   the reminder), run after either exit succeeds.
+ * @param onUpgrade opens the DEEP Premium invitation — the Membership card's
+ *   first row, shown on the free plan once this is supplied (iOS's
+ *   `openPaywall(.settings)`). Null hides it.
  */
 @Composable
 fun SettingsScreen(
@@ -147,10 +185,21 @@ fun SettingsScreen(
   onOpenReminder: () -> Unit,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
+  onUpgrade: (() -> Unit)? = null,
 ) {
   val locale = rememberAppLocale()
   val account by accountStore.account.collectAsStateWithLifecycle()
   val scope = rememberCoroutineScope()
+
+  val subscriptionStore = LocalSubscriptionStore.current
+  val premiumAccess = LocalPremiumAccess.current
+  val storeStatus by subscriptionStore.status.collectAsStateWithLifecycle()
+  val storeManagement by subscriptionStore.management.collectAsStateWithLifecycle()
+  val hasPremium by premiumAccess.hasPremium.collectAsStateWithLifecycle()
+  val serverEntitlement by premiumAccess.entitlement.collectAsStateWithLifecycle()
+  val uriHandler = LocalUriHandler.current
+  val packageName = LocalContext.current.packageName
+  var restorePhase by remember { mutableStateOf(RestorePhase.Idle) }
 
   var confirmingLogOut by remember { mutableStateOf(false) }
   var isLoggingOut by remember { mutableStateOf(false) }
@@ -218,6 +267,32 @@ fun SettingsScreen(
     }
   }
 
+  /** Google Play's page for a Play purchase; the page RevenueCat names for anything bought elsewhere. */
+  fun manageSubscription() {
+    val management = SubscriptionManagement.forMember(storeStatus, storeManagement, serverEntitlement)
+    runCatching { uriHandler.openUri(management.url(packageName)) }
+  }
+
+  fun restorePurchases() {
+    if (restorePhase == RestorePhase.Working) return
+    restorePhase = RestorePhase.Working
+    scope.launch {
+      try {
+        subscriptionStore.restore()
+        restorePhase = RestorePhase.Restored
+        // Confirmed with the server the way a purchase is, so the audio it
+        // withholds is released without waiting for the next foreground.
+        if (subscriptionStore.status.value.isSubscribed) premiumAccess.didPurchase()
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (_: Exception) {
+        restorePhase = RestorePhase.Failed
+      }
+      delay(NOTE_HOLD_MILLIS)
+      restorePhase = RestorePhase.Idle
+    }
+  }
+
   val scroll = rememberScrollState()
   ScrollToTopOnReselect(scroll)
 
@@ -237,7 +312,7 @@ fun SettingsScreen(
           .padding(top = Dp.rhythm, bottom = SCROLL_BOTTOM_INSET + LocalMiniPlayerClearance.current),
         verticalArrangement = Arrangement.spacedBy(Dp.rhythm),
       ) {
-        IdentityHeader(account)
+        IdentityHeader(account, plan = PlanLabel.of(storeStatus, hasPremium))
 
         SettingsSection(title = stringResource(R.string.settings_section_preferences)) {
           SettingsRow(
@@ -259,6 +334,16 @@ fun SettingsScreen(
             onClick = onOpenReminder,
           )
         }
+
+        MembershipSection(
+          // Only once the store has said there is nothing — Unknown would put
+          // "Upgrade" above a chip still reading "Checking…", and offer a
+          // paying member what they already have.
+          onUpgrade = onUpgrade.takeIf { storeStatus == SubscriptionState.None && !hasPremium },
+          onManage = if (hasPremium) ::manageSubscription else null,
+          restorePhase = restorePhase,
+          onRestore = ::restorePurchases,
+        )
 
         SettingsSection(title = stringResource(R.string.settings_section_account)) {
           SettingsRow(
@@ -373,10 +458,73 @@ internal fun SettingsTopBar(title: String, onBack: () -> Unit) {
   }
 }
 
+// MARK: - Membership
+
+/**
+ * The Membership card — iOS's `membershipSection`: the way in for the free
+ * plan ([onUpgrade], when there is one), Manage subscription for members only
+ * ([onManage]; there is nothing to manage on the free plan), and Restore
+ * purchases for everyone, with its quiet line beneath when the store can't
+ * be reached.
+ */
+@Composable
+private fun MembershipSection(
+  onUpgrade: (() -> Unit)?,
+  onManage: (() -> Unit)?,
+  restorePhase: RestorePhase,
+  onRestore: () -> Unit,
+) {
+  val restoring = stringResource(R.string.settings_restoring)
+  Column(verticalArrangement = Arrangement.spacedBy(MEMBERSHIP_NOTE_SPACING)) {
+    SettingsSection(title = stringResource(R.string.settings_section_membership)) {
+      if (onUpgrade != null) {
+        SettingsRow(
+          title = stringResource(R.string.settings_upgrade),
+          icon = ProfileIcons.Sparkles,
+          accessory = SettingsAccessory.Chevron,
+          onClick = onUpgrade,
+        )
+      }
+      if (onManage != null) {
+        SettingsRow(
+          title = stringResource(R.string.settings_manage_subscription),
+          icon = ProfileIcons.CreditCard,
+          accessory = SettingsAccessory.Chevron,
+          onClick = onManage,
+        )
+      }
+      SettingsRow(
+        title = stringResource(R.string.settings_restore_purchases),
+        icon = ProfileIcons.ArrowClockwise,
+        accessory = when (restorePhase) {
+          RestorePhase.Idle, RestorePhase.Failed -> SettingsAccessory.None
+          RestorePhase.Working -> SettingsAccessory.Progress
+          RestorePhase.Restored -> SettingsAccessory.Value(stringResource(R.string.settings_restored))
+        },
+        modifier = Modifier.semantics { if (restorePhase == RestorePhase.Working) stateDescription = restoring },
+        onClick = onRestore,
+      )
+    }
+    AnimatedVisibility(
+      visible = restorePhase == RestorePhase.Failed,
+      enter = fadeIn(settle()),
+      exit = fadeOut(settle()),
+      label = "restore-failed",
+    ) {
+      Text(
+        text = stringResource(R.string.settings_restore_failed),
+        style = DeepType.caption,
+        color = Color.driftGrey,
+        modifier = Modifier.padding(horizontal = MEMBERSHIP_NOTE_INSET),
+      )
+    }
+  }
+}
+
 // MARK: - Identity
 
 @Composable
-private fun IdentityHeader(account: Account?) {
+private fun IdentityHeader(account: Account?, plan: PlanLabel) {
   val displayName = account?.displayName ?: stringResource(R.string.settings_friend)
   val initials = (account ?: Account.Placeholder).initials
 
@@ -399,7 +547,7 @@ private fun IdentityHeader(account: Account?) {
       Text(text = email, style = DeepType.caption, color = Color.driftGrey)
     }
 
-    PlanChip(Modifier.padding(top = 4.dp))
+    PlanChip(plan, Modifier.padding(top = 4.dp))
   }
 }
 
@@ -437,7 +585,16 @@ private fun Modifier.avatarGlow(): Modifier = dropShadow(
  * cards below stay purely actionable.
  */
 @Composable
-private fun PlanChip(modifier: Modifier = Modifier) {
+private fun PlanChip(plan: PlanLabel, modifier: Modifier = Modifier) {
+  val label = stringResource(
+    when (plan) {
+      PlanLabel.PremiumYearly -> R.string.settings_plan_premium_yearly
+      PlanLabel.PremiumMonthly -> R.string.settings_plan_premium_monthly
+      PlanLabel.Premium -> R.string.settings_plan_premium
+      PlanLabel.Free -> R.string.settings_free_plan
+      PlanLabel.Checking -> R.string.settings_plan_checking
+    },
+  )
   Row(
     modifier
       .clip(RoundedCornerShape(Dp.chip))
@@ -452,7 +609,7 @@ private fun PlanChip(modifier: Modifier = Modifier) {
       tint = Color.driftGrey,
       modifier = Modifier.size(PLAN_CHIP_GLYPH),
     )
-    Text(text = stringResource(R.string.settings_free_plan), style = DeepType.micro, color = Color.driftGrey)
+    Text(text = label, style = DeepType.micro, color = Color.driftGrey)
   }
 }
 
@@ -473,6 +630,52 @@ private fun SettingsScreenPreview() {
         onOpenLanguage = {},
         onOpenReminder = {},
         onBack = {},
+      )
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Settings — DEEP Premium member")
+@Composable
+private fun SettingsScreenMemberPreview() {
+  DeepTheme {
+    CompositionLocalProvider(
+      LocalPremiumAccess provides FakePremiumAccess(hasPremium = true),
+      LocalSubscriptionStore provides PreviewSubscriptionStore(SubscriptionState.Subscribed(DeepProduct.YEARLY)),
+    ) {
+      Box(Modifier.fillMaxSize().background(Color.moonCream)) {
+        SettingsScreen(
+          accountStore = MockAccountStore.emailUser,
+          onboardingStore = MockOnboardingProgressStore.fresh,
+          language = AppLanguage.English,
+          reminder = DailyReminder.initial,
+          flushBeforeLogOut = { true },
+          resetAccountState = {},
+          onOpenLanguage = {},
+          onOpenReminder = {},
+          onBack = {},
+        )
+      }
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Settings — free plan, with the paywall's door")
+@Composable
+private fun SettingsScreenUpgradePreview() {
+  DeepTheme {
+    Box(Modifier.fillMaxSize().background(Color.moonCream)) {
+      SettingsScreen(
+        accountStore = MockAccountStore.emailUser,
+        onboardingStore = MockOnboardingProgressStore.fresh,
+        language = AppLanguage.English,
+        reminder = DailyReminder.initial,
+        flushBeforeLogOut = { true },
+        resetAccountState = {},
+        onOpenLanguage = {},
+        onOpenReminder = {},
+        onBack = {},
+        onUpgrade = {},
       )
     }
   }

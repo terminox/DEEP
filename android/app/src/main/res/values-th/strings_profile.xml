@@ -10,9 +10,20 @@
   <string name="settings_back">ย้อนกลับ</string>
   <string name="settings_friend">เพื่อน</string> <!-- no iOS Thai -->
   <string name="settings_free_plan">แพ็กเกจฟรี</string> <!-- no iOS Thai -->
+  <string name="settings_plan_premium_yearly">DEEP Premium รายปี</string> <!-- no iOS Thai -->
+  <string name="settings_plan_premium_monthly">DEEP Premium รายเดือน</string> <!-- no iOS Thai -->
+  <string name="settings_plan_premium">DEEP Premium</string>
+  <string name="settings_plan_checking">กำลังตรวจสอบ…</string> <!-- no iOS Thai -->
   <string name="settings_section_preferences">การปรับแต่ง</string> <!-- no iOS Thai -->
   <string name="settings_language">ภาษา</string>
   <string name="settings_daily_reminder">การเตือนประจำวัน</string>
+  <string name="settings_section_membership">การเป็นสมาชิก</string> <!-- no iOS Thai -->
+  <string name="settings_upgrade">อัปเกรดเป็น DEEP Premium</string>
+  <string name="settings_manage_subscription">จัดการการสมัครสมาชิก</string>
+  <string name="settings_restore_purchases">กู้คืนการซื้อ</string>
+  <string name="settings_restoring">กำลังกู้คืน…</string>
+  <string name="settings_restored">กู้คืนแล้ว</string> <!-- no iOS Thai; from "กู้คืนแล้ว ยินดีต้อนรับกลับมา" -->
+  <string name="settings_restore_failed">เชื่อมต่อ Google Play ไม่ได้ ลองอีกครั้งในอีกสักครู่</string> <!-- iOS's App Store line, Google Play here -->
   <string name="settings_section_account">บัญชี</string> <!-- no iOS Thai -->
   <string name="settings_log_out">ออกจากระบบ</string>
   <string name="settings_delete_account">ลบบัญชี</string> <!-- no iOS Thai -->
@@ -28,7 +39,7 @@
 
   <!-- Delete account -->
   <string name="settings_delete_title">ลบบัญชีของคุณ?</string>
-  <string name="settings_delete_body">การดำเนินการนี้จะลบบัญชีของคุณและทุกสิ่งที่คุณแบ่งปันไว้อย่างถาวร</string> <!-- no iOS Thai -->
+  <string name="settings_delete_body">การดำเนินการนี้จะลบบัญชีของคุณและทุกสิ่งที่คุณแบ่งปันไว้อย่างถาวร หากคุณสมัครสมาชิก DEEP Premium อยู่ โปรดยกเลิกแยกต่างหากใน Google Play เพราะการลบบัญชีไม่ได้ยกเลิกการเรียกเก็บเงิน</string> <!-- no iOS Thai -->
   <string name="settings_delete_confirm">ลบ</string>
   <string name="settings_delete_cancel">ยกเลิก</string>
   <string name="settings_delete_failed_title">มีบางอย่างผิดพลาด</string>

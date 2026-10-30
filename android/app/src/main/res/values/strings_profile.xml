@@ -10,10 +10,24 @@
   <string name="settings_title">Settings</string>
   <string name="settings_back">Back</string>
   <string name="settings_friend">Friend</string>
+  <!-- The plan chip (SettingsView.planLabel) -->
   <string name="settings_free_plan">Free plan</string>
+  <string name="settings_plan_premium_yearly">DEEP Premium, yearly</string>
+  <string name="settings_plan_premium_monthly">DEEP Premium, monthly</string>
+  <string name="settings_plan_premium">DEEP Premium</string>
+  <string name="settings_plan_checking">Checking…</string>
   <string name="settings_section_preferences">Preferences</string>
   <string name="settings_language">Language</string>
   <string name="settings_daily_reminder">Daily reminder</string>
+  <string name="settings_section_membership">Membership</string>
+  <string name="settings_upgrade">Upgrade to DEEP Premium</string>
+  <string name="settings_manage_subscription">Manage subscription</string>
+  <string name="settings_restore_purchases">Restore purchases</string>
+  <!-- The restore row's spinner, spoken -->
+  <string name="settings_restoring">Restoring…</string>
+  <string name="settings_restored">Restored</string>
+  <!-- iOS: "Couldn't reach the App Store. Please try again in a moment." — Google Play here -->
+  <string name="settings_restore_failed">Couldn\'t reach Google Play. Please try again in a moment.</string>
   <string name="settings_section_account">Account</string>
   <string name="settings_log_out">Log out</string>
   <string name="settings_delete_account">Delete account</string>
@@ -29,7 +43,8 @@
 
   <!-- Delete account -->
   <string name="settings_delete_title">Delete your account?</string>
-  <string name="settings_delete_body">This permanently erases your account and everything you\'ve shared.</string>
+  <!-- iOS points members at their App Store settings; billing on Android is Google Play\'s -->
+  <string name="settings_delete_body">This permanently erases your account and everything you\'ve shared. If you have a DEEP Premium subscription, cancel it separately in Google Play — deleting your account doesn\'t cancel billing.</string>
   <string name="settings_delete_confirm">Delete</string>
   <string name="settings_delete_cancel">Cancel</string>
   <string name="settings_delete_failed_title">Something went wrong</string>
