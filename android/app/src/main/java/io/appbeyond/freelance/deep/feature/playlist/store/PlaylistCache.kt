@@ -12,6 +12,7 @@ import io.appbeyond.freelance.deep.networking.PlaylistDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import java.io.IOException
 
 /**
@@ -25,13 +26,21 @@ import java.io.IOException
  * Caches the raw [PlaylistDto] rather than a store-shaped snapshot, so the
  * same `PlaylistDto.toSavedSounds()` mapping in `ApiPlaylistStore.kt` reads a
  * cold launch and a live fetch alike.
+ *
+ * **It belongs to one member.** Since DEEP Premium the server's playlist
+ * carries per-listener verdicts and, for a member, premium audio URLs — so
+ * the snapshot is stamped with the DEEP user id it was fetched for and read
+ * back only for that same id. A snapshot without an owner (written before
+ * the stamp existed) is never handed to anyone. Even read by its owner after
+ * a lapse it can never unlock anything: every lock goes through `PremiumGate`,
+ * where a kept `isLocked: false` adds nothing and `isPremium` still locks.
  */
 class PlaylistCache(context: Context) {
 
   private val store: DataStore<Preferences> = context.applicationContext.playlistCacheDataStore
 
-  /** The cached playlist, or null when nothing was ever cached (or it failed to decode). */
-  suspend fun read(): PlaylistDto? = withContext(Dispatchers.IO) {
+  /** The playlist cached for [owner], or null when there is none for them (or it failed to decode). */
+  suspend fun read(owner: String): PlaylistDto? = withContext(Dispatchers.IO) {
     val stored = try {
       store.data.first()
     } catch (unreadable: IOException) {
@@ -39,28 +48,45 @@ class PlaylistCache(context: Context) {
       emptyPreferences()
     }
 
-    stored[SNAPSHOT_KEY]?.let { json ->
-      runCatching { DeepJson.decodeFromString(PlaylistDto.serializer(), json) }.getOrNull()
-    }
+    stored[OWNED_SNAPSHOT_KEY]
+      ?.let { json -> runCatching { DeepJson.decodeFromString(OwnedPlaylist.serializer(), json) }.getOrNull() }
+      ?.takeIf { it.owner == owner }
+      ?.playlist
   }
 
-  suspend fun write(playlist: PlaylistDto) {
+  suspend fun write(owner: String, playlist: PlaylistDto) {
     withContext(Dispatchers.IO) {
-      val json = DeepJson.encodeToString(PlaylistDto.serializer(), playlist)
-      store.edit { it[SNAPSHOT_KEY] = json }
+      val json = DeepJson.encodeToString(OwnedPlaylist.serializer(), OwnedPlaylist(owner, playlist))
+      store.edit {
+        it[OWNED_SNAPSHOT_KEY] = json
+        it.remove(LEGACY_SNAPSHOT_KEY)
+      }
     }
   }
 
   suspend fun clear() {
     withContext(Dispatchers.IO) {
-      store.edit { it.remove(SNAPSHOT_KEY) }
+      store.edit {
+        it.remove(OWNED_SNAPSHOT_KEY)
+        it.remove(LEGACY_SNAPSHOT_KEY)
+      }
     }
   }
 
   private companion object {
-    val SNAPSHOT_KEY = stringPreferencesKey("snapshot")
+    val OWNED_SNAPSHOT_KEY = stringPreferencesKey("owned-snapshot")
+
+    /** The ownerless snapshot builds before DEEP Premium wrote: never read, removed on the next write. */
+    val LEGACY_SNAPSHOT_KEY = stringPreferencesKey("snapshot")
   }
 }
+
+/** The cache's shape: the playlist and the DEEP user id it was fetched for. */
+@Serializable
+private data class OwnedPlaylist(
+  val owner: String,
+  val playlist: PlaylistDto,
+)
 
 private val Context.playlistCacheDataStore: DataStore<Preferences> by preferencesDataStore(
   name = "deep.playlist"

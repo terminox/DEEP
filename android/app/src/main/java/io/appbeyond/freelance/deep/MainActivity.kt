@@ -24,7 +24,7 @@ import io.appbeyond.freelance.deep.feature.compassion.rememberCompassionContent
 import io.appbeyond.freelance.deep.feature.deepsession.ChimePlayer
 import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionCoordinator
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
-import io.appbeyond.freelance.deep.feature.deepsound.player.play
+import io.appbeyond.freelance.deep.feature.deepsound.player.playFrom
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseLobbyScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseSessionCoordinator
@@ -41,6 +41,7 @@ import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
 import io.appbeyond.freelance.deep.feature.premium.LocalSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
 import io.appbeyond.freelance.deep.networking.LocalVideoCache
 import io.appbeyond.freelance.deep.networking.VideoCache
 import io.appbeyond.freelance.deep.theme.exhale
@@ -208,7 +209,13 @@ class MainActivity : ComponentActivity() {
               // small round play button starts it in place — iOS's `HomeTile` /
               // `FeatureCard`.
               onOpenCollection = actions.openCollection,
-              onPlayCollection = { dependencies.soundPlayer.play(it) },
+              // Through the gate, like a collection's own Play: only what this
+              // listener may hear is queued. Nothing to hear stays inert until
+              // the DEEP Premium invitation exists to open instead.
+              onPlayCollection = { collection ->
+                val queue = PremiumGate.playable(collection, dependencies.premiumAccess.hasPremium.value)
+                if (queue.isNotEmpty()) dependencies.soundPlayer.playFrom(queue, 0)
+              },
               onOpenCollectionList = actions.openCollectionList,
               refreshKey = account?.id,
               isFukuOnAir = pause.isFukuOnAir,

@@ -62,8 +62,11 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
@@ -282,13 +285,15 @@ class AppDependencies(context: Context) {
 
   /**
    * The one player. Connects to the service lazily, on the first track, so a
-   * member who never opens DEEP Sound never starts it.
+   * member who never opens DEEP Sound never starts it. It reads the DEEP
+   * Premium answer as each queue loads, so a locked sound never joins one.
    */
   val soundPlayer: SoundPlayer = SoundPlayer(
     context = context.applicationContext,
     // The listener's Repeat choice: the phone's, like the language, so it
     // outlives a log out — iOS keeps it in `UserDefaults`.
     settings = DataStoreBlobStore(context.applicationContext, "deep.sound"),
+    hasPremium = { premiumAccess.hasPremium.value },
   )
 
   private val soundService: SoundService = retrofit.create(SoundService::class.java)
@@ -311,6 +316,9 @@ class AppDependencies(context: Context) {
     service = soundService,
     cache = PlaylistCache(context.applicationContext),
     scope = appScope,
+    accountIds = accountStore.account
+      .map { it?.id?.takeIf(String::isNotEmpty) }
+      .stateIn(appScope, SharingStarted.Eagerly, null),
   )
 
   // Week four: the Mind Garden, hearts, the practice journal and the reward
@@ -583,8 +591,15 @@ class AppDependencies(context: Context) {
 
   /**
    * Builds DEEP Premium (after `MainActivity` has had its say on
-   * [useMockSubscriptions]) and reads the remembered server answer at once,
-   * so a member's locks are right from the first frame after the launch beat.
+   * [useMockSubscriptions]) and starts what follows its answer:
+   *
+   * - the remembered server answer is read at once, so a member's locks are
+   *   right from the first frame after the launch beat;
+   * - every move of [PremiumAccess.contentEpoch] re-fetches the content
+   *   whose verdicts were baked in and that no screen owns — the saved
+   *   sounds (a refresh asked mid-flight queues rather than drops) and the
+   *   plant catalog. Screens re-fetch their own (`/sound/home`,
+   *   `/pause/home`, a collection's detail).
    *
    * Idempotent; called from `MainActivity.onCreate`.
    */
@@ -592,6 +607,12 @@ class AppDependencies(context: Context) {
     if (premiumStarted) return
     premiumStarted = true
     launchQuietly("premium restore") { reconciledPremiumAccess.restore() }
+    appScope.launch {
+      reconciledPremiumAccess.contentEpoch.drop(1).collect {
+        if (isSignedIn) launchQuietly("playlist reload") { playlistStore.load() }
+        launchQuietly("plant catalog reload") { gardenStore.reloadCatalog() }
+      }
+    }
   }
 
   /**

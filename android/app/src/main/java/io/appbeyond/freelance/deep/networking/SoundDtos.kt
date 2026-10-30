@@ -30,6 +30,12 @@ data class SoundHomeDto(
   val categories: List<CategoryDto> = emptyList(),
 )
 
+/** `GET /sound/collections/{id}` — the collection with its tracks. */
+@Serializable
+data class CollectionResponseDto(
+  val collection: CollectionDto,
+)
+
 /** A track's lyrics in one language, as `serializeLyrics` writes it. */
 @Serializable
 data class LyricsDto(

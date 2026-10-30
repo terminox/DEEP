@@ -34,8 +34,11 @@
   <!-- Collection detail (CollectionDetailView.swift) -->
   <!-- "Back" -->
   <string name="deepsound_back">Back</string>
-  <!-- "%lld tracks · %@" — the count and the length, joined -->
-  <string name="deepsound_collection_meta">%1$s · %2$s</string>
+  <!-- "%lld tracks, %@" — the count and the length, as a phrase rather than a dotted spec line -->
+  <plurals name="deepsound_collection_meta">
+    <item quantity="one">%1$d track, %2$s</item>
+    <item quantity="other">%1$d tracks, %2$s</item>
+  </plurals>
   <plurals name="deepsound_track_count">
     <item quantity="one">%d track</item>
     <item quantity="other">%d tracks</item>
@@ -48,8 +51,6 @@
   <!-- "Save to playlist" / "Remove from playlist" -->
   <string name="deepsound_save_to_playlist">Save to playlist</string>
   <string name="deepsound_remove_from_playlist">Remove from playlist</string>
-  <!-- The DEEP Premium lock's spoken name — iOS's `lock.fill` reads "Lock" by itself -->
-  <string name="deepsound_locked">Locked</string>
 
   <!-- Lyrics (LyricsSheet.swift) -->
   <!-- "No lyrics for this one — just let it wash over you." -->

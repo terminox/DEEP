@@ -46,6 +46,9 @@ class MockPlaylistStore(initial: PlaylistState = PlaylistState.Loading) : Playli
     /** A playlist with sounds in it, for previews of the loaded state. */
     val sample: MockPlaylistStore get() = MockPlaylistStore(PlaylistState.Loaded(PlaylistFixtures.saved))
 
+    /** Sounds saved, one of them DEEP Premium — the locked-row state. */
+    val withPremium: MockPlaylistStore get() = MockPlaylistStore(PlaylistState.Loaded(PlaylistFixtures.withPremium))
+
     /** Nothing saved yet — the invitation state. */
     val empty: MockPlaylistStore get() = MockPlaylistStore(PlaylistState.Loaded(emptyList()))
 

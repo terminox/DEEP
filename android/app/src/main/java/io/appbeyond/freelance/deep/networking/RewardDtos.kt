@@ -96,10 +96,13 @@ data class PlantDto(
   val imageUrl: String? = null,
   val palette: String? = null,
   val displayOrder: Int = 0,
+  /** A DEEP Premium plant. Absent from an older server: free. */
   val isPremium: Boolean = false,
-  /** DEEP Premium, and this caller may not select it (deep-api #65). Absent
-   * from an older server, which never listed premium plants: unlocked. */
-  val isLocked: Boolean = false,
+  /** The server's verdict for this caller (deep-api #65) — never true for a
+   * plant they already grow (grandfathered). Null from an older server,
+   * which never listed premium plants, and `PremiumGate` then falls back to
+   * [isPremium]. */
+  val isLocked: Boolean? = null,
   val isDefault: Boolean = false,
   val isActive: Boolean = true,
   val stages: List<PlantStageDto>? = null,
@@ -219,6 +222,7 @@ fun PlantDto.toDomain(siblingStages: List<PlantStageDto>? = null): Plant = Plant
   stages = (stages ?: siblingStages ?: emptyList())
     .sortedBy { it.displayOrder }
     .map { it.toDomain() },
+  isPremium = isPremium,
   isLocked = isLocked,
 )
 

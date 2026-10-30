@@ -26,6 +26,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,8 +59,17 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTrack
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
 import io.appbeyond.freelance.deep.feature.deepsound.player.playFrom
+import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
+import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
+import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockBadge
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockSize
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
+import io.appbeyond.freelance.deep.feature.premium.rememberContentEpoch
+import io.appbeyond.freelance.deep.feature.premium.rememberHasPremium
+import io.appbeyond.freelance.deep.feature.premium.store.FakePremiumAccess
 import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
@@ -74,6 +85,7 @@ import io.appbeyond.freelance.deep.theme.lavenderMist
 import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.softPress
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 // MARK: - Constants
@@ -104,9 +116,6 @@ private val ROW_PADDING_VERTICAL = 14.dp
 /** The track number's column — iOS's `.frame(width: 24)`. */
 private val NUMBER_WIDTH = 24.dp
 
-/** The DEEP Premium lock — iOS's `lock.fill` at `.caption` size. */
-private val LOCK_GLYPH_SIZE = 12.dp
-
 /**
  * The saved/remove menu — Android's `DropdownMenu` has no iOS counterpart to cite;
  * `.contextMenu` there is the system's own chrome, with no corner radius of its own.
@@ -129,14 +138,24 @@ private const val TABULAR_FIGURES = "tnum"
  * bar background, as iOS hides the toolbar background. Predictive back is the
  * shell's `BackHandler`; [onBack] is only the chevron.
  *
- * **DEEP Premium locks.** A track the server marks locked carries iOS's
- * `lock.fill` beside its length and never plays: Play, Shuffle and a tapped
- * row all queue only the unlocked tracks (`SoundQueue.playable`, inside the
- * player), so a run never carries on into a locked sound. Tapping a locked row
- * does nothing more — iOS answers it with a "A premium sound" note that points
- * at a membership Android has no way to sell, so here the lock says it all.
+ * **DEEP Premium locks.** Every lock is `PremiumGate`'s, read against the
+ * one premium answer ([rememberHasPremium]): a locked track wears
+ * [PremiumLockBadge] before its length, and Play, Shuffle and a tapped row
+ * queue only what [PremiumGate.playable] lets through — never a locked sound,
+ * never one whose audio the server withheld. Tapping a locked row does
+ * nothing yet; the DEEP Premium invitation it will open arrives with the
+ * paywall.
  *
- * @param collection the collection to show; its tracks play as one queue.
+ * **Fresh verdicts.** The copy this screen was opened with carries the
+ * server's verdicts (and withheld audio) from when it was fetched. When the
+ * premium answer moves on ([rememberContentEpoch]) the collection is fetched
+ * again from [library] — keyed on the epoch, so a newer change cancels an
+ * older fetch and its answer can never land last. A failed fetch keeps the
+ * copy on screen; the locks follow the new answer regardless, and the gate
+ * never lets a stale verdict open a sound to a listener without DEEP Premium.
+ *
+ * @param collection the collection as it arrived from the screen that opened it.
+ * @param library where the collection is fetched again after a premium change.
  * @param player the shared player — the same one the shell's mini player reads.
  * @param playlistStore where a long-pressed track is saved or removed.
  * @param onBack pops the screen.
@@ -144,6 +163,7 @@ private const val TABULAR_FIGURES = "tnum"
 @Composable
 fun CollectionDetailScreen(
   collection: SoundCollection,
+  library: SoundLibrary,
   player: SoundPlaying,
   playlistStore: PlaylistStore,
   onBack: () -> Unit,
@@ -152,10 +172,29 @@ fun CollectionDetailScreen(
   val playback by player.playback.collectAsStateWithLifecycle()
   val playlist by playlistStore.state.collectAsStateWithLifecycle()
   val scope = rememberCoroutineScope()
+  val hasPremium = rememberHasPremium()
+
+  // The epoch this screen arrived on; re-fetching starts after it.
+  val epoch = rememberContentEpoch()
+  val arrivedOn = remember(collection.id) { epoch }
+  var latest by remember(collection.id) { mutableStateOf<SoundCollection?>(null) }
+  LaunchedEffect(collection.id, epoch) {
+    if (epoch == arrivedOn) return@LaunchedEffect
+    try {
+      latest = library.collection(collection.id)
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Exception) {
+      // Keep the copy on screen; the gate already reads the new answer.
+    }
+  }
+  // What this screen shows and plays: the fresh copy once there is one.
+  val current = latest ?: collection
+  val playable = remember(current, hasPremium) { PremiumGate.playable(current, hasPremium) }
 
   // Keyed on the store's state so every save or removal re-reads the marks.
-  val savedIds = remember(playlist, collection) {
-    collection.tracks.filter { playlistStore.isSaved(it.id) }.map { it.id }.toSet()
+  val savedIds = remember(playlist, current) {
+    current.tracks.filter { playlistStore.isSaved(it.id) }.map { it.id }.toSet()
   }
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
   val listState = rememberLazyListState()
@@ -173,14 +212,14 @@ fun CollectionDetailScreen(
         .fillMaxSize()
         .statusBarsPadding(),
     ) {
-      DetailTopBar(title = collection.title, onBack = onBack)
+      DetailTopBar(title = current.title, onBack = onBack)
 
       LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = CONTENT_TOP_PADDING, bottom = bottomInset),
       ) {
-        item(key = "header") { ArtworkHeader(collection) }
+        item(key = "header") { ArtworkHeader(current) }
 
         item(key = "actions") {
           Row(
@@ -189,14 +228,14 @@ fun CollectionDetailScreen(
               .padding(horizontal = Dp.edge),
             horizontalArrangement = Arrangement.spacedBy(ACTIONS_SPACING),
           ) {
+            // Both queue only what this listener may hear. Nothing to hear
+            // stays inert until the DEEP Premium invitation exists to open.
             SoundActionButton(
               title = stringResource(R.string.deepsound_play),
               icon = SoundIcons.Play,
-              // From the first track, in order — whatever Shuffle was.
+              // From the first track that can play, in order — whatever Shuffle was.
               onClick = {
-                if (collection.tracks.isNotEmpty()) {
-                  player.play(collection.queue(), startIndex = 0, shuffled = false)
-                }
+                if (playable.isNotEmpty()) player.play(playable, startIndex = 0, shuffled = false)
               },
               modifier = Modifier.weight(1f),
             )
@@ -206,9 +245,7 @@ fun CollectionDetailScreen(
               // The whole collection dealt in a random order, from a random
               // track that can play.
               onClick = {
-                if (collection.tracks.isNotEmpty()) {
-                  player.play(collection.queue(), startIndex = null, shuffled = true)
-                }
+                if (playable.isNotEmpty()) player.play(playable, startIndex = null, shuffled = true)
               },
               modifier = Modifier.weight(1f),
             )
@@ -217,15 +254,21 @@ fun CollectionDetailScreen(
 
         item(key = "tracks-gap") { Spacer(Modifier.height(Dp.rhythm)) }
 
-        itemsIndexed(collection.tracks, key = { _, track -> track.id }) { index, track ->
+        itemsIndexed(current.tracks, key = { _, track -> track.id }) { index, track ->
           TrackRow(
             number = index + 1,
             track = track,
-            isCurrent = playback.isCurrent(track, collection),
-            isLocked = track.isLocked,
+            isCurrent = playback.isCurrent(track, current),
+            isLocked = PremiumGate.isLocked(track, current, hasPremium),
             isSaved = track.id in savedIds,
-            onPlay = { if (!track.isLocked) player.playFrom(collection.queue(), index) },
-            onToggleSaved = { scope.launch { playlistStore.toggle(track, collection) } },
+            onPlay = {
+              // A locked sound — or one whose audio the server withheld — never
+              // starts. From here, keeping the listener's Shuffle.
+              if (PremiumGate.canStart(track, current, hasPremium)) {
+                player.playFrom(playable, playable.indexOfFirst { it.track.id == track.id }.coerceAtLeast(0))
+              }
+            },
+            onToggleSaved = { scope.launch { playlistStore.toggle(track, current) } },
             modifier = Modifier.padding(horizontal = Dp.edge),
           )
         }
@@ -271,11 +314,6 @@ private fun DetailTopBar(title: String, onBack: () -> Unit) {
 @Composable
 private fun ArtworkHeader(collection: SoundCollection) {
   val shape = RoundedCornerShape(Dp.card)
-  val tracks = pluralStringResource(
-    R.plurals.deepsound_track_count,
-    collection.trackCount,
-    collection.trackCount,
-  )
   val minutes = stringResource(
     R.string.deepsound_minutes,
     SoundTime.minutes(collection.totalDurationSeconds.toDouble()),
@@ -322,7 +360,12 @@ private fun ArtworkHeader(collection: SoundCollection) {
         textAlign = TextAlign.Center,
       )
       Text(
-        stringResource(R.string.deepsound_collection_meta, tracks, minutes),
+        pluralStringResource(
+          R.plurals.deepsound_collection_meta,
+          collection.trackCount,
+          collection.trackCount,
+          minutes,
+        ),
         style = DeepType.caption,
         color = Color.driftGrey,
         textAlign = TextAlign.Center,
@@ -337,9 +380,10 @@ private fun ArtworkHeader(collection: SoundCollection) {
 /**
  * One track: its number, title and length. Tapping plays the collection from
  * here; a long press opens the one place a collection offers to save a sound,
- * so the row itself stays as quiet as it was. A locked track wears a small grey
- * lock before its length — iOS's caption-size `lock.fill` — and can still be
- * saved (the catalogue is visible to everyone; only its audio is withheld).
+ * so the row itself stays as quiet as it was. A locked track wears
+ * [PremiumLockBadge] inline before its length, fading out in place on
+ * becoming a member, and can still be saved (the catalogue is visible to
+ * everyone; only its audio is withheld).
  *
  * The current track reads in lavender at medium weight. iOS uses semibold, but
  * the bundled Inter is declared at 400 and 500 only — a 600 request would be
@@ -398,14 +442,7 @@ private fun TrackRow(
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.weight(1f),
       )
-      if (isLocked) {
-        Icon(
-          SoundIcons.Lock,
-          contentDescription = stringResource(R.string.deepsound_locked),
-          tint = Color.driftGrey,
-          modifier = Modifier.size(LOCK_GLYPH_SIZE),
-        )
-      }
+      PremiumLockBadge(visible = isLocked, size = PremiumLockSize.Row)
       Text(
         text = SoundTime.clock(track.durationSeconds.toDouble()),
         style = DeepType.caption.copy(fontFeatureSettings = TABULAR_FIGURES),
@@ -453,6 +490,7 @@ private fun CollectionDetailPreview() {
   DeepTheme {
     CollectionDetailScreen(
       collection = SoundFixtures.oceanDepths,
+      library = remember { MockSoundLibrary.loaded },
       player = remember { MockSoundPlayer.idle() },
       playlistStore = remember { MockPlaylistStore.empty },
       onBack = {},
@@ -464,15 +502,31 @@ private fun CollectionDetailPreview() {
 @Composable
 private fun CollectionDetailLockedPreview() {
   DeepTheme {
-    val collection = SoundFixtures.oceanDepths
-    CollectionDetailScreen(
-      collection = collection.copy(
-        tracks = collection.tracks.mapIndexed { index, track -> track.copy(isLocked = index > 0) },
-      ),
-      player = remember { MockSoundPlayer.idle() },
-      playlistStore = remember { MockPlaylistStore.empty },
-      onBack = {},
-    )
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = false)) {
+      CollectionDetailScreen(
+        collection = SoundFixtures.premiumSample,
+        library = remember { MockSoundLibrary.loaded },
+        player = remember { MockSoundPlayer.idle() },
+        playlistStore = remember { MockPlaylistStore.empty },
+        onBack = {},
+      )
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Collection detail — member")
+@Composable
+private fun CollectionDetailMemberPreview() {
+  DeepTheme {
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = true)) {
+      CollectionDetailScreen(
+        collection = SoundFixtures.premiumSample,
+        library = remember { MockSoundLibrary.loaded },
+        player = remember { MockSoundPlayer.idle() },
+        playlistStore = remember { MockPlaylistStore.empty },
+        onBack = {},
+      )
+    }
   }
 }
 
@@ -482,6 +536,7 @@ private fun CollectionDetailPlayingPreview() {
   DeepTheme {
     CollectionDetailScreen(
       collection = SoundFixtures.oceanDepths,
+      library = remember { MockSoundLibrary.loaded },
       player = remember { MockSoundPlayer.playing() },
       playlistStore = remember { MockPlaylistStore.sample },
       onBack = {},
