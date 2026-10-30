@@ -5,6 +5,7 @@ import SwiftUI
 /// push the real collection detail via `openCollection`.
 struct CollectionListView: View {
   @Environment(\.openCollection) private var openCollection
+  @Environment(\.premiumAccess) private var premiumAccess
   let title: String
   let collections: [SoundCollection]
 
@@ -32,6 +33,11 @@ struct CollectionListView: View {
       HStack(spacing: 14) {
         SoundArtwork(palette: collection.palette, imageURL: collection.imageURL, cornerRadius: 16)
           .frame(width: 72, height: 72)
+          .premiumLockBadge(
+            PremiumGate.isLocked(collection, hasPremium: premiumAccess.hasPremium),
+            diameter: 22,
+            inset: 5
+          )
 
         VStack(alignment: .leading, spacing: 3) {
           Text(collection.title)
@@ -42,7 +48,7 @@ struct CollectionListView: View {
             .font(DeepType.caption)
             .foregroundStyle(.driftGrey)
             .lineLimit(1)
-          Text("\(collection.trackCount) tracks · \(collection.totalDuration.minutesString)")
+          Text("\(collection.trackCount) tracks, \(collection.totalDuration.minutesString)")
             .font(DeepType.micro)
             .foregroundStyle(.driftGrey)
         }
@@ -62,9 +68,20 @@ struct CollectionListView: View {
   }
 }
 
+#if DEBUG
 #Preview("Collection List") {
   NavigationStack {
     CollectionListView(title: "Calm", collections: SoundLibrary.calm)
   }
   .environment(\.openCollection, { _ in })
+  .environment(\.premiumAccess, .free)
 }
+
+#Preview("Collection List — locked") {
+  NavigationStack {
+    CollectionListView(title: "Calm", collections: [SoundLibrary.premiumSample] + SoundLibrary.calm)
+  }
+  .environment(\.openCollection, { _ in })
+  .environment(\.premiumAccess, .free)
+}
+#endif

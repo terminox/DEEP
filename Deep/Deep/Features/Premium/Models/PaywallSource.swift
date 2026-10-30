@@ -10,6 +10,8 @@ enum PaywallSource: String, Identifiable, Hashable {
   case settings
   /// A locked sound, reached from a collection or the playlist.
   case lockedSound
+  /// A locked plant, tapped in the Garden's plant picker.
+  case lockedPlant
   /// The premium step during onboarding.
   case onboarding
 
@@ -21,6 +23,8 @@ enum PaywallSource: String, Identifiable, Hashable {
       return "Every sound, every session — yours whenever you need them."
     case .lockedSound:
       return "It's part of DEEP Premium, along with everything else in the library."
+    case .lockedPlant:
+      return "This plant is part of DEEP Premium, along with every sound in the library."
     case .onboarding:
       return "Try DEEP Premium free for seven days. Nothing to decide today."
     }

@@ -12,6 +12,7 @@ import SwiftUI
 struct MindGardenCoordinatorView: View {
   @Environment(\.practiceStore) private var practice
   @Environment(\.gardenStore) private var gardenStore
+  @Environment(\.premiumAccess) private var premiumAccess
   @State private var path = NavigationPath()
   /// The plant picker is raised, not pushed — a choice made beside the garden
   /// rather than a place you travel to.
@@ -33,7 +34,12 @@ struct MindGardenCoordinatorView: View {
           DeepSessionIntroView(session: session)
         }
     }
-    .sheet(isPresented: $isPickingPlant) { PlantPickerSheet() }
+    .sheet(isPresented: $isPickingPlant) { PlantPickerCoordinatorView() }
+    // The plant catalogue carries the server's premium verdicts; a change in
+    // the premium answer re-fetches it, picker open or not.
+    .onChange(of: premiumAccess.contentEpoch) {
+      Task { await gardenStore.reloadCatalog() }
+    }
     .environment(\.openDeepSession, { session in path.append(session) })
     .environment(\.openPlantPicker, { isPickingPlant = true })
     .preferredColorScheme(.light)
@@ -59,3 +65,13 @@ extension EnvironmentValues {
     .environment(\.practiceStore, MockPracticeStore.fresh)
     .environment(\.gardenStore, .fresh)
 }
+
+#if DEBUG
+#Preview("Mind Garden — lapsed, growing a premium plant") {
+  // The plant stays theirs: no badge, no lock, still growing.
+  MindGardenCoordinatorView()
+    .environment(\.practiceStore, MockPracticeStore())
+    .environment(\.gardenStore, .lapsedGrowingPremium)
+    .environment(\.premiumAccess, .free)
+}
+#endif

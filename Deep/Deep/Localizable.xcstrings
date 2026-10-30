@@ -135,6 +135,22 @@
         }
       }
     },
+    "%lld tracks, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld tracks, %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld เพลง ความยาว %2$@"
+          }
+        }
+      }
+    },
     "%lld/%lld hearts today" : {
       "localizations" : {
         "en" : {
@@ -220,6 +236,16 @@
         }
       }
     },
+    "Couldn't switch plants — try again in a moment." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปลี่ยนต้นไม้ไม่สำเร็จ ลองใหม่อีกครั้งในอีกสักครู่"
+          }
+        }
+      }
+    },
     "Done" : {
       "localizations" : {
         "th" : {
@@ -240,12 +266,62 @@
         }
       }
     },
+    "Guided" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "มีเสียงนำ"
+          }
+        }
+      }
+    },
+    "Part of DEEP Premium" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เป็นส่วนหนึ่งของ DEEP Premium"
+          }
+        }
+      }
+    },
+    "Soundscape" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เสียงบรรยากาศ"
+          }
+        }
+      }
+    },
     "Thank you for giving to %@" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ขอบคุณที่มอบหัวใจให้ %@"
+          }
+        }
+      }
+    },
+    "This plant is part of DEEP Premium, along with every sound in the library." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium พร้อมกับทุกเสียงในคลังเสียง"
+          }
+        }
+      }
+    },
+    "This plant is part of DEEP Premium." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium"
           }
         }
       }
@@ -520,22 +596,6 @@
         }
       }
     },
-    "%lld tracks · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld tracks · %2$@"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld เพลง · %2$@"
-          }
-        }
-      }
-    },
     "%lld%% funded" : {
       "localizations" : {
         "th" : {
@@ -658,16 +718,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ช่วงหยุดพักรออยู่"
-          }
-        }
-      }
-    },
-    "A premium sound" : {
-      "localizations" : {
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เสียงสำหรับสมาชิกพรีเมียม"
           }
         }
       }
@@ -2043,16 +2093,6 @@
         }
       }
     },
-    "Maybe later" : {
-      "localizations" : {
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ไว้ทีหลัง"
-          }
-        }
-      }
-    },
     "Meditation %lld percent through" : {
       "localizations" : {
         "th" : {
@@ -3310,16 +3350,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "กองรวมของชุมชน"
-          }
-        }
-      }
-    },
-    "This one is part of DEEP Premium. It'll be here whenever you're ready." : {
-      "localizations" : {
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "เสียงนี้เป็นส่วนหนึ่งของ DEEP Premium มันจะอยู่ตรงนี้เมื่อคุณพร้อม"
           }
         }
       }

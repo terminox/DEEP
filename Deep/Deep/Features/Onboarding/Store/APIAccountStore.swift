@@ -19,6 +19,12 @@ final class APIAccountStore: AccountStore {
   /// this store never learns that RevenueCat exists.
   @ObservationIgnored var identitySink: (@MainActor (String?) -> Void)?
 
+  /// Hears the DEEP Premium answer the server sends beside the account on
+  /// `/me`, sign-up and login, after `identitySink` has heard who it is for.
+  /// Passed along unread: the composition root points it at `PremiumAccess`,
+  /// so this store never decides anything about premium.
+  @ObservationIgnored var entitlementSink: (@MainActor (ServerEntitlement?) -> Void)?
+
   /// Runs when the server ends the session without the member logging out —
   /// the session rejected at launch, or a refresh rejected mid-use. Whatever
   /// the device still holds for that account (queued listens, unsynced
@@ -48,6 +54,7 @@ final class APIAccountStore: AccountStore {
     do {
       let me: MeResponseDTO = try await client.request("/me")
       adopt(Self.account(from: me.user))
+      entitlementSink?(me.entitlement.map(ServerEntitlement.init(dto:)))
     } catch {
       if APIClient.isAuthRejection(error) {
         // A rejected refresh has already ended the session through the
@@ -76,6 +83,7 @@ final class APIAccountStore: AccountStore {
     )
     client.tokens.save(access: resp.accessToken, refresh: resp.refreshToken)
     adopt(Self.account(from: resp.user))
+    entitlementSink?(resp.entitlement.map(ServerEntitlement.init(dto:)))
   }
 
   func logIn(email: String, password: String) async throws {
@@ -87,6 +95,7 @@ final class APIAccountStore: AccountStore {
     )
     client.tokens.save(access: resp.accessToken, refresh: resp.refreshToken)
     adopt(Self.account(from: resp.user))
+    entitlementSink?(resp.entitlement.map(ServerEntitlement.init(dto:)))
   }
 
   func logOut() async {

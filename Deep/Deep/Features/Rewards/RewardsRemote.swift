@@ -101,6 +101,9 @@ final class MockRewardsRemote: RewardsRemote {
   /// Failure switches — the next matching call throws.
   var failsGarden = false
   var failsSelectPlant = false
+  /// What a failing `selectPlant` throws — an unreachable server by default;
+  /// a 403 `premium_locked` for the server's premium backstop.
+  var selectPlantError: Error = Failure()
   var failsSpend = false
   /// Whether the server judges tonight's attendance complete.
   var pauseEligible = true
@@ -147,7 +150,7 @@ final class MockRewardsRemote: RewardsRemote {
   func fetchPlants() async throws -> [Plant] { catalog }
 
   func selectPlant(id: String) async throws -> GardenSnapshot {
-    if failsSelectPlant { throw Failure() }
+    if failsSelectPlant { throw selectPlantError }
     guard catalog.contains(where: { $0.id == id }) else { throw Failure() }
     selectedPlantID = id
     return snapshot
@@ -374,7 +377,9 @@ extension Plant {
       tagline: dto.tagline ?? "",
       imageURL: dto.imageUrl.flatMap(URL.init(string:)),
       palette: dto.palette.flatMap(ArtworkPalette.init(rawValue:)) ?? .mist,
-      stages: (dto.stages ?? stages ?? []).map(PlantStage.init(dto:))
+      stages: (dto.stages ?? stages ?? []).map(PlantStage.init(dto:)),
+      isPremium: dto.isPremium ?? false,
+      isLocked: dto.isLocked
     )
   }
 }

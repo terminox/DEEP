@@ -2,8 +2,9 @@ import SwiftUI
 
 /// Coordinator view for the DEEP Sound flow — the business-specific composition
 /// root. It owns navigation (home → collection detail, home → DEEP Session
-/// threshold), and nothing else. The mini player lives in the tab bar's bottom
-/// accessory, owned by the app shell (`MainTabController`), not by this tab.
+/// threshold, a locked sound → the DEEP Premium invitation), and nothing else.
+/// The mini player lives in the tab bar's bottom accessory, owned by the app
+/// shell (`MainTabController`), not by this tab.
 /// The DEEP Session threshold is a pushed leaf like any other; the practice
 /// itself lifts up over the whole shell from there.
 ///
@@ -31,13 +32,26 @@ struct DeepSoundCoordinatorView: View {
         .navigationDestination(for: DeepSession.self) { session in
           DeepSessionIntroView(session: session)
         }
+        // The paywall is a place you go, pushed like the You tab pushes it —
+        // its own atmosphere, no bar, and "Not right now" steps back.
+        .navigationDestination(for: PaywallSource.self) { source in
+          PaywallView(source: source) { pop() }
+            .toolbarVisibility(.hidden, for: .navigationBar)
+        }
     }
     .environment(\.openCollection, { collection in path.append(collection) })
+    .environment(\.openPaywall, { source in path.append(source) })
     .environment(\.openDeepSession, { session in path.append(session) })
     // Leaf play buttons drive the same shared player that feeds the shell's
     // bottom-accessory mini player.
     .environment(\.soundPlayer, player)
     .preferredColorScheme(.light)
+  }
+
+  /// Steps back one screen — the paywall's way out, whichever way it ends.
+  private func pop() {
+    guard !path.isEmpty else { return }
+    path.removeLast()
   }
 }
 

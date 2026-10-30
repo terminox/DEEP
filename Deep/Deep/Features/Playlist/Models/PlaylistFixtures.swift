@@ -28,6 +28,22 @@ enum PlaylistFixtures {
     }
   )
 
+  /// The saved playlist with a DEEP Premium sound on top — the row a free
+  /// listener sees locked.
+  static let withPremium = Playlist(
+    id: "playlist-1",
+    name: "Playlist",
+    isDefault: true,
+    entries: [
+      PlaylistEntry(
+        id: "item-premium",
+        track: SoundLibrary.premiumSample.tracks[0],
+        collection: SoundLibrary.premiumSample,
+        savedAt: .now
+      ),
+    ] + saved.entries
+  )
+
   /// Nothing saved yet — the invitation state.
   static let empty = Playlist(
     id: "playlist-1",

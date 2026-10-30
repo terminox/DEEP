@@ -15,9 +15,11 @@ import RevenueCat
 /// it on logout. A purchase is refused rather than attached to an anonymous
 /// RevenueCat id — re-homing anonymous purchases later is manual surgery.
 ///
-/// With no API key (every release environment until an App Store app exists in
-/// the RevenueCat project) the store never configures the SDK and simply reads
-/// as "not subscribed".
+/// With no API key (a build configured without one) the store never configures
+/// the SDK and simply reads as "not subscribed".
+///
+/// Where a member manages their subscription is projected too, as a plain
+/// `SubscriptionManagement`, so Settings never imports the SDK.
 @MainActor
 @Observable
 final class RevenueCatSubscriptionStore: SubscriptionStore {
@@ -31,6 +33,8 @@ final class RevenueCatSubscriptionStore: SubscriptionStore {
     didSet { cache.save(status) }
   }
   private(set) var plans: [SubscriptionPlan] = []
+  /// Where the active entitlement is managed, from the latest customer info.
+  private(set) var management: SubscriptionManagement = .appStore
 
   /// The SDK's packages, keyed by `SubscriptionPlan.id`, so a plan can be
   /// mapped back to the thing we actually purchase.
@@ -199,6 +203,18 @@ final class RevenueCatSubscriptionStore: SubscriptionStore {
       isActive: entitlement?.isActive ?? false,
       productID: entitlement?.productIdentifier
     )
+    management = Self.management(
+      isAppStore: entitlement.map { $0.store == .appStore || $0.store == .macAppStore } ?? true,
+      managementURL: info.managementURL
+    )
+  }
+
+  /// An App Store purchase is managed in Apple's sheet; anything else at the
+  /// URL RevenueCat names for it, when it names one. Internal so the rule is
+  /// reachable from the tests without the SDK.
+  nonisolated static func management(isAppStore: Bool, managementURL: URL?) -> SubscriptionManagement {
+    if !isAppStore, let managementURL { return .web(managementURL) }
+    return .appStore
   }
 
   /// The entitlement's active flag, narrowed to our state. Internal so the

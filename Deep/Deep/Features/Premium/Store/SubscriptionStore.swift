@@ -8,6 +8,9 @@ protocol SubscriptionStore: AnyObject, Observable {
   var status: SubscriptionState { get }
   var plans: [SubscriptionPlan] { get }
   var isSubscribed: Bool { get }
+  /// Where this member manages DEEP Premium — told as plainly as Settings
+  /// needs it, so no view ever touches the purchasing SDK's own types.
+  var management: SubscriptionManagement { get }
 
   /// Fetch the available plans from the store. Safe to call repeatedly.
   func loadPlans() async
@@ -20,6 +23,18 @@ extension SubscriptionStore {
     if case .subscribed = status { return true }
     return false
   }
+
+  /// The App Store, unless a conformer knows better.
+  var management: SubscriptionManagement { .appStore }
+}
+
+/// Where a member goes to change or cancel DEEP Premium.
+enum SubscriptionManagement: Equatable {
+  /// Bought through the App Store: Apple's own manage-subscriptions sheet.
+  case appStore
+  /// Bought somewhere else (the web, another platform): the page the
+  /// purchasing service names for it.
+  case web(URL)
 }
 
 /// What came of a purchase attempt.

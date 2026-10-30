@@ -7,6 +7,8 @@ import SwiftUI
 struct FeatureCard: View {
   @Environment(\.openCollection) private var openCollection
   @Environment(\.soundPlayer) private var player
+  @Environment(\.premiumAccess) private var premiumAccess
+  @Environment(\.openPaywall) private var openPaywall
   let collection: SoundCollection
   var width: CGFloat = 300
   var height: CGFloat = 200
@@ -37,6 +39,10 @@ struct FeatureCard: View {
             endPoint: .bottom
           )
           .clipShape(RoundedRectangle(cornerRadius: .card, style: .continuous))
+        )
+        .premiumLockBadge(
+          PremiumGate.isLocked(collection, hasPremium: premiumAccess.hasPremium),
+          inset: 12
         )
 
       HStack(alignment: .bottom) {
@@ -75,7 +81,14 @@ struct FeatureCard: View {
 
   private var playButton: some View {
     Button {
-      player.play(collection)
+      // Through the gate, like a collection's own Play: only what this
+      // listener may hear is queued, and nothing to hear opens the invitation.
+      let queue = PremiumGate.playable(collection, hasPremium: premiumAccess.hasPremium)
+      if queue.isEmpty {
+        openPaywall(.lockedSound)
+      } else {
+        player.play(queue, at: 0)
+      }
     } label: {
       Image(systemName: "play.fill")
         .font(.system(size: 16, weight: .semibold))
@@ -95,10 +108,17 @@ struct FeatureCard: View {
           .font(DeepType.body.weight(.medium))
           .foregroundStyle(.deepPlum)
           .lineLimit(1)
-        Text(verbatim: "\(collection.kindLabel) · \(collection.subtitle)")
-          .font(DeepType.caption)
-          .foregroundStyle(.driftGrey)
-          .lineLimit(1)
+        // Kind and descriptor told apart by weight and a little air, not a
+        // middle dot — the design language has no separators.
+        HStack(spacing: 6) {
+          Text(collection.kindLabel)
+            .font(DeepType.caption.weight(.medium))
+            .layoutPriority(1)
+          Text(collection.subtitle)
+            .font(DeepType.caption)
+        }
+        .foregroundStyle(.driftGrey)
+        .lineLimit(1)
       }
     }
   }
@@ -108,7 +128,9 @@ extension SoundCollection {
   /// Small self-describing tag for home cards: any guided track makes the
   /// collection read as guided; otherwise it's a soundscape.
   var kindLabel: String {
-    tracks.contains { $0.kind == .guided } ? "Guided" : "Soundscape"
+    tracks.contains { $0.kind == .guided }
+      ? String(localized: "Guided", bundle: .app, locale: .app)
+      : String(localized: "Soundscape", bundle: .app, locale: .app)
   }
 }
 
@@ -119,5 +141,15 @@ extension SoundCollection {
     FeatureCard(collection: SoundLibrary.calm[0])
   }
   .environment(\.soundPlayer, MockSoundPlayer.idle)
+  .environment(\.premiumAccess, .free)
+}
+
+#Preview("Feature Card — locked") {
+  ZStack {
+    AtmosphereBackground()
+    FeatureCard(collection: SoundLibrary.premiumSample)
+  }
+  .environment(\.soundPlayer, MockSoundPlayer.idle)
+  .environment(\.premiumAccess, .free)
 }
 #endif

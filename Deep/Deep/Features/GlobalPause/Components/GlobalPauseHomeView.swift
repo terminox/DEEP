@@ -10,6 +10,7 @@ struct GlobalPauseHomeView: View {
   @Environment(\.soundContentRepository) private var repository
   @Environment(\.openCollectionList) private var openCollectionList
   @Environment(\.globalPauseSession) private var pauseSession
+  @Environment(\.premiumAccess) private var premiumAccess
 
   private enum LoadState: Equatable { case loading, loaded, failed }
   @State private var home: PauseHome?
@@ -48,7 +49,9 @@ struct GlobalPauseHomeView: View {
       title: "Home",
       subtitle: "Take a breath with the world today"
     )
-    .task { await load() }
+    // Keyed on the premium answer changing, like the Sounds home: the feed's collections
+    // carry the server's withheld-audio verdicts.
+    .task(id: premiumAccess.contentEpoch) { await load() }
     .heroRefreshable {
       // Feed content and tonight's schedule refresh together; the schedule
       // fetch also re-syncs the clock, so time travel lands here too.

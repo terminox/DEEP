@@ -20,6 +20,9 @@ struct Lyrics: Identifiable, Hashable {
 /// `FixtureSoundContentRepository` (the bundled `SoundLibrary`).
 protocol SoundContentRepository: AnyObject {
   func home() async throws -> [SoundShelf]
+  /// One collection, fresh — for a detail screen whose copy was fetched before
+  /// the listener's DEEP Premium answer flipped.
+  func collection(id: String) async throws -> SoundCollection
   func pauseHome() async throws -> PauseHome
   func lyrics(trackID: String, language: String?) async throws -> [Lyrics]
 }
@@ -36,6 +39,15 @@ final class FixtureSoundContentRepository: SoundContentRepository {
       SoundShelf(id: "deep-teacher", title: "DEEP Teacher", collections: SoundLibrary.deepTeacher),
       SoundShelf(id: "deep-kids", title: "DEEP Kids", collections: SoundLibrary.deepKids),
     ]
+  }
+
+  func collection(id: String) async throws -> SoundCollection {
+    let all = SoundLibrary.calm + SoundLibrary.morning + SoundLibrary.sleep
+      + SoundLibrary.deepTeacher + SoundLibrary.deepKids
+    guard let match = all.first(where: { $0.id == id }) else {
+      throw APIError.http(status: 404, code: "not_found", message: "Collection not found")
+    }
+    return match
   }
 
   func pauseHome() async throws -> PauseHome {
@@ -87,7 +99,10 @@ final class APISoundContentRepository: SoundContentRepository {
   }
 
   func home() async throws -> [SoundShelf] {
-    let dto: SoundHomeDTO = try await client.request("/sound/home", authorized: false)
+    // Sent with the token when signed in: the server withholds premium audio
+    // per listener, so it has to know who is asking. Signed out, no token
+    // means no header, and the shelves arrive exactly as before.
+    let dto: SoundHomeDTO = try await client.request("/sound/home", authorized: true)
     return dto.categories.map { cat in
       SoundShelf(
         id: cat.id,
@@ -95,6 +110,15 @@ final class APISoundContentRepository: SoundContentRepository {
         collections: (cat.collections ?? []).map(Self.collection(from:))
       )
     }
+  }
+
+  func collection(id: String) async throws -> SoundCollection {
+    // Authorized for the same reason as the home: the verdict is per listener.
+    let dto: CollectionResponseDTO = try await client.request(
+      "/sound/collections/\(id)",
+      authorized: true
+    )
+    return Self.collection(from: dto.collection)
   }
 
   func pauseHome() async throws -> PauseHome {
@@ -139,6 +163,7 @@ final class APISoundContentRepository: SoundContentRepository {
       imageURL: dto.imageUrl.flatMap(URL.init(string:)),
       categoryId: dto.categoryId,
       isPremium: dto.isPremium,
+      isLocked: dto.isLocked,
       tracks: (dto.tracks ?? []).map(Self.track(from:))
     )
   }
@@ -150,7 +175,8 @@ final class APISoundContentRepository: SoundContentRepository {
       duration: TimeInterval(dto.durationSeconds),
       kind: dto.kind == "GUIDED" ? .guided : .instrumental,
       audioURL: dto.audioUrl.flatMap(URL.init(string:)),
-      isPremium: dto.isPremium
+      isPremium: dto.isPremium,
+      isLocked: dto.isLocked
     )
   }
 }

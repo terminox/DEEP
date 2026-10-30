@@ -20,6 +20,9 @@ final class AppDependencies {
   let onboardingStore: any OnboardingProgressStore
   let onboardingRemote: any OnboardingRemote
   let subscriptionStore: any SubscriptionStore
+  /// The one premium answer every lock decision reads — the store's, and (once
+  /// it is asked) the server's.
+  let premiumAccess: PremiumAccess
   let soundRepository: any SoundContentRepository
   let soundPlayer: any SoundPlaying
   /// The durable queue between finished tracks and the hearts they earn.
@@ -74,6 +77,26 @@ final class AppDependencies {
     #else
     self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
     #endif
+    let premiumAccess = PremiumAccess(
+      store: subscriptionStore,
+      fetcher: APIEntitlementFetcher(client: client)
+    )
+    self.premiumAccess = premiumAccess
+    // The account store reports who is signed in and what the server said
+    // about their membership; it never learns what either is for. RevenueCat
+    // follows the identity (when it is the live store), and `PremiumAccess`
+    // follows both — forgetting a signed-out member's answer, adopting the
+    // next one's.
+    let revenueCat = subscriptionStore as? RevenueCatSubscriptionStore
+    accountStore.identitySink = { userID in
+      premiumAccess.identify(userID: userID)
+      if let revenueCat {
+        Task { await revenueCat.identify(userID: userID) }
+      }
+    }
+    accountStore.entitlementSink = { entitlement in
+      premiumAccess.adopt(entitlement)
+    }
     self.soundRepository = APISoundContentRepository(client: client)
 
     // Rewards: remote → ledger → garden → the one ingest seam. Every award
@@ -172,18 +195,15 @@ final class AppDependencies {
   }
 
   /// RevenueCat, speaking for the DEEP user id from the first moment: it starts
-  /// as the last signed-in member, and follows every sign-in and sign-out after.
+  /// as the last signed-in member, and follows every sign-in and sign-out after
+  /// (the account store's `identitySink`, wired in `init`).
   private static func liveSubscriptionStore(
     config: AppConfig,
     accountStore: APIAccountStore
   ) -> RevenueCatSubscriptionStore {
-    let store = RevenueCatSubscriptionStore(
+    RevenueCatSubscriptionStore(
       apiKey: config.revenueCatAPIKey,
       appUserID: accountStore.lastKnownUserID
     )
-    accountStore.identitySink = { userID in
-      Task { await store.identify(userID: userID) }
-    }
-    return store
   }
 }

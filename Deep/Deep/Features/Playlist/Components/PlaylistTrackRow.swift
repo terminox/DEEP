@@ -24,6 +24,7 @@ struct PlaylistTrackRow: View {
           cornerRadius: 14
         )
         .frame(width: 56, height: 56)
+        .premiumLockBadge(isLocked, diameter: 20, inset: 4)
 
         VStack(alignment: .leading, spacing: 3) {
           Text(entry.track.title)
@@ -42,12 +43,6 @@ struct PlaylistTrackRow: View {
         // A Spacer here would bid against this column and truncate titles that
         // had room; a greedy frame lets the text take what it needs.
         .frame(maxWidth: .infinity, alignment: .leading)
-
-        if isLocked {
-          Image(systemName: "lock.fill")
-            .font(.caption)
-            .foregroundStyle(.driftGrey)
-        }
       }
       .padding(12)
       .frostedCard()
