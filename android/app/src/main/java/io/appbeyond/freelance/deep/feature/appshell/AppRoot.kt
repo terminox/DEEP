@@ -144,6 +144,13 @@ private object Handoff {
  * @param flushBeforeLogOut / resetAccountState the rewards side of every
  *   exit, handed on to Settings, and the reset is also run here when the
  *   server rejects a restored session.
+ * @param refreshPremiumIfUnanswered asks the server about DEEP Premium during
+ *   the launch beat, only when the session restore's `/me` didn't carry the
+ *   answer (`AppDependencies.refreshPremiumIfUnanswered`).
+ * @param refreshPremium asks it again on every return to the foreground while
+ *   the shell is up — a membership can start, lapse or be refunded while the
+ *   app sleeps. Not on the shell's first appearance: launch and a fresh
+ *   sign-in have just carried the answer.
  * @param reminderStore / preferences the daily reminder and the language
  *   picker, handed on to Settings' preference screens.
  * @param compassionContent / compassionCauseContent the Compassion tab's root
@@ -171,6 +178,8 @@ fun AppRoot(
   flushBeforeLogOut: suspend () -> Boolean,
   resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
+  refreshPremiumIfUnanswered: suspend () -> Unit = {},
+  refreshPremium: () -> Unit = {},
   flowContent: @Composable () -> Unit = {},
   homeContent: @Composable (actions: HomeActions) -> Unit = {},
   gardenContent: @Composable (actions: HomeActions) -> Unit = {},
@@ -216,6 +225,9 @@ fun AppRoot(
         accountStore.restore()
         onboardingLoaded.await()
         if (accountStore.account.value != null) {
+          // Beside the onboarding fetch, so their timeouts overlap rather than
+          // stack against an unreachable host. Never throws.
+          val premiumAnswered = async { refreshPremiumIfUnanswered() }
           // The server's copy wins over this phone's: a member who finished
           // onboarding on another install must land in the shell here too.
           try {
@@ -240,6 +252,7 @@ fun AppRoot(
           } catch (_: Exception) {
             // A local write that failed: keep what is on disk and carry on.
           }
+          premiumAnswered.await()
         }
         floor.join()
       }
@@ -315,8 +328,10 @@ fun AppRoot(
             // one effect also fires as the shell first composes — once per
             // entry into Main, whether from the launch beat or a fresh sign-in,
             // and never twice at cold start.
+            val premiumStarts = remember { PremiumStarts() }
             LifecycleEventEffect(Lifecycle.Event.ON_START, ProcessLifecycleOwner.get()) {
               syncRewards()
+              if (premiumStarts.seenFirst) refreshPremium() else premiumStarts.seenFirst = true
             }
             MainShellCoordinator(
               accountStore = accountStore,
@@ -410,6 +425,15 @@ fun AppRoot(
       }
     }
   }
+}
+
+/**
+ * Whether the shell has seen its first ON_START — the replay as it composes,
+ * which launch or a fresh sign-in has already answered DEEP Premium for. A
+ * plain holder rather than state: nothing draws from it.
+ */
+private class PremiumStarts {
+  var seenFirst = false
 }
 
 /**

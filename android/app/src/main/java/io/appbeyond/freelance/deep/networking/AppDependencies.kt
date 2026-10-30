@@ -10,6 +10,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.auth.TokenStoring
+import io.appbeyond.freelance.deep.BuildConfig
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.config.AppConfig
 import io.appbeyond.freelance.deep.feature.compassion.store.HeartLedger
@@ -34,6 +35,13 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
 import io.appbeyond.freelance.deep.feature.playlist.store.ApiPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistCache
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
+import io.appbeyond.freelance.deep.feature.premium.store.ApiEntitlementFetcher
+import io.appbeyond.freelance.deep.feature.premium.store.MockSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.store.PremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.store.ReconciledPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.store.RevenueCatSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.store.SubscriptionStatusCache
+import io.appbeyond.freelance.deep.feature.premium.store.SubscriptionStore
 import io.appbeyond.freelance.deep.feature.practice.store.PracticeJournal
 import io.appbeyond.freelance.deep.feature.rewards.PauseNightRewards
 import io.appbeyond.freelance.deep.feature.rewards.PracticeRewards
@@ -83,6 +91,8 @@ import java.time.ZoneId
 class AppDependencies(context: Context) {
 
   val config: AppConfig = AppConfig
+
+  private val appContext: Context = context.applicationContext
 
   /**
    * Process-lifetime scope for work that must outlive any single screen —
@@ -155,6 +165,68 @@ class AppDependencies(context: Context) {
     DataStoreOnboardingProgressStore(context.applicationContext, appScope)
   val onboardingStore: OnboardingProgressStore = onboardingProgressStore
 
+  private val authService: AuthService = retrofit.create(AuthService::class.java)
+
+  // DEEP Premium. Built lazily, on the first thing that asks — in practice
+  // `MainActivity`, through [startPremium] — and never by this constructor:
+  // a debug build may still be told, by the activity's launch intent, to
+  // swap in the in-memory store ([useMockSubscriptions]), and the process
+  // starts before that intent can be read. Declared above the account store
+  // because its sinks reach both.
+
+  /** Set by [useMockSubscriptions]; read once, as [subscriptionStore] is built. */
+  @Volatile private var mockSubscriptionsRequested = false
+
+  /**
+   * Debug builds only: the in-memory [MockSubscriptionStore] stands in for
+   * RevenueCat, so the whole purchase mechanic — plans, the purchase, the
+   * flipped plan chip — is drivable on an emulator with no store and no
+   * network (iOS's `-DeepMockSubscriptions` launch argument). Has no effect
+   * once the store has been built, and none at all in a release build, where
+   * [BuildConfig.DEBUG] is a compile-time `false` and R8 drops the mock.
+   */
+  fun useMockSubscriptions() {
+    if (BuildConfig.DEBUG) mockSubscriptionsRequested = true
+  }
+
+  /**
+   * DEEP Premium's purchasing store: RevenueCat, speaking for the DEEP user id
+   * from the first moment — the last signed-in member to start with, then
+   * every sign-in and sign-out after (the account store's identity sink).
+   */
+  val subscriptionStore: SubscriptionStore by lazy {
+    if (BuildConfig.DEBUG && mockSubscriptionsRequested) {
+      MockSubscriptionStore.free
+    } else {
+      RevenueCatSubscriptionStore(
+        context = appContext,
+        apiKey = config.revenueCatApiKey,
+        cache = SubscriptionStatusCache(DataStoreBlobStore(appContext, "deep.subscription")),
+        scope = appScope,
+        lastKnownUserId = apiAccountStore::lastKnownUserId,
+        // Only the dev flavor carries a Test Store key; see the store's doc.
+        allowTestStoreInRelease = config.isDev,
+        verboseLogging = config.isDev,
+      )
+    }
+  }
+
+  /**
+   * The one DEEP Premium answer every lock reads — the store's, the server's
+   * (remembered per member in `deep.premium`), and a short grace window
+   * after a purchase.
+   */
+  private val reconciledPremiumAccess: ReconciledPremiumAccess by lazy {
+    ReconciledPremiumAccess(
+      storeStatus = subscriptionStore.status,
+      fetcher = ApiEntitlementFetcher(auth = authService, isSignedIn = { isSignedIn }),
+      blob = DataStoreBlobStore(appContext, "deep.premium"),
+      scope = appScope,
+    )
+  }
+
+  val premiumAccess: PremiumAccess get() = reconciledPremiumAccess
+
   /**
    * Built after [onboardingStore] because it holds on to it: when the server
    * ends a signed-in session — a refused refresh, a rejected restore — the
@@ -163,9 +235,14 @@ class AppDependencies(context: Context) {
    * week four the same exit also forgets their garden, hearts, journal and
    * continuity day ([resetAccountState]); the stores it reaches are built
    * below, and the callback can only run long after construction.
+   *
+   * It reports who is signed in, and what the server said about their DEEP
+   * Premium, without learning what either is for: RevenueCat follows the
+   * identity (when it is the live store), and [premiumAccess] follows both —
+   * forgetting a signed-out member's answer, adopting the next one's.
    */
-  val accountStore: AccountStore = ApiAccountStore(
-    auth = retrofit.create(AuthService::class.java),
+  private val apiAccountStore: ApiAccountStore = ApiAccountStore(
+    auth = authService,
     tokens = tokens,
     refresher = tokenRefresher,
     cache = AccountCache(context.applicationContext),
@@ -173,7 +250,14 @@ class AppDependencies(context: Context) {
       onboardingProgressStore.reset()
       resetAccountState()
     },
+    identitySink = { userId ->
+      reconciledPremiumAccess.identify(userId)
+      (subscriptionStore as? RevenueCatSubscriptionStore)?.identify(userId)
+    },
+    entitlementSink = { entitlement -> reconciledPremiumAccess.adopt(entitlement) },
   )
+
+  val accountStore: AccountStore = apiAccountStore
 
   val onboardingRemote: OnboardingRemote =
     ApiOnboardingRemote(retrofit.create(OnboardingService::class.java))
@@ -492,6 +576,39 @@ class AppDependencies(context: Context) {
   )
 
   private val isSignedIn: Boolean get() = accountStore.account.value != null
+
+  // DEEP Premium, continued: the seams `AppRoot` and the shell call.
+
+  @Volatile private var premiumStarted = false
+
+  /**
+   * Builds DEEP Premium (after `MainActivity` has had its say on
+   * [useMockSubscriptions]) and reads the remembered server answer at once,
+   * so a member's locks are right from the first frame after the launch beat.
+   *
+   * Idempotent; called from `MainActivity.onCreate`.
+   */
+  fun startPremium() {
+    if (premiumStarted) return
+    premiumStarted = true
+    launchQuietly("premium restore") { reconciledPremiumAccess.restore() }
+  }
+
+  /**
+   * Launch: asks the server about DEEP Premium only if the session restore's
+   * `/me` didn't carry the answer already (an older server, or offline).
+   */
+  suspend fun refreshPremiumIfUnanswered() {
+    if (isSignedIn) reconciledPremiumAccess.refreshIfUnanswered()
+  }
+
+  /**
+   * Every return to the foreground while signed in: a membership can start,
+   * lapse or be refunded while the app sleeps.
+   */
+  fun refreshPremium() {
+    if (isSignedIn) launchQuietly("premium refresh") { reconciledPremiumAccess.refresh() }
+  }
 
   /**
    * Pulls the garden (and the wallet riding it), syncs the practice journal —
