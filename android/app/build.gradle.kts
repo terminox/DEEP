@@ -35,6 +35,17 @@ val devApiHostName: String =
 // change per flavor.
 val cloudRunApi = "https://deep-api-696592457470.asia-southeast1.run.app"
 
+// RevenueCat's public SDK key, per flavor — the twin of REVENUECAT_API_KEY in
+// Deep/Config/*.xcconfig. Only dev carries one: the DEEP Premium project's
+// Test Store key (`test_`, the same project iOS's Dev build uses), which buys
+// against RevenueCat's own simulated store with no Play Console at all. The
+// SDK refuses a Test Store key in a non-debuggable build unless told otherwise
+// (see RevenueCatSubscriptionStore), so that key must never reach a shipping
+// flavor. Staging, pilot and prod stay empty until a Play Store app exists in
+// the project: an empty key never configures the SDK, and the app reads "not
+// subscribed" with no plans to offer. Public by design, safe to commit.
+val revenueCatTestStoreKey = "test_riWvcLkFtmCvaxzRrfVhYDSItVV"
+
 // The release version, the one number a person reads. iOS ships the same
 // marketing version; each platform keeps its own build number.
 //
@@ -102,6 +113,7 @@ android {
       applicationIdSuffix = ".dev"
       buildConfigField("String", "APP_ENV", "\"dev\"")
       buildConfigField("String", "API_BASE_URL", "\"http://$devApiHost\"")
+      buildConfigField("String", "REVENUECAT_API_KEY", "\"$revenueCatTestStoreKey\"")
       resValue("string", "app_name", "DEEP Dev")
     }
     create("staging") {
@@ -109,6 +121,7 @@ android {
       applicationIdSuffix = ".staging"
       buildConfigField("String", "APP_ENV", "\"staging\"")
       buildConfigField("String", "API_BASE_URL", "\"$cloudRunApi\"")
+      buildConfigField("String", "REVENUECAT_API_KEY", "\"\"")
       resValue("string", "app_name", "DEEP Staging")
     }
     create("pilot") {
@@ -116,12 +129,14 @@ android {
       applicationIdSuffix = ".pilot"
       buildConfigField("String", "APP_ENV", "\"pilot\"")
       buildConfigField("String", "API_BASE_URL", "\"$cloudRunApi\"")
+      buildConfigField("String", "REVENUECAT_API_KEY", "\"\"")
       resValue("string", "app_name", "DEEP Pilot")
     }
     create("prod") {
       dimension = "environment"
       buildConfigField("String", "APP_ENV", "\"prod\"")
       buildConfigField("String", "API_BASE_URL", "\"$cloudRunApi\"")
+      buildConfigField("String", "REVENUECAT_API_KEY", "\"\"")
       resValue("string", "app_name", "DEEP")
     }
   }
@@ -356,4 +371,8 @@ dependencies {
 
   implementation(libs.coil.compose)
   implementation(libs.coil.network.okhttp)
+
+  // DEEP Premium: RevenueCat over Play Billing, as RevenueCat over StoreKit on
+  // iOS. Only RevenueCatSubscriptionStore touches it.
+  implementation(libs.revenuecat.purchases)
 }
