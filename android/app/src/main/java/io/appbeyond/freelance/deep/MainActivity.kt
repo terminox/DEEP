@@ -164,6 +164,7 @@ class MainActivity : ComponentActivity() {
           reminderStore = dependencies.reminderStore,
           preferences = preferences,
           soundPlayer = dependencies.soundPlayer,
+          listenReporter = dependencies.listenReporter,
           soundLibrary = dependencies.soundLibrary,
           playlistStore = dependencies.playlistStore,
           syncRewards = dependencies::syncRewards,

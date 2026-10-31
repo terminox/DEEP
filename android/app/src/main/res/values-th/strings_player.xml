@@ -3,10 +3,16 @@
   Thai twin of values/strings_player.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
   Entries marked "no iOS Thai" have no Thai in the iOS catalog and were translated fresh.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
   <!-- Mini player -->
   <string name="player_not_playing">ไม่มีเสียงที่กำลังเล่น</string> <!-- no iOS Thai -->
   <string name="player_now_playing_a11y">กำลังเล่น %1$s แตะเพื่อเปิดเครื่องเล่น</string>
+
+  <!-- A listen's heart -->
+  <string name="player_listen_earned">+1 หัวใจ</string>
+  <string name="player_listen_earned_a11y">คุณได้รับ 1 หัวใจจากการฟัง</string>
+  <string name="player_listen_day_complete" tools:ignore="PluralsCandidate">วันนี้ได้รับหัวใจจากการฟังครบ %1$d ดวงแล้ว</string>
+  <string name="player_listen_day_complete_compact" tools:ignore="PluralsCandidate">วันนี้ครบ %1$d/%2$d หัวใจ</string>
 
   <!-- Transport and utilities -->
   <string name="player_play">เล่น</string>
