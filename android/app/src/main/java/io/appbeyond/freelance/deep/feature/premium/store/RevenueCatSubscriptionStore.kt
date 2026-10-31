@@ -28,6 +28,7 @@ import io.appbeyond.freelance.deep.feature.premium.model.PurchaseOutcome
 import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionManagement
 import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionPlan
 import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionState
+import io.appbeyond.freelance.deep.feature.premium.model.StoreIdentity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -263,6 +264,14 @@ class RevenueCatSubscriptionStore(
   // MARK: - Mapping
 
   private fun apply(info: CustomerInfo) {
+    // An answer for anyone but the member expected — the last member's,
+    // landing after the next signed in, or an anonymous one while someone
+    // is signed in — is dropped rather than shown to the wrong person.
+    val speaking = Purchases.sharedInstance.appUserID
+    if (!StoreIdentity.answerFits(expectedUserId, speaking, info.originalAppUserId)) {
+      Log.i(TAG, "Ignored customer info for an identity this store isn't expecting.")
+      return
+    }
     val entitlement = info.entitlements[DeepEntitlement.ID]
     setStatus(
       if (entitlement?.isActive == true) SubscriptionState.Subscribed(entitlement.productIdentifier) else SubscriptionState.None,
