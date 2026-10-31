@@ -92,7 +92,9 @@ import java.util.Locale
  * in, and flies it home, is [currentCardLift]'s.
  *
  * @param visibility the presentation's scope, for the card lift's target.
- * @param snapshot / receipt the books for the ending (`PauseNightRewards`).
+ * @param snapshot / receipt / hydrate the books for the ending
+ *   (`PauseNightRewards`); [hydrate] lets the journal take its first pull
+ *   while the claim settles.
  * @param memberName heads the composer — "Friend" when there is none.
  * @param onFinish the visit is over: dismiss.
  */
@@ -108,9 +110,10 @@ fun GlobalPauseSessionCoordinator(
   onFinish: () -> Unit,
   modifier: Modifier = Modifier,
   visibility: AnimatedVisibilityScope? = null,
+  hydrate: suspend () -> Unit = {},
 ) {
   val scope = rememberCoroutineScope()
-  val visit = remember { GlobalPauseVisit(session, audio, scope, snapshot, receipt) }
+  val visit = remember { GlobalPauseVisit(session, audio, scope, snapshot, receipt, hydrate) }
   val phase by visit.phase.collectAsStateWithLifecycle()
   val isPreparing by visit.isPreparing.collectAsStateWithLifecycle()
   val pause by session.state.collectAsStateWithLifecycle()

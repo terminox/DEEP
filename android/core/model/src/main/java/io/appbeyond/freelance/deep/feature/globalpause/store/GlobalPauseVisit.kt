@@ -5,6 +5,7 @@ import io.appbeyond.freelance.deep.feature.rewards.model.RewardReceipt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,9 @@ import java.time.Duration
  * @param snapshot the books as they stand right now — garden, hearts, whether
  *   today's rhythm is already witnessed.
  * @param receipt folds the night's settled grants onto the frozen books.
+ * @param hydrate lets the practice journal take its first pull (bounded), run
+ *   alongside settling the claim so the ritual shows the account's real
+ *   rhythm without waiting for one and then the other.
  */
 class GlobalPauseVisit(
   private val session: GlobalPauseSession,
@@ -51,6 +55,7 @@ class GlobalPauseVisit(
   private val scope: CoroutineScope,
   private val snapshot: suspend () -> GlobalPauseRewardSnapshot,
   private val receipt: suspend (before: GlobalPauseRewardSnapshot) -> RewardReceipt,
+  private val hydrate: suspend () -> Unit = {},
 ) {
 
   sealed interface Phase {
@@ -140,14 +145,19 @@ class GlobalPauseVisit(
 
   /**
    * The reflection is done (a message posted, a word kept, or neither): let any
-   * claim still in flight land, then compose the ritual.
+   * claim still in flight land — and the practice journal hydrate — then
+   * compose the ritual.
    */
   suspend fun continueToRewards() {
     if (_phase.value != Phase.Reflecting || _isPreparing.value) return
     val pending = before ?: return
     _isPreparing.value = true
     val frozen = pending.await()
-    session.settlePauseAward()
+    coroutineScope {
+      val hydrated = launch { hydrate() }
+      session.settlePauseAward()
+      hydrated.join()
+    }
     val composed = receipt(frozen)
     _isPreparing.value = false
     if (_phase.value == Phase.Reflecting) _phase.value = Phase.Rewarding(composed)

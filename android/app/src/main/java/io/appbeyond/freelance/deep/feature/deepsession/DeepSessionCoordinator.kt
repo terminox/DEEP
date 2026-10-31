@@ -134,7 +134,15 @@ fun DeepSessionCoordinator(
 
       is SessionStage.Completion -> RewardRitualScreen(
         receipt = current.receipt,
-        continuityHeadline = stringResource(R.string.reward_continuity_headline_returned),
+        // A return when today's practice is what extended the run; otherwise
+        // the run is witnessed as it stands — iOS's `ContinuityRewardView.headline`.
+        continuityHeadline = stringResource(
+          if (current.receipt.returnedToday) {
+            R.string.reward_continuity_headline_returned
+          } else {
+            R.string.reward_continuity_headline_continues
+          },
+        ),
         onWitnessContinuity = onWitnessContinuity,
         onFinish = onFinish,
       )

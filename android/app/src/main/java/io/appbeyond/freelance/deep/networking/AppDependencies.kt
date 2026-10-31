@@ -14,7 +14,6 @@ import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.config.AppConfig
 import io.appbeyond.freelance.deep.feature.compassion.store.HeartLedger
 import io.appbeyond.freelance.deep.feature.deepsound.model.ListenRules
-import io.appbeyond.freelance.deep.feature.deepsound.player.ApiTrackListenReporter
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.TrackListenReporting
 import io.appbeyond.freelance.deep.feature.deepsound.store.ApiSoundLibrary
@@ -40,6 +39,7 @@ import io.appbeyond.freelance.deep.feature.rewards.PauseNightRewards
 import io.appbeyond.freelance.deep.feature.rewards.PracticeRewards
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.store.ContinuityWitness
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporter
 import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
 import io.appbeyond.freelance.deep.feature.reminders.AlarmReminderScheduler
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
@@ -52,11 +52,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.time.Clock
@@ -85,8 +86,8 @@ class AppDependencies(context: Context) {
 
   /**
    * Process-lifetime scope for work that must outlive any single screen —
-   * [onboardingStore]'s eager DataStore load, the fire-and-forget listen
-   * reports, the rewards sync, gifts of hearts, and the stores' writes.
+   * [onboardingStore]'s eager DataStore load, the queued listen reports, the
+   * rewards sync, gifts of hearts, and the stores' writes.
    * `SupervisorJob` so a failure in one can never cancel another.
    */
   private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -321,18 +322,45 @@ class AppDependencies(context: Context) {
     scope = appScope,
   )
 
+  private val soundListens: SoundListensService = retrofit.create(SoundListensService::class.java)
+
   /**
-   * Told by the service when a track plays through to its natural end. Rides
-   * the one Retrofit, so the report carries the member's timezone and the award
-   * lands on their local day, as iOS's `reportListen` does; the award it earns
-   * is folded and handed to [ingestAwards].
+   * Finished tracks, queued durably in `deep.sound.pendingListens` and
+   * reported with their finish time, so a dropped connection never costs the
+   * heart; the rules themselves live server-side. Each finish keeps its day
+   * in [practiceJournal] first, whatever the server says. Rides the one
+   * Retrofit, so the report carries the member's timezone and the award lands
+   * on their local day; the grant goes to [ingestAwards]. Its notices are what
+   * the mini player and Now Playing say.
    */
-  val trackListens: TrackListenReporting = ApiTrackListenReporter(
-    service = retrofit.create(SoundListensService::class.java),
+  val listenReporter: ListenReporter = ListenReporter(
+    report = soundListens::reportListen,
+    recordActivity = practiceJournal::recordTrackDay,
+    queueBlob = DataStoreBlobStore(context.applicationContext, "deep.sound.pendingListens"),
+    stampBlob = DataStoreBlobStore(context.applicationContext, "deep.sound.dayCompleteNoticed"),
     scope = appScope,
-    currentAccountId = { accountStore.account.value?.id },
-    ingestAwards = ingestAwards,
-  )
+    clock = clock,
+    zone = zone,
+  ).also { reporter -> reporter.awardSink = ingestAwards }
+
+  /**
+   * Told by the service when a track plays through to its natural end. The
+   * finish is stamped now, on the caller's thread, and queued on [appScope] —
+   * so a listen recorded as the service winds down still lands on disk.
+   *
+   * Bound to the member who was listening, as the pause's `activitySink` is
+   * to the signed-in check: a listen whose member has signed out (or been
+   * replaced) by the time it is written down is dropped, never queued for —
+   * or kept in the journal of — the next account. A sign-out landing while
+   * it is being written is caught by the reporter's own generation stamp.
+   */
+  val trackListens: TrackListenReporting = TrackListenReporting { trackId ->
+    val finishedAt = clock.instant()
+    val listener = accountStore.account.value?.id ?: return@TrackListenReporting
+    launchQuietly("listen record") {
+      if (accountStore.account.value?.id == listener) listenReporter.record(trackId, finishedAt)
+    }
+  }
 
   // Week five: giving, the daily reminder, and the language picker (above).
 
@@ -466,47 +494,55 @@ class AppDependencies(context: Context) {
   private val isSignedIn: Boolean get() = accountStore.account.value != null
 
   /**
-   * Pulls the garden (and the wallet riding it) and syncs the practice
-   * journal — pushing the offline queue, then merging sessions recorded on
-   * other installs — in parallel on [appScope]. A no-op while signed out.
+   * Pulls the garden (and the wallet riding it), syncs the practice journal —
+   * pushing the offline queue, then merging sessions recorded on other
+   * installs — and offers the queued listens, in parallel on [appScope]. A
+   * no-op while signed out.
    *
    * iOS runs this from three seams in `AppRootView`: `bootstrap()`, the
    * `.flow → .main` phase change, and every return to `.active`. Here
    * `AppRoot` calls it as the shell is composed (launch and sign-in alike)
-   * and on every process foreground after that. Both stores are
-   * single-flight, so an overlapping call is harmless.
+   * and on every process foreground after that. All three are single-flight,
+   * so an overlapping call is harmless.
    */
   fun syncRewards() {
     if (!isSignedIn) return
     launchQuietly("garden refresh") { gardenStore.refresh() }
     launchQuietly("practice sync") { practiceJournal.refresh() }
+    // Listens finished offline, or cut off by a kill, go out here.
+    launchQuietly("listen flush") { listenReporter.flush() }
   }
 
   /**
-   * Offers the practice journal's unsynced sessions to the server, giving up
-   * after three seconds. Settings' log out runs this *before* ending the
-   * session, while the token still works.
-   *
-   * DIVERGENCE: iOS's log out drops unsynced sessions — the journal is reset
-   * and whatever never reached the server is gone. A short best-effort push
-   * first keeps an offline-then-reconnected member's practice (and the hearts
-   * it earns) without ever holding a log out hostage to a dead network.
+   * Offers the practice journal's unsynced sessions and the queued listens to
+   * the server, side by side, each giving up after [LOG_OUT_FLUSH_TIMEOUT].
+   * True when nothing is left behind. Settings' log out runs this *before*
+   * ending the session, while the token still works, and asks the member
+   * before dropping whatever is left — iOS's `SettingsView.logOut()`. A dead
+   * network delays the log out by seconds at most.
    */
-  suspend fun flushPracticeJournal() {
-    try {
-      withTimeoutOrNull(PRACTICE_FLUSH_TIMEOUT_MILLIS) { practiceJournal.push() }
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (unexpected: Exception) {
-      Log.w(TAG, "Practice flush before log out failed; signing out anyway.", unexpected)
+  suspend fun flushBeforeLogOut(): Boolean = try {
+    coroutineScope {
+      val practice = async { practiceJournal.flushPending(LOG_OUT_FLUSH_TIMEOUT) }
+      val listens = async { listenReporter.flush(LOG_OUT_FLUSH_TIMEOUT) }
+      val practiceSynced = practice.await()
+      val listensSynced = listens.await()
+      practiceSynced && listensSynced
     }
+  } catch (cancelled: CancellationException) {
+    throw cancelled
+  } catch (unexpected: Exception) {
+    // Unknown is not synced: the member is asked rather than losing practice.
+    Log.w(TAG, "Flush before log out failed.", unexpected)
+    false
   }
 
   /**
    * Forgets everything the account's stores hold for the signed-out member —
-   * journal, garden, hearts, the continuity day — on disk and in memory, so
-   * the next member never inherits any of it, and switches the daily reminder
-   * off and back to its default time (iOS only switches it off). Every exit
+   * journal, queued listens, garden, hearts, the continuity day — on disk and
+   * in memory, so the next member never inherits any of it, and switches the
+   * daily reminder off and back to its default time (iOS only switches it
+   * off). Every exit
    * calls this: Settings' log out and account deletion, the server ending a session
    * ([accountStore]'s involuntary sign-out), `AppRoot`'s rejected launch
    * restore, and the account watcher below. Idempotent, so the overlap is
@@ -516,6 +552,11 @@ class AppDependencies(context: Context) {
    */
   suspend fun resetAccountState() {
     withContext(NonCancellable) {
+      // Queued listens and today's notices belong to the account: a report
+      // still in flight is dropped as it lands, never credited to the next.
+      // Before the journal, so a listen being written down as this runs sees
+      // the reset and keeps its day out of the journal about to be emptied.
+      listenReporter.reset()
       practiceJournal.reset()
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
@@ -550,6 +591,7 @@ class AppDependencies(context: Context) {
     launchQuietly("garden restore") { gardenStore.restore() }
     launchQuietly("practice restore") { practiceJournal.restore() }
     launchQuietly("continuity restore") { continuityWitness.restore() }
+    launchQuietly("listen queue restore") { listenReporter.restore() }
 
     // The reminder window rolls forward on every return to the app, and
     // rebuilds as the app leaves it so a practice finished just now quiets
@@ -599,8 +641,8 @@ class AppDependencies(context: Context) {
   private companion object {
     const val TAG = "AppDependencies"
 
-    /** How long a log out waits on the practice flush before giving up on it. */
-    const val PRACTICE_FLUSH_TIMEOUT_MILLIS = 3_000L
+    /** How long a log out waits on each flush before asking the member — iOS's three seconds. */
+    val LOG_OUT_FLUSH_TIMEOUT: Duration = Duration.ofSeconds(3)
   }
 }
 

@@ -1,6 +1,7 @@
 package io.appbeyond.freelance.deep.networking
 
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeCompletion
+import io.appbeyond.freelance.deep.feature.practice.store.PracticeLog
 import io.appbeyond.freelance.deep.feature.practice.store.PracticePushResult
 import io.appbeyond.freelance.deep.feature.practice.store.PracticeRemote
 
@@ -17,5 +18,5 @@ class ApiPracticeRemote(private val service: PracticeService) : PracticeRemote {
   override suspend fun push(sessions: List<PracticeCompletion>): PracticePushResult =
     apiCall { service.push(PracticeSyncRequest(sessions.map { it.toRequest() })) }.toDomain()
 
-  override suspend fun pull(): List<PracticeCompletion> = apiCall { service.sessions() }.toDomain()
+  override suspend fun pull(): PracticeLog = apiCall { service.sessions() }.toDomain()
 }

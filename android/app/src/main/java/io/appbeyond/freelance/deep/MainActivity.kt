@@ -164,10 +164,11 @@ class MainActivity : ComponentActivity() {
           reminderStore = dependencies.reminderStore,
           preferences = preferences,
           soundPlayer = dependencies.soundPlayer,
+          listenReporter = dependencies.listenReporter,
           soundLibrary = dependencies.soundLibrary,
           playlistStore = dependencies.playlistStore,
           syncRewards = dependencies::syncRewards,
-          flushPracticeJournal = dependencies::flushPracticeJournal,
+          flushBeforeLogOut = dependencies::flushBeforeLogOut,
           resetAccountState = dependencies::resetAccountState,
           flowContent = {
             OnboardingCoordinator(
@@ -278,6 +279,7 @@ class MainActivity : ComponentActivity() {
               memberName = account?.displayName,
               onFinish = onFinish,
               visibility = visibility,
+              hydrate = dependencies.pauseNightRewards::hydrate,
             )
           },
         )

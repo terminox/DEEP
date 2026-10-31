@@ -24,6 +24,8 @@
   <string name="settings_log_out_body">You\'ll start fresh from the welcome flow. What you\'ve shared stays safe.</string>
   <string name="settings_log_out_confirm">Log out</string>
   <string name="settings_log_out_stay">Stay</string>
+  <string name="settings_unsynced_title">Some practice hasn\'t synced yet</string>
+  <string name="settings_unsynced_log_out">Log out anyway</string>
 
   <!-- Delete account -->
   <string name="settings_delete_title">Delete your account?</string>

@@ -23,6 +23,8 @@
   <string name="settings_log_out_body">คุณจะเริ่มใหม่จากหน้าต้อนรับ สิ่งที่คุณแบ่งปันไว้ยังปลอดภัย</string>
   <string name="settings_log_out_confirm">ออกจากระบบ</string>
   <string name="settings_log_out_stay">อยู่ต่อ</string>
+  <string name="settings_unsynced_title">การฝึกบางส่วนยังไม่ได้ซิงค์</string>
+  <string name="settings_unsynced_log_out">ออกจากระบบต่อ</string>
 
   <!-- Delete account -->
   <string name="settings_delete_title">ลบบัญชีของคุณ?</string>

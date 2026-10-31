@@ -87,7 +87,10 @@ import io.appbeyond.freelance.deep.feature.playlist.components.SaveTrackButton
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistState
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporting
+import io.appbeyond.freelance.deep.feature.rewards.store.MockListenReporter
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
+import io.appbeyond.freelance.deep.shared.components.HeartBurst
 import io.appbeyond.freelance.deep.shared.components.LightStatusBarIcons
 import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.theme.DeepTheme
@@ -215,8 +218,12 @@ private val COLLAPSE_DRAG_DISTANCE = 300.dp
  *   the bottom scrim deepens a little instead.
  * - **The volume** is the player's own gain ([SoundPlaying.setVolume], starting
  *   at 0.6 like `AVPlayer.volume` on iOS), not the system volume.
- * - **The heart notice** iOS swaps into the subtitle when a listen lands has
- *   no Android counterpart yet; the subtitle always reads the collection's.
+ *
+ * When a finished track's heart lands, the subtitle gives way for a few
+ * seconds to [listenReporter]'s notice in cream — the mini player's swap, at
+ * this screen's size, with the full sentence for today's hearts — and an
+ * earned heart blooms out of the titles ([HeartBurst]) and is felt once
+ * across both surfaces.
  *
  * A leaf. The morph from the mini pill, the predictive-back shrink and the
  * seekable transition state all belong to the shell; this screen only lays out
@@ -233,6 +240,7 @@ private val COLLAPSE_DRAG_DISTANCE = 300.dp
 @Composable
 fun NowPlayingScreen(
   player: SoundPlaying,
+  listenReporter: ListenReporting,
   playlistStore: PlaylistStore,
   library: SoundLibrary,
   onCollapse: () -> Unit,
@@ -320,6 +328,7 @@ fun NowPlayingScreen(
       Controls(
         player = player,
         playback = playback,
+        listenReporter = listenReporter,
         playlistStore = playlistStore,
         onShowLyrics = { if (track != null) showLyrics = true },
         // Globally positioned, not placed: that runs once the whole pass is
@@ -535,6 +544,7 @@ private fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
 private fun Controls(
   player: SoundPlaying,
   playback: SoundPlayback,
+  listenReporter: ListenReporting,
   playlistStore: PlaylistStore,
   onShowLyrics: () -> Unit,
   modifier: Modifier = Modifier,
@@ -545,21 +555,28 @@ private fun Controls(
       .padding(bottom = CONTROLS_BOTTOM),
     verticalArrangement = Arrangement.spacedBy(CONTROLS_SPACING),
   ) {
-    TitleRow(playback, playlistStore, onShowLyrics)
+    TitleRow(playback, listenReporter, playlistStore, onShowLyrics)
     Scrubber(player, playback.duration)
     Transport(player, playback)
     Volume(player, playback.volume)
   }
 }
 
-/** The collection, the track and its subtitle, with Lyrics and Save trailing. */
+/**
+ * The collection, the track and its subtitle, with Lyrics and Save trailing.
+ * The subtitle gives way, for a few seconds, to a listen's heart when one
+ * lands, and an earned heart blooms out of the titles.
+ */
 @Composable
 private fun TitleRow(
   playback: SoundPlayback,
+  listenReporter: ListenReporting,
   playlistStore: PlaylistStore,
   onShowLyrics: () -> Unit,
 ) {
   val playlist by playlistStore.state.collectAsStateWithLifecycle()
+  val notice by listenReporter.notice.collectAsStateWithLifecycle()
+  val bloom = rememberListenHeart(listenReporter, notice)
   val scope = rememberCoroutineScope()
   val track = playback.currentTrack
   val collection = playback.collection
@@ -569,29 +586,37 @@ private fun TitleRow(
     horizontalArrangement = Arrangement.spacedBy(TITLE_SPACING),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    // Greedy rather than a Spacer, so the titles take the room they have.
-    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TITLE_SPACING)) {
-      Text(
-        text = collection?.title.orEmpty().uppercase(),
-        style = COLLECTION_STYLE,
-        color = secondary,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Text(
-        text = track?.title.orEmpty(),
-        style = TRACK_TITLE_STYLE,
-        color = Color.moonCream,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Text(
-        text = collection?.subtitle.orEmpty(),
-        style = DeepType.body,
-        color = secondary,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
+    // Greedy rather than a Spacer, so the titles take the room they have. The
+    // heart is felt by `rememberListenHeart`, so the bloom stays silent.
+    HeartBurst(trigger = bloom, haptic = false, modifier = Modifier.weight(1f)) {
+      Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(TITLE_SPACING)) {
+        Text(
+          text = collection?.title.orEmpty().uppercase(),
+          style = COLLECTION_STYLE,
+          color = secondary,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+          text = track?.title.orEmpty(),
+          style = TRACK_TITLE_STYLE,
+          color = Color.moonCream,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        ListenNoticeLine(
+          notice = notice,
+          label = { ListenNoticeLabel(it, style = DeepType.body, ink = Color.moonCream) },
+        ) {
+          Text(
+            text = collection?.subtitle.orEmpty(),
+            style = DeepType.body,
+            color = secondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+      }
     }
 
     // Lyrics — opens the (multi-language) lyrics sheet for the current track.
@@ -821,6 +846,7 @@ private fun NowPlayingPlayingPreview() {
   DeepTheme {
     NowPlayingScreen(
       player = remember { MockSoundPlayer.playing() },
+      listenReporter = remember { MockListenReporter() },
       playlistStore = remember { MockPlaylistStore.empty },
       library = remember { MockSoundLibrary.loaded },
       onCollapse = {},
@@ -834,6 +860,7 @@ private fun NowPlayingPausedPreview() {
   DeepTheme {
     NowPlayingScreen(
       player = remember { MockSoundPlayer.playing().apply { togglePlayPause() } },
+      listenReporter = remember { MockListenReporter() },
       playlistStore = remember { MockPlaylistStore.empty },
       library = remember { MockSoundLibrary.loaded },
       onCollapse = {},
@@ -847,6 +874,7 @@ private fun NowPlayingShuffleRepeatOnePreview() {
   DeepTheme {
     NowPlayingScreen(
       player = remember { MockSoundPlayer.playing(repeatMode = RepeatMode.One, isShuffled = true) },
+      listenReporter = remember { MockListenReporter() },
       playlistStore = remember { MockPlaylistStore.empty },
       library = remember { MockSoundLibrary.loaded },
       onCollapse = {},
@@ -864,6 +892,7 @@ private fun NowPlayingRepeatAllSavedPreview() {
   DeepTheme {
     NowPlayingScreen(
       player = player,
+      listenReporter = remember { MockListenReporter() },
       playlistStore = store,
       library = remember { MockSoundLibrary.loaded },
       onCollapse = {},
@@ -877,6 +906,35 @@ private fun NowPlayingIdlePreview() {
   DeepTheme {
     NowPlayingScreen(
       player = remember { MockSoundPlayer.idle() },
+      listenReporter = remember { MockListenReporter() },
+      playlistStore = remember { MockPlaylistStore.empty },
+      library = remember { MockSoundLibrary.loaded },
+      onCollapse = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Now Playing — heart earned")
+@Composable
+private fun NowPlayingHeartEarnedPreview() {
+  DeepTheme {
+    NowPlayingScreen(
+      player = remember { MockSoundPlayer.playing() },
+      listenReporter = remember { MockListenReporter.earned() },
+      playlistStore = remember { MockPlaylistStore.empty },
+      library = remember { MockSoundLibrary.loaded },
+      onCollapse = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Now Playing — today's hearts in, Thai", locale = "th")
+@Composable
+private fun NowPlayingDayCompletePreview() {
+  DeepTheme {
+    NowPlayingScreen(
+      player = remember { MockSoundPlayer.playing() },
+      listenReporter = remember { MockListenReporter.dayComplete() },
       playlistStore = remember { MockPlaylistStore.empty },
       library = remember { MockSoundLibrary.loaded },
       onCollapse = {},

@@ -6,19 +6,25 @@ import io.appbeyond.freelance.deep.feature.practice.model.PracticeCompletion
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeMath
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.shared.persistence.BlobStoring
+import io.appbeyond.freelance.deep.shared.persistence.InstantAsStringSerializer
 import io.appbeyond.freelance.deep.shared.persistence.StoreJson
 import io.appbeyond.freelance.deep.shared.persistence.readOrNull
 import io.appbeyond.freelance.deep.shared.persistence.writeQuietly
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -36,14 +42,22 @@ import java.util.UUID
  *
  * ```
  * {"completions":[{"id":"…","title":"Balancing breath","durationSeconds":300,
- *   "completedAt":"2026-07-23T05:00:00Z","isSynced":false}],"dailyGoalMinutes":10}
+ *   "completedAt":"2026-07-23T05:00:00Z","isSynced":false}],"dailyGoalMinutes":10,
+ *  "pauseDays":["2026-07-22"],"trackDays":["2026-07-23"],
+ *  "remoteActivityDays":["2026-07-21"],"lastPulledAt":"2026-07-23T05:00:01Z"}
  * ```
+ *
+ * The rhythm counts any practice day: sessions, the pause and track day
+ * markers, and the server's activity days. Every day is an ISO key, never a
+ * localized calendar's.
  *
  * Differences from iOS:
  *
  * - [record] does not start a push itself; the caller launches [push] (iOS
- *   fires a detached `Task`). Pushing before sign-out is the caller's
- *   `withTimeoutOrNull { push() }`, so [push] stays cancellable.
+ *   fires a detached `Task`). [flushPending] bounds [push] with
+ *   `withTimeoutOrNull`, so [push] stays cancellable.
+ * - iOS keeps one list of typed activity markers; here pause nights and
+ *   finished sounds each keep their own list of day keys.
  * - DIVERGENCE: a push sends at most [MAX_PUSH_BATCH] sessions per request —
  *   deep-api rejects larger batches (`z.array(...).max(200)`), which on iOS
  *   would wedge a long offline backlog forever.
@@ -71,6 +85,24 @@ class PracticeJournal(
      * session, so it adds no minutes and no completion; it only keeps the day.
      */
     val pauseDays: List<String> = emptyList(),
+    /**
+     * Local days a sound listened to its end kept in the rhythm — iOS's
+     * `.track` activity markers. Like a pause night, no minutes and no
+     * completion; and unlike one, it doesn't rest the reminder.
+     */
+    val trackDays: List<String> = emptyList(),
+    /**
+     * The server's activity days as last pulled ("YYYY-MM-DD") — days kept on
+     * other installs, or before this one was signed in. Null until a server
+     * that sends them has answered.
+     */
+    val remoteActivityDays: List<String>? = null,
+    /**
+     * When the server's log was last pulled for this account; null until the
+     * first pull lands — the journal isn't hydrated before then.
+     */
+    @Serializable(with = InstantAsStringSerializer::class)
+    val lastPulledAt: Instant? = null,
   )
 
   private val _state = MutableStateFlow(State())
@@ -111,9 +143,16 @@ class PracticeJournal(
 
   fun completionsToday(): Int = PracticeMath.completionsToday(completions, zone, clock)
 
-  fun currentStreakDays(): Int = PracticeMath.currentStreakDays(completions, zone, clock, pauseDays())
+  /** Whether the server's log has been pulled for this account at least once —
+   * until then the rhythm is only this install's partial memory. */
+  val isHydrated: Boolean get() = _state.value.lastPulledAt != null
 
-  fun longestStreakDays(): Int = PracticeMath.longestStreakDays(completions, zone, pauseDays())
+  /** Whether any finished session hasn't reached the server yet. */
+  val hasUnsynced: Boolean get() = _state.value.completions.any { !it.isSynced }
+
+  fun currentStreakDays(): Int = PracticeMath.currentStreakDays(completions, zone, clock, otherPracticeDays())
+
+  fun longestStreakDays(): Int = PracticeMath.longestStreakDays(completions, zone, otherPracticeDays())
 
   /** Whether a Global Pause the server counted (an eligible claim) was sat
    * today — the same marker the rhythm reads. iOS's `hasSatGlobalPauseToday`. */
@@ -127,12 +166,18 @@ class PracticeJournal(
    */
   fun reminderRestsToday(): Boolean = minutesToday() >= dailyGoalMinutes || hasSatGlobalPauseToday()
 
-  /** The rhythm across today's boundary — what a pause night's ending reads. */
+  /** The rhythm across today's boundary — what every ending reads. */
   fun continuityTransition(): ContinuityTransition =
-    PracticeMath.continuityTransition(completions, zone, clock, pauseDays())
+    PracticeMath.continuityTransition(completions, zone, clock, otherPracticeDays())
 
-  private fun pauseDays(): Set<LocalDate> =
-    _state.value.pauseDays.mapNotNullTo(HashSet()) { runCatching { LocalDate.parse(it) }.getOrNull() }
+  private fun pauseDays(): Set<LocalDate> = PracticeMath.days(_state.value.pauseDays)
+
+  /** Every day kept by practice that isn't a session: pause nights and
+   * finished sounds marked here, and the server's activity days. */
+  private fun otherPracticeDays(): Set<LocalDate> {
+    val state = _state.value
+    return PracticeMath.days(state.pauseDays + state.trackDays + state.remoteActivityDays.orEmpty())
+  }
 
   /** The garden's practice card, projected from the journal as it stands. */
   fun gardenState(): GardenState = GardenState(
@@ -195,18 +240,41 @@ class PracticeJournal(
    * keeps its own record of the attendance.
    */
   suspend fun recordPauseDay(at: Instant) {
+    recordDay(at, read = { it.pauseDays }, write = { state, days -> state.copy(pauseDays = days) })
+  }
+
+  /**
+   * Keeps [at]'s local day in the rhythm — a sound played through to its end
+   * then. Recorded before the listen is reported, so the day counts whatever
+   * the server says about the heart, offline included. It does not rest the
+   * reminder ([reminderRestsToday]).
+   *
+   * Ported from iOS's `recordActivity(.track, at:)`.
+   */
+  suspend fun recordTrackDay(at: Instant) {
+    recordDay(at, read = { it.trackDays }, write = { state, days -> state.copy(trackDays = days) })
+  }
+
+  /**
+   * Adds [at]'s local day to one list of day markers — one marker a day is
+   * all the rhythm reads — dropping markers older than
+   * [PAUSE_DAY_RETENTION_DAYS] as it lands.
+   */
+  private suspend fun recordDay(
+    at: Instant,
+    read: (State) -> List<String>,
+    write: (State, List<String>) -> State,
+  ) {
     restore()
-    val day = at.atZone(zone).toLocalDate()
+    val key = at.atZone(zone).toLocalDate().toString()
     val changed = synchronized(lock) {
       val state = _state.value
-      val key = day.toString()
-      if (key in state.pauseDays) return@synchronized false
+      val days = read(state)
+      if (key in days) return@synchronized false
       val cutoff = clock.instant().atZone(zone).toLocalDate().minusDays(PAUSE_DAY_RETENTION_DAYS)
-      val kept = state.pauseDays.filter { existing ->
-        runCatching { !LocalDate.parse(existing).isBefore(cutoff) }.getOrDefault(false)
-      }
+      val kept = days.filter { existing -> PracticeMath.day(existing)?.isBefore(cutoff) == false }
       touched = true
-      _state.value = state.copy(pauseDays = kept + key)
+      _state.value = write(state, kept + key)
       true
     }
     if (changed) persist()
@@ -270,12 +338,13 @@ class PracticeJournal(
   /**
    * Merges the server's log into the journal by id — entries recorded on
    * other installs arrive here, marked synced. Known ids are never updated or
-   * removed. Errors are swallowed; the local journal is already whole.
+   * removed. Takes the server's activity days, and marks the journal
+   * hydrated. Errors are swallowed; the local journal is already whole.
    */
   suspend fun pull() {
     restore()
     val stamp = synchronized(lock) { generation }
-    val fetched = try {
+    val log = try {
       remote.pull()
     } catch (cancelled: CancellationException) {
       throw cancelled
@@ -287,16 +356,59 @@ class PracticeJournal(
       if (generation != stamp) return@synchronized false
       val state = _state.value
       val known = state.completions.mapTo(HashSet()) { it.id }
-      val unseen = fetched
+      val unseen = log.completions
         .filter { it.id !in known }
         .distinctBy { it.id }
         .map { it.copy(isSynced = true) }
-      if (unseen.isEmpty()) return@synchronized false
       touched = true
-      _state.value = state.copy(completions = (state.completions + unseen).sortedBy { it.completedAt })
+      _state.value = state.copy(
+        completions = if (unseen.isEmpty()) {
+          state.completions
+        } else {
+          (state.completions + unseen).sortedBy { it.completedAt }
+        },
+        // An older server omits the field — keep what we had rather than forget.
+        remoteActivityDays = log.activityDays ?: state.remoteActivityDays,
+        lastPulledAt = clock.instant(),
+      )
       true
     }
     if (merged) persist()
+  }
+
+  /**
+   * Waits — at most [timeout] — for the journal's first pull, starting one if
+   * it hasn't happened. An ending calls this before reading the rhythm, so it
+   * shows the account's real one rather than this install's partial memory (a
+   * fresh sign-in would otherwise read 0 → 1).
+   *
+   * Any pull landing ends the wait — this one, or the launch's own sync
+   * already in flight. Unlike iOS, this call's pull is cancelled with the
+   * wait rather than left to land on its own; the next foreground sync pulls
+   * again.
+   */
+  suspend fun awaitHydration(timeout: Duration) {
+    restore()
+    if (isHydrated) return
+    withTimeoutOrNull(timeout.toMillis()) {
+      coroutineScope {
+        val pulling = launch { pull() }
+        _state.first { it.lastPulledAt != null }
+        pulling.cancel()
+      }
+    }
+  }
+
+  /**
+   * Offers unsynced sessions to the server, giving up after [timeout]. True
+   * when nothing is left unsynced — log out asks this while the token still
+   * works, and asks the member before dropping anything.
+   */
+  suspend fun flushPending(timeout: Duration): Boolean {
+    restore()
+    if (!hasUnsynced) return true
+    withTimeoutOrNull(timeout.toMillis()) { push() }
+    return !hasUnsynced
   }
 
   /** Pushes anything unsynced, then pulls and merges the server's log. */
@@ -336,8 +448,8 @@ class PracticeJournal(
     /** deep-api's per-request ceiling on `POST /me/practice/sessions`. */
     const val MAX_PUSH_BATCH = 200
 
-    /** How long an attended pause's day marker is kept — well past any rhythm
-     * the garden shows. */
+    /** How long a pause or track day marker is kept — well past any rhythm
+     * the garden shows, and the server's `activityDays` window. */
     const val PAUSE_DAY_RETENTION_DAYS = 400L
   }
 }

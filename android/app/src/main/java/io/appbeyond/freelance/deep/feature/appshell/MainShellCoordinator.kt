@@ -53,12 +53,15 @@ import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionIntroScreen
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.CollectionDetailScreen
 import io.appbeyond.freelance.deep.feature.deepsound.DeepSoundHomeScreen
+import io.appbeyond.freelance.deep.feature.deepsound.components.ListenNoticeAnnouncer
 import io.appbeyond.freelance.deep.feature.deepsound.components.MiniPlayerPill
 import io.appbeyond.freelance.deep.feature.deepsound.components.MiniPlayerPillHeight
 import io.appbeyond.freelance.deep.feature.deepsound.components.NowPlayingScreen
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporting
+import io.appbeyond.freelance.deep.feature.rewards.store.MockListenReporter
 import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.globalpause.CollectionListScreen
@@ -207,9 +210,11 @@ data class PreferenceActions(
  *   the reminder screen.
  * @param preferences the language and reminder actions those screens take.
  * @param soundPlayer the app's one player, shared by every tab and the pill.
+ * @param listenReporter a finished track's heart, which the pill and Now
+ *   Playing swap into their subtitle line; announced to TalkBack here, once.
  * @param soundLibrary DEEP Sound's shelves and lyrics.
  * @param playlistStore the member's saved sounds — the You tab's root.
- * @param flushPracticeJournal / resetAccountState the rewards side of
+ * @param flushBeforeLogOut / resetAccountState the rewards side of
  *   Settings' log out and account deletion, handed straight through.
  * @param homeContent / gardenContent the Home and Mind Garden roots. Slots, so
  *   the shell carries none of their stores; each is handed the same
@@ -235,9 +240,10 @@ fun MainShellCoordinator(
   reminderStore: ReminderStore,
   preferences: PreferenceActions,
   soundPlayer: SoundPlaying,
+  listenReporter: ListenReporting,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
-  flushPracticeJournal: suspend () -> Unit,
+  flushBeforeLogOut: suspend () -> Boolean,
   resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   onBeginDeepSession: (DeepSession) -> Unit = {},
@@ -350,6 +356,10 @@ fun MainShellCoordinator(
     if (!hasTrack && expansion.currentState) expansion.snapTo(false)
   }
 
+  // A listen's heart is spoken here, once, whichever of the pill and Now
+  // Playing is showing it.
+  ListenNoticeAnnouncer(listenReporter)
+
   // Back unwinds the active tab, then falls back to Home, and only then leaves
   // the app. Anything else strands someone three tabs deep.
   BackHandler(enabled = stack.size > 1 || selected != DeepTab.Home) {
@@ -437,7 +447,7 @@ fun MainShellCoordinator(
                       onboardingStore = onboardingStore,
                       language = language,
                       reminder = reminderState.reminder,
-                      flushPracticeJournal = flushPracticeJournal,
+                      flushBeforeLogOut = flushBeforeLogOut,
                       resetAccountState = resetAccountState,
                       onOpenLanguage = { push(DeepTab.You, DeepRoute.Language) },
                       onOpenReminder = { push(DeepTab.You, DeepRoute.DailyReminder) },
@@ -497,6 +507,7 @@ fun MainShellCoordinator(
           ) {
             MiniPlayerPill(
               player = soundPlayer,
+              listenReporter = listenReporter,
               onExpand = { expand() },
               modifier = Modifier
                 .padding(horizontal = Dp.edge)
@@ -542,6 +553,7 @@ fun MainShellCoordinator(
       ) {
         NowPlayingScreen(
           player = soundPlayer,
+          listenReporter = listenReporter,
           playlistStore = playlistStore,
           library = soundLibrary,
           onCollapse = { collapse() },
@@ -687,9 +699,10 @@ private fun MainShellCoordinatorPreview() {
       },
       preferences = PreferenceActions.none,
       soundPlayer = remember { MockSoundPlayer.playing() },
+      listenReporter = remember { MockListenReporter() },
       soundLibrary = remember { MockSoundLibrary.loaded },
       playlistStore = MockPlaylistStore.sample,
-      flushPracticeJournal = {},
+      flushBeforeLogOut = { true },
       resetAccountState = {},
       homeContent = { TabPlaceholderScreen(DeepTab.Home) },
     )

@@ -33,6 +33,8 @@ import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.globalpause.currentCardLift
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporting
+import io.appbeyond.freelance.deep.feature.rewards.store.MockListenReporter
 import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
@@ -132,14 +134,14 @@ private object Handoff {
  *   session plays its own bell and breath, and a track underneath would talk
  *   over both. It stays loaded, so the mini player picks up where the member
  *   left off — iOS's `pause()` in `DeepSessionCoordinatorView.onAppear`.
- * @param soundLibrary / playlistStore handed on to the shell for DEEP Sound
- *   and the You tab's saved sounds.
+ * @param listenReporter / soundLibrary / playlistStore handed on to the shell
+ *   for the player's heart notices, DEEP Sound and the You tab's saved sounds.
  * @param syncRewards pulls the garden and wallet and syncs the practice
  *   journal (`AppDependencies.syncRewards`). Called as the shell is composed —
  *   which covers both a restored launch and a fresh sign-in or sign-up — and
  *   on every process foreground while it stays composed: iOS's `bootstrap()`,
  *   `.flow → .main` and scene-phase `.active` seams in one place.
- * @param flushPracticeJournal / resetAccountState the rewards side of every
+ * @param flushBeforeLogOut / resetAccountState the rewards side of every
  *   exit, handed on to Settings, and the reset is also run here when the
  *   server rejects a restored session.
  * @param reminderStore / preferences the daily reminder and the language
@@ -162,10 +164,11 @@ fun AppRoot(
   reminderStore: ReminderStore,
   preferences: PreferenceActions,
   soundPlayer: SoundPlaying,
+  listenReporter: ListenReporting,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
   syncRewards: () -> Unit,
-  flushPracticeJournal: suspend () -> Unit,
+  flushBeforeLogOut: suspend () -> Boolean,
   resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   flowContent: @Composable () -> Unit = {},
@@ -322,9 +325,10 @@ fun AppRoot(
               reminderStore = reminderStore,
               preferences = preferences,
               soundPlayer = soundPlayer,
+              listenReporter = listenReporter,
               soundLibrary = soundLibrary,
               playlistStore = playlistStore,
-              flushPracticeJournal = flushPracticeJournal,
+              flushBeforeLogOut = flushBeforeLogOut,
               resetAccountState = resetAccountState,
               homeContent = homeContent,
               gardenContent = gardenContent,
@@ -438,10 +442,11 @@ private fun AppRootPreview() {
     },
     preferences = PreferenceActions.none,
     soundPlayer = MockSoundPlayer.idle(),
+    listenReporter = MockListenReporter(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
-    flushPracticeJournal = {},
+    flushBeforeLogOut = { true },
     resetAccountState = {},
     homeContent = { TabPlaceholderScreen(DeepTab.Home) },
   )
@@ -461,10 +466,11 @@ private fun AppRootFirstLaunchPreview() {
     },
     preferences = PreferenceActions.none,
     soundPlayer = MockSoundPlayer.idle(),
+    listenReporter = MockListenReporter(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
-    flushPracticeJournal = {},
+    flushBeforeLogOut = { true },
     resetAccountState = {},
     flowContent = { TabPlaceholderScreen(DeepTab.Compassion) },
   )
