@@ -104,10 +104,15 @@ class MainActivity : ComponentActivity() {
     // Debug builds only: `--ez deep.mockSubscriptions true` on the launch
     // intent swaps RevenueCat for the in-memory store, so the purchase
     // mechanic is drivable on an emulator — iOS's `-DeepMockSubscriptions`.
+    // `--es deep.mockSubscriptions.variant <name>` picks which fixture (and
+    // implies the first), so every paywall state can be staged.
     // `BuildConfig.DEBUG` is a compile-time false in release, so this branch,
-    // its key and the mock all fall out of a shipping build.
-    if (BuildConfig.DEBUG && intent.getBooleanExtra(MOCK_SUBSCRIPTIONS_EXTRA, false)) {
-      dependencies.useMockSubscriptions()
+    // its keys and the mock all fall out of a shipping build.
+    if (BuildConfig.DEBUG) {
+      val variant = intent.getStringExtra(MOCK_SUBSCRIPTIONS_VARIANT_EXTRA)
+      if (variant != null || intent.getBooleanExtra(MOCK_SUBSCRIPTIONS_EXTRA, false)) {
+        dependencies.useMockSubscriptions(variant)
+      }
     }
     // Built here, after that decision, and before the launch beat restores the
     // session — so the member's remembered DEEP Premium answer is read in time.
@@ -353,3 +358,10 @@ class MainActivity : ComponentActivity() {
  * debug branch that reads it and leaves no trace in a release build.
  */
 private const val MOCK_SUBSCRIPTIONS_EXTRA = "deep.mockSubscriptions"
+
+/**
+ * Which mock fixture to stand up — `--es deep.mockSubscriptions.variant
+ * unreachable` (names in `MockSubscriptionStore.variant`). Debug builds only,
+ * like [MOCK_SUBSCRIPTIONS_EXTRA].
+ */
+private const val MOCK_SUBSCRIPTIONS_VARIANT_EXTRA = "deep.mockSubscriptions.variant"

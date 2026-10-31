@@ -1,12 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  DEEP Premium, shared by every screen that draws its lock. Copy ported from
-  Deep/Deep/Features/Premium/Components/PremiumLockBadge.swift and the matching
-  Deep/Localizable.xcstrings key. The Thai lives in values-th/strings_premium.xml.
+  DEEP Premium: the lock every gated screen draws, and the paywall it opens.
+  Copy ported from Deep/Deep/Features/Premium and the matching
+  Deep/Localizable.xcstrings keys, with the App Store and the Apple Account
+  read as Google Play and the Google Account. The Thai lives in
+  values-th/strings_premium.xml.
 -->
 <resources>
 
   <!-- PremiumLockBadge's accessibility label, and the plant picker's hint on a locked row: "Part of DEEP Premium" -->
   <string name="premium_part_of">Part of DEEP Premium</string>
+
+  <!-- The paywall's legal line. %1$s = onboarding_terms, %2$s = onboarding_privacy; both become links. -->
+  <string name="premium_legal">Read our %1$s and %2$s.</string>
+
+  <!-- Paywall: headline -->
+  <string name="paywall_headline">DEEP Premium</string>
+  <string name="paywall_headline_welcome">Welcome to DEEP Premium</string>
+  <string name="paywall_headline_member">You\'re already with us</string>
+
+  <!-- Paywall: subhead, by the door it was opened from -->
+  <string name="paywall_subhead_settings">Every sound, every session — yours whenever you need them.</string>
+  <string name="paywall_subhead_locked_sound">It\'s part of DEEP Premium, along with everything else in the library.</string>
+  <string name="paywall_subhead_locked_plant">This plant is part of DEEP Premium, along with every sound in the library.</string>
+  <string name="paywall_subhead_onboarding">Try DEEP Premium free for seven days. Nothing to decide today.</string>
+  <string name="paywall_subhead_welcome">Everything is open now.</string>
+
+  <!-- Paywall: subhead for someone already a member, by plan -->
+  <string name="paywall_member_yearly">Your yearly DEEP Premium membership is active.</string>
+  <string name="paywall_member_monthly">Your monthly DEEP Premium membership is active.</string>
+  <string name="paywall_member">Your DEEP Premium membership is active.</string>
+  <string name="paywall_restored">Restored. Welcome back.</string>
+
+  <!-- Paywall: what the membership includes -->
+  <string name="paywall_benefit_sounds">Every sound in the library</string>
+  <string name="paywall_benefit_plants">Exclusive plants for your Mind Garden</string>
+
+  <!-- Paywall: plans. The trial every plan shares, said once over the group. -->
+  <plurals name="paywall_days_free">
+    <item quantity="one">%1$d DAY FREE</item>
+    <item quantity="other">%1$d DAYS FREE</item>
+  </plurals>
+  <string name="paywall_plan_yearly">Yearly</string>
+  <string name="paywall_plan_monthly">Monthly</string>
+  <!-- Subline on the yearly plan row. %1$s is a price. -->
+  <string name="paywall_per_month">%1$s a month</string>
+  <string name="paywall_billed_monthly">Billed monthly</string>
+  <!-- A row's own trial, when the plans don't share one -->
+  <plurals name="paywall_trial_note">
+    <item quantity="one">%1$d-day free trial</item>
+    <item quantity="other">%1$d-day free trial</item>
+  </plurals>
+  <!-- Badge on the yearly plan row. %1$s is a percentage. -->
+  <string name="paywall_save">Save %1$s</string>
+  <string name="paywall_unreachable">We couldn\'t reach Google Play just now.</string>
+  <string name="paywall_try_again">Try again</string>
+
+  <!-- Paywall: fine print. Price, period and renewal terms must be stated on the paywall itself. -->
+  <plurals name="paywall_billing_trial_yearly">
+    <item quantity="one">Free for %1$d day, then %2$s a month, billed yearly at %3$s.\nCancel any time.</item>
+    <item quantity="other">Free for %1$d days, then %2$s a month, billed yearly at %3$s.\nCancel any time.</item>
+  </plurals>
+  <plurals name="paywall_billing_trial_monthly">
+    <item quantity="one">Free for %1$d day, then %2$s a month.\nCancel any time.</item>
+    <item quantity="other">Free for %1$d days, then %2$s a month.\nCancel any time.</item>
+  </plurals>
+  <string name="paywall_billing_yearly">%1$s a month, billed yearly at %2$s.\nCancel any time.</string>
+  <string name="paywall_billing_monthly">%1$s a month.\nCancel any time.</string>
+  <string name="paywall_renews">Your subscription renews automatically until you cancel it in Google Play.</string>
+  <string name="paywall_restore">Restore purchases</string>
+  <string name="paywall_restoring">Restoring…</string>
+  <string name="paywall_restore_nothing">There\'s nothing to restore on this Google Account.</string>
+  <string name="paywall_restore_failed">We couldn\'t restore just now. Please try again in a moment.</string>
+
+  <!-- Paywall: the act -->
+  <string name="paywall_one_moment">One moment</string>
+  <string name="paywall_subscribe">Subscribe</string>
+  <plurals name="paywall_start_trial">
+    <item quantity="one">Start your %1$d day free</item>
+    <item quantity="other">Start your %1$d days free</item>
+  </plurals>
+  <!-- Spoken as the act's hint: "Double tap to …" -->
+  <string name="paywall_subscribe_hint">Subscribes to DEEP Premium</string>
+  <string name="paywall_start_trial_hint">Starts your free trial of DEEP Premium</string>
+  <string name="paywall_everything_open">Everything is open.</string>
+  <string name="paywall_done">Done</string>
+  <string name="paywall_not_now">Not right now</string>
+  <string name="paywall_purchase_failed">That didn\'t go through. Nothing was charged.</string>
+  <string name="paywall_purchase_pending">This purchase needs approval before it can finish.</string>
 
 </resources>

@@ -66,6 +66,16 @@ object AppConfig {
    */
   val revenueCatApiKey: String? = BuildConfig.REVENUECAT_API_KEY.trim().ifEmpty { null }
 
+  /** The Terms and Privacy Policy every account and subscription screen links. */
+  val legal: LegalLinks = LegalLinks(terms = BuildConfig.TERMS_URL, privacy = BuildConfig.PRIVACY_URL)
+
   val versionName: String = BuildConfig.VERSION_NAME
   val versionCode: Int = BuildConfig.VERSION_CODE
 }
+
+/**
+ * The legal documents a subscription screen has to link — iOS's `LegalLinks`.
+ * Google Play, like App Review, expects a paywall to link its terms, so they
+ * travel the build configuration rather than being written into a view.
+ */
+data class LegalLinks(val terms: String, val privacy: String)
