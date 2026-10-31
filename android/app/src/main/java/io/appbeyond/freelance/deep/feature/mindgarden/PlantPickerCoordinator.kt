@@ -11,6 +11,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.feature.mindgarden.components.PlantPickerSheet
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
+import io.appbeyond.freelance.deep.shared.components.LocalMiniPlayerClearance
 import io.appbeyond.freelance.deep.feature.mindgarden.store.GardenStore
 import io.appbeyond.freelance.deep.feature.premium.PaywallScreen
 import io.appbeyond.freelance.deep.feature.premium.model.PaywallSource
@@ -107,11 +109,16 @@ fun PlantPickerCoordinator(
           )
         }
       } else {
-        PaywallScreen(
-          source = source,
-          onFinish = { paywall = null },
-          modifier = Modifier.fillMaxSize(),
-        )
+        // The sheet covers the shell, mini player pill and all, so the
+        // invitation's pinned bar has no pill to clear in here — without this
+        // it floated a pill's height above its foot for nothing.
+        CompositionLocalProvider(LocalMiniPlayerClearance provides 0.dp) {
+          PaywallScreen(
+            source = source,
+            onFinish = { paywall = null },
+            modifier = Modifier.fillMaxSize(),
+          )
+        }
       }
     }
   }
