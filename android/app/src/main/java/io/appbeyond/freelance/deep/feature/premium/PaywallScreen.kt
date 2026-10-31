@@ -96,8 +96,10 @@ import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.softPress
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // MARK: - Constants
 
@@ -254,11 +256,20 @@ fun PaywallScreen(
     purchase = PurchasePhase.Purchasing(plan.id)
     scope.launch {
       try {
-        when (store.purchase(host, plan)) {
-          PurchaseOutcome.Purchased -> {
+        // The purchase and its confirmation run non-cancellably: this scope
+        // dies with the screen, and a member who backs out while Play's sheet
+        // finishes must still have the server told (iOS runs this in an
+        // unstructured Task that outlives the view). Only what the screen
+        // shows afterwards is the screen's.
+        val outcome = withContext(NonCancellable) {
+          store.purchase(host, plan).also { outcome ->
             // Unlock now, on the store's word, and have the server confirm it
             // behind the welcome — content re-fetches when it does.
-            premiumAccess.didPurchase()
+            if (outcome == PurchaseOutcome.Purchased) premiumAccess.didPurchase()
+          }
+        }
+        when (outcome) {
+          PurchaseOutcome.Purchased -> {
             purchase = PurchasePhase.Welcoming
             // A beat to read the welcome, then out. No confetti.
             delay(WELCOME_HOLD_MILLIS)
@@ -284,8 +295,18 @@ fun PaywallScreen(
     if (restore == PaywallRestorePhase.Working) return
     restore = PaywallRestorePhase.Working
     scope.launch {
-      try {
-        store.restore()
+      // Non-cancellable for the same reason as a purchase: leaving mid-restore
+      // must not drop the server's confirmation of a membership it found.
+      val found = try {
+        withContext(NonCancellable) {
+          store.restore()
+          store.status.value.isSubscribed.also { found ->
+            // The server has to hear about it too, or the audio it withholds
+            // stays withheld: confirm a restored membership the way a
+            // purchase is.
+            if (found) premiumAccess.didPurchase()
+          }
+        }
       } catch (cancelled: CancellationException) {
         throw cancelled
       } catch (_: Exception) {
@@ -297,11 +318,7 @@ fun PaywallScreen(
       // A restore that lands turns the screen into the member
       // acknowledgement, which is the confirmation. One that finds nothing has
       // to say so — a Restore that answers with silence reads as a dead button.
-      val found = store.status.value.isSubscribed
       restore = if (found) PaywallRestorePhase.Restored else PaywallRestorePhase.NothingFound
-      // The server has to hear about it too, or the audio it withholds stays
-      // withheld: confirm a restored membership the way a purchase is.
-      if (found) premiumAccess.didPurchase()
       delay(NOTE_HOLD_MILLIS)
       if (restore == PaywallRestorePhase.Restored || restore == PaywallRestorePhase.NothingFound) {
         restore = PaywallRestorePhase.Idle
