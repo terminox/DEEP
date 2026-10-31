@@ -7,6 +7,13 @@ sealed interface OnboardingRoute {
   data object CreateAccount : OnboardingRoute
   data object SignUp : OnboardingRoute
   data object LogIn : OnboardingRoute
+
+  /**
+   * The DEEP Premium invitation, offered once the account exists and there is
+   * something to attach a membership to. Skippable — buying and declining both
+   * go on to crafting — and skipped entirely by a returning member logging in.
+   */
+  data object Premium : OnboardingRoute
   data object CraftingSpace : OnboardingRoute
 }
 
@@ -58,9 +65,14 @@ object OnboardingNavigator {
     return nav.copy(stack = nav.stack + to, direction = NavDirection.Forward)
   }
 
-  /** A no-op on the welcome screen (empty stack) and on CraftingSpace — its crafting can't be backed out of. */
+  /**
+   * A no-op on the welcome screen (empty stack), on CraftingSpace — its
+   * crafting can't be backed out of — and on Premium, which sits past a
+   * created account: stepping back to the sign-up form would offer to make an
+   * account that already exists.
+   */
   fun back(nav: OnboardingNav): OnboardingNav {
-    if (nav.stack.isEmpty() || nav.current == OnboardingRoute.CraftingSpace) {
+    if (!canGoBack(nav)) {
       return nav
     }
     return nav.copy(stack = nav.stack.dropLast(1), direction = NavDirection.Backward)
@@ -72,9 +84,13 @@ object OnboardingNavigator {
     return advance(nav.copy(pending = null), pending, configLoaded = true, signedIn = signedIn)
   }
 
-  /** Chrome (back button + progress row) shows when the stack is non-empty and top isn't CraftingSpace. */
-  fun showsChrome(nav: OnboardingNav): Boolean =
-    nav.stack.isNotEmpty() && nav.current != OnboardingRoute.CraftingSpace
+  /** Chrome (back button + progress row) shows exactly where [back] can step back. */
+  fun showsChrome(nav: OnboardingNav): Boolean = canGoBack(nav)
+
+  private fun canGoBack(nav: OnboardingNav): Boolean =
+    nav.stack.isNotEmpty() &&
+      nav.current != OnboardingRoute.CraftingSpace &&
+      nav.current != OnboardingRoute.Premium
 }
 
 // MARK: - Progress [OnboardingCoordinatorView progress]

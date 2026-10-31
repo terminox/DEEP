@@ -69,7 +69,8 @@ private val RULE_MARK_SIZE = 14.dp
 
 /**
  * The create-account form, after the gateway. On success the flow moves to
- * [CraftingSpaceScreen], whose loader syncs the gathered answers to the server.
+ * the DEEP Premium invitation and then [CraftingSpaceScreen], whose loader
+ * syncs the gathered answers to the server.
  * A gentle invitation, never a wall.
  *
  * Ported from Deep/Deep/Features/Onboarding/Screens/SignUpView.swift, with
@@ -132,7 +133,9 @@ fun SignUpScreen(
           onboardingStore.hydrate(gathered.quizAnswers, gathered.mindTree, completed = false)
           accountStore.signUp(displayName = name.trim(), email = email.trim(), password = password)
         }
-        onAdvance(OnboardingRoute.CraftingSpace)
+        // The account exists now, so there is something to attach a
+        // membership to: the DEEP Premium invitation, then crafting.
+        onAdvance(OnboardingRoute.Premium)
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
