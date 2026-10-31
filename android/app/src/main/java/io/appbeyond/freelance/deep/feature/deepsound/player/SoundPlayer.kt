@@ -17,6 +17,7 @@ import io.appbeyond.freelance.deep.shared.persistence.BlobStoring
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,9 +68,14 @@ import kotlin.random.Random
  * actually does — including the moves no button made (a track ending, a stream
  * failing) and the ones a foreign controller did. This class sends its own
  * moves as explicit seeks, so the two cannot disagree about where a skip
- * lands, and adopts the play order the service dealt for a shuffle (the
- * session's timeline carries it). Repeat is kept in [settings] between
- * launches, as iOS keeps it in `UserDefaults`; Shuffle lasts the session.
+ * lands. There is one play order: this class deals every shuffle it starts
+ * and hands the order to the service ahead of the queue or the Shuffle it
+ * belongs to (as the playlist's metadata, which rides the same ordered
+ * command queue), so a skip worked out before the session connected follows
+ * the order the audio will. A shuffle another controller starts is dealt by
+ * the service and read back the same way. Repeat is kept in [settings]
+ * between launches, as iOS keeps it in `UserDefaults`, every choice written
+ * in turn so the last one made is the one kept; Shuffle lasts the session.
  *
  * @param settings where the Repeat choice is kept — `deep.sound` in
  *   production.
@@ -80,7 +86,7 @@ class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPl
   private val context = context.applicationContext
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-  /** Deals this class's optimistic shuffle; the service's own deal replaces it. */
+  /** Deals every shuffle this class starts — the one order the service plays too. */
   private val random = Random.Default
 
   private val _playback = MutableStateFlow(SoundPlayback.Idle)
@@ -109,9 +115,17 @@ class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPl
    */
   private var repeatChosen = false
 
+  /**
+   * Repeat choices waiting to be written, newest only. One writer drains it,
+   * each write finishing before the next begins: separate launches would race
+   * on the IO pool, and a quick All → One could land One, then All.
+   */
+  private val repeatToSave = Channel<RepeatMode>(Channel.CONFLATED)
+
   init {
     tickElapsed()
     restoreRepeatMode()
+    saveRepeatModes()
   }
 
   // MARK: Transport
@@ -207,9 +221,14 @@ class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPl
   override fun setShuffled(shuffled: Boolean) {
     val state = _playback.value
     if (shuffled == state.isShuffled) return
-    _playback.value = state.copy(queue = state.queue.withShuffle(shuffled, random))
-    // Not pushed without a session: the next queue pushed carries it.
-    whenConnected { it.shuffleModeEnabled = shuffled }
+    val queue = state.queue.withShuffle(shuffled, random)
+    _playback.value = state.copy(queue = queue)
+    // Not pushed without a session: the next queue pushed carries it. The
+    // order goes first, so the service shuffles by this deal, not one of its own.
+    whenConnected { controller ->
+      controller.playlistMetadata = playOrderMetadata(queue.order)
+      controller.shuffleModeEnabled = shuffled
+    }
   }
 
   override fun seek(toProgress: Double) {
@@ -306,9 +325,16 @@ class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPl
     whenConnected { it.repeatMode = mode.playerMode }
   }
 
+  /**
+   * Repeat, Shuffle and the play order [queue] will be pushed with — sent just
+   * ahead of its `setMediaItems`, which takes the order. The order goes last:
+   * Shuffle turning on before the new queue lands shuffles the old one, and
+   * must not take the order dealt for this one.
+   */
   private fun applyModes(controller: MediaController, queue: SoundQueue<SoundQueueEntry>) {
     controller.repeatMode = queue.repeatMode.playerMode
     controller.shuffleModeEnabled = queue.isShuffled
+    controller.playlistMetadata = playOrderMetadata(queue.order)
   }
 
   // MARK: Repeat, between launches
@@ -331,14 +357,20 @@ class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPl
   }
 
   private fun persist(mode: RepeatMode) {
+    repeatToSave.trySend(mode)
+  }
+
+  private fun saveRepeatModes() {
     scope.launch {
-      try {
-        settings.write(mode.raw)
-      } catch (cancelled: CancellationException) {
-        throw cancelled
-      } catch (failed: Exception) {
-        // The choice stands for this launch; the next one starts from off.
-        Log.w(TAG, "Could not save the Repeat setting.", failed)
+      for (mode in repeatToSave) {
+        try {
+          settings.write(mode.raw)
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (failed: Exception) {
+          // The choice stands for this launch; the next one starts from off.
+          Log.w(TAG, "Could not save the Repeat setting.", failed)
+        }
       }
     }
   }
@@ -514,7 +546,12 @@ class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPl
   private fun adopt(queue: SoundQueue<SoundQueueEntry>, player: Player, at: Int): SoundQueue<SoundQueueEntry> {
     val repeatMode = repeatModeOf(player.repeatMode)
     val shuffled = player.shuffleModeEnabled
-    return queue.adopting(player.currentTimeline.playOrder(shuffled), at, repeatMode, shuffled)
+    // The published order first: the controller holds the one this class just
+    // sent until the session has taken it, where its timeline's shuffle would
+    // still be the old one.
+    val published = player.playlistMetadata.playOrder()?.takeIf { shuffled }
+    return published?.let { queue.adopting(it, at, repeatMode, shuffled) }
+      ?: queue.adopting(player.currentTimeline.playOrder(shuffled), at, repeatMode, shuffled)
       ?: queue.adopting(queue.order, at, repeatMode, shuffled)
       ?: queue
   }

@@ -91,6 +91,8 @@ class DeepSoundSessionCallback(
       commands.removeAll(
         Player.COMMAND_CHANGE_MEDIA_ITEMS,
         Player.COMMAND_SET_MEDIA_ITEM,
+        // The playlist metadata carries SoundPlayer's play order.
+        Player.COMMAND_SET_PLAYLIST_METADATA,
       )
     }
     if (isHeld()) commands.remove(Player.COMMAND_PLAY_PAUSE)

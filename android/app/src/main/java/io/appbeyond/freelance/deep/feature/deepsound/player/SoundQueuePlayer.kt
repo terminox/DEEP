@@ -2,10 +2,12 @@
 
 package io.appbeyond.freelance.deep.feature.deepsound.player
 
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingSimpleBasePlayer
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
@@ -25,8 +27,11 @@ import kotlin.random.Random
  * **Where the queue lives.** ExoPlayer keeps the queue in list order, index for
  * index with [SoundPlayer]'s, and its own Repeat and Shuffle carry the play
  * order: its repeat mode is the listener's, and a shuffle is an exact
- * `ShuffleOrder` this class deals — the current track first, the rest in a
- * random order after it — rather than ExoPlayer's own. That keeps everything a
+ * `ShuffleOrder` — the current track first, the rest in a random order after
+ * it — rather than ExoPlayer's own. [SoundPlayer] deals it and hands it over
+ * with the queue, so the app's skips and the player's own advance follow one
+ * order; only a shuffle another controller turns on is dealt here, and
+ * published back the same way (see [playOrderMetadata]). That keeps everything a
  * track ending can need inside ExoPlayer: the next track is already buffered,
  * Repeat One loops without a gap, and a playlist runs on with the screen off
  * and no app code awake at the boundary, as iOS's pre-loaded `AVQueuePlayer`
@@ -78,12 +83,36 @@ class SoundQueuePlayer(
     return Futures.immediateVoidFuture()
   }
 
+  /**
+   * A play order [SoundPlayer] dealt, waiting for the queue or the Shuffle it
+   * was dealt for. Taken by the next [handleSetMediaItems] or shuffle-on; a
+   * shuffle with none waiting (a lock screen's, a watch's) is dealt here.
+   */
+  private var dealtByApp: List<Int>? = null
+
+  /**
+   * [SoundPlayer] hands its play order over as the playlist's metadata, ahead
+   * of the queue or the Shuffle it belongs to. It rides the session's one
+   * ordered queue of player commands with them, so a skip the app worked out
+   * before the session even connected lands on the order the audio follows.
+   */
+  override fun handleSetPlaylistMetadata(playlistMetadata: MediaMetadata): ListenableFuture<*> {
+    dealtByApp = playlistMetadata.playOrder()
+    return super.handleSetPlaylistMetadata(playlistMetadata)
+  }
+
   override fun handleSetShuffleModeEnabled(shuffleModeEnabled: Boolean): ListenableFuture<*> {
-    if (shuffleModeEnabled && !exo.shuffleModeEnabled) dealFrom(exo.currentMediaItemIndex)
+    if (shuffleModeEnabled && !exo.shuffleModeEnabled) {
+      val dealt = takeDealtByApp()
+      if (dealt != null) adopt(dealt) else dealFrom(exo.currentMediaItemIndex)
+    }
     return super.handleSetShuffleModeEnabled(shuffleModeEnabled)
   }
 
-  /** A new queue: a fresh run of failures, and — shuffled — a fresh deal from its start. */
+  /**
+   * A new queue: a fresh run of failures, and the play order the app dealt for
+   * it — or, shuffled with none, a fresh deal from its start.
+   */
   override fun handleSetMediaItems(
     mediaItems: List<MediaItem>,
     startIndex: Int,
@@ -91,8 +120,25 @@ class SoundQueuePlayer(
   ): ListenableFuture<*> {
     val result = super.handleSetMediaItems(mediaItems, startIndex, startPositionMs)
     consecutiveFailures = 0
-    if (exo.shuffleModeEnabled) dealFrom(exo.currentMediaItemIndex)
+    val dealt = takeDealtByApp()
+    when {
+      dealt != null -> adopt(dealt)
+      exo.shuffleModeEnabled -> dealFrom(exo.currentMediaItemIndex)
+    }
     return result
+  }
+
+  /** The app's waiting order, once, if it is a play order over the queue held now. */
+  private fun takeDealtByApp(): List<Int>? {
+    val dealt = dealtByApp ?: return null
+    dealtByApp = null
+    return dealt.takeIf { it.sorted() == List(exo.mediaItemCount) { index -> index } }
+  }
+
+  /** Gives the player [order] as its shuffle, and publishes it. */
+  private fun adopt(order: List<Int>) {
+    exo.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(order.toIntArray(), random.nextLong()))
+    exo.playlistMetadata = playOrderMetadata(order)
   }
 
   private fun skipForward() {
@@ -206,7 +252,11 @@ class SoundQueuePlayer(
     )
   }
 
-  /** Deals a shuffle that starts on [index] and gives it to the player. */
+  /**
+   * Deals a shuffle that starts on [index] and gives it to the player — for a
+   * shuffle the app did not deal. Published like the app's, so [SoundPlayer]
+   * reads it back the same way.
+   */
   private fun dealFrom(index: Int) {
     val count = exo.mediaItemCount
     if (count == 0) return
@@ -218,7 +268,7 @@ class SoundQueuePlayer(
       canPlay = { true },
       random = random,
     )
-    exo.setShuffleOrder(ShuffleOrder.DefaultShuffleOrder(dealt.order.toIntArray(), random.nextLong()))
+    adopt(dealt.order)
   }
 
   // MARK: Commands
@@ -261,6 +311,21 @@ fun Timeline.playOrder(shuffled: Boolean): List<Int> {
   }
   return order
 }
+
+/** Where [playOrderMetadata] keeps the order. */
+private const val PLAY_ORDER_KEY = "io.appbeyond.freelance.deep.sound.PLAY_ORDER"
+
+/**
+ * A play order as playlist metadata — how [SoundPlayer] hands the order it
+ * dealt to the service, and how the service publishes the one it holds.
+ */
+fun playOrderMetadata(order: List<Int>): MediaMetadata =
+  MediaMetadata.Builder()
+    .setExtras(Bundle().apply { putIntArray(PLAY_ORDER_KEY, order.toIntArray()) })
+    .build()
+
+/** The play order this metadata carries, if any. */
+fun MediaMetadata.playOrder(): List<Int>? = extras?.getIntArray(PLAY_ORDER_KEY)?.toList()
 
 /** The [RepeatMode] a Media3 repeat mode stands for. */
 fun repeatModeOf(@Player.RepeatMode mode: Int): RepeatMode = when (mode) {
