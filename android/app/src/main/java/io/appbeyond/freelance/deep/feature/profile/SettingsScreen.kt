@@ -281,11 +281,16 @@ fun SettingsScreen(
     restorePhase = RestorePhase.Working
     scope.launch {
       try {
-        subscriptionStore.restore()
+        // Non-cancellable: leaving Settings mid-restore must not drop the
+        // server's confirmation of a membership it found (iOS runs this in an
+        // unstructured Task, which outlives the view).
+        withContext(NonCancellable) {
+          subscriptionStore.restore()
+          // Confirmed with the server the way a purchase is, so the audio it
+          // withholds is released without waiting for the next foreground.
+          if (subscriptionStore.status.value.isSubscribed) premiumAccess.didPurchase()
+        }
         restorePhase = RestorePhase.Restored
-        // Confirmed with the server the way a purchase is, so the audio it
-        // withholds is released without waiting for the next foreground.
-        if (subscriptionStore.status.value.isSubscribed) premiumAccess.didPurchase()
       } catch (cancelled: CancellationException) {
         throw cancelled
       } catch (_: Exception) {
