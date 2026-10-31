@@ -278,6 +278,7 @@ class MainActivity : ComponentActivity() {
               memberName = account?.displayName,
               onFinish = onFinish,
               visibility = visibility,
+              hydrate = dependencies.pauseNightRewards::hydrate,
             )
           },
         )

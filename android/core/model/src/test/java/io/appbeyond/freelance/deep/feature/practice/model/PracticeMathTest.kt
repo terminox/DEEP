@@ -188,4 +188,40 @@ class PracticeMathTest {
       Locale.setDefault(original)
     }
   }
+
+  // MARK: - Day keys
+
+  @Test
+  @DisplayName("A server day key names that day; a malformed or impossible one is skipped")
+  fun dayFromKey() {
+    assertEquals(LocalDate.of(2026, 7, 23), PracticeMath.day("2026-07-23"))
+    assertEquals(null, PracticeMath.day("2026-02-30"))
+    assertEquals(null, PracticeMath.day("2026-13-01"))
+    assertEquals(null, PracticeMath.day("23/07/2026"))
+    assertEquals(null, PracticeMath.day(""))
+    assertEquals(setOf(LocalDate.of(2026, 7, 22)), PracticeMath.days(listOf("2026-07-22", "garbage")))
+  }
+
+  @Test
+  @DisplayName("A server day key reads as Gregorian on a Thai device's Buddhist calendar")
+  fun dayFromKeyIgnoresBuddhistDefault() {
+    val original = Locale.getDefault()
+    try {
+      Locale.setDefault(Locale.forLanguageTag("th-TH-u-ca-buddhist"))
+      assertEquals(LocalDate.of(2026, 7, 23), PracticeMath.day("2026-07-23"))
+    } finally {
+      Locale.setDefault(original)
+    }
+  }
+
+  @Test
+  @DisplayName("Any practice day keeps the rhythm: sessions and other days together")
+  fun rhythmUnionsEveryPracticeDay() {
+    // A session two days ago, a listen yesterday, a pause today.
+    val completions = listOf(completion(durationSeconds = 300, day = date(2026, 7, 21, 9, 0)))
+    val others = setOf(LocalDate.of(2026, 7, 22), LocalDate.of(2026, 7, 23))
+    assertEquals(ContinuityTransition(2, 3), PracticeMath.continuityTransition(completions, zone, clock, others))
+    assertEquals(3, PracticeMath.currentStreakDays(completions, zone, clock, others))
+    assertEquals(3, PracticeMath.longestStreakDays(completions, zone, others))
+  }
 }
