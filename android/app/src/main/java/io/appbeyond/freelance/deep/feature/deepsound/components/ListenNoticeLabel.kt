@@ -172,7 +172,13 @@ fun ListenNoticeAnnouncer(reporter: ListenReporting) {
   val notice by reporter.notice.collectAsStateWithLifecycle()
   val context = LocalContext.current
   val message = notice?.let { listenNoticeAnnouncement(it.kind) }
+  // Only as a notice appears: a shell composed while one is already showing
+  // doesn't say it twice.
+  var seenId by remember { mutableStateOf(notice?.id) }
   LaunchedEffect(notice?.id) {
+    val id = notice?.id ?: return@LaunchedEffect
+    if (id == seenId) return@LaunchedEffect
+    seenId = id
     if (message != null) announce(context, message)
   }
 }
