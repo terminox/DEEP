@@ -1,26 +1,32 @@
 package io.appbeyond.freelance.deep.feature.deepsound.components
 
+import android.os.Build
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,36 +36,51 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.deepsound.LyricsSheet
 import io.appbeyond.freelance.deep.feature.deepsound.PlayerIcons
+import io.appbeyond.freelance.deep.feature.deepsound.SoundIcons
+import io.appbeyond.freelance.deep.feature.deepsound.model.RepeatMode
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
+import io.appbeyond.freelance.deep.feature.deepsound.model.SoundPlayback
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundQueue
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTime
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.deepsound.player.cycleRepeatMode
+import io.appbeyond.freelance.deep.feature.deepsound.player.toggleShuffled
 import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.playlist.components.SaveTrackButton
@@ -67,71 +88,80 @@ import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistState
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
+import io.appbeyond.freelance.deep.shared.components.LightStatusBarIcons
 import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
-import io.appbeyond.freelance.deep.theme.blushPowder
+import io.appbeyond.freelance.deep.theme.chip
 import io.appbeyond.freelance.deep.theme.deepPlum
-import io.appbeyond.freelance.deep.theme.driftGrey
-import io.appbeyond.freelance.deep.theme.lavenderMist
+import io.appbeyond.freelance.deep.theme.drift
+import io.appbeyond.freelance.deep.theme.edge
+import io.appbeyond.freelance.deep.theme.exhale
+import io.appbeyond.freelance.deep.theme.frostedCard
 import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.settle
-import io.appbeyond.freelance.deep.theme.softLilac
 import io.appbeyond.freelance.deep.theme.softPress
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 // MARK: - Constants
 
-/** The backdrop's middle and bottom stops — iOS's `.lavenderMist.opacity(0.7)`, `.blushPowder.opacity(0.6)`. */
-private const val BACKDROP_MID_ALPHA = 0.7f
-private const val BACKDROP_LOW_ALPHA = 0.6f
+/** The close button — iOS's 40pt frosted chip, 4 below the status bar. */
+private val CLOSE_SIZE = 40.dp
+private val CLOSE_GLYPH = 22.dp
+private val CLOSE_TOP = 4.dp
+
+/** The photograph's slow breath — iOS's `scaleEffect(drifted ? 1.08 : 1.02)`. */
+private const val ARTWORK_REST_SCALE = 1.02f
+private const val ARTWORK_DRIFT_SCALE = 1.08f
+
+/** Paused, a soft plum dim falls over the photograph — iOS's `deepPlum.opacity(0.2)`. */
+private const val PAUSED_DIM_ALPHA = 0.2f
+
+/** The plum washes that seat cream text on any photo — iOS's `scrim(from:peak:)` pair. */
+private const val TOP_SCRIM_PEAK = 0.36f
+private val TOP_SCRIM_HEIGHT = 180.dp
+private const val BOTTOM_SCRIM_PEAK = 0.4f
+private val BOTTOM_SCRIM_HEIGHT = 520.dp
 
 /**
- * The stand-in for iOS's `.ultraThinMaterial.opacity(0.4)` over the gradient —
- * a pale wash with no blur, since there is nothing behind an opaque screen to
- * blur anyway.
+ * Below API 31 there is no blur to soften the photograph behind the controls,
+ * so the bottom wash deepens a little to carry the text on its own.
  */
-private const val BACKDROP_WASH_ALPHA = 0.16f
+private const val BOTTOM_SCRIM_PEAK_UNBLURRED = 0.55f
 
-/** The grab handle — iOS's 40×5 capsule in plum at 0.22, padded 12 above and 4 below. */
-private val HANDLE_WIDTH = 40.dp
-private val HANDLE_HEIGHT = 5.dp
-private const val HANDLE_ALPHA = 0.22f
-private val HANDLE_PADDING_TOP = 12.dp
-private val HANDLE_PADDING_BOTTOM = 4.dp
-
-/** Air around the artwork — iOS's `Spacer(minLength: 8)` above, `Spacer(minLength: 24)` below. */
-private val ARTWORK_AIR_TOP = 8.dp
-private val ARTWORK_AIR_BOTTOM = 24.dp
-private val ARTWORK_INSET = 28.dp
-
-/** The artwork's corner radius — iOS's `cornerRadius: 22`. */
-private val ARTWORK_RADIUS = 22.dp
-
-/** Paused, the artwork steps back — iOS's `artworkScale`. */
-private const val ARTWORK_PAUSED_SCALE = 0.84f
-
-/** The artwork's bloom, playing vs paused — iOS's `.shadow(...)` pair. */
-private const val SHADOW_PLAYING_ALPHA = 0.45f
-private const val SHADOW_PAUSED_ALPHA = 0.22f
-private val SHADOW_PLAYING_RADIUS = 34.dp
-private val SHADOW_PAUSED_RADIUS = 16.dp
-private val SHADOW_PLAYING_Y = 20.dp
-private val SHADOW_PAUSED_Y = 10.dp
-
-/** The controls block — iOS's `VStack(spacing: 26)`, padded 32 across and 40 below. */
-private val CONTROLS_SPACING = 26.dp
-private val CONTROLS_INSET = 32.dp
-private val CONTROLS_BOTTOM = 40.dp
+/** Each scrim's middle stop as a share of its peak — iOS's `ink.opacity(0.8)` at 0.5. */
+private const val SCRIM_MID_SHARE = 0.8f
+private const val SCRIM_MID_STOP = 0.5f
 
 /**
- * The track title — iOS's semibold `.title3` (20pt). Inter's heaviest weight in
- * the bundled family is Medium, so the step up in size carries the emphasis.
+ * The progressive blur behind the controls — iOS's `VariableBlurView(maxBlurRadius: 24)`,
+ * clear at its top edge, which rests 28 above the controls.
  */
-private val TRACK_TITLE_STYLE = DeepType.sectionTitle.copy(fontSize = 20.sp, lineHeight = 26.sp)
+private val BLUR_RADIUS = 24.dp
+private val BLUR_LEAD = 28.dp
 
-/** iOS's `VStack(spacing: 3)` under the title. */
-private val TITLE_SPACING = 3.dp
+/** The controls column — iOS's `VStack(spacing: 18)`, 12 above the bottom inset. */
+private val CONTROLS_SPACING = 18.dp
+private val CONTROLS_BOTTOM = 12.dp
+
+/** The title column and the trailing buttons beside it — iOS's `spacing: 4` both ways. */
+private val TITLE_SPACING = 4.dp
+
+/** Cream's softer inks — secondary text and the volume's quiet fill, then a mode switched off. */
+private const val SECONDARY_ALPHA = 0.72f
+private const val VOLUME_FILL_ALPHA = 0.8f
+private const val MODE_OFF_ALPHA = 0.5f
+
+/** The collection line — iOS's `DeepType.micro` with `.tracking(1.6)`. */
+private val COLLECTION_STYLE = DeepType.micro.copy(letterSpacing = 1.6.sp)
+
+/** The track title — iOS's semibold `.title2` (22pt). */
+private val TRACK_TITLE_STYLE = DeepType.sectionTitle.copy(
+  fontSize = 22.sp,
+  lineHeight = 28.sp,
+  fontWeight = FontWeight.SemiBold,
+)
 
 /** Clock labels tick, so their digits are fixed-width — iOS's `.monospacedDigit()`. */
 private val CLOCK_STYLE = DeepType.caption.copy(fontFeatureSettings = "tnum")
@@ -139,25 +169,26 @@ private val CLOCK_STYLE = DeepType.caption.copy(fontFeatureSettings = "tnum")
 /** The remaining-time label's sign — iOS's `"-\(...)"`. */
 private const val REMAINING_PREFIX = "-"
 
-/** Slider-to-clock gap — iOS's `VStack(spacing: 6)`. */
-private val SCRUBBER_SPACING = 6.dp
+/** Slider-to-clock gap — iOS's `VStack(spacing: 4)`. */
+private val SCRUBBER_SPACING = 4.dp
 
-/** Transport — iOS's `HStack(spacing: 44)`, 28pt skips in 56pt frames, a 44pt play in 64. */
-private val TRANSPORT_SPACING = 44.dp
-private val SKIP_GLYPH = 28.dp
-private val SKIP_TARGET = 56.dp
-private val PLAY_GLYPH = 44.dp
-private val PLAY_TARGET = 64.dp
+/** Both sliders' resting track — iOS's `trackHeight: 4`. */
+private val SLIDER_TRACK = 4.dp
 
-/** Volume — iOS's `HStack(spacing: 12)` with `.footnote` speakers and a 0.8 lavender fill. */
+/** Transport — 24pt skips in 52pt targets, a 68pt cream play with a 24pt glyph, 12 either side of it. */
+private val SKIP_GLYPH = 24.dp
+private val SKIP_TARGET = 52.dp
+private val PLAY_SIZE = 68.dp
+private val PLAY_GLYPH = 24.dp
+private val PLAY_AIR = 12.dp
+
+/** Shuffle, Repeat and Lyrics — iOS's 18pt glyphs in 44pt targets. */
+private val MODE_GLYPH = 18.dp
+private val MODE_TARGET = 44.dp
+
+/** Volume — iOS's `HStack(spacing: 12)` with `.footnote` speakers. */
 private val VOLUME_SPACING = 12.dp
 private val SPEAKER_GLYPH = 16.dp
-private const val VOLUME_FILL_ALPHA = 0.8f
-
-/** The bottom row — iOS's `.padding(.horizontal, 24)` and 44pt utility targets. */
-private val BOTTOM_ROW_INSET = 24.dp
-private val UTILITY_TARGET = 44.dp
-private val UTILITY_GLYPH = 20.dp
 
 /** How far a swipe down must travel to count as all the way closed — the pill's distance, mirrored. */
 private val COLLAPSE_DRAG_DISTANCE = 300.dp
@@ -166,15 +197,26 @@ private val COLLAPSE_DRAG_DISTANCE = 300.dp
 
 /**
  * The full-screen player. Ported from `Deep/Deep/Features/DeepSound/Components/NowPlayingView.swift`:
- * a large artwork that contracts when paused, a draggable scrubber, transport,
- * volume, and a bottom utility row — Apple Music's Now Playing, retinted to
- * DEEP and with softened motion.
+ * the collection's photograph fills the whole screen, edge to edge under the
+ * status bar, and the player sits over its lower part — collection, track,
+ * scrubber, transport and volume, seated on a plum scrim and a progressive
+ * blur so the photo melts out of focus behind the controls. Shuffle and Repeat
+ * flank the transport, as in Spotify; Lyrics and Save sit with the title.
  *
- * Two deliberate departures from iOS. The bottom row carries only Lyrics: the
- * AirPlay button has no honest Android counterpart (the output switcher is a
- * system surface, not the app's), so it is dropped rather than faked. And the
- * volume is the player's own gain ([SoundPlaying.setVolume], starting at 0.6
- * like `AVPlayer.volume` on iOS), not the system volume.
+ * While a sound plays the photograph drifts slowly ([drift]); paused it
+ * settles back and dims, and under reduced motion it never drifts at all. The
+ * status bar's icons turn light for as long as this screen is up, as iOS's
+ * `LightStatusBarHostingController` does.
+ *
+ * Departures from iOS:
+ * - **The blur** is a uniform 24dp blur of the photograph, faded in from clear
+ *   by a gradient, where iOS's `VariableBlurView` ramps the radius itself. It
+ *   needs API 31 (`RenderEffect`); below that `Modifier.blur` is a no-op, so
+ *   the bottom scrim deepens a little instead.
+ * - **The volume** is the player's own gain ([SoundPlaying.setVolume], starting
+ *   at 0.6 like `AVPlayer.volume` on iOS), not the system volume.
+ * - **The heart notice** iOS swaps into the subtitle when a listen lands has
+ *   no Android counterpart yet; the subtitle always reads the collection's.
  *
  * A leaf. The morph from the mini pill, the predictive-back shrink and the
  * seekable transition state all belong to the shell; this screen only lays out
@@ -182,8 +224,7 @@ private val COLLAPSE_DRAG_DISTANCE = 300.dp
  * through [onDragDown] / [onDragDownEnd] so the shell can scrub the collapse.
  * The sliders consume their own drags, so scrubbing never collapses the screen.
  *
- * @param artworkModifier applied first on the artwork, before its sizing —
- *   where the shell attaches `Modifier.sharedElement(...)`.
+ * @param onCollapse the close button.
  * @param onDragDown the swipe's progress, 0…1, over a [COLLAPSE_DRAG_DISTANCE]
  *   travel. Upward travel clamps to 0.
  * @param onDragDownEnd the release velocity in px/s, positive downward (toward
@@ -196,24 +237,30 @@ fun NowPlayingScreen(
   library: SoundLibrary,
   onCollapse: () -> Unit,
   modifier: Modifier = Modifier,
-  artworkModifier: Modifier = Modifier,
   onDragDown: (fraction: Float) -> Unit = {},
   onDragDownEnd: (velocity: Float) -> Unit = {},
 ) {
   val playback by player.playback.collectAsStateWithLifecycle()
-  val playlist by playlistStore.state.collectAsStateWithLifecycle()
-  val scope = rememberCoroutineScope()
   var showLyrics by rememberSaveable { mutableStateOf(false) }
   val onDown by rememberUpdatedState(onDragDown)
   val onDownEnd by rememberUpdatedState(onDragDownEnd)
-
   val track = playback.currentTrack
-  val collection = playback.collection
+  val blurs = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+  LightStatusBarIcons()
+
+  // The controls' top in this screen's own pixels, for the blur's clear edge.
+  // Read only in layout, so a move relays out the blur and recomposes nothing.
+  // Measured against the screen itself rather than the root, so a transform
+  // the shell lays on the whole screen moves both ends alike.
+  val screen = remember { Anchor() }
+  var controlsTop by remember { mutableFloatStateOf(Float.NaN) }
 
   Box(
     modifier
       .fillMaxSize()
-      .nowPlayingBackdrop()
+      .background(Color.deepPlum)
+      .onPlaced { screen.coordinates = it }
       .pointerInput(Unit) {
         val distance = COLLAPSE_DRAG_DISTANCE.toPx()
         val tracker = VelocityTracker()
@@ -236,116 +283,52 @@ fun NowPlayingScreen(
         )
       },
   ) {
-    Column(Modifier.fillMaxSize().systemBarsPadding()) {
-      GrabHandle(onCollapse)
+    val scale = rememberArtworkScale(playback.isPlaying)
+    val dim by animateFloatAsState(
+      targetValue = if (playback.isPlaying) 0f else PAUSED_DIM_ALPHA,
+      animationSpec = settle(),
+      label = "now-playing-dim",
+    )
+    // Decoded for the screen, not for the pill this screen grows out of.
+    val decodeSize = LocalWindowInfo.current.containerSize
+    val backdrop: @Composable (Modifier) -> Unit = { backdropModifier ->
+      Backdrop(
+        collection = playback.collection,
+        scale = { scale.value },
+        dim = { dim.coerceIn(0f, PAUSED_DIM_ALPHA) },
+        decodeSize = decodeSize,
+        modifier = backdropModifier,
+      )
+    }
 
-      Box(
-        Modifier
-          .weight(1f)
-          .fillMaxWidth()
-          .padding(horizontal = ARTWORK_INSET)
-          .padding(top = ARTWORK_AIR_TOP, bottom = ARTWORK_AIR_BOTTOM),
-        contentAlignment = Alignment.Center,
-      ) {
-        NowPlayingArtwork(collection, playback.isPlaying, artworkModifier)
-      }
+    backdrop(Modifier.fillMaxSize())
 
-      Column(
-        Modifier
-          .fillMaxWidth()
-          .padding(horizontal = CONTROLS_INSET)
-          .padding(bottom = CONTROLS_BOTTOM),
-        verticalArrangement = Arrangement.spacedBy(CONTROLS_SPACING),
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          // Greedy rather than a Spacer, so the title takes the room it has.
-          Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TITLE_SPACING)) {
-            Text(
-              text = track?.title.orEmpty(),
-              style = TRACK_TITLE_STYLE,
-              color = Color.deepPlum,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-              text = collection?.title.orEmpty(),
-              style = DeepType.body,
-              color = Color.driftGrey,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-            )
-          }
-          // Saving the sound to the playlist — the screen's one utility control.
-          if (track != null && collection != null) {
-            // Keyed on the store's state, so a save anywhere refills the mark here.
-            val saved = remember(playlist, track.id) { playlistStore.isSaved(track.id) }
-            SaveTrackButton(
-              saved = saved,
-              onToggle = { scope.launch { playlistStore.toggle(track, collection) } },
-            )
-          }
-        }
+    if (blurs) {
+      ControlsBlur(clearEdge = { controlsTop }, backdrop = backdrop)
+    }
 
-        Scrubber(player, playback.duration)
+    Scrims(bottomPeak = if (blurs) BOTTOM_SCRIM_PEAK else BOTTOM_SCRIM_PEAK_UNBLURRED)
 
-        Row(
-          Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(TRANSPORT_SPACING, Alignment.CenterHorizontally),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          GlyphButton(
-            icon = PlayerIcons.Previous,
-            label = stringResource(R.string.player_previous),
-            glyphSize = SKIP_GLYPH,
-            target = SKIP_TARGET,
-            onClick = player::previous,
-          )
-          GlyphButton(
-            icon = if (playback.isPlaying) PlayerIcons.Pause else PlayerIcons.Play,
-            label = stringResource(if (playback.isPlaying) R.string.player_pause else R.string.player_play),
-            glyphSize = PLAY_GLYPH,
-            target = PLAY_TARGET,
-            onClick = player::togglePlayPause,
-          )
-          GlyphButton(
-            icon = PlayerIcons.Next,
-            label = stringResource(R.string.player_next),
-            glyphSize = SKIP_GLYPH,
-            target = SKIP_TARGET,
-            onClick = player::next,
-          )
-        }
-
-        Row(
-          horizontalArrangement = Arrangement.spacedBy(VOLUME_SPACING),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Icon(PlayerIcons.Speaker, contentDescription = null, tint = Color.driftGrey, modifier = Modifier.size(SPEAKER_GLYPH))
-          val volumeLabel = stringResource(R.string.player_volume)
-          SoundSlider(
-            value = playback.volume.toFloat(),
-            onValueChange = { player.setVolume(it.toDouble()) },
-            activeColor = Color.lavenderMist.copy(alpha = VOLUME_FILL_ALPHA),
-            modifier = Modifier.weight(1f).semantics { contentDescription = volumeLabel },
-          )
-          Icon(PlayerIcons.SpeakerWave, contentDescription = null, tint = Color.driftGrey, modifier = Modifier.size(SPEAKER_GLYPH))
-        }
-
-        Row(
-          Modifier.fillMaxWidth().padding(horizontal = BOTTOM_ROW_INSET),
-          horizontalArrangement = Arrangement.End,
-        ) {
-          // Lyrics — opens the (multi-language) lyrics sheet for the current track.
-          GlyphButton(
-            icon = PlayerIcons.List,
-            label = stringResource(R.string.player_lyrics),
-            glyphSize = UTILITY_GLYPH,
-            target = UTILITY_TARGET,
-            tint = Color.driftGrey,
-            onClick = { if (track != null) showLyrics = true },
-          )
-        }
-      }
+    Column(
+      Modifier
+        .fillMaxSize()
+        .systemBarsPadding()
+        .padding(horizontal = Dp.edge),
+    ) {
+      CloseButton(onClick = onCollapse, modifier = Modifier.padding(top = CLOSE_TOP))
+      Spacer(Modifier.weight(1f))
+      Controls(
+        player = player,
+        playback = playback,
+        playlistStore = playlistStore,
+        onShowLyrics = { if (track != null) showLyrics = true },
+        // Globally positioned, not placed: that runs once the whole pass is
+        // laid out, so the screen's own coordinates are already in hand.
+        modifier = Modifier.onGloballyPositioned { controls ->
+          val parent = screen.coordinates?.takeIf { it.isAttached }
+          controlsTop = parent?.localPositionOf(controls, Offset.Zero)?.y ?: Float.NaN
+        },
+      )
     }
   }
 
@@ -354,96 +337,279 @@ fun NowPlayingScreen(
   }
 }
 
-// MARK: - Pieces
+// MARK: - Photograph
 
 /**
- * The opaque base, the gradient, and the material stand-in — iOS's `background`,
- * drawn to the very edges beneath the system bars.
+ * The photograph's scale: drifting between 1.02 and 1.08 while a sound plays
+ * ([drift]), settling back to 1.02 when it stops ([settle]) — replacing the
+ * endless drift with a finite settle is what ends it. Under reduced motion it
+ * rests at 1.02.
  */
-private fun Modifier.nowPlayingBackdrop(): Modifier = drawBehind {
-  drawRect(Color.softLilac)
-  drawRect(
-    Brush.verticalGradient(
-      listOf(
-        Color.softLilac,
-        Color.lavenderMist.copy(alpha = BACKDROP_MID_ALPHA),
-        Color.blushPowder.copy(alpha = BACKDROP_LOW_ALPHA),
-      ),
-    ),
-  )
-  drawRect(Color.moonCream.copy(alpha = BACKDROP_WASH_ALPHA))
+@Composable
+private fun rememberArtworkScale(isPlaying: Boolean): Animatable<Float, AnimationVector1D> {
+  val reduceMotion = rememberReduceMotion()
+  val scale = remember { Animatable(ARTWORK_REST_SCALE) }
+  val drifts = isPlaying && !reduceMotion
+  LaunchedEffect(drifts) {
+    if (drifts) {
+      scale.animateTo(ARTWORK_DRIFT_SCALE, drift())
+    } else {
+      scale.animateTo(ARTWORK_REST_SCALE, settle())
+    }
+  }
+  return scale
 }
 
-/** The grab handle. Tapping it collapses, as it does on iOS. */
+/**
+ * The photograph on its opaque plum base, so nothing underneath bleeds through
+ * while it loads, under a dim that falls when the sound pauses. [scale] and
+ * [dim] are read only while drawing, so neither recomposes anything.
+ */
 @Composable
-private fun GrabHandle(onCollapse: () -> Unit) {
-  val label = stringResource(R.string.player_close)
+private fun Backdrop(
+  collection: SoundCollection?,
+  scale: () -> Float,
+  dim: () -> Float,
+  decodeSize: IntSize,
+  modifier: Modifier = Modifier,
+) {
   Box(
-    Modifier
-      .fillMaxWidth()
-      .clickable(
-        interactionSource = remember { MutableInteractionSource() },
-        indication = null,
-        role = Role.Button,
-        onClickLabel = label,
-        onClick = onCollapse,
-      )
-      .semantics { contentDescription = label }
-      .padding(top = HANDLE_PADDING_TOP, bottom = HANDLE_PADDING_BOTTOM),
-    contentAlignment = Alignment.Center,
+    modifier
+      .background(Color.deepPlum)
+      .clipToBounds()
+      .drawWithContent {
+        drawContent()
+        drawRect(Color.deepPlum.copy(alpha = dim()))
+      },
   ) {
-    Box(
-      Modifier
-        .size(HANDLE_WIDTH, HANDLE_HEIGHT)
-        .clip(RoundedCornerShape(HANDLE_HEIGHT))
-        .background(Color.deepPlum.copy(alpha = HANDLE_ALPHA)),
+    ArtworkImage(
+      url = collection?.imageUrl,
+      palette = collection?.palette,
+      decodeSize = decodeSize,
+      modifier = Modifier
+        .fillMaxSize()
+        .graphicsLayer {
+          val shown = scale()
+          scaleX = shown
+          scaleY = shown
+        },
     )
   }
 }
 
 /**
- * The square artwork. Playing, it stands full size in a deep bloom; paused, it
- * steps back to 0.84 and the bloom tightens — on DEEP's [settle] spring, and
- * not at all under reduced motion, where it simply snaps.
+ * The photograph again, blurred and faded in from clear — iOS's progressive
+ * `VariableBlurView` behind the controls. It runs edge to edge from [clearEdge]
+ * (the controls' top, in this screen's pixels) less [BLUR_LEAD] down to the
+ * very bottom, under the navigation bar; only that band is blurred, so the
+ * drift redraws a band rather than the whole screen.
+ *
+ * The band holds a full-screen copy of [backdrop] shifted up to line up with
+ * the one beneath it. The blur is a uniform [BLUR_RADIUS] faded in by a
+ * gradient mask (`DstIn` on an offscreen layer); applied before the mask, so
+ * the clear top edge is the mask's, not a blur of the band's own edge.
  */
 @Composable
-private fun NowPlayingArtwork(
-  collection: SoundCollection?,
-  isPlaying: Boolean,
-  artworkModifier: Modifier,
+private fun ControlsBlur(
+  clearEdge: () -> Float,
+  backdrop: @Composable (Modifier) -> Unit,
 ) {
-  val reduceMotion = rememberReduceMotion()
-  val presence by animateFloatAsState(
-    targetValue = if (isPlaying) 1f else 0f,
-    animationSpec = if (reduceMotion) snap() else settle(),
-    label = "now-playing-artwork",
-  )
-  // The spring may overshoot a hair; the scale can wear that, the shadow can't.
-  val bloom = presence.coerceIn(0f, 1f)
-  val shape = RoundedCornerShape(ARTWORK_RADIUS)
-
-  ArtworkImage(
-    url = collection?.imageUrl,
-    palette = collection?.palette,
-    modifier = artworkModifier
-      .aspectRatio(1f)
-      .graphicsLayer {
-        val scale = ARTWORK_PAUSED_SCALE + (1f - ARTWORK_PAUSED_SCALE) * presence
-        scaleX = scale
-        scaleY = scale
+  val band = remember { Band() }
+  Box(
+    Modifier
+      .fillMaxSize()
+      .layout { measurable, constraints ->
+        val edge = clearEdge()
+        // Until the controls have been placed there is no band to blur.
+        band.top = if (edge.isNaN()) {
+          constraints.maxHeight
+        } else {
+          (edge - BLUR_LEAD.toPx()).roundToInt().coerceIn(0, constraints.maxHeight)
+        }
+        val placeable = measurable.measure(Constraints.fixed(constraints.maxWidth, constraints.maxHeight - band.top))
+        layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(0, band.top) }
       }
-      .dropShadow(
-        shape = shape,
-        shadow = Shadow(
-          radius = lerp(SHADOW_PAUSED_RADIUS, SHADOW_PLAYING_RADIUS, bloom),
-          color = Color.lavenderMist.copy(
-            alpha = SHADOW_PAUSED_ALPHA + (SHADOW_PLAYING_ALPHA - SHADOW_PAUSED_ALPHA) * bloom,
-          ),
-          offset = DpOffset(0.dp, lerp(SHADOW_PAUSED_Y, SHADOW_PLAYING_Y, bloom)),
-        ),
-      )
-      .clip(shape),
+      .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+      .drawWithContent {
+        drawContent()
+        drawRect(
+          brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black)),
+          blendMode = BlendMode.DstIn,
+        )
+      }
+      .graphicsLayer {
+        val radius = BLUR_RADIUS.toPx()
+        renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
+        clip = true
+      },
+  ) {
+    backdrop(
+      Modifier.layout { measurable, constraints ->
+        // The band's height plus what sits above it is the screen's. Measured
+        // inside the band's own measure, so its top is already this pass's.
+        val screen = measurable.measure(Constraints.fixed(constraints.maxWidth, constraints.maxHeight + band.top))
+        layout(constraints.maxWidth, constraints.maxHeight) { screen.place(0, -band.top) }
+      },
+    )
+  }
+}
+
+/** Where [ControlsBlur]'s band begins, handed from its measure to the copy inside it. */
+private class Band {
+  var top: Int = 0
+}
+
+/** The screen's own layout coordinates, kept for measuring the controls against. */
+private class Anchor {
+  var coordinates: LayoutCoordinates? = null
+}
+
+/**
+ * The plum washes that seat moonlit text on any photo: one fading down from
+ * the top, one fading up from the bottom — iOS's `scrim(from:peak:)`. Never
+ * hit-tested; they only draw.
+ */
+@Composable
+private fun Scrims(bottomPeak: Float) {
+  Box(Modifier.fillMaxSize()) {
+    Box(
+      Modifier
+        .align(Alignment.TopCenter)
+        .fillMaxWidth()
+        .height(TOP_SCRIM_HEIGHT)
+        .background(scrim(TOP_SCRIM_PEAK, fromTop = true)),
+    )
+    Box(
+      Modifier
+        .align(Alignment.BottomCenter)
+        .fillMaxWidth()
+        .height(BOTTOM_SCRIM_HEIGHT)
+        .background(scrim(bottomPeak, fromTop = false)),
+    )
+  }
+}
+
+/** Plum at [peak] on its edge, 0.8 of it halfway, clear at the far end. */
+private fun scrim(peak: Float, fromTop: Boolean): Brush {
+  val stops = arrayOf(
+    0f to Color.deepPlum.copy(alpha = peak),
+    SCRIM_MID_STOP to Color.deepPlum.copy(alpha = peak * SCRIM_MID_SHARE),
+    1f to Color.deepPlum.copy(alpha = 0f),
   )
+  return if (fromTop) {
+    Brush.verticalGradient(*stops)
+  } else {
+    Brush.verticalGradient(*stops, startY = Float.POSITIVE_INFINITY, endY = 0f)
+  }
+}
+
+// MARK: - Chrome
+
+/**
+ * The onboarding back button's frosted cream circle, here closing the player
+ * back into the mini pill. The swipe down and predictive back close it too.
+ */
+@Composable
+private fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+  val label = stringResource(R.string.player_close)
+  Box(
+    modifier
+      .size(CLOSE_SIZE)
+      .frostedCard(cornerRadius = Dp.chip)
+      .softPress()
+      .clickable(
+        interactionSource = null,
+        indication = null,
+        role = Role.Button,
+        onClick = onClick,
+      )
+      .semantics { contentDescription = label },
+    contentAlignment = Alignment.Center,
+  ) {
+    Icon(SoundIcons.ChevronBack, contentDescription = null, tint = Color.deepPlum, modifier = Modifier.size(CLOSE_GLYPH))
+  }
+}
+
+/** Title, scrubber, transport and volume — the player, over the photograph's lower part. */
+@Composable
+private fun Controls(
+  player: SoundPlaying,
+  playback: SoundPlayback,
+  playlistStore: PlaylistStore,
+  onShowLyrics: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Column(
+    modifier
+      .fillMaxWidth()
+      .padding(bottom = CONTROLS_BOTTOM),
+    verticalArrangement = Arrangement.spacedBy(CONTROLS_SPACING),
+  ) {
+    TitleRow(playback, playlistStore, onShowLyrics)
+    Scrubber(player, playback.duration)
+    Transport(player, playback)
+    Volume(player, playback.volume)
+  }
+}
+
+/** The collection, the track and its subtitle, with Lyrics and Save trailing. */
+@Composable
+private fun TitleRow(
+  playback: SoundPlayback,
+  playlistStore: PlaylistStore,
+  onShowLyrics: () -> Unit,
+) {
+  val playlist by playlistStore.state.collectAsStateWithLifecycle()
+  val scope = rememberCoroutineScope()
+  val track = playback.currentTrack
+  val collection = playback.collection
+  val secondary = Color.moonCream.copy(alpha = SECONDARY_ALPHA)
+
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(TITLE_SPACING),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    // Greedy rather than a Spacer, so the titles take the room they have.
+    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(TITLE_SPACING)) {
+      Text(
+        text = collection?.title.orEmpty().uppercase(),
+        style = COLLECTION_STYLE,
+        color = secondary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        text = track?.title.orEmpty(),
+        style = TRACK_TITLE_STYLE,
+        color = Color.moonCream,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        text = collection?.subtitle.orEmpty(),
+        style = DeepType.body,
+        color = secondary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+
+    // Lyrics — opens the (multi-language) lyrics sheet for the current track.
+    ModeButton(
+      icon = PlayerIcons.Lyrics,
+      label = stringResource(R.string.player_lyrics),
+      isOn = true,
+      onClick = onShowLyrics,
+    )
+    if (track != null && collection != null) {
+      // Keyed on the store's state, so a save anywhere refills the mark here.
+      val saved = remember(playlist, track.id) { playlistStore.isSaved(track.id) }
+      SaveTrackButton(
+        saved = saved,
+        onToggle = { scope.launch { playlistStore.toggle(track, collection) } },
+      )
+    }
+  }
 }
 
 /**
@@ -461,6 +627,7 @@ private fun Scrubber(player: SoundPlaying, duration: Double) {
   val progress = scrub ?: SoundQueue.progress(elapsed, duration).toFloat()
   val shownElapsed = scrub?.let { it * duration } ?: elapsed
   val label = stringResource(R.string.player_position)
+  val clock = Color.moonCream.copy(alpha = SECONDARY_ALPHA)
 
   Column(verticalArrangement = Arrangement.spacedBy(SCRUBBER_SPACING)) {
     SoundSlider(
@@ -470,42 +637,179 @@ private fun Scrubber(player: SoundPlaying, duration: Double) {
         scrub?.let { player.seek(it.toDouble()) }
         scrub = null
       },
+      activeColor = Color.moonCream,
+      trackHeight = SLIDER_TRACK,
       modifier = Modifier.semantics { contentDescription = label },
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-      Text(SoundTime.clock(shownElapsed), style = CLOCK_STYLE, color = Color.driftGrey)
+      Text(SoundTime.clock(shownElapsed), style = CLOCK_STYLE, color = clock)
       Text(
         REMAINING_PREFIX + SoundTime.clock(maxOf(0.0, duration - shownElapsed)),
         style = CLOCK_STYLE,
-        color = Color.driftGrey,
+        color = clock,
       )
     }
   }
 }
 
-/** A bare glyph in a generous target that presses into foam — iOS's `.softPress` transport and utility buttons. */
+/** Shuffle · Previous · Play/Pause · Next · Repeat. */
 @Composable
-private fun GlyphButton(
-  icon: ImageVector,
-  label: String,
-  glyphSize: Dp,
-  target: Dp,
-  onClick: () -> Unit,
-  tint: Color = Color.deepPlum,
-) {
+private fun Transport(player: SoundPlaying, playback: SoundPlayback) {
+  val on = stringResource(R.string.player_mode_on)
+  val off = stringResource(R.string.player_mode_off)
+  val repeatState = stringResource(
+    when (playback.repeatMode) {
+      RepeatMode.Off -> R.string.player_mode_off
+      RepeatMode.All -> R.string.player_repeat_all
+      RepeatMode.One -> R.string.player_repeat_one
+    },
+  )
+
+  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    ModeButton(
+      icon = SoundIcons.Shuffle,
+      label = stringResource(R.string.player_shuffle),
+      isOn = playback.isShuffled,
+      state = if (playback.isShuffled) on else off,
+      onClick = player::toggleShuffled,
+    )
+
+    Spacer(Modifier.weight(1f))
+
+    SkipButton(PlayerIcons.Previous, stringResource(R.string.player_previous), player::previous)
+    PlayPauseButton(
+      isPlaying = playback.isPlaying,
+      onClick = player::togglePlayPause,
+      modifier = Modifier.padding(horizontal = PLAY_AIR),
+    )
+    SkipButton(PlayerIcons.Next, stringResource(R.string.player_next), player::next)
+
+    Spacer(Modifier.weight(1f))
+
+    // Off → all → one, as in Apple Music. Lit whenever a queue will repeat.
+    ModeButton(
+      icon = if (playback.repeatMode == RepeatMode.One) PlayerIcons.RepeatOne else PlayerIcons.Repeat,
+      label = stringResource(R.string.player_repeat),
+      isOn = playback.repeatMode != RepeatMode.Off,
+      state = repeatState,
+      onClick = player::cycleRepeatMode,
+    )
+  }
+}
+
+/** The player's own gain between its two speakers. */
+@Composable
+private fun Volume(player: SoundPlaying, volume: Double) {
+  val ink = Color.moonCream.copy(alpha = SECONDARY_ALPHA)
+  val label = stringResource(R.string.player_volume)
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(VOLUME_SPACING),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(PlayerIcons.Speaker, contentDescription = null, tint = ink, modifier = Modifier.size(SPEAKER_GLYPH))
+    SoundSlider(
+      value = volume.toFloat(),
+      onValueChange = { player.setVolume(it.toDouble()) },
+      activeColor = Color.moonCream.copy(alpha = VOLUME_FILL_ALPHA),
+      trackHeight = SLIDER_TRACK,
+      modifier = Modifier.weight(1f).semantics { contentDescription = label },
+    )
+    Icon(PlayerIcons.SpeakerWave, contentDescription = null, tint = ink, modifier = Modifier.size(SPEAKER_GLYPH))
+  }
+}
+
+// MARK: - Buttons
+
+/**
+ * The cream disc at the heart of the transport, its glyph swapping in a
+ * crossfade — iOS's `.contentTransition(.symbolEffect(.replace))`.
+ */
+@Composable
+private fun PlayPauseButton(isPlaying: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  val label = stringResource(if (isPlaying) R.string.player_pause else R.string.player_play)
+  Box(
+    modifier
+      .size(PLAY_SIZE)
+      .softPress()
+      .clip(CircleShape)
+      .background(Color.moonCream)
+      .clickable(
+        interactionSource = null,
+        indication = null,
+        role = Role.Button,
+        onClick = onClick,
+      )
+      .semantics { contentDescription = label },
+    contentAlignment = Alignment.Center,
+  ) {
+    Crossfade(targetState = isPlaying, animationSpec = exhale(), label = "now-playing-play-pause") { playing ->
+      Icon(
+        imageVector = if (playing) PlayerIcons.Pause else PlayerIcons.Play,
+        contentDescription = null,
+        tint = Color.deepPlum,
+        modifier = Modifier.size(PLAY_GLYPH),
+      )
+    }
+  }
+}
+
+/** Previous or Next: a bare cream glyph in a generous target. */
+@Composable
+private fun SkipButton(icon: ImageVector, label: String, onClick: () -> Unit) {
   Box(
     Modifier
-      .size(target)
+      .size(SKIP_TARGET)
       .softPress()
       .clickable(
-        interactionSource = remember { MutableInteractionSource() },
+        interactionSource = null,
         indication = null,
         role = Role.Button,
         onClick = onClick,
       ),
     contentAlignment = Alignment.Center,
   ) {
-    Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(glyphSize))
+    Icon(icon, contentDescription = label, tint = Color.moonCream, modifier = Modifier.size(SKIP_GLYPH))
+  }
+}
+
+/**
+ * Shuffle, Repeat and Lyrics. [isOn] lights a mode in full cream, the ink the
+ * title wears; off, it steps back to half. The ink and the glyph both change
+ * on DEEP's [exhale]. [state] is what TalkBack reads after the [label] — "On",
+ * "All" — as VoiceOver reads iOS's `accessibilityValue`.
+ */
+@Composable
+private fun ModeButton(
+  icon: ImageVector,
+  label: String,
+  isOn: Boolean,
+  onClick: () -> Unit,
+  state: String? = null,
+) {
+  val tint by animateColorAsState(
+    targetValue = if (isOn) Color.moonCream else Color.moonCream.copy(alpha = MODE_OFF_ALPHA),
+    animationSpec = exhale(),
+    label = "now-playing-mode-tint",
+  )
+  Box(
+    Modifier
+      .size(MODE_TARGET)
+      .softPress()
+      .clickable(
+        interactionSource = null,
+        indication = null,
+        role = Role.Button,
+        onClick = onClick,
+      )
+      .semantics {
+        contentDescription = label
+        if (state != null) stateDescription = state
+      },
+    contentAlignment = Alignment.Center,
+  ) {
+    Crossfade(targetState = icon, animationSpec = exhale(), label = "now-playing-mode-glyph") { glyph ->
+      Icon(glyph, contentDescription = null, tint = tint, modifier = Modifier.size(MODE_GLYPH))
+    }
   }
 }
 
@@ -537,10 +841,23 @@ private fun NowPlayingPausedPreview() {
   }
 }
 
-@Preview(showBackground = true, name = "Now Playing — saved")
+@Preview(showBackground = true, name = "Now Playing — Shuffle, Repeat One")
 @Composable
-private fun NowPlayingSavedPreview() {
-  val player = remember { MockSoundPlayer.playing() }
+private fun NowPlayingShuffleRepeatOnePreview() {
+  DeepTheme {
+    NowPlayingScreen(
+      player = remember { MockSoundPlayer.playing(repeatMode = RepeatMode.One, isShuffled = true) },
+      playlistStore = remember { MockPlaylistStore.empty },
+      library = remember { MockSoundLibrary.loaded },
+      onCollapse = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Now Playing — Repeat All, saved")
+@Composable
+private fun NowPlayingRepeatAllSavedPreview() {
+  val player = remember { MockSoundPlayer.playing(repeatMode = RepeatMode.All) }
   val store = remember {
     MockPlaylistStore(PlaylistState.Loaded(listOfNotNull(player.playback.value.currentEntry)))
   }

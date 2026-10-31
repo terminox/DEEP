@@ -42,6 +42,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.SoundPlayback
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundQueueEntry
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.deepsound.player.playFrom
 import io.appbeyond.freelance.deep.feature.playlist.components.PlaylistSkeleton
 import io.appbeyond.freelance.deep.feature.playlist.components.PlaylistTrackRow
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
@@ -67,7 +68,6 @@ import io.appbeyond.freelance.deep.theme.frostedCard
 import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.softPress
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 // MARK: - Constants
 
@@ -197,7 +197,10 @@ fun PlaylistScreen(
               savedSounds(
                 entries = shown.entries,
                 playback = playback,
-                onPlay = { index -> player.play(shown.entries, index) },
+                onPlay = { index -> player.playFrom(shown.entries, index) },
+                onPlayAll = { shuffled ->
+                  player.play(shown.entries, startIndex = if (shuffled) null else 0, shuffled = shuffled)
+                },
                 onRemove = { entry -> scope.launch { playlistStore.toggle(entry.track, entry.collection) } },
               )
             }
@@ -248,11 +251,19 @@ private fun PlaylistHeader(onOpenSettings: () -> Unit) {
 
 // MARK: - Content
 
-/** The saved sounds: Play and Shuffle, then a row per sound. */
+/**
+ * The saved sounds: Play and Shuffle, then a row per sound.
+ *
+ * @param onPlay a row tapped: plays from that sound, keeping the listener's
+ *   shuffle setting.
+ * @param onPlayAll Play (false) sets off from the top in order; Shuffle (true)
+ *   deals the whole playlist in a random order.
+ */
 private fun LazyListScope.savedSounds(
   entries: List<SoundQueueEntry>,
   playback: SoundPlayback,
   onPlay: (Int) -> Unit,
+  onPlayAll: (shuffled: Boolean) -> Unit,
   onRemove: (SoundQueueEntry) -> Unit,
 ) {
   item(key = "actions") {
@@ -266,18 +277,14 @@ private fun LazyListScope.savedSounds(
         title = stringResource(R.string.deepsound_play),
         icon = PlayerIcons.Play,
         // From the top; the player skips ahead past any locked sound.
-        onClick = { onPlay(0) },
+        onClick = { onPlayAll(false) },
         modifier = Modifier.weight(1f),
       )
       SoundActionButton(
         title = stringResource(R.string.deepsound_shuffle),
         icon = SoundIcons.Shuffle,
-        // A random place to begin among the sounds that can play; the queue
-        // itself stays in saved order, as on iOS.
-        onClick = {
-          val unlocked = entries.indices.filterNot { entries[it].track.isLocked }
-          if (unlocked.isNotEmpty()) onPlay(unlocked[Random.nextInt(unlocked.size)])
-        },
+        // From a random sound that can play, the rest dealt after it.
+        onClick = { onPlayAll(true) },
         modifier = Modifier.weight(1f),
       )
     }

@@ -40,18 +40,18 @@ private const val LINE_WIDTH = 1.5f
  */
 private const val SOFTENING_WIDTH = 1.5f
 
-/** The list glyph's bullets. */
-private const val BULLET_RADIUS = 1.15f
+/** The ball of each quote mark on the lyrics glyph. */
+private const val QUOTE_RADIUS = 1.4f
 
 /**
- * The player's glyphs — transport, volume, lyrics and the playlist bookmark —
- * drawn in the same hand as [io.appbeyond.freelance.deep.feature.appshell.DeepIcons]
+ * The player's glyphs — transport, volume, lyrics, Repeat and the playlist
+ * bookmark — drawn in the same hand as [io.appbeyond.freelance.deep.feature.appshell.DeepIcons]
  * and [io.appbeyond.freelance.deep.feature.profile.ProfileIcons].
  *
  * iOS reaches for SF Symbols (`play.fill`, `pause.fill`, `forward.fill`,
- * `backward.fill`, `speaker.fill`, `speaker.wave.3.fill`, `list.bullet`,
- * `bookmark`, `bookmark.fill`) in `MiniPlayerBar.swift`, `NowPlayingView.swift`
- * and `SaveTrackButton.swift`. They are shared with the rest of DEEP Sound —
+ * `backward.fill`, `speaker.fill`, `speaker.wave.3.fill`, `text.quote`,
+ * `repeat`, `repeat.1`, `bookmark`, `bookmark.fill`) in `MiniPlayerBar.swift`,
+ * `NowPlayingView.swift` and `SaveTrackButton.swift`. They are shared with the rest of DEEP Sound —
  * one play triangle and one ribbon across the feature; [SoundIcons] carries
  * only what this set doesn't (shuffle, the struck-through bookmark, chevrons). The transport set is *solid* on iOS, as it is in
  * every music player, and stays solid here: a 1.5-stroke outline of a play
@@ -126,17 +126,36 @@ object PlayerIcons {
     }
   }
 
-  /** `list.bullet` — the lyrics button. */
-  val List: ImageVector = glyph("PlayerList") {
+  /** `text.quote` — the lyrics button: an opening quote mark before three lines of words. */
+  val Lyrics: ImageVector = glyph("PlayerLyrics") {
     solid {
-      dot(5.5f, 7f)
-      dot(5.5f, 12f)
-      dot(5.5f, 17f)
+      dot(5.25f, 10.25f, QUOTE_RADIUS)
+      dot(9f, 10.25f, QUOTE_RADIUS)
     }
     line {
-      moveTo(9.5f, 7f); lineTo(19.5f, 7f)
-      moveTo(9.5f, 12f); lineTo(19.5f, 12f)
-      moveTo(9.5f, 17f); lineTo(19.5f, 17f)
+      // Each mark's tail, curling up from its ball like a "6".
+      moveTo(3.85f, 10f)
+      curveTo(3.85f, 8.2f, 4.7f, 7.1f, 6.1f, 6.5f)
+      moveTo(7.6f, 10f)
+      curveTo(7.6f, 8.2f, 8.45f, 7.1f, 9.85f, 6.5f)
+      moveTo(13f, 7.5f); lineTo(20f, 7.5f)
+      moveTo(13f, 12f); lineTo(20f, 12f)
+      moveTo(4f, 16.5f); lineTo(20f, 16.5f)
+    }
+  }
+
+  /** `repeat` — two runs chasing each other round a loop. Lit whenever a queue will repeat. */
+  val Repeat: ImageVector = glyph("PlayerRepeat") {
+    line { repeatLoop() }
+  }
+
+  /** `repeat.1` — the loop with a 1 inside it: Repeat One. Shares [Repeat]'s loop, so a crossfade swaps only the 1. */
+  val RepeatOne: ImageVector = glyph("PlayerRepeatOne") {
+    line {
+      repeatLoop()
+      moveTo(10.6f, 10.75f)
+      lineTo(12.25f, 9.6f)
+      lineTo(12.25f, 14.4f)
     }
   }
 
@@ -174,6 +193,24 @@ object PlayerIcons {
     close()
   }
 
+  /** Repeat's loop: the top run heading right, the bottom one heading back left. */
+  private fun PathBuilder.repeatLoop() {
+    moveTo(4f, 12f)
+    lineTo(4f, 10f)
+    curveTo(4f, 8.34f, 5.34f, 7f, 7f, 7f)
+    lineTo(19.5f, 7f)
+    moveTo(17f, 4.5f)
+    lineTo(19.5f, 7f)
+    lineTo(17f, 9.5f)
+    moveTo(20f, 12f)
+    lineTo(20f, 14f)
+    curveTo(20f, 15.66f, 18.66f, 17f, 17f, 17f)
+    lineTo(4.5f, 17f)
+    moveTo(7f, 14.5f)
+    lineTo(4.5f, 17f)
+    lineTo(7f, 19.5f)
+  }
+
   private fun PathBuilder.bar(x: Float, y: Float, width: Float, height: Float) {
     moveTo(x, y)
     lineTo(x + width, y)
@@ -182,8 +219,7 @@ object PlayerIcons {
     close()
   }
 
-  private fun PathBuilder.dot(cx: Float, cy: Float) {
-    val r = BULLET_RADIUS
+  private fun PathBuilder.dot(cx: Float, cy: Float, r: Float) {
     val k = r * CIRCLE_K
     moveTo(cx, cy - r)
     curveTo(cx + k, cy - r, cx + r, cy - k, cx + r, cy)
@@ -252,7 +288,9 @@ private fun PlayerIconsPreview() {
         PlayerIcons.Next,
         PlayerIcons.Speaker,
         PlayerIcons.SpeakerWave,
-        PlayerIcons.List,
+        PlayerIcons.Lyrics,
+        PlayerIcons.Repeat,
+        PlayerIcons.RepeatOne,
         PlayerIcons.Bookmark,
         PlayerIcons.BookmarkFilled,
       ).forEach { Icon(it, contentDescription = null, tint = Color.deepPlum, modifier = Modifier.size(24.dp)) }

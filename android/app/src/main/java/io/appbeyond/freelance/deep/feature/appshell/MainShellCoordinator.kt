@@ -506,10 +506,6 @@ fun MainShellCoordinator(
                   animatedVisibilityScope = this,
                   clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(Dp.chip)),
                 ),
-              artworkModifier = Modifier.sharedElement(
-                sharedContentState = rememberSharedContentState(ARTWORK_KEY),
-                animatedVisibilityScope = this,
-              ),
               onDragUp = { fraction ->
                 scope.launch { expansion.seekTo(fraction, targetState = true) }
               },
@@ -534,7 +530,11 @@ fun MainShellCoordinator(
       }
 
       // Drawn after the bar, so Now Playing covers it as iOS's full-screen
-      // presentation does.
+      // presentation does. The whole screen grows out of the whole pill — iOS's
+      // zoom from the bar. Its photograph is full-bleed, so it is no longer
+      // matched to the pill's thumbnail on its own: a shared element draws in
+      // the overlay above everything, and would cover the scrims and controls
+      // for the length of the morph, then drop beneath them as it landed.
       transition.AnimatedVisibility(
         visible = { open -> open },
         enter = fadeIn(hush()),
@@ -551,10 +551,6 @@ fun MainShellCoordinator(
               sharedContentState = rememberSharedContentState(PLAYER_KEY),
               animatedVisibilityScope = this,
             ),
-          artworkModifier = Modifier.sharedElement(
-            sharedContentState = rememberSharedContentState(ARTWORK_KEY),
-            animatedVisibilityScope = this,
-          ),
           onDragDown = { fraction ->
             scope.launch { expansion.seekTo(fraction, targetState = false) }
           },
@@ -663,7 +659,6 @@ private fun routeOf(key: String): DeepRoute? = when {
 }
 
 private const val PLAYER_KEY = "now-playing"
-private const val ARTWORK_KEY = "now-playing-artwork"
 
 /**
  * Room the pill claims above the bar, for [LocalMiniPlayerClearance]. The pill

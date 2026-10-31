@@ -199,7 +199,12 @@ class AppDependencies(context: Context) {
    * The one player. Connects to the service lazily, on the first track, so a
    * member who never opens DEEP Sound never starts it.
    */
-  val soundPlayer: SoundPlayer = SoundPlayer(context.applicationContext)
+  val soundPlayer: SoundPlayer = SoundPlayer(
+    context = context.applicationContext,
+    // The listener's Repeat choice: the phone's, like the language, so it
+    // outlives a log out — iOS keeps it in `UserDefaults`.
+    settings = DataStoreBlobStore(context.applicationContext, "deep.sound"),
+  )
 
   private val soundService: SoundService = retrofit.create(SoundService::class.java)
 

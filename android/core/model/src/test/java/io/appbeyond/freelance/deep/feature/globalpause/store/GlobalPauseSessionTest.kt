@@ -256,6 +256,40 @@ class GlobalPauseSessionTest {
       advance(Duration.ofSeconds(272))
       assertFalse(session.state.value.isFukuOnAir)
     }
+
+    @Test
+    @DisplayName("the lounge track's live offset runs only through the music")
+    fun loungeElapsedFollowsTheMusic() = runTest {
+      // The lobby opens in a minute; the set is a 10s intro then 262s of track.
+      val remote = FixturePauseEventRemote(
+        scheduleToServe = occurrence(meditationIn = Duration.ofMinutes(11), lobbyAudioUrl = "https://x/lounge.mp3"),
+      )
+      val session = pauseSession(remote, introDuration = Duration.ofSeconds(10))
+
+      session.start()
+      assertNull(session.loungeElapsed, "nothing to join before the set opens")
+
+      advance(Duration.ofSeconds(65))
+      assertNull(session.loungeElapsed, "Fuku is still talking — the track waits its turn")
+
+      advance(Duration.ofSeconds(65))
+      // 130s past the stroke, less the 10s intro: everyone hears the same bar.
+      assertEquals(Duration.ofSeconds(60), session.loungeElapsed)
+
+      advance(Duration.ofSeconds(202))
+      assertNull(session.loungeElapsed, "the set has signed off; a radio rejoining now stops")
+    }
+
+    @Test
+    @DisplayName("no lounge track, no offset to join")
+    fun loungeElapsedNeedsATrack() = runTest {
+      val remote = FixturePauseEventRemote(scheduleToServe = occurrence(meditationIn = Duration.ofMinutes(11)))
+      val session = pauseSession(remote, introDuration = Duration.ofSeconds(10))
+
+      session.start()
+      advance(Duration.ofSeconds(130))
+      assertNull(session.loungeElapsed)
+    }
   }
 
   @Nested
