@@ -352,7 +352,12 @@ fun SettingsScreen(
           // Only once the store has said there is nothing — Unknown would put
           // "Upgrade" above a chip still reading "Checking…", and offer a
           // paying member what they already have.
-          onUpgrade = onUpgrade.takeIf { storeStatus == SubscriptionState.None && !hasPremium },
+          // And only in a build with a store to buy from: without one the
+          // invitation could only say Google Play can't be reached (decided
+          // with the onboarding step — OnboardingNavigator.afterSignUp).
+          onUpgrade = onUpgrade.takeIf {
+            subscriptionStore.isAvailable && storeStatus == SubscriptionState.None && !hasPremium
+          },
           onManage = if (hasPremium && management != null) ::manageSubscription else null,
           restorePhase = restorePhase,
           onRestore = ::restorePurchases,

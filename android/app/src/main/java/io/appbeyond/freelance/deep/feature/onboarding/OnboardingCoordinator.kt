@@ -60,6 +60,7 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingRemote
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
 import io.appbeyond.freelance.deep.feature.onboarding.transition.RippleRevealOverlay
+import io.appbeyond.freelance.deep.feature.premium.LocalSubscriptionStore
 import io.appbeyond.freelance.deep.feature.premium.PaywallScreen
 import io.appbeyond.freelance.deep.feature.premium.model.PaywallSource
 import io.appbeyond.freelance.deep.onboarding.model.ConfigRetryDelaysMillis
@@ -126,6 +127,7 @@ fun OnboardingCoordinator(
   modifier: Modifier = Modifier,
 ) {
   val reduceMotion = rememberReduceMotion()
+  val subscriptions = LocalSubscriptionStore.current
   val account by accountStore.account.collectAsState()
 
   var nav by remember { mutableStateOf(OnboardingNav()) }
@@ -181,7 +183,14 @@ fun OnboardingCoordinator(
     configAttempt += 1
   }
 
-  fun advance(route: OnboardingRoute) {
+  fun advance(requested: OnboardingRoute) {
+    // The Premium step only where there is a store to buy from — see
+    // OnboardingNavigator.afterSignUp for the decision.
+    val route = if (requested == OnboardingRoute.Premium) {
+      OnboardingNavigator.afterSignUp(storeAvailable = subscriptions.isAvailable)
+    } else {
+      requested
+    }
     val loaded = configLoad is ConfigLoad.Loaded
     val next = OnboardingNavigator.advance(nav, route, configLoaded = loaded, signedIn = signedIn)
     if (route is OnboardingRoute.Quiz && !loaded) {

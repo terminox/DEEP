@@ -39,6 +39,20 @@ data class OnboardingNav(
 object OnboardingNavigator {
 
   /**
+   * Where a fresh account goes once it exists: the DEEP Premium invitation,
+   * then crafting — unless this build has no store to buy from.
+   *
+   * Decided (product, 2026-10-31): staging, pilot and prod carry no RevenueCat
+   * key until a Play Store app exists, and an invitation that can only say
+   * "we couldn't reach Google Play" is a broken first impression for every
+   * sign-up. So without a store the step is skipped straight to crafting.
+   * (Settings hides its Upgrade row by the same rule; a locked sound or plant
+   * still opens the invitation, which shows its honest unreachable state.)
+   */
+  fun afterSignUp(storeAvailable: Boolean): OnboardingRoute =
+    if (storeAvailable) OnboardingRoute.Premium else OnboardingRoute.CraftingSpace
+
+  /**
    * Rules, checked in order:
    *  - [to] is a Quiz route and ![configLoaded] → store as [OnboardingNav.pending], stack unchanged.
    *  - [to] is already the top of the stack → unchanged.

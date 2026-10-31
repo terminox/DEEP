@@ -180,6 +180,13 @@ class OnboardingNavigatorTest {
   }
 
   @Test
+  @DisplayName("A new account meets the Premium invitation only when there is a store to buy from")
+  fun afterSignUpFollowsTheStore() {
+    assertEquals(OnboardingRoute.Premium, OnboardingNavigator.afterSignUp(storeAvailable = true))
+    assertEquals(OnboardingRoute.CraftingSpace, OnboardingNavigator.afterSignUp(storeAvailable = false))
+  }
+
+  @Test
   @DisplayName("showsChrome is false on the Premium invitation")
   fun showsChromeFalseOnPremium() {
     val nav = OnboardingNav(stack = listOf(OnboardingRoute.SignUp, OnboardingRoute.Premium))
