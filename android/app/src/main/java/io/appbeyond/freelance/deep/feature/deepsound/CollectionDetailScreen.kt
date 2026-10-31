@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +65,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.model.KeptContent
 import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockBadge
 import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockSize
 import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
@@ -147,12 +149,18 @@ private const val TABULAR_FIGURES = "tnum"
  * paywall.
  *
  * **Fresh verdicts.** The copy this screen was opened with carries the
- * server's verdicts (and withheld audio) from when it was fetched. When the
- * premium answer moves on ([rememberContentEpoch]) the collection is fetched
- * again from [library] — keyed on the epoch, so a newer change cancels an
- * older fetch and its answer can never land last. A failed fetch keeps the
- * copy on screen; the locks follow the new answer regardless, and the gate
- * never lets a stale verdict open a sound to a listener without DEEP Premium.
+ * server's verdicts (and withheld audio) from when it was fetched. Every copy
+ * it can show is stamped with the premium content epoch it was fetched under
+ * ([KeptContent]) — the freshest the library keeps, one this screen fetched,
+ * or the one it opened with, taken to be the epoch it first opened on and
+ * saved with the screen. Whenever that is older than the current epoch
+ * ([rememberContentEpoch]) the collection is fetched again — which holds when
+ * the answer moved while this screen sat on a tab that wasn't showing and
+ * was rebuilt afterwards, where iOS's view simply stays alive. Keyed on the
+ * epoch, so a newer change cancels an older fetch and its answer can never
+ * land last. A failed fetch keeps the copy on screen; the locks follow the
+ * new answer regardless, and the gate never lets a stale verdict open a
+ * sound to a listener without DEEP Premium.
  *
  * @param collection the collection as it arrived from the screen that opened it.
  * @param library where the collection is fetched again after a premium change.
@@ -174,22 +182,27 @@ fun CollectionDetailScreen(
   val scope = rememberCoroutineScope()
   val hasPremium = rememberHasPremium()
 
-  // The epoch this screen arrived on; re-fetching starts after it.
   val epoch = rememberContentEpoch()
-  val arrivedOn = remember(collection.id) { epoch }
-  var latest by remember(collection.id) { mutableStateOf<SoundCollection?>(null) }
+  // The epoch the copy this screen opened with is taken to be fetched under:
+  // the one it first opened on. Saved with the screen, so a rebuild after the
+  // answer moved — a tab switched away and back — still knows it is older.
+  val arrivedOn = rememberSaveable(collection.id) { epoch }
+  var fetched by remember(collection.id) { mutableStateOf<KeptContent<SoundCollection>?>(null) }
+  val kept = remember(collection.id, epoch, fetched) { library.keptCollection(collection.id) }
+  val freshest = KeptContent.freshest(fetched, kept)
+  val fetchedUnder = freshest?.epoch ?: arrivedOn
   LaunchedEffect(collection.id, epoch) {
-    if (epoch == arrivedOn) return@LaunchedEffect
+    if (fetchedUnder >= epoch) return@LaunchedEffect
     try {
-      latest = library.collection(collection.id)
+      fetched = KeptContent(owner = null, epoch = epoch, value = library.collection(collection.id))
     } catch (cancelled: CancellationException) {
       throw cancelled
     } catch (_: Exception) {
       // Keep the copy on screen; the gate already reads the new answer.
     }
   }
-  // What this screen shows and plays: the fresh copy once there is one.
-  val current = latest ?: collection
+  // What this screen shows and plays: the freshest copy there is.
+  val current = freshest?.value ?: collection
   val playable = remember(current, hasPremium) { PremiumGate.playable(current, hasPremium) }
 
   // Keyed on the store's state so every save or removal re-reads the marks.

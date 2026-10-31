@@ -306,6 +306,7 @@ class AppDependencies(context: Context) {
   val soundLibrary: SoundLibrary = ApiSoundLibrary(
     service = soundService,
     currentAccountId = { accountStore.account.value?.id },
+    currentEpoch = { premiumAccess.contentEpoch.value },
   )
 
   /**
@@ -595,11 +596,14 @@ class AppDependencies(context: Context) {
    *
    * - the remembered server answer is read at once, so a member's locks are
    *   right from the first frame after the launch beat;
-   * - every move of [PremiumAccess.contentEpoch] re-fetches the content
-   *   whose verdicts were baked in and that no screen owns — the saved
-   *   sounds (a refresh asked mid-flight queues rather than drops) and the
-   *   plant catalog. Screens re-fetch their own (`/sound/home`,
-   *   `/pause/home`, a collection's detail).
+   * - every move of [PremiumAccess.contentEpoch] re-fetches everything kept
+   *   whose verdicts were baked in — the DEEP Sound shelves and kept
+   *   collections, the Home feed, the saved sounds (a refresh asked
+   *   mid-flight queues rather than drops) and the plant catalog — here,
+   *   app-wide, not from the screens: a screen on a tab that isn't showing
+   *   isn't composed when the epoch moves (iOS's tabs stay alive), so a
+   *   screen-level reload alone missed it. Screens still re-fetch on their
+   *   own when what they hold is stamped older than the current epoch.
    *
    * Idempotent; called from `MainActivity.onCreate`.
    */
@@ -611,6 +615,9 @@ class AppDependencies(context: Context) {
       reconciledPremiumAccess.contentEpoch.drop(1).collect {
         if (isSignedIn) launchQuietly("playlist reload") { playlistStore.load() }
         launchQuietly("plant catalog reload") { gardenStore.reloadCatalog() }
+        launchQuietly("sound library reload") { soundLibrary.refreshKept() }
+        // Keyed as `MainActivity` keys the Home feed: by the signed-in account.
+        launchQuietly("home feed reload") { pauseHome.load(accountStore.account.value?.id) }
       }
     }
   }
