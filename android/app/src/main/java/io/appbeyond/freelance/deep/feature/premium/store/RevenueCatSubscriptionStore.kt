@@ -96,6 +96,8 @@ class RevenueCatSubscriptionStore(
 
   private val isConfigured = !apiKey.isNullOrBlank()
 
+  override val isAvailable: Boolean get() = isConfigured
+
   // No store at all can never resolve Unknown, so a plan chip would read
   // "Checking…" forever. No key = not subscribed.
   private val _status = MutableStateFlow(if (isConfigured) SubscriptionState.Unknown else SubscriptionState.None)
@@ -208,7 +210,7 @@ class RevenueCatSubscriptionStore(
   }
 
   override suspend fun restore() {
-    val purchases = ready.await() ?: return
+    val purchases = ready.await() ?: throw StoreUnavailableException()
     withContext(Dispatchers.Main.immediate) {
       ensureIdentified(purchases)
       apply(purchases.awaitRestore())

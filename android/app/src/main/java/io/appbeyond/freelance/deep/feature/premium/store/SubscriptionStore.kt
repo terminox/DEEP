@@ -22,6 +22,14 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 interface SubscriptionStore {
 
+  /**
+   * Whether this build can reach a store at all. False in every flavor that
+   * carries no RevenueCat key yet (staging, pilot and prod until a Play Store
+   * app exists): nothing can be bought or restored, and the screens say so
+   * rather than pretend.
+   */
+  val isAvailable: Boolean
+
   /** What the store says about the `deep_premium` entitlement. */
   val status: StateFlow<SubscriptionState>
 
@@ -44,7 +52,11 @@ interface SubscriptionStore {
    */
   suspend fun purchase(activity: Activity, plan: SubscriptionPlan): PurchaseOutcome
 
-  /** Asks the store for purchases this account already made. Throws when the store can't be reached. */
+  /**
+   * Asks the store for purchases this account already made. Throws when the
+   * store can't be reached — [StoreUnavailableException] when this build has
+   * no store at all.
+   */
   suspend fun restore()
 }
 
@@ -54,6 +66,13 @@ interface SubscriptionStore {
  * surgery to re-home later.
  */
 class IdentityUnavailableException : IllegalStateException("No DEEP member is signed in to buy for.")
+
+/**
+ * This build has no store to ask ([SubscriptionStore.isAvailable] is false).
+ * A restore that silently did nothing would read as "Restored" with nothing
+ * restored; failing says what is true — Google Play can't be reached from here.
+ */
+class StoreUnavailableException : IllegalStateException("This build has no store to reach.")
 
 /**
  * A tiny always-available stand-in: the default the composition locals hand
@@ -66,6 +85,7 @@ class IdentityUnavailableException : IllegalStateException("No DEEP member is si
  */
 class PreviewSubscriptionStore(
   status: SubscriptionState = SubscriptionState.None,
+  override val isAvailable: Boolean = true,
 ) : SubscriptionStore {
   override val status: StateFlow<SubscriptionState> = MutableStateFlow(status).asStateFlow()
   override val plans: StateFlow<List<SubscriptionPlan>> = MutableStateFlow(emptyList<SubscriptionPlan>()).asStateFlow()

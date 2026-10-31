@@ -41,6 +41,8 @@ class MockSubscriptionStore(
 
   class Failure : Exception("The mock store was told to fail.")
 
+  override val isAvailable: Boolean = true
+
   private val _status = MutableStateFlow(status)
   override val status: StateFlow<SubscriptionState> = _status.asStateFlow()
 

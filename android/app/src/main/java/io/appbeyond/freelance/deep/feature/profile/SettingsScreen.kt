@@ -286,6 +286,9 @@ fun SettingsScreen(
       } catch (cancelled: CancellationException) {
         throw cancelled
       } catch (_: Exception) {
+        // Unreachable — or, in a build with no store at all, never reachable
+        // (StoreUnavailableException): the quiet line says so either way,
+        // never a "Restored" with nothing restored.
         restorePhase = RestorePhase.Failed
       }
       delay(NOTE_HOLD_MILLIS)
