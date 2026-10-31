@@ -31,7 +31,6 @@ import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.mindgarden.components.DailyPracticeCard
 import io.appbeyond.freelance.deep.feature.mindgarden.components.GardenGrowthCard
 import io.appbeyond.freelance.deep.feature.mindgarden.components.GardenGrowthCardSkeleton
-import io.appbeyond.freelance.deep.feature.mindgarden.components.PlantPickerSheet
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenGreeting
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenHeroMedia
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
@@ -222,7 +221,7 @@ fun MindGardenHomeScreen(
   }
 
   if (pickingPlant) {
-    PlantPickerSheet(garden = garden, onDismiss = { pickingPlant = false })
+    PlantPickerCoordinator(garden = garden, onDismiss = { pickingPlant = false })
   }
 }
 

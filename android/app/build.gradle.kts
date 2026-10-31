@@ -100,6 +100,13 @@ android {
     versionName = deepVersion
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // The two documents a subscription screen must link — iOS's TERMS_URL and
+    // PRIVACY_URL in Deep/Config/Base.xcconfig, the same in every environment.
+    // Config rather than a literal in a screen, so onboarding's agreement and
+    // the paywall's fine print can never link different pages.
+    buildConfigField("String", "TERMS_URL", "\"https://deeppeace.space/terms\"")
+    buildConfigField("String", "PRIVACY_URL", "\"https://deeppeace.space/privacy\"")
   }
 
   // One dimension, four environments — the Gradle shape of the xcconfig chain in

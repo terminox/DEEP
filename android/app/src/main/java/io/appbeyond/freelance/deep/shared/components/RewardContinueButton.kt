@@ -84,6 +84,8 @@ private val LABEL_STYLE = DeepType.body.copy(fontWeight = FontWeight.SemiBold)
  * @param isFinal whether this tap closes the ritual rather than advancing it —
  *   the spoken hint reads from this, never from the label.
  * @param isBusy true while the tap's work is still in flight.
+ * @param hint the spoken hint, for a wearer outside the ritual (the paywall's
+ *   "Subscribes to DEEP Premium"); null keeps the ritual's own, by [isFinal].
  */
 @Composable
 fun RewardContinueButton(
@@ -92,6 +94,7 @@ fun RewardContinueButton(
   modifier: Modifier = Modifier,
   isFinal: Boolean = false,
   isBusy: Boolean = false,
+  hint: String? = null,
 ) {
   val alpha by animateFloatAsState(
     targetValue = if (isBusy) BUSY_ALPHA else 1f,
@@ -103,7 +106,7 @@ fun RewardContinueButton(
     animationSpec = settle(),
     label = "reward-continue-label",
   )
-  val hint = stringResource(
+  val clickLabel = hint ?: stringResource(
     if (isFinal) R.string.reward_continue_hint_final else R.string.reward_continue_hint_next,
   )
   val shape = RoundedCornerShape(percent = 50)
@@ -129,7 +132,7 @@ fun RewardContinueButton(
       .background(Brush.linearGradient(listOf(Color.lavenderMist, Color.softLilac)), shape)
       .clickable(
         enabled = !isBusy,
-        onClickLabel = hint,
+        onClickLabel = clickLabel,
         role = Role.Button,
         interactionSource = null,
         indication = null,

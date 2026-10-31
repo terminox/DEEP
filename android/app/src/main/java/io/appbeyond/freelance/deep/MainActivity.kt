@@ -41,6 +41,7 @@ import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
 import io.appbeyond.freelance.deep.feature.premium.LocalSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.model.PaywallSource
 import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
 import io.appbeyond.freelance.deep.networking.LocalVideoCache
 import io.appbeyond.freelance.deep.networking.VideoCache
@@ -104,10 +105,15 @@ class MainActivity : ComponentActivity() {
     // Debug builds only: `--ez deep.mockSubscriptions true` on the launch
     // intent swaps RevenueCat for the in-memory store, so the purchase
     // mechanic is drivable on an emulator — iOS's `-DeepMockSubscriptions`.
+    // `--es deep.mockSubscriptions.variant <name>` picks which fixture (and
+    // implies the first), so every paywall state can be staged.
     // `BuildConfig.DEBUG` is a compile-time false in release, so this branch,
-    // its key and the mock all fall out of a shipping build.
-    if (BuildConfig.DEBUG && intent.getBooleanExtra(MOCK_SUBSCRIPTIONS_EXTRA, false)) {
-      dependencies.useMockSubscriptions()
+    // its keys and the mock all fall out of a shipping build.
+    if (BuildConfig.DEBUG) {
+      val variant = intent.getStringExtra(MOCK_SUBSCRIPTIONS_VARIANT_EXTRA)
+      if (variant != null || intent.getBooleanExtra(MOCK_SUBSCRIPTIONS_EXTRA, false)) {
+        dependencies.useMockSubscriptions(variant)
+      }
     }
     // Built here, after that decision, and before the launch beat restores the
     // session — so the member's remembered DEEP Premium answer is read in time.
@@ -210,11 +216,17 @@ class MainActivity : ComponentActivity() {
               // `FeatureCard`.
               onOpenCollection = actions.openCollection,
               // Through the gate, like a collection's own Play: only what this
-              // listener may hear is queued. Nothing to hear stays inert until
-              // the DEEP Premium invitation exists to open instead.
+              // listener may hear is queued, and nothing to hear opens the
+              // DEEP Premium invitation on Home's stack instead.
               onPlayCollection = { collection ->
                 val queue = PremiumGate.playable(collection, dependencies.premiumAccess.hasPremium.value)
-                if (queue.isNotEmpty()) dependencies.soundPlayer.playFrom(queue, 0)
+                if (collection.tracks.isEmpty()) {
+                  // Nothing in it at all: nothing to play, nothing to sell.
+                } else if (queue.isNotEmpty()) {
+                  dependencies.soundPlayer.playFrom(queue, 0)
+                } else {
+                  actions.openPaywall(PaywallSource.LockedSound)
+                }
               },
               onOpenCollectionList = actions.openCollectionList,
               refreshKey = account?.id,
@@ -353,3 +365,10 @@ class MainActivity : ComponentActivity() {
  * debug branch that reads it and leaves no trace in a release build.
  */
 private const val MOCK_SUBSCRIPTIONS_EXTRA = "deep.mockSubscriptions"
+
+/**
+ * Which mock fixture to stand up — `--es deep.mockSubscriptions.variant
+ * unreachable` (names in `MockSubscriptionStore.variant`). Debug builds only,
+ * like [MOCK_SUBSCRIPTIONS_EXTRA].
+ */
+private const val MOCK_SUBSCRIPTIONS_VARIANT_EXTRA = "deep.mockSubscriptions.variant"
