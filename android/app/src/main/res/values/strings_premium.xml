@@ -23,7 +23,13 @@
   <string name="paywall_subhead_settings">Every sound, every session — yours whenever you need them.</string>
   <string name="paywall_subhead_locked_sound">It\'s part of DEEP Premium, along with everything else in the library.</string>
   <string name="paywall_subhead_locked_plant">This plant is part of DEEP Premium, along with every sound in the library.</string>
+  <!-- Onboarding's line with the 7-day trial, iOS's words exactly -->
   <string name="paywall_subhead_onboarding">Try DEEP Premium free for seven days. Nothing to decide today.</string>
+  <!-- …with any other shared trial; with none, the settings line stands in -->
+  <plurals name="paywall_subhead_onboarding_trial">
+    <item quantity="one">Try DEEP Premium free for %1$d day. Nothing to decide today.</item>
+    <item quantity="other">Try DEEP Premium free for %1$d days. Nothing to decide today.</item>
+  </plurals>
   <string name="paywall_subhead_welcome">Everything is open now.</string>
 
   <!-- Paywall: subhead for someone already a member, by plan -->

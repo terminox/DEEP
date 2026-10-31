@@ -362,7 +362,13 @@ fun PaywallScreen(
               if (stage.isShort) Alignment.CenterVertically else Alignment.Top,
             ),
           ) {
-            Hero(stage = stage, source = source, status = status, restore = restore)
+            Hero(
+              stage = stage,
+              source = source,
+              status = status,
+              restore = restore,
+              sharedTrialDays = PaywallPlans.sharedTrialDays(plans),
+            )
             AnimatedVisibility(visible = stage != PaywallStage.Member, enter = fadeIn(bloom()), exit = fadeOut(bloom())) {
               Benefits()
             }
@@ -407,7 +413,13 @@ fun PaywallScreen(
  * name on every door; only the two stages no longer selling say otherwise.
  */
 @Composable
-private fun Hero(stage: PaywallStage, source: PaywallSource, status: SubscriptionState, restore: PaywallRestorePhase) {
+private fun Hero(
+  stage: PaywallStage,
+  source: PaywallSource,
+  status: SubscriptionState,
+  restore: PaywallRestorePhase,
+  sharedTrialDays: Int?,
+) {
   // The mark is drawn once at its welcoming size and scaled down from it:
   // its halo is a blurred mask cached per size, so animating the size itself
   // would re-blur it every frame of the bloom.
@@ -423,13 +435,12 @@ private fun Hero(stage: PaywallStage, source: PaywallSource, status: Subscriptio
       else -> R.string.paywall_headline
     },
   )
-  val subhead = stringResource(
-    when (stage) {
-      PaywallStage.Welcoming -> R.string.paywall_subhead_welcome
-      PaywallStage.Member -> memberSubhead(status, restore)
-      else -> source.subhead
-    },
-  )
+  val subhead = when {
+    stage == PaywallStage.Welcoming -> stringResource(R.string.paywall_subhead_welcome)
+    stage == PaywallStage.Member -> stringResource(memberSubhead(status, restore))
+    source == PaywallSource.Onboarding -> onboardingSubhead(sharedTrialDays)
+    else -> stringResource(source.subhead)
+  }
 
   Column(
     Modifier.fillMaxWidth(),
@@ -476,7 +487,7 @@ private fun Hero(stage: PaywallStage, source: PaywallSource, status: Subscriptio
   }
 }
 
-/** The door's own line — iOS's `PaywallSource.subhead`. */
+/** The door's own line — iOS's `PaywallSource.subhead`. Onboarding's depends on the plans: [onboardingSubhead]. */
 private val PaywallSource.subhead: Int
   get() = when (this) {
     PaywallSource.Settings -> R.string.paywall_subhead_settings
@@ -484,6 +495,24 @@ private val PaywallSource.subhead: Int
     PaywallSource.LockedPlant -> R.string.paywall_subhead_locked_plant
     PaywallSource.Onboarding -> R.string.paywall_subhead_onboarding
   }
+
+/**
+ * The first-run invitation's line, promising only the trial this Google
+ * account can actually take: the one every loaded plan shares
+ * ([PaywallPlans.sharedTrialDays] — Play lists only offers the account is
+ * eligible for). Seven days reads exactly as iOS does; another length says
+ * its own number; no shared trial — none at all, or the plans not loaded
+ * yet — falls back to Settings' line, which promises nothing.
+ */
+@Composable
+private fun onboardingSubhead(sharedTrialDays: Int?): String = when (sharedTrialDays) {
+  null -> stringResource(R.string.paywall_subhead_settings)
+  IOS_TRIAL_DAYS -> stringResource(R.string.paywall_subhead_onboarding)
+  else -> pluralStringResource(R.plurals.paywall_subhead_onboarding_trial, sharedTrialDays, sharedTrialDays)
+}
+
+/** The trial iOS's onboarding line is written for, word for word. */
+private const val IOS_TRIAL_DAYS = 7
 
 /**
  * A restore that just landed here is what the member was waiting to be told;

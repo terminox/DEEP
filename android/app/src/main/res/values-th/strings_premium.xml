@@ -18,6 +18,9 @@
   <string name="paywall_subhead_locked_sound">เสียงนี้เป็นส่วนหนึ่งของ DEEP Premium พร้อมกับทุกอย่างในคลังเสียง</string>
   <string name="paywall_subhead_locked_plant">ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium พร้อมกับทุกเสียงในคลังเสียง</string>
   <string name="paywall_subhead_onboarding">ทดลองใช้ DEEP Premium ฟรี 7 วัน ยังไม่ต้องตัดสินใจวันนี้</string>
+  <plurals name="paywall_subhead_onboarding_trial">
+    <item quantity="other">ทดลองใช้ DEEP Premium ฟรี %1$d วัน ยังไม่ต้องตัดสินใจวันนี้</item>
+  </plurals>
   <string name="paywall_subhead_welcome">ทุกอย่างเปิดให้คุณแล้ว</string>
 
   <string name="paywall_member_yearly">สมาชิก DEEP Premium รายปีของคุณกำลังใช้งานอยู่</string>
