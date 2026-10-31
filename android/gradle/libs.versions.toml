@@ -49,6 +49,12 @@ media3 = "1.11.1"
 
 coil = "3.6.2"
 
+# DEEP Premium's purchasing layer, as on iOS. 11.x is Play Billing Library 9.1
+# (and needs compileSdk 35+, Kotlin 2.2+, coroutines 1.9+, serialization 1.7+ —
+# all already met above); the RevenueCat API itself is unchanged from 10.x.
+# Ships its own consumer R8 rules, so nothing is added to proguard-rules.pro.
+revenuecat = "11.0.1"
+
 # Jupiter, not JUnit 4: :core:model is a plain JVM module, so useJUnitPlatform()
 # needs no extra Android plugin, and @DisplayName carries the Swift Testing
 # @Test("...") strings across verbatim.
@@ -97,6 +103,8 @@ androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-
 
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+
+revenuecat-purchases = { group = "com.revenuecat.purchases", name = "purchases", version.ref = "revenuecat" }
 
 kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
 

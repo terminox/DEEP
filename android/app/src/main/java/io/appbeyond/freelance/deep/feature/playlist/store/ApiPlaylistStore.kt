@@ -17,6 +17,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -51,16 +53,26 @@ import java.util.concurrent.atomic.AtomicLong
  * [save]/[remove] is the one thing applied outside the lock, so [state]
  * still moves the instant a listener taps a bookmark.
  *
+ * A refresh asked for while another is in flight is never dropped: [load]
+ * queues behind [mutex] and runs once the flight lands, so the answer that
+ * lands last is the one fetched after the ask — what iOS's `refreshQueued`
+ * achieves. That matters right after a purchase, when the server confirms a
+ * second after the first re-fetch left with the audio still withheld.
+ *
  * @param scope A process-lifetime scope (`AppDependencies`' `appScope`, not a
  *   screen's) every mutation actually runs on — see above. Also used to
  *   hydrate [state] from [cache] in the background so an offline cold launch
  *   has something to show before the first [load] lands, mirroring iOS
  *   reading its `UserDefaults` blob synchronously in `init`.
+ * @param accountIds the signed-in member's DEEP user id, null while signed
+ *   out. The cache is written for, and read back only by, the member it was
+ *   fetched for (see [PlaylistCache]); hydration waits for the first member.
  */
 class ApiPlaylistStore(
   private val service: SoundService,
   private val cache: PlaylistCache,
   private val scope: CoroutineScope,
+  private val accountIds: StateFlow<String?>,
 ) : PlaylistStore {
 
   private val _state = MutableStateFlow<PlaylistState>(PlaylistState.Loading)
@@ -86,9 +98,12 @@ class ApiPlaylistStore(
 
   init {
     scope.launch {
-      val cached = cache.read() ?: return@launch
+      // The member restore settles on, not whoever might be cached: a
+      // playlist is only ever shown to the account it was fetched for.
+      val owner = accountIds.filterNotNull().first()
+      val cached = cache.read(owner) ?: return@launch
       mutex.withLock {
-        if (_state.value is PlaylistState.Loading) {
+        if (_state.value is PlaylistState.Loading && accountIds.value == owner) {
           adopt(cached, generation.incrementAndGet())
         }
       }
@@ -234,7 +249,8 @@ class ApiPlaylistStore(
     if (!isCurrent(myGeneration)) return
     playlistId = dto.id
     applyLocally(dto.toSavedSounds())
-    bestEffort("cache the playlist") { cache.write(dto) }
+    val owner = accountIds.value ?: return
+    bestEffort("cache the playlist") { cache.write(owner, dto) }
   }
 
   /** The optimistic half of a save/remove — applied instantly, outside [mutex], so [state] moves without waiting on the network. */

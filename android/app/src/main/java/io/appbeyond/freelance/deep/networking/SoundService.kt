@@ -22,6 +22,14 @@ interface SoundService {
   suspend fun home(): SoundHomeDto
 
   /**
+   * Optional auth, like [home]: one collection with its tracks, carrying the
+   * server's verdicts for whoever asked. A collection detail re-fetches
+   * through this when the listener's DEEP Premium answer changes under it.
+   */
+  @GET("sound/collections/{id}")
+  suspend fun collection(@Path("id") collectionId: String): CollectionResponseDto
+
+  /**
    * Anonymous. iOS passes no `lang` (`APISoundContentRepository.lyrics(trackID:language:)`
    * is called with `language: nil` everywhere today), so this omits the query
    * param too — every language for the track comes back, and the Now Playing

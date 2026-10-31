@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEEP Premium, shared by every screen that draws its lock. Copy ported from
+  Deep/Deep/Features/Premium/Components/PremiumLockBadge.swift and the matching
+  Deep/Localizable.xcstrings key. The Thai lives in values-th/strings_premium.xml.
+-->
+<resources>
+
+  <!-- PremiumLockBadge's accessibility label, and the plant picker's hint on a locked row: "Part of DEEP Premium" -->
+  <string name="premium_part_of">Part of DEEP Premium</string>
+
+</resources>

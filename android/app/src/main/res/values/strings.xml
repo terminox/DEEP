@@ -38,11 +38,10 @@
   <string name="home_explore_category">Explore %1$s</string>
   <!-- HomeSectionHeader.swift: "See all" -->
   <string name="home_see_all">See all</string>
-  <!-- SoundCollection.kindLabel (FeatureCard.swift) — plain Strings on iOS, so not in the catalog -->
+  <!-- SoundCollection.kindLabel (FeatureCard.swift): "Guided" / "Soundscape". The card
+       sets it beside the subtitle with a little air, not a middle dot. -->
   <string name="home_kind_guided">Guided</string>
   <string name="home_kind_soundscape">Soundscape</string>
-  <!-- FeatureCard.swift's second line: "\(kindLabel) · \(subtitle)" -->
-  <string name="home_kind_subtitle">%1$s · %2$s</string>
   <!-- HomeTile.swift / FeatureCard.swift's play button: "Play %@" -->
   <string name="home_play_collection">Play %1$s</string>
 

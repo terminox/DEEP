@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.R
+import io.appbeyond.freelance.deep.feature.premium.rememberContentEpoch
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.components.BreatheHeroCard
 import io.appbeyond.freelance.deep.feature.deepsound.components.CollectionCarousel
@@ -147,8 +148,12 @@ fun DeepSoundHomeScreen(
     mutableStateOf<ShelvesLoad>(library.cachedShelves?.let(ShelvesLoad::Loaded) ?: ShelvesLoad.Loading)
   }
   var attempt by remember { mutableIntStateOf(0) }
+  // Keyed on the premium answer changing too: the shelves carry the server's
+  // withheld-audio verdicts, so becoming (or ceasing to be) a member
+  // re-fetches them, silently over what is on screen.
+  val premiumEpoch = rememberContentEpoch()
 
-  LaunchedEffect(library, attempt) { loadShelves(library, load) }
+  LaunchedEffect(library, attempt, premiumEpoch) { loadShelves(library, load) }
 
   val listState = rememberLazyListState()
   val (pull, nestedScroll) = rememberHeroPull(listState)

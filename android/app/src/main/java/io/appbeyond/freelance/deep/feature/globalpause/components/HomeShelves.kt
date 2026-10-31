@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +52,12 @@ import io.appbeyond.freelance.deep.feature.deepsound.components.ArtworkDiscSize
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTime
 import io.appbeyond.freelance.deep.feature.deepsound.model.TrackKind
+import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockBadge
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockCorner
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
+import io.appbeyond.freelance.deep.feature.premium.rememberHasPremium
+import io.appbeyond.freelance.deep.feature.premium.store.FakePremiumAccess
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.theme.DeepTheme
@@ -73,9 +80,10 @@ import io.appbeyond.freelance.deep.theme.tile
  * On both, tapping the body pushes the collection's detail and only the small
  * round play button starts it in place — iOS's `openCollection` and
  * `soundPlayer.play(collection)`, handed in here as [onOpen] / [onPlay]
- * lambdas. A collection this listener is locked out of (DEEP Premium) shows
- * the lock in the play button's place, and that lock is not a button: Android
- * has no way to become a member, so there is nothing for it to do.
+ * lambdas. A DEEP Premium collection this listener is locked out of keeps its
+ * play button and wears [PremiumLockBadge] at the artwork's top-trailing
+ * corner; [onPlay] queues only what the premium gate lets through (the
+ * caller's job, as on iOS), so a locked collection's button starts nothing.
  */
 
 // MARK: - Constants
@@ -127,6 +135,12 @@ private val TILE_SHADOW_OFFSET_Y = 8.dp
 
 /** The play disc's inset from the tile artwork's corner — iOS's `.padding(8)`. */
 private val TILE_DISC_INSET = 8.dp
+
+/** The lock badge's inset on a feature card — iOS's `inset: 12`, clear of the card's larger corner. */
+private val FEATURE_LOCK_INSET = 12.dp
+
+/** Kind and descriptor on a feature card's second line, told apart by weight and air — iOS's `HStack(spacing: 6)`. */
+private val KIND_SPACING = 6.dp
 
 // MARK: - Header
 
@@ -215,13 +229,14 @@ fun FeatureCard(
     R.string.deepsound_minutes,
     SoundTime.minutes(collection.totalDurationSeconds.toDouble()),
   )
+  val hasPremium = rememberHasPremium()
 
   Column(
     modifier
       .width(FEATURE_WIDTH)
       .softPress()
       .clickable(interactionSource = null, indication = null) { onOpen(collection) }
-      .collectionSemantics(collection, kind, minutes, onOpen, onPlay),
+      .collectionSemantics(collection, hasPremium, kind, minutes, onOpen, onPlay),
     verticalArrangement = Arrangement.spacedBy(FEATURE_SPACING),
   ) {
     Box(
@@ -274,8 +289,9 @@ fun FeatureCard(
           )
           DurationPill(minutes)
         }
-        PlayOrLock(collection, ArtworkDiscSize.Large, onPlay)
+        PlayButton(collection, ArtworkDiscSize.Large, onPlay)
       }
+      PremiumLockCorner(isLocked = PremiumGate.isLocked(collection, hasPremium), inset = FEATURE_LOCK_INSET)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(FEATURE_ROW_SPACING)) {
@@ -287,14 +303,29 @@ fun FeatureCard(
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.fillMaxWidth(),
       )
-      Text(
-        text = stringResource(R.string.home_kind_subtitle, kind, collection.subtitle),
-        style = DeepType.caption,
-        color = Color.driftGrey,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.fillMaxWidth(),
-      )
+      // Kind and descriptor told apart by weight and a little air, not a
+      // middle dot — the design language has no separators. The kind keeps
+      // its width; the descriptor gives way.
+      Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(KIND_SPACING),
+      ) {
+        Text(
+          text = kind,
+          style = DeepType.caption.copy(fontWeight = FontWeight.Medium),
+          color = Color.driftGrey,
+          maxLines = 1,
+          softWrap = false,
+        )
+        Text(
+          text = collection.subtitle,
+          style = DeepType.caption,
+          color = Color.driftGrey,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.weight(1f, fill = false),
+        )
+      }
     }
   }
 }
@@ -361,13 +392,14 @@ fun HomeTile(
     R.string.deepsound_minutes,
     SoundTime.minutes(collection.totalDurationSeconds.toDouble()),
   )
+  val hasPremium = rememberHasPremium()
 
   Column(
     modifier
       .width(size)
       .softPress()
       .clickable(interactionSource = null, indication = null) { onOpen(collection) }
-      .collectionSemantics(collection, kind, minutes, onOpen, onPlay),
+      .collectionSemantics(collection, hasPremium, kind, minutes, onOpen, onPlay),
     verticalArrangement = Arrangement.spacedBy(TILE_SPACING),
   ) {
     Box {
@@ -386,7 +418,8 @@ fun HomeTile(
           )
           .clip(shape),
       )
-      PlayOrLock(
+      PremiumLockCorner(isLocked = PremiumGate.isLocked(collection, hasPremium))
+      PlayButton(
         collection,
         ArtworkDiscSize.Small,
         onPlay,
@@ -421,55 +454,55 @@ fun HomeTile(
 
 /**
  * The play button — its own tap target inside the card's, so it plays in
- * place rather than opening — or, for a collection with nothing this listener
- * can play, the lock as a plain mark.
+ * place rather than opening. It stays on a DEEP Premium collection, as on
+ * iOS: what it queues is the gate's to decide, in [onPlay].
  */
 @Composable
-private fun PlayOrLock(
+private fun PlayButton(
   collection: SoundCollection,
   size: ArtworkDiscSize,
   onPlay: (SoundCollection) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  if (collection.locksEveryTrack) {
-    ArtworkDisc(size = size, modifier = modifier, isLocked = true)
-  } else {
-    ArtworkDisc(
-      size = size,
-      modifier = modifier
-        .softPress()
-        .clickable(interactionSource = null, indication = null, role = Role.Button) { onPlay(collection) },
-    )
-  }
+  ArtworkDisc(
+    size = size,
+    modifier = modifier
+      .softPress()
+      .clickable(interactionSource = null, indication = null, role = Role.Button) { onPlay(collection) },
+  )
 }
 
 /**
  * One element for TalkBack — iOS's `.accessibilityElement(children: .combine)`
  * with its "title, kind, length" label — opening the collection on activation
  * and carrying "Play …" as a custom action, since the play button inside is
- * folded into it. A locked collection says so instead of offering to play.
+ * folded into it. A locked collection says it is part of DEEP Premium instead
+ * of offering to play.
  */
 @Composable
 private fun Modifier.collectionSemantics(
   collection: SoundCollection,
+  hasPremium: Boolean,
   kind: String,
   minutes: String,
   onOpen: (SoundCollection) -> Unit,
   onPlay: (SoundCollection) -> Unit,
 ): Modifier {
-  val locked = collection.locksEveryTrack
+  val locked = PremiumGate.isLocked(collection, hasPremium)
+  val canPlay = PremiumGate.playable(collection, hasPremium).isNotEmpty()
   val label = listOfNotNull(
     collection.title,
     kind,
     minutes,
-    if (locked) stringResource(R.string.deepsound_locked) else null,
+    if (locked) stringResource(R.string.premium_part_of) else null,
   ).joinToString(", ")
   val playLabel = stringResource(R.string.home_play_collection, collection.title)
   return clearAndSetSemantics {
     contentDescription = label
     role = Role.Button
     onClick { onOpen(collection); true }
-    if (!locked) {
+    // Offered only when the play button would start something.
+    if (canPlay) {
       customActions = listOf(CustomAccessibilityAction(playLabel) { onPlay(collection); true })
     }
   }
@@ -504,21 +537,59 @@ private fun FeatureCarouselPreview() {
   }
 }
 
+@Preview(showBackground = true, name = "Feature carousel — DEEP Premium locked")
+@Composable
+private fun FeatureCarouselLockedPreview() {
+  DeepTheme {
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = false)) {
+      Box(Modifier.background(Color.moonCream)) {
+        AtmosphereBackground(animated = false)
+        FeatureCarousel(
+          title = "Popular now",
+          collections = listOf(SoundFixtures.premiumSample) + SoundFixtures.sleep,
+          onOpen = {},
+          onPlay = {},
+          modifier = Modifier.padding(vertical = Dp.edge),
+        )
+      }
+    }
+  }
+}
+
 @Preview(showBackground = true, name = "Recommendations — one locked")
 @Composable
 private fun RecommendationsPreview() {
   DeepTheme {
-    Box(Modifier.background(Color.moonCream)) {
-      AtmosphereBackground(animated = false)
-      RecommendationsSection(
-        title = "Made for you",
-        collections = SoundFixtures.sleep.mapIndexed { index, collection ->
-          collection.copy(isLocked = index == 1)
-        },
-        onOpen = {},
-        onPlay = {},
-        modifier = Modifier.padding(vertical = Dp.edge),
-      )
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = false)) {
+      Box(Modifier.background(Color.moonCream)) {
+        AtmosphereBackground(animated = false)
+        RecommendationsSection(
+          title = "Made for you",
+          collections = listOf(SoundFixtures.oceanDepths, SoundFixtures.premiumSample, SoundFixtures.eveningLight),
+          onOpen = {},
+          onPlay = {},
+          modifier = Modifier.padding(vertical = Dp.edge),
+        )
+      }
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Recommendations — member")
+@Composable
+private fun RecommendationsMemberPreview() {
+  DeepTheme {
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = true)) {
+      Box(Modifier.background(Color.moonCream)) {
+        AtmosphereBackground(animated = false)
+        RecommendationsSection(
+          title = "Made for you",
+          collections = listOf(SoundFixtures.oceanDepths, SoundFixtures.premiumSample, SoundFixtures.eveningLight),
+          onOpen = {},
+          onPlay = {},
+          modifier = Modifier.padding(vertical = Dp.edge),
+        )
+      }
     }
   }
 }

@@ -46,6 +46,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.R
+import io.appbeyond.freelance.deep.feature.premium.rememberContentEpoch
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.deepsound.components.rememberBalancingBreath
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
@@ -124,6 +125,9 @@ sealed interface HomeState {
  *   the retry counter — pass the signed-in account id (or `null` when signed
  *   out) so a switched account reloads the feed and picks up its own
  *   personalised shelf, rather than continuing to show the previous member's.
+ *   The DEEP Premium content epoch is a key of its own, read here: the feed's
+ *   collections carry the server's withheld-audio verdicts, so becoming (or
+ *   ceasing to be) a member reloads them — silently, over the feed on screen.
  * @param onOpenCollection asks the coordinator to push a collection's detail —
  *   iOS's `openCollection`, which a tile's or card's body calls.
  * @param onPlayCollection starts a collection playing in place — the small
@@ -149,9 +153,11 @@ fun GlobalPauseHomeScreen(
     mutableStateOf<HomeState>(repository?.cached(refreshKey)?.let(HomeState::Loaded) ?: HomeState.Loading)
   }
   var attempt by remember { mutableIntStateOf(0) }
+  val premiumEpoch = rememberContentEpoch()
 
-  // Every arrival reloads — silently over a kept feed.
-  LaunchedEffect(repository, refreshKey, attempt) { loadHome(repository, refreshKey, state) }
+  // Every arrival reloads — silently over a kept feed — and so does every
+  // change in the premium answer.
+  LaunchedEffect(repository, refreshKey, attempt, premiumEpoch) { loadHome(repository, refreshKey, state) }
 
   val listState = rememberLazyListState()
   val (pull, nestedScroll) = rememberHeroPull(listState)

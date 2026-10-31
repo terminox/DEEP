@@ -481,6 +481,7 @@ fun MainShellCoordinator(
 
                     is DeepRoute.Collection -> CollectionDetailScreen(
                       collection = route.collection,
+                      library = soundLibrary,
                       player = soundPlayer,
                       playlistStore = playlistStore,
                       onBack = { pop(tab) },

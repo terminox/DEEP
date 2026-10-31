@@ -75,7 +75,7 @@ class MockRewardsRemote(
 
   override suspend fun selectPlant(id: String): GardenSnapshot {
     if (failsSelectPlant || catalog.none { it.id == id }) throw Failure()
-    if (catalog.first { it.id == id }.isLocked) throw PlantLockedException()
+    if (catalog.first { it.id == id }.isLocked == true) throw PlantLockedException()
     selectedPlantId = id
     return snapshot
   }

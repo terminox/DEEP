@@ -392,7 +392,7 @@ class SoundQueueTest {
   @Test
   @DisplayName("an all-unlocked queue plays exactly as asked")
   fun playableKeepsAnUnlockedQueue() {
-    val start = SoundQueue.playable(queue(false, false, false), startIndex = 1)
+    val start = SoundQueue.playable(queue(false, false, false), startIndex = 1, hasPremium = false)
     assertEquals(listOf("t0", "t1", "t2"), ids(start))
     assertEquals(1, start?.index)
   }
@@ -400,7 +400,7 @@ class SoundQueueTest {
   @Test
   @DisplayName("locked tracks are left out of the queue, and the start keeps its track")
   fun playableDropsLockedTracks() {
-    val start = SoundQueue.playable(queue(true, false, true, false), startIndex = 3)
+    val start = SoundQueue.playable(queue(true, false, true, false), startIndex = 3, hasPremium = false)
     assertEquals(listOf("t1", "t3"), ids(start))
     assertEquals(1, start?.index)
   }
@@ -408,7 +408,7 @@ class SoundQueueTest {
   @Test
   @DisplayName("starting on a locked track begins on the next unlocked one")
   fun playableSkipsALockedStart() {
-    val start = SoundQueue.playable(queue(false, true, true, false), startIndex = 1)
+    val start = SoundQueue.playable(queue(false, true, true, false), startIndex = 1, hasPremium = false)
     assertEquals(listOf("t0", "t3"), ids(start))
     assertEquals("t3", start?.entries?.get(start.index!!)?.track?.id)
   }
@@ -416,7 +416,7 @@ class SoundQueueTest {
   @Test
   @DisplayName("a locked start at the end wraps round to the first unlocked track")
   fun playableWrapsPastALockedEnd() {
-    val start = SoundQueue.playable(queue(true, false, true), startIndex = 2)
+    val start = SoundQueue.playable(queue(true, false, true), startIndex = 2, hasPremium = false)
     assertEquals(listOf("t1"), ids(start))
     assertEquals(0, start?.index)
   }
@@ -424,14 +424,14 @@ class SoundQueueTest {
   @Test
   @DisplayName("a queue with nothing unlocked plays nothing")
   fun playableAllLockedIsNull() {
-    assertNull(SoundQueue.playable(queue(true, true), startIndex = 0))
-    assertNull(SoundQueue.playable(emptyList(), startIndex = 0))
+    assertNull(SoundQueue.playable(queue(true, true), startIndex = 0, hasPremium = false))
+    assertNull(SoundQueue.playable(emptyList(), startIndex = 0, hasPremium = false))
   }
 
   @Test
   @DisplayName("advancing through a playable queue never lands on a locked track")
   fun playableAdvanceNeverHitsLocked() {
-    val start = SoundQueue.playable(queue(false, true, false, true, false), startIndex = 0)!!
+    val start = SoundQueue.playable(queue(false, true, false, true, false), startIndex = 0, hasPremium = false)!!
     var played = queueOf(start.entries, at = start.index, repeatMode = RepeatMode.All)
     repeat(start.entries.size * 2) {
       played = played.skipForward().queue
@@ -442,7 +442,7 @@ class SoundQueueTest {
   @Test
   @DisplayName("an out-of-range start is clamped before the lock is checked")
   fun playableClampsTheStart() {
-    val start = SoundQueue.playable(queue(false, false, true), startIndex = 10)
+    val start = SoundQueue.playable(queue(false, false, true), startIndex = 10, hasPremium = false)
     assertEquals(listOf("t0", "t1"), ids(start))
     assertEquals(0, start?.index)
   }
@@ -450,7 +450,7 @@ class SoundQueueTest {
   @Test
   @DisplayName("once anything has audio, tracks without any leave the queue too")
   fun playableDropsSilentTracksBesideAudibleOnes() {
-    val start = SoundQueue.playable(entries(4, silent = setOf(0, 2)), startIndex = 2)
+    val start = SoundQueue.playable(entries(4, silent = setOf(0, 2)), startIndex = 2, hasPremium = false)
     assertEquals(listOf("1", "3"), ids(start))
     assertEquals("3", start?.entries?.get(start.index!!)?.track?.id)
   }
@@ -458,7 +458,7 @@ class SoundQueueTest {
   @Test
   @DisplayName("a queue with no audio at all is kept whole")
   fun playableKeepsAnAllSilentQueue() {
-    val start = SoundQueue.playable(entries(3, silent = setOf(0, 1, 2)), startIndex = 1)
+    val start = SoundQueue.playable(entries(3, silent = setOf(0, 1, 2)), startIndex = 1, hasPremium = false)
     assertEquals(listOf("0", "1", "2"), ids(start))
     assertEquals(1, start?.index)
   }
@@ -466,19 +466,44 @@ class SoundQueueTest {
   @Test
   @DisplayName("a shuffle's missing start stays missing")
   fun playableKeepsANullStart() {
-    val start = SoundQueue.playable(queue(true, false, false), startIndex = null)
+    val start = SoundQueue.playable(queue(true, false, false), startIndex = null, hasPremium = false)
     assertEquals(listOf("t1", "t2"), ids(start))
     assertNull(start?.index)
   }
 
   @Test
-  @DisplayName("a collection reads locked when it or every track is")
-  fun collectionLocksEveryTrack() {
-    val free = queue(false, true).first().collection
-    val allLocked = queue(true, true).first().collection
-    assertFalse(free.locksEveryTrack)
-    assertTrue(allLocked.locksEveryTrack)
-    assertTrue(free.copy(isLocked = true).locksEveryTrack)
-    assertFalse(free.copy(tracks = emptyList()).locksEveryTrack)
+  @DisplayName("a member's queue keeps the tracks the server locked before the purchase")
+  fun playableForAMember() {
+    val start = SoundQueue.playable(audible(queue(true, false, true)), startIndex = 0, hasPremium = true)
+    assertEquals(listOf("t0", "t1", "t2"), ids(start))
+  }
+
+  @Test
+  @DisplayName("a premium track without audio never joins a queue, even a member's")
+  fun playableDropsWithheldAudio() {
+    val entries = audible(queue(false, false))
+    val collection = entries.first().collection
+    val withheld = collection.copy(
+      tracks = collection.tracks.mapIndexed { i, track ->
+        if (i == 0) track.copy(audioUrl = null, isPremium = true) else track
+      },
+    )
+    val start = SoundQueue.playable(withheld.queue(), startIndex = 0, hasPremium = true)
+    assertEquals(listOf("t1"), ids(start))
+  }
+
+  @Test
+  @DisplayName("a premium collection plays nothing for the free plan, everything for a member")
+  fun playableFollowsTheCollectionsPremium() {
+    val collection = audible(queue(false, false)).first().collection.copy(isPremium = true)
+    assertNull(SoundQueue.playable(collection.queue(), startIndex = 0, hasPremium = false))
+    assertEquals(listOf("t0", "t1"), ids(SoundQueue.playable(collection.queue(), startIndex = 0, hasPremium = true)))
+  }
+
+  /** The same entries, each track carrying audio — what a member's fetch sends. */
+  private fun audible(entries: List<SoundQueueEntry>): List<SoundQueueEntry> {
+    val collection = entries.first().collection
+    val tracks = collection.tracks.map { it.copy(audioUrl = "https://example.test/${it.id}.mp3") }
+    return collection.copy(tracks = tracks).queue()
   }
 }

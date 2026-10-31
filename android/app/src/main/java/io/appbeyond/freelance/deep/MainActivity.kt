@@ -24,7 +24,7 @@ import io.appbeyond.freelance.deep.feature.compassion.rememberCompassionContent
 import io.appbeyond.freelance.deep.feature.deepsession.ChimePlayer
 import io.appbeyond.freelance.deep.feature.deepsession.DeepSessionCoordinator
 import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
-import io.appbeyond.freelance.deep.feature.deepsound.player.play
+import io.appbeyond.freelance.deep.feature.deepsound.player.playFrom
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseHomeScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseLobbyScreen
 import io.appbeyond.freelance.deep.feature.globalpause.GlobalPauseSessionCoordinator
@@ -39,6 +39,9 @@ import io.appbeyond.freelance.deep.feature.globalpause.globe.LocalGlobeRendering
 import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
+import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.LocalSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
 import io.appbeyond.freelance.deep.networking.LocalVideoCache
 import io.appbeyond.freelance.deep.networking.VideoCache
 import io.appbeyond.freelance.deep.theme.exhale
@@ -98,6 +101,18 @@ class MainActivity : ComponentActivity() {
 
     val dependencies = (application as DeepApplication).dependencies
 
+    // Debug builds only: `--ez deep.mockSubscriptions true` on the launch
+    // intent swaps RevenueCat for the in-memory store, so the purchase
+    // mechanic is drivable on an emulator — iOS's `-DeepMockSubscriptions`.
+    // `BuildConfig.DEBUG` is a compile-time false in release, so this branch,
+    // its key and the mock all fall out of a shipping build.
+    if (BuildConfig.DEBUG && intent.getBooleanExtra(MOCK_SUBSCRIPTIONS_EXTRA, false)) {
+      dependencies.useMockSubscriptions()
+    }
+    // Built here, after that decision, and before the launch beat restores the
+    // session — so the member's remembered DEEP Premium answer is read in time.
+    dependencies.startPremium()
+
     // From 33 a language picked in the system's per-app settings reaches a
     // running process as a configuration change ([onConfigurationChanged]);
     // one picked while DEEP was not running is adopted here. Either way the
@@ -154,6 +169,9 @@ class MainActivity : ComponentActivity() {
         LocalVideoCache provides videoCache,
         LocalGlobeRendering provides globeRendering,
         LocalGlobalPauseCardLift provides cardLift,
+        // Every lock reads this one answer, however deep it is drawn.
+        LocalPremiumAccess provides dependencies.premiumAccess,
+        LocalSubscriptionStore provides dependencies.subscriptionStore,
       ) {
         AppRoot(
           accountStore = dependencies.accountStore,
@@ -170,6 +188,8 @@ class MainActivity : ComponentActivity() {
           syncRewards = dependencies::syncRewards,
           flushBeforeLogOut = dependencies::flushBeforeLogOut,
           resetAccountState = dependencies::resetAccountState,
+          refreshPremiumIfUnanswered = dependencies::refreshPremiumIfUnanswered,
+          refreshPremium = dependencies::refreshPremium,
           flowContent = {
             OnboardingCoordinator(
               accountStore = dependencies.accountStore,
@@ -189,7 +209,13 @@ class MainActivity : ComponentActivity() {
               // small round play button starts it in place — iOS's `HomeTile` /
               // `FeatureCard`.
               onOpenCollection = actions.openCollection,
-              onPlayCollection = { dependencies.soundPlayer.play(it) },
+              // Through the gate, like a collection's own Play: only what this
+              // listener may hear is queued. Nothing to hear stays inert until
+              // the DEEP Premium invitation exists to open instead.
+              onPlayCollection = { collection ->
+                val queue = PremiumGate.playable(collection, dependencies.premiumAccess.hasPremium.value)
+                if (queue.isNotEmpty()) dependencies.soundPlayer.playFrom(queue, 0)
+              },
               onOpenCollectionList = actions.openCollectionList,
               refreshKey = account?.id,
               isFukuOnAir = pause.isFukuOnAir,
@@ -319,3 +345,11 @@ class MainActivity : ComponentActivity() {
     if (staleLocale || staleScale) recreate()
   }
 }
+
+/**
+ * The debug-only launch extra behind `AppDependencies.useMockSubscriptions`:
+ * `adb shell am start -n <package>/io.appbeyond.freelance.deep.MainActivity
+ * --ez deep.mockSubscriptions true`. A `const`, so it is inlined into the one
+ * debug branch that reads it and leaves no trace in a release build.
+ */
+private const val MOCK_SUBSCRIPTIONS_EXTRA = "deep.mockSubscriptions"

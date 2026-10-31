@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_premium.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+-->
+<resources>
+
+  <string name="premium_part_of">เป็นส่วนหนึ่งของ DEEP Premium</string>
+
+</resources>

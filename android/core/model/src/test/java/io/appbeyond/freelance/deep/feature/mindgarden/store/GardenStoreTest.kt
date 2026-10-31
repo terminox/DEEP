@@ -181,7 +181,7 @@ class GardenStoreTest {
     store.selectPlant(Plant.sakuraFixture)
     assertEquals("sakura", store.state.value.plant?.id)
     assertEquals(90, store.state.value.sunlight)
-    assertFalse(store.state.value.switchFailed)
+    assertNull(store.state.value.switchFailure)
     assertEquals("sakura", remote.selectedPlantId)
   }
 
@@ -197,26 +197,27 @@ class GardenStoreTest {
 
     assertEquals("oak", store.state.value.plant?.id)
     assertEquals(240, store.state.value.sunlight)
-    assertTrue(store.state.value.switchFailed)
+    assertEquals(PlantSwitchFailure.Unreachable, store.state.value.switchFailure)
   }
 
   @Test
-  @DisplayName("A DEEP Premium plant the catalog marks locked is never switched to")
-  fun selectLockedPlantIsRefusedLocally() = runTest {
-    val locked = Plant.sakuraFixture.copy(isLocked = true)
+  @DisplayName("A premium refusal rolls back with its own failure, not the connection's")
+  fun selectLockedPlantIsRefusedByTheServer() = runTest {
+    val locked = Plant.moonflowerFixture.copy(isLocked = true)
     val remote = MockRewardsRemote(catalog = listOf(Plant.oakFixture, locked))
     val store = store(remote)
     store.refresh()
 
+    // The gate is the picker's; the store asks, and the server is the backstop.
     store.selectPlant(locked)
 
     assertEquals("oak", store.state.value.plant?.id)
-    assertFalse(store.state.value.switchFailed)
-    assertEquals("oak", remote.selectedPlantId, "No request went out.")
+    assertEquals(PlantSwitchFailure.PremiumLocked, store.state.value.switchFailure)
+    assertEquals("oak", remote.selectedPlantId)
   }
 
   @Test
-  @DisplayName("A premium_locked refusal reverts without the caption and marks the plant locked")
+  @DisplayName("A premium_locked refusal marks the plant locked in the catalog")
   fun selectPlantPremiumRefusalMarksCatalog() = runTest {
     val remote = MockRewardsRemote(catalog = listOf(Plant.oakFixture, Plant.sakuraFixture))
     val store = store(remote)
@@ -228,20 +229,97 @@ class GardenStoreTest {
     store.selectPlant(Plant.sakuraFixture)
 
     assertEquals("oak", store.state.value.plant?.id)
-    assertFalse(store.state.value.switchFailed, "A lock is not a connection problem.")
+    assertEquals(
+      PlantSwitchFailure.PremiumLocked,
+      store.state.value.switchFailure,
+      "A lock is not a connection problem.",
+    )
     val sakura = store.state.value.catalog.plants.first { it.id == "sakura" }
-    assertTrue(sakura.isLocked)
-    assertFalse(store.state.value.catalog.plants.first { it.id == "oak" }.isLocked)
+    assertEquals(true, sakura.isLocked)
+    assertNull(store.state.value.catalog.plants.first { it.id == "oak" }.isLocked)
   }
 
   @Test
-  @DisplayName("A plant persisted before the lock existed decodes as unlocked")
+  @DisplayName("A plant persisted before premium plants existed decodes as free and unanswered")
   fun plantBlobWithoutLockDecodes() {
     val json = """{"id":"oak","name":"Oak","tagline":"","stages":[]}"""
     val plant = kotlinx.serialization.json.Json.decodeFromString(Plant.serializer(), json)
-    assertFalse(plant.isLocked)
-    val locked = """{"id":"oak","name":"Oak","tagline":"","stages":[],"isLocked":true}"""
-    assertTrue(kotlinx.serialization.json.Json.decodeFromString(Plant.serializer(), locked).isLocked)
+    assertNull(plant.isLocked)
+    assertFalse(plant.isPremium)
+    val locked = """{"id":"moonflower","name":"Moonflower","tagline":"","stages":[],"isPremium":true,"isLocked":true}"""
+    val decoded = kotlinx.serialization.json.Json.decodeFromString(Plant.serializer(), locked)
+    assertEquals(true, decoded.isLocked)
+    assertTrue(decoded.isPremium)
+  }
+
+  @Test
+  @DisplayName("A premium flip reloads a loaded catalog with the server's new verdicts")
+  fun reloadCatalogAdoptsNewVerdicts() = runTest {
+    val remote = MockRewardsRemote(catalog = listOf(Plant.oakFixture, Plant.moonflowerFixture.copy(isLocked = true)))
+    val store = store(remote)
+    store.loadCatalogIfNeeded()
+
+    remote.catalog = listOf(Plant.oakFixture, Plant.moonflowerFixture.copy(isLocked = false))
+    store.reloadCatalog()
+
+    assertEquals(false, store.state.value.catalog.plants.first { it.id == "moonflower" }.isLocked)
+  }
+
+  @Test
+  @DisplayName("A reload that fails keeps the catalog on screen")
+  fun reloadCatalogKeepsOnFailure() = runTest {
+    val remote = MockRewardsRemote()
+    val store = store(remote)
+    store.loadCatalogIfNeeded()
+
+    remote.failsPlants = true
+    store.reloadCatalog()
+
+    assertIs<GardenStore.PlantCatalog.Loaded>(store.state.value.catalog)
+    assertEquals(Plant.fixtures.map { it.id }, store.state.value.catalog.plants.map { it.id })
+  }
+
+  @Test
+  @DisplayName("A reload asked for mid-flight runs again once the flight lands")
+  fun reloadCatalogQueuedMidFlight() = runTest {
+    val mock = MockRewardsRemote(catalog = listOf(Plant.oakFixture, Plant.moonflowerFixture.copy(isLocked = true)))
+    // The first reload parks inside plants(), holding the old verdict.
+    val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+    var calls = 0
+    var parkNext = false
+    val gated = object : RewardsRemote by mock {
+      override suspend fun plants(): List<Plant> {
+        val answer = mock.plants()
+        calls += 1
+        if (parkNext) {
+          parkNext = false
+          gate.await()
+        }
+        return answer
+      }
+    }
+    val reloading = GardenStore(remote = gated, blob = InMemoryBlobStore())
+    reloading.loadCatalogIfNeeded()
+    calls = 0
+    parkNext = true
+    val first = launch { reloading.reloadCatalog() }
+    runCurrent()
+    // The server now says open; a second reload asks while the first is out.
+    mock.catalog = listOf(Plant.oakFixture, Plant.moonflowerFixture.copy(isLocked = false))
+    reloading.reloadCatalog()
+    gate.complete(Unit)
+    first.join()
+
+    assertEquals(2, calls)
+    assertEquals(false, reloading.state.value.catalog.plants.first { it.id == "moonflower" }.isLocked)
+  }
+
+  @Test
+  @DisplayName("A catalog never loaded is left for the picker to load")
+  fun reloadCatalogLeavesIdle() = runTest {
+    val store = store()
+    store.reloadCatalog()
+    assertEquals(GardenStore.PlantCatalog.Idle, store.state.value.catalog)
   }
 
   @Test
@@ -348,7 +426,7 @@ class GardenStoreTest {
     switching.join()
 
     assertNull(store.state.value.plant)
-    assertFalse(store.state.value.switchFailed)
+    assertNull(store.state.value.switchFailure)
   }
 
   // MARK: - Races (peer review)
@@ -392,7 +470,7 @@ class GardenStoreTest {
 
     assertEquals("oak", store.state.value.plant?.id)
     assertEquals(250, store.state.value.sunlight)
-    assertTrue(store.state.value.switchFailed)
+    assertEquals(PlantSwitchFailure.Unreachable, store.state.value.switchFailure)
   }
 
   @Test
@@ -433,6 +511,6 @@ class GardenStoreTest {
 
     assertEquals("sakura", remote.selectedPlantId)
     assertEquals("sakura", store.state.value.plant?.id)
-    assertFalse(store.state.value.switchFailed)
+    assertNull(store.state.value.switchFailure)
   }
 }

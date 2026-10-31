@@ -82,7 +82,8 @@ class GardenStore(
     val plants: List<Plant> get() = emptyList()
 
     /** This catalog with [plantId] marked locked — what a `premium_locked`
-     * refusal teaches. Anything but a loaded catalog has nothing to mark. */
+     * refusal teaches, until the next reload brings the server's own verdict.
+     * Anything but a loaded catalog has nothing to mark. */
     fun locking(plantId: String): PlantCatalog =
       if (this is Loaded) Loaded(plants.map { if (it.id == plantId) it.copy(isLocked = true) else it }) else this
   }
@@ -100,7 +101,7 @@ class GardenStore(
     /** Set when a plant switch was rolled back — the picker shows its quiet
      * caption (the words live with the UI so they can be translated). Cleared
      * on the next attempt. */
-    val switchFailed: Boolean = false,
+    val switchFailure: PlantSwitchFailure? = null,
   ) {
     /** The derivation everything renders from; null until a plant is known. */
     val growth: GardenGrowth? get() = plant?.let { GardenGrowth(plant = it, sunlight = sunlight) }
@@ -146,6 +147,16 @@ class GardenStore(
   private var confirmedPlant: Plant? = null
 
   private val restoreLock = Mutex()
+
+  /** Set while [reloadCatalog] is fetching, so concurrent asks share one flight. */
+  private var catalogReloading = false
+
+  /**
+   * Set when [reloadCatalog] is asked again while a flight is out: that
+   * flight may have left before what prompted the ask (the server confirming
+   * a purchase a moment later), so one more runs once it lands.
+   */
+  private var catalogReloadQueued = false
 
   @Volatile
   private var restored = false
@@ -221,6 +232,55 @@ class GardenStore(
   suspend fun retryCatalog() = loadCatalog(force = true)
 
   /**
+   * Fetches a loaded catalog again, keeping it on screen — and keeping it if
+   * the fetch fails. The catalog carries the server's DEEP Premium verdicts,
+   * so a change in the member's premium answer calls this, picker open or
+   * not (iOS's `reloadCatalog`).
+   *
+   * DIVERGENCE: a catalog that was never loaded (or failed) is left alone
+   * rather than fetched: the picker asks for one as it opens, which already
+   * reads the new verdicts.
+   */
+  suspend fun reloadCatalog() {
+    val start = synchronized(lock) {
+      if (_state.value.catalog !is PlantCatalog.Loaded) return@synchronized false
+      if (catalogReloading) {
+        // Not dropped: the flight out may predate what prompted this ask.
+        catalogReloadQueued = true
+        return@synchronized false
+      }
+      catalogReloading = true
+      true
+    }
+    if (!start) return
+    try {
+      do {
+        synchronized(lock) { catalogReloadQueued = false }
+        val plants = try {
+          remote.plants()
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (_: Exception) {
+          null
+        }
+        if (plants != null) {
+          synchronized(lock) {
+            // A load that started meanwhile (a retry) owns the catalog now.
+            if (_state.value.catalog is PlantCatalog.Loaded) {
+              _state.update { it.copy(catalog = PlantCatalog.Loaded(plants)) }
+            }
+          }
+        }
+      } while (synchronized(lock) { catalogReloadQueued })
+    } finally {
+      synchronized(lock) {
+        catalogReloading = false
+        catalogReloadQueued = false
+      }
+    }
+  }
+
+  /**
    * Switches the selected plant — optimistically, resumed at whatever
    * sunlight it had already earned, reverted with a quiet caption if the
    * server refuses.
@@ -233,16 +293,17 @@ class GardenStore(
    * sign-out happened since; a superseded switch leaves the outcome to the
    * newer one.
    *
-   * A DEEP Premium plant the catalog marks [Plant.isLocked] is never switched
-   * to at all. One the server refuses as locked anyway (403 `premium_locked`,
-   * arriving as [PlantLockedException] — the catalog was fetched before a
-   * membership lapsed, say) reverts like any refusal but without the caption,
-   * which would blame the connection: the catalog marks that plant locked
-   * instead, so the picker shows why. Android has no way to buy DEEP Premium,
-   * so the lock is all there is to say.
+   * Whether a DEEP Premium plant may be chosen is the picker's question
+   * (`PremiumGate`), not this store's: it doesn't know the member's premium
+   * answer, and a member whose purchase the server hasn't heard about yet may
+   * hold a catalog that still says locked. The server is the backstop — a
+   * plant it refuses as locked (403 `premium_locked`, arriving as
+   * [PlantLockedException]: a lapse mid-session, a stale catalog) reverts like
+   * any refusal, but with its own [PlantSwitchFailure.PremiumLocked] caption
+   * rather than one blaming the connection, and the catalog marks the plant
+   * locked so the picker badges it.
    */
   suspend fun selectPlant(newPlant: Plant) {
-    if (newPlant.isLocked) return
     restore()
     val switch = synchronized(lock) {
       val current = _state.value
@@ -250,7 +311,7 @@ class GardenStore(
       touched = true
       selection++
       _state.update {
-        it.copy(plant = newPlant, sunlight = it.sunlightByPlant[newPlant.id] ?: 0, switchFailed = false)
+        it.copy(plant = newPlant, sunlight = it.sunlightByPlant[newPlant.id] ?: 0, switchFailure = null)
       }
       PendingSwitch(generation, selection)
     }
@@ -277,7 +338,7 @@ class GardenStore(
           it.copy(
             plant = fallback,
             sunlight = fallback?.let { plant -> it.sunlightByPlant[plant.id] } ?: 0,
-            switchFailed = !locked,
+            switchFailure = if (locked) PlantSwitchFailure.PremiumLocked else PlantSwitchFailure.Unreachable,
             catalog = if (locked) it.catalog.locking(newPlant.id) else it.catalog,
           )
         }
@@ -452,4 +513,20 @@ class GardenStore(
       blob.writeQuietly(json)
     }
   }
+}
+
+/**
+ * Why a plant switch was rolled back. A premium refusal is the server's
+ * backstop — the picker never stages a locked plant, so it only fires on a
+ * genuine race (a lapse mid-session, a stale catalog) — and reads differently
+ * from a server that couldn't be reached. Ported from `PlantSwitchFailure` in
+ * Deep/Deep/Features/MindGarden/Store/GardenStore.swift; the captions live
+ * with the picker so they can be translated.
+ */
+enum class PlantSwitchFailure {
+  /** The server refused: the plant is DEEP Premium (403 `premium_locked`). */
+  PremiumLocked,
+
+  /** Anything else — offline, a timeout, a server error. */
+  Unreachable,
 }

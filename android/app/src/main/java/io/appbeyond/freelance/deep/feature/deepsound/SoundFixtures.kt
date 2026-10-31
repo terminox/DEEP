@@ -46,11 +46,32 @@ object SoundFixtures {
 
   val sleep: List<SoundCollection> = listOf(oceanDepths, eveningLight)
 
+  /**
+   * A DEEP Premium collection, for previews of the locked state — iOS's
+   * `SoundLibrary.premiumSample`. Not on any shelf: the fixture shelves stay
+   * free.
+   */
+  val premiumSample = SoundCollection(
+    id = "fixture-moonlit-tide",
+    title = "Moonlit Tide",
+    subtitle = "Slow water under a quiet moon",
+    palette = "tide",
+    imageUrl = null,
+    categoryId = "fixture-sleep",
+    isPremium = true,
+    tracks = listOf(
+      track("fixture-low-water", "Low Water", minutes = 8, seconds = 12, isPremium = true),
+      track("fixture-silver-swell", "Silver Swell", minutes = 7, seconds = 40, isPremium = true),
+      track("fixture-night-shore", "Night Shore", minutes = 9, seconds = 5, isPremium = true),
+    ),
+  )
+
   private fun track(
     id: String,
     title: String,
     minutes: Int,
     seconds: Int,
     kind: TrackKind = TrackKind.Instrumental,
-  ) = SoundTrack(id = id, title = title, durationSeconds = minutes * 60 + seconds, kind = kind)
+    isPremium: Boolean = false,
+  ) = SoundTrack(id = id, title = title, durationSeconds = minutes * 60 + seconds, kind = kind, isPremium = isPremium)
 }
