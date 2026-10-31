@@ -279,7 +279,7 @@ class ListenReporter(
         _notice.value = null
       }
       persistQueue()
-      persistLock.withLock { stampBlob.writeQuietly(null) }
+      persistStamp()
     }
   }
 
@@ -419,11 +419,7 @@ class ListenReporter(
       true
     }
     if (!fresh) return
-    withContext(NonCancellable) {
-      persistLock.withLock {
-        stampBlob.writeQuietly(StoreJson.encodeToString(Stamp.serializer(), Stamp(now)))
-      }
-    }
+    persistStamp()
     present(ListenNotice.Kind.DayComplete(perDay), stamp)
   }
 
@@ -472,6 +468,18 @@ class ListenReporter(
       queueBlob.writeQuietly(
         if (queue.isEmpty()) null else StoreJson.encodeToString(ListSerializer(PendingListen.serializer()), queue),
       )
+    }
+  }
+
+  /**
+   * Writes the once-a-day stamp as it stands *when the write happens* — never
+   * a value captured earlier, which a [reset] in between would otherwise
+   * resurrect on disk for the next account.
+   */
+  private suspend fun persistStamp() = withContext(NonCancellable) {
+    persistLock.withLock {
+      val noticedAt = synchronized(lock) { dayCompleteNoticedAt }
+      stampBlob.writeQuietly(noticedAt?.let { StoreJson.encodeToString(Stamp.serializer(), Stamp(it)) })
     }
   }
 
