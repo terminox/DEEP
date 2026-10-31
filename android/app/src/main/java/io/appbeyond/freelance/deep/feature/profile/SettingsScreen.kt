@@ -141,9 +141,11 @@ private enum class RestorePhase { Idle, Working, Restored, Failed }
  *
  * Deliberate gaps against iOS, each a product decision rather than an
  * omission:
- * - **Upgrade to DEEP Premium** shows only once [onUpgrade] is handed in —
- *   the paywall's own work. Until then a member on the free plan sees Restore
- *   alone.
+ * - **Upgrade to DEEP Premium** shows only when [onUpgrade] is handed in
+ *   (the shell pushes the paywall with it), and only once the store has
+ *   answered "none" and nothing else says premium — an unknown store would
+ *   put "Upgrade" over a chip still reading "Checking…", and offer a paying
+ *   member what they already have.
  * - **Both exits reset onboarding and every account store** (practice journal,
  *   listen queue, garden, heart ledger, continuity day, and the daily reminder —
  *   [resetAccountState]); the playlist and the player are cleared by

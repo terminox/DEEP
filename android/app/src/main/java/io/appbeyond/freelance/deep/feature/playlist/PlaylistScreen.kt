@@ -134,8 +134,8 @@ private val CHIP_PADDING_VERTICAL = 12.dp
  * and origin line change track by track. A DEEP Premium sound locked for this
  * listener (`PremiumGate`, each entry judged by its own collection) wears the
  * lock badge on its artwork and is left out of the queue, as is one whose
- * audio the server withheld; tapping it does nothing yet — the DEEP Premium
- * invitation it will open arrives with the paywall. The saved sounds are
+ * audio the server withheld; tapping it opens the DEEP Premium invitation
+ * ([onOpenPaywall]), as do Play and Shuffle when nothing saved can play. The saved sounds are
  * re-fetched whenever the premium answer moves (`AppDependencies.startPremium`),
  * so a new member's withheld audio arrives without a visit.
  *
@@ -151,6 +151,7 @@ fun PlaylistScreen(
   onOpenSettings: () -> Unit,
   modifier: Modifier = Modifier,
   onExploreDeepSound: (() -> Unit)? = null,
+  onOpenPaywall: () -> Unit = {},
 ) {
   val state by playlistStore.state.collectAsStateWithLifecycle()
   val playback by player.playback.collectAsStateWithLifecycle()
@@ -212,6 +213,7 @@ fun PlaylistScreen(
                   player.play(queue, startIndex = if (shuffled) null else 0, shuffled = shuffled)
                 },
                 onRemove = { entry -> scope.launch { playlistStore.toggle(entry.track, entry.collection) } },
+                onLocked = onOpenPaywall,
               )
             }
           }
@@ -278,6 +280,7 @@ private fun LazyListScope.savedSounds(
   onPlay: (queue: List<SoundQueueEntry>, index: Int) -> Unit,
   onPlayAll: (queue: List<SoundQueueEntry>, shuffled: Boolean) -> Unit,
   onRemove: (SoundQueueEntry) -> Unit,
+  onLocked: () -> Unit,
 ) {
   val playable = PremiumGate.playable(entries, hasPremium)
 
@@ -292,14 +295,14 @@ private fun LazyListScope.savedSounds(
         title = stringResource(R.string.deepsound_play),
         icon = PlayerIcons.Play,
         // From the first sound this listener may hear, in order.
-        onClick = { if (playable.isNotEmpty()) onPlayAll(playable, false) },
+        onClick = { if (playable.isNotEmpty()) onPlayAll(playable, false) else onLocked() },
         modifier = Modifier.weight(1f),
       )
       SoundActionButton(
         title = stringResource(R.string.deepsound_shuffle),
         icon = SoundIcons.Shuffle,
         // From a random sound that can play, the rest dealt after it.
-        onClick = { if (playable.isNotEmpty()) onPlayAll(playable, true) },
+        onClick = { if (playable.isNotEmpty()) onPlayAll(playable, true) else onLocked() },
         modifier = Modifier.weight(1f),
       )
     }
@@ -318,6 +321,9 @@ private fun LazyListScope.savedSounds(
             it.track.id == entry.track.id && it.collection.id == entry.collection.id
           }
           onPlay(playable, index.coerceAtLeast(0))
+        } else {
+          // Locked, or its audio withheld: the same door a collection opens.
+          onLocked()
         }
       },
       onRemove = { onRemove(entry) },

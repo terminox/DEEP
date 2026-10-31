@@ -41,6 +41,7 @@ import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
 import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
 import io.appbeyond.freelance.deep.feature.premium.LocalSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.model.PaywallSource
 import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
 import io.appbeyond.freelance.deep.networking.LocalVideoCache
 import io.appbeyond.freelance.deep.networking.VideoCache
@@ -215,11 +216,15 @@ class MainActivity : ComponentActivity() {
               // `FeatureCard`.
               onOpenCollection = actions.openCollection,
               // Through the gate, like a collection's own Play: only what this
-              // listener may hear is queued. Nothing to hear stays inert until
-              // the DEEP Premium invitation exists to open instead.
+              // listener may hear is queued, and nothing to hear opens the
+              // DEEP Premium invitation on Home's stack instead.
               onPlayCollection = { collection ->
                 val queue = PremiumGate.playable(collection, dependencies.premiumAccess.hasPremium.value)
-                if (queue.isNotEmpty()) dependencies.soundPlayer.playFrom(queue, 0)
+                if (queue.isNotEmpty()) {
+                  dependencies.soundPlayer.playFrom(queue, 0)
+                } else {
+                  actions.openPaywall(PaywallSource.LockedSound)
+                }
               },
               onOpenCollectionList = actions.openCollectionList,
               refreshKey = account?.id,
