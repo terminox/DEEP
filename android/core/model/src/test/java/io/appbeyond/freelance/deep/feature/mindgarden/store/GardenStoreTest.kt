@@ -280,6 +280,41 @@ class GardenStoreTest {
   }
 
   @Test
+  @DisplayName("A reload asked for mid-flight runs again once the flight lands")
+  fun reloadCatalogQueuedMidFlight() = runTest {
+    val mock = MockRewardsRemote(catalog = listOf(Plant.oakFixture, Plant.moonflowerFixture.copy(isLocked = true)))
+    // The first reload parks inside plants(), holding the old verdict.
+    val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+    var calls = 0
+    var parkNext = false
+    val gated = object : RewardsRemote by mock {
+      override suspend fun plants(): List<Plant> {
+        val answer = mock.plants()
+        calls += 1
+        if (parkNext) {
+          parkNext = false
+          gate.await()
+        }
+        return answer
+      }
+    }
+    val reloading = GardenStore(remote = gated, blob = InMemoryBlobStore())
+    reloading.loadCatalogIfNeeded()
+    calls = 0
+    parkNext = true
+    val first = launch { reloading.reloadCatalog() }
+    runCurrent()
+    // The server now says open; a second reload asks while the first is out.
+    mock.catalog = listOf(Plant.oakFixture, Plant.moonflowerFixture.copy(isLocked = false))
+    reloading.reloadCatalog()
+    gate.complete(Unit)
+    first.join()
+
+    assertEquals(2, calls)
+    assertEquals(false, reloading.state.value.catalog.plants.first { it.id == "moonflower" }.isLocked)
+  }
+
+  @Test
   @DisplayName("A catalog never loaded is left for the picker to load")
   fun reloadCatalogLeavesIdle() = runTest {
     val store = store()

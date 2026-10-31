@@ -148,8 +148,15 @@ class GardenStore(
 
   private val restoreLock = Mutex()
 
-  /** Set while [reloadCatalog] is fetching, so a burst of premium flips asks once. */
+  /** Set while [reloadCatalog] is fetching, so concurrent asks share one flight. */
   private var catalogReloading = false
+
+  /**
+   * Set when [reloadCatalog] is asked again while a flight is out: that
+   * flight may have left before what prompted the ask (the server confirming
+   * a purchase a moment later), so one more runs once it lands.
+   */
+  private var catalogReloadQueued = false
 
   @Volatile
   private var restored = false
@@ -236,29 +243,40 @@ class GardenStore(
    */
   suspend fun reloadCatalog() {
     val start = synchronized(lock) {
-      if (_state.value.catalog !is PlantCatalog.Loaded || catalogReloading) return@synchronized false
+      if (_state.value.catalog !is PlantCatalog.Loaded) return@synchronized false
+      if (catalogReloading) {
+        // Not dropped: the flight out may predate what prompted this ask.
+        catalogReloadQueued = true
+        return@synchronized false
+      }
       catalogReloading = true
       true
     }
     if (!start) return
     try {
-      val plants = try {
-        remote.plants()
-      } catch (cancelled: CancellationException) {
-        throw cancelled
-      } catch (_: Exception) {
-        null
-      }
-      if (plants != null) {
-        synchronized(lock) {
-          // A load that started meanwhile (a retry) owns the catalog now.
-          if (_state.value.catalog is PlantCatalog.Loaded) {
-            _state.update { it.copy(catalog = PlantCatalog.Loaded(plants)) }
+      do {
+        synchronized(lock) { catalogReloadQueued = false }
+        val plants = try {
+          remote.plants()
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (_: Exception) {
+          null
+        }
+        if (plants != null) {
+          synchronized(lock) {
+            // A load that started meanwhile (a retry) owns the catalog now.
+            if (_state.value.catalog is PlantCatalog.Loaded) {
+              _state.update { it.copy(catalog = PlantCatalog.Loaded(plants)) }
+            }
           }
         }
-      }
+      } while (synchronized(lock) { catalogReloadQueued })
     } finally {
-      synchronized(lock) { catalogReloading = false }
+      synchronized(lock) {
+        catalogReloading = false
+        catalogReloadQueued = false
+      }
     }
   }
 
