@@ -89,6 +89,13 @@ class LoungeRadioPlayer(
   /** Playback starved mid-stream, and is waiting for data. */
   private var stalled = false
 
+  /**
+   * The member gave the audio to something else for good. Nothing automatic
+   * — a cleared suppression, an error retry — may take it back; only coming
+   * back to DEEP or unmuting the set, both their own doing, does.
+   */
+  private var yieldedFocus = false
+
   private val isMuted: Boolean
     get() = (_state.value as? LoungeRadioState.OnAir)?.isMuted ?: false
 
@@ -96,6 +103,7 @@ class LoungeRadioPlayer(
     override fun onStart(owner: LifecycleOwner) {
       if (!inBackground) return
       inBackground = false
+      yieldedFocus = false
       recoverToLiveEdge()
     }
 
@@ -106,9 +114,19 @@ class LoungeRadioPlayer(
   }
 
   private val listener = object : Player.Listener {
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+      if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS) {
+        yieldedFocus = true
+      }
+    }
+
     override fun onPlaybackSuppressionReasonChanged(reason: Int) {
-      // A call or a prompt is over: the set moved on while we were quiet.
-      if (reason == Player.PLAYBACK_SUPPRESSION_REASON_NONE) recoverToLiveEdge()
+      // A call or a prompt is over: the set moved on while we were quiet. But
+      // a transient loss turning permanent clears the suppression too, as it
+      // drops playWhenReady — that is the member's choice, not an all-clear.
+      if (reason != Player.PLAYBACK_SUPPRESSION_REASON_NONE) return
+      if (player?.playWhenReady != true || yieldedFocus) return
+      recoverToLiveEdge()
     }
 
     override fun onPlaybackStateChanged(state: Int) {
@@ -191,8 +209,11 @@ class LoungeRadioPlayer(
     player?.volume = if (muted) 0f else 1f
     _state.value = LoungeRadioState.OnAir(isMuted = muted)
     // Unmuting rejoins the room rather than resuming a broadcast that has
-    // moved on without us.
-    if (!muted) recoverToLiveEdge()
+    // moved on without us — and, asked for, takes the audio back.
+    if (!muted) {
+      yieldedFocus = false
+      recoverToLiveEdge()
+    }
   }
 
   override fun stop() {
@@ -239,7 +260,7 @@ class LoungeRadioPlayer(
     if (recovery?.isActive == true) return
     recovery = scope.launch {
       delay(RECOVERY_DELAY_MILLIS)
-      recoverToLiveEdge()
+      if (!yieldedFocus) recoverToLiveEdge()
     }
   }
 
@@ -255,6 +276,7 @@ class LoungeRadioPlayer(
     seekSettling = false
     stalled = false
     inBackground = false
+    yieldedFocus = false
   }
 
   /** Releases everything, for good — the activity is going. */
