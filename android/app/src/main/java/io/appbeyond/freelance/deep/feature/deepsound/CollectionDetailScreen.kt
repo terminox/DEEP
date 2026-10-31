@@ -250,9 +250,15 @@ fun CollectionDetailScreen(
             SoundActionButton(
               title = stringResource(R.string.deepsound_play),
               icon = SoundIcons.Play,
-              // From the first track that can play, in order — whatever Shuffle was.
+              // From the first track that can play, in order — whatever Shuffle
+              // was. A collection with no tracks at all has nothing to sell
+              // either: it does nothing, as iOS's `tracks.isEmpty` guard.
               onClick = {
-                if (playable.isNotEmpty()) player.play(playable, startIndex = 0, shuffled = false) else onOpenPaywall()
+                when {
+                  current.tracks.isEmpty() -> Unit
+                  playable.isNotEmpty() -> player.play(playable, startIndex = 0, shuffled = false)
+                  else -> onOpenPaywall()
+                }
               },
               modifier = Modifier.weight(1f),
             )
@@ -262,7 +268,11 @@ fun CollectionDetailScreen(
               // The whole collection dealt in a random order, from a random
               // track that can play.
               onClick = {
-                if (playable.isNotEmpty()) player.play(playable, startIndex = null, shuffled = true) else onOpenPaywall()
+                when {
+                  current.tracks.isEmpty() -> Unit
+                  playable.isNotEmpty() -> player.play(playable, startIndex = null, shuffled = true)
+                  else -> onOpenPaywall()
+                }
               },
               modifier = Modifier.weight(1f),
             )

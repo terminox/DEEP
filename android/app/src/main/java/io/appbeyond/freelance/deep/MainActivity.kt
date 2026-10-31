@@ -220,7 +220,9 @@ class MainActivity : ComponentActivity() {
               // DEEP Premium invitation on Home's stack instead.
               onPlayCollection = { collection ->
                 val queue = PremiumGate.playable(collection, dependencies.premiumAccess.hasPremium.value)
-                if (queue.isNotEmpty()) {
+                if (collection.tracks.isEmpty()) {
+                  // Nothing in it at all: nothing to play, nothing to sell.
+                } else if (queue.isNotEmpty()) {
                   dependencies.soundPlayer.playFrom(queue, 0)
                 } else {
                   actions.openPaywall(PaywallSource.LockedSound)
