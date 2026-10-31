@@ -55,6 +55,15 @@ class PaywallPricingTest {
   }
 
   @Test
+  @DisplayName("A saving that truncates to 0% draws no badge")
+  fun noZeroPercentBadge() {
+    // 120.00 a year of 10.00 months against 119.20: 0.67% saved, truncated to 0.
+    assertNull(PaywallPricing.yearlySavingsPercent(monthly = decimal("10.00"), yearly = decimal("119.20")))
+    // 118.80: exactly 1%.
+    assertEquals(1, PaywallPricing.yearlySavingsPercent(monthly = decimal("10.00"), yearly = decimal("118.80")))
+  }
+
+  @Test
   @DisplayName("A free or missing price never divides by zero")
   fun zeroPriceIsSafe() {
     assertNull(PaywallPricing.yearlySavingsPercent(monthly = BigDecimal.ZERO, yearly = decimal("91.98")))

@@ -27,8 +27,10 @@ object PaywallPricing {
    * 61 for $91.98 against $19.98 a month.
    *
    * Null when there is nothing honest to claim: a free or nonsensical price,
-   * or a year that saves nothing, or less than half a percent. Truncated
-   * rather than rounded, so a badge can only ever understate the saving.
+   * or a year that saves nothing, or less than a whole percent once
+   * truncated — a "Save 0%" badge claims nothing and reads as a glitch.
+   * Truncated rather than rounded, so a badge can only ever understate the
+   * saving.
    */
   fun yearlySavingsPercent(monthly: BigDecimal, yearly: BigDecimal): Int? {
     val year = monthly.multiply(MONTHS_PER_YEAR)
@@ -36,7 +38,8 @@ object PaywallPricing {
     val saved = year.subtract(yearly).divide(year, MathContext.DECIMAL64)
     // Below half a percent there is no badge worth drawing.
     if (saved < MIN_SAVING) return null
-    return saved.movePointRight(2).setScale(0, RoundingMode.DOWN).toInt()
+    // And between half and one percent the truncation lands on 0.
+    return saved.movePointRight(2).setScale(0, RoundingMode.DOWN).toInt().takeIf { it >= 1 }
   }
 
   /** The same, read off the two plans rather than two numbers. */
