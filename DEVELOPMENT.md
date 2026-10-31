@@ -282,3 +282,25 @@ against a throwaway `deep_verify` database.
 
 `POST /me/entitlement/refresh` additionally needs `REVENUECAT_SECRET_API_KEY`
 (an `sk_…` key); without it that route answers 503 `not_configured`.
+
+### On Android
+
+The dev flavor carries the DEEP Premium project's Test Store key (`test_…`,
+the same project iOS's Dev build uses), so a `devDebug` build buys against
+RevenueCat's own simulated store with no Play Console at all. Every other
+flavor has no key yet: the SDK is never configured and the app reads "not
+subscribed". RevenueCat refuses a Test Store key in a non-debuggable build;
+the dev flavor alone opts out of that guard, so a minified `devRelease` works
+too.
+
+To drive the purchase mechanic without any store, launch a debug build with
+the in-memory store (Android's `-DeepMockSubscriptions`):
+
+```bash
+adb shell am start -n io.appbeyond.freelance.deep.dev/io.appbeyond.freelance.deep.MainActivity \
+  --ez deep.mockSubscriptions true
+```
+
+It only takes on a cold start (`adb shell am force-stop io.appbeyond.freelance.deep.dev`
+first), and a release build ignores it. `POST /dev/premium` above flips the
+server's half either way; the app hears it on its next foreground.
