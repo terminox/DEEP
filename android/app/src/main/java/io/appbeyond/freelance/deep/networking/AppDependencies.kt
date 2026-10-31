@@ -52,11 +52,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.time.Clock
@@ -504,23 +505,27 @@ class AppDependencies(context: Context) {
   }
 
   /**
-   * Offers the practice journal's unsynced sessions to the server, giving up
-   * after three seconds. Settings' log out runs this *before* ending the
-   * session, while the token still works.
-   *
-   * DIVERGENCE: iOS's log out drops unsynced sessions — the journal is reset
-   * and whatever never reached the server is gone. A short best-effort push
-   * first keeps an offline-then-reconnected member's practice (and the hearts
-   * it earns) without ever holding a log out hostage to a dead network.
+   * Offers the practice journal's unsynced sessions and the queued listens to
+   * the server, side by side, each giving up after [LOG_OUT_FLUSH_TIMEOUT].
+   * True when nothing is left behind. Settings' log out runs this *before*
+   * ending the session, while the token still works, and asks the member
+   * before dropping whatever is left — iOS's `SettingsView.logOut()`. A dead
+   * network delays the log out by seconds at most.
    */
-  suspend fun flushPracticeJournal() {
-    try {
-      withTimeoutOrNull(PRACTICE_FLUSH_TIMEOUT_MILLIS) { practiceJournal.push() }
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (unexpected: Exception) {
-      Log.w(TAG, "Practice flush before log out failed; signing out anyway.", unexpected)
+  suspend fun flushBeforeLogOut(): Boolean = try {
+    coroutineScope {
+      val practice = async { practiceJournal.flushPending(LOG_OUT_FLUSH_TIMEOUT) }
+      val listens = async { listenReporter.flush(LOG_OUT_FLUSH_TIMEOUT) }
+      val practiceSynced = practice.await()
+      val listensSynced = listens.await()
+      practiceSynced && listensSynced
     }
+  } catch (cancelled: CancellationException) {
+    throw cancelled
+  } catch (unexpected: Exception) {
+    // Unknown is not synced: the member is asked rather than losing practice.
+    Log.w(TAG, "Flush before log out failed.", unexpected)
+    false
   }
 
   /**
@@ -625,8 +630,8 @@ class AppDependencies(context: Context) {
   private companion object {
     const val TAG = "AppDependencies"
 
-    /** How long a log out waits on the practice flush before giving up on it. */
-    const val PRACTICE_FLUSH_TIMEOUT_MILLIS = 3_000L
+    /** How long a log out waits on each flush before asking the member — iOS's three seconds. */
+    val LOG_OUT_FLUSH_TIMEOUT: Duration = Duration.ofSeconds(3)
   }
 }
 

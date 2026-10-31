@@ -168,7 +168,7 @@ class MainActivity : ComponentActivity() {
           soundLibrary = dependencies.soundLibrary,
           playlistStore = dependencies.playlistStore,
           syncRewards = dependencies::syncRewards,
-          flushPracticeJournal = dependencies::flushPracticeJournal,
+          flushBeforeLogOut = dependencies::flushBeforeLogOut,
           resetAccountState = dependencies::resetAccountState,
           flowContent = {
             OnboardingCoordinator(

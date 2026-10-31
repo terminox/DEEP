@@ -110,14 +110,17 @@ private const val FOOTER_ALPHA = 0.8f
  *   nothing, the section is left out, as the Premium paywall is; the plan chip
  *   still reads "Free plan", which is what iOS shows a member without Premium.
  * - **Both exits reset onboarding and every account store** (practice journal,
- *   garden, heart ledger, continuity day, and the daily reminder —
+ *   listen queue, garden, heart ledger, continuity day, and the daily reminder —
  *   [resetAccountState]); the playlist and the player are cleared by
  *   `AppDependencies`' account watcher. A store that lands later must join
  *   both exits below.
- * - **DIVERGENCE: log out first offers the practice journal's unsynced
- *   sessions to the server** ([flushPracticeJournal], at most three seconds),
- *   while the token still works. iOS drops them. Account deletion skips it —
- *   the server is about to delete the sessions anyway.
+ *
+ * Log out first offers unsynced practice and queued listens to the server
+ * ([flushBeforeLogOut], three seconds, side by side) while the token still
+ * works, with a spinner on the row. If anything is still left, the member is
+ * asked before it is lost — "Some practice hasn't synced yet", Log out anyway
+ * or Stay — as iOS asks. Account deletion skips it: the server is about to
+ * delete the practice anyway.
  *
  * The back control is our own frosted chevron. On iOS that choice would cost
  * the interactive edge-swipe pop; on Android system back is independent of the
@@ -126,8 +129,9 @@ private const val FOOTER_ALPHA = 0.8f
  * @param language the language DEEP currently reads in, named by its endonym.
  * @param reminder the daily reminder's settings — the row shows its time while on.
  * @param onOpenLanguage / onOpenReminder push the two preference screens.
- * @param flushPracticeJournal best-effort push of unsynced practice, run
- *   before log out ends the session.
+ * @param flushBeforeLogOut offers unsynced practice and queued listens to the
+ *   server, bounded; true when nothing is left behind. Run before log out
+ *   ends the session.
  * @param resetAccountState forgets the member's account state (rewards and
  *   the reminder), run after either exit succeeds.
  */
@@ -137,7 +141,7 @@ fun SettingsScreen(
   onboardingStore: OnboardingProgressStore,
   language: AppLanguage,
   reminder: DailyReminder,
-  flushPracticeJournal: suspend () -> Unit,
+  flushBeforeLogOut: suspend () -> Boolean,
   resetAccountState: suspend () -> Unit,
   onOpenLanguage: () -> Unit,
   onOpenReminder: () -> Unit,
@@ -149,6 +153,8 @@ fun SettingsScreen(
   val scope = rememberCoroutineScope()
 
   var confirmingLogOut by remember { mutableStateOf(false) }
+  var isLoggingOut by remember { mutableStateOf(false) }
+  var confirmingUnsynced by remember { mutableStateOf(false) }
   var confirmingDelete by remember { mutableStateOf(false) }
   var isDeletingAccount by remember { mutableStateOf(false) }
   var deleteFailed by remember { mutableStateOf(false) }
@@ -158,21 +164,37 @@ fun SettingsScreen(
   // the resets after it must still land, or a later launch would reopen a
   // signed-out member on a "completed" onboarding, or the next member on the
   // last one's garden.
+  suspend fun completeLogOut() {
+    isLoggingOut = true
+    accountStore.logOut()
+    // Resetting onboarding flips `hasCompletedOnboarding`, which AppRoot
+    // observes — together with the now signed-out state it crossfades back
+    // to the welcome flow.
+    onboardingStore.reset()
+    resetAccountState()
+  }
+
+  // Gives unsynced practice and queued listens one last chance to reach the
+  // server while the session's token still works — the journal and the queue
+  // leave with the account. If either still can't land, the member is asked
+  // before anything is lost.
   fun logOut() {
+    if (isLoggingOut) return
+    isLoggingOut = true
     scope.launch {
       withContext(NonCancellable) {
-        // While the token still works: unsynced practice reaches the server
-        // instead of being dropped with the journal. Bounded, so a dead
-        // network delays the log out by seconds at most.
-        flushPracticeJournal()
-        accountStore.logOut()
-        // Resetting onboarding flips `hasCompletedOnboarding`, which AppRoot
-        // observes — together with the now signed-out state it crossfades back
-        // to the welcome flow.
-        onboardingStore.reset()
-        resetAccountState()
+        if (flushBeforeLogOut()) {
+          completeLogOut()
+        } else {
+          isLoggingOut = false
+          confirmingUnsynced = true
+        }
       }
     }
+  }
+
+  fun logOutAnyway() {
+    scope.launch { withContext(NonCancellable) { completeLogOut() } }
   }
 
   fun deleteAccount() {
@@ -242,7 +264,8 @@ fun SettingsScreen(
           SettingsRow(
             title = stringResource(R.string.settings_log_out),
             icon = ProfileIcons.LogOut,
-            onClick = { confirmingLogOut = true },
+            accessory = if (isLoggingOut) SettingsAccessory.Progress else SettingsAccessory.None,
+            onClick = { if (!isLoggingOut) confirmingLogOut = true },
           )
           SettingsRow(
             title = stringResource(R.string.settings_delete_account),
@@ -276,6 +299,23 @@ fun SettingsScreen(
       ),
       onDismissRequest = { confirmingLogOut = false },
     )
+  }
+
+  // Logging out empties this phone's journal and listen queue, so practice
+  // the server hasn't received yet would be lost — the member decides,
+  // knowing that. A title alone, as iOS's alert has no message.
+  if (confirmingUnsynced) {
+    DeepDialog(
+      title = stringResource(R.string.settings_unsynced_title),
+      actions = listOf(
+        DialogAction(stringResource(R.string.settings_log_out_stay)) { confirmingUnsynced = false },
+        DialogAction(stringResource(R.string.settings_unsynced_log_out), destructive = true) {
+          confirmingUnsynced = false
+          logOutAnyway()
+        },
+      ),
+      onDismissRequest = { confirmingUnsynced = false },
+    ) {}
   }
 
   if (confirmingDelete) {
@@ -428,7 +468,7 @@ private fun SettingsScreenPreview() {
         onboardingStore = MockOnboardingProgressStore.fresh,
         language = AppLanguage.English,
         reminder = DailyReminder(isEnabled = true, hour = 21, minute = 0),
-        flushPracticeJournal = {},
+        flushBeforeLogOut = { true },
         resetAccountState = {},
         onOpenLanguage = {},
         onOpenReminder = {},
@@ -448,7 +488,7 @@ private fun SettingsScreenSignedOutPreview() {
         onboardingStore = MockOnboardingProgressStore.fresh,
         language = AppLanguage.Thai,
         reminder = DailyReminder.initial,
-        flushPracticeJournal = {},
+        flushBeforeLogOut = { true },
         resetAccountState = {},
         onOpenLanguage = {},
         onOpenReminder = {},

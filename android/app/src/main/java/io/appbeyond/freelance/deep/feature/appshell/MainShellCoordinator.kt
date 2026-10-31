@@ -214,7 +214,7 @@ data class PreferenceActions(
  *   Playing swap into their subtitle line; announced to TalkBack here, once.
  * @param soundLibrary DEEP Sound's shelves and lyrics.
  * @param playlistStore the member's saved sounds — the You tab's root.
- * @param flushPracticeJournal / resetAccountState the rewards side of
+ * @param flushBeforeLogOut / resetAccountState the rewards side of
  *   Settings' log out and account deletion, handed straight through.
  * @param homeContent / gardenContent the Home and Mind Garden roots. Slots, so
  *   the shell carries none of their stores; each is handed the same
@@ -243,7 +243,7 @@ fun MainShellCoordinator(
   listenReporter: ListenReporting,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
-  flushPracticeJournal: suspend () -> Unit,
+  flushBeforeLogOut: suspend () -> Boolean,
   resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   onBeginDeepSession: (DeepSession) -> Unit = {},
@@ -447,7 +447,7 @@ fun MainShellCoordinator(
                       onboardingStore = onboardingStore,
                       language = language,
                       reminder = reminderState.reminder,
-                      flushPracticeJournal = flushPracticeJournal,
+                      flushBeforeLogOut = flushBeforeLogOut,
                       resetAccountState = resetAccountState,
                       onOpenLanguage = { push(DeepTab.You, DeepRoute.Language) },
                       onOpenReminder = { push(DeepTab.You, DeepRoute.DailyReminder) },
@@ -702,7 +702,7 @@ private fun MainShellCoordinatorPreview() {
       listenReporter = remember { MockListenReporter() },
       soundLibrary = remember { MockSoundLibrary.loaded },
       playlistStore = MockPlaylistStore.sample,
-      flushPracticeJournal = {},
+      flushBeforeLogOut = { true },
       resetAccountState = {},
       homeContent = { TabPlaceholderScreen(DeepTab.Home) },
     )

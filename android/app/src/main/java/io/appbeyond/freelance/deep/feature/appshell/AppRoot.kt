@@ -141,7 +141,7 @@ private object Handoff {
  *   which covers both a restored launch and a fresh sign-in or sign-up — and
  *   on every process foreground while it stays composed: iOS's `bootstrap()`,
  *   `.flow → .main` and scene-phase `.active` seams in one place.
- * @param flushPracticeJournal / resetAccountState the rewards side of every
+ * @param flushBeforeLogOut / resetAccountState the rewards side of every
  *   exit, handed on to Settings, and the reset is also run here when the
  *   server rejects a restored session.
  * @param reminderStore / preferences the daily reminder and the language
@@ -168,7 +168,7 @@ fun AppRoot(
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
   syncRewards: () -> Unit,
-  flushPracticeJournal: suspend () -> Unit,
+  flushBeforeLogOut: suspend () -> Boolean,
   resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
   flowContent: @Composable () -> Unit = {},
@@ -328,7 +328,7 @@ fun AppRoot(
               listenReporter = listenReporter,
               soundLibrary = soundLibrary,
               playlistStore = playlistStore,
-              flushPracticeJournal = flushPracticeJournal,
+              flushBeforeLogOut = flushBeforeLogOut,
               resetAccountState = resetAccountState,
               homeContent = homeContent,
               gardenContent = gardenContent,
@@ -446,7 +446,7 @@ private fun AppRootPreview() {
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
-    flushPracticeJournal = {},
+    flushBeforeLogOut = { true },
     resetAccountState = {},
     homeContent = { TabPlaceholderScreen(DeepTab.Home) },
   )
@@ -470,7 +470,7 @@ private fun AppRootFirstLaunchPreview() {
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
-    flushPracticeJournal = {},
+    flushBeforeLogOut = { true },
     resetAccountState = {},
     flowContent = { TabPlaceholderScreen(DeepTab.Compassion) },
   )
