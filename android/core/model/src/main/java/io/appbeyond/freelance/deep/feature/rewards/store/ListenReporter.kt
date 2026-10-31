@@ -296,8 +296,10 @@ class ListenReporter(
       flushJob?.also { flushAgain = true } ?: scope.launch(start = CoroutineStart.LAZY) {
         val self = coroutineContext.job
         try {
-          runFlush()
+          runFlush(self)
         } finally {
+          // Only for a flush that ended abnormally (cancelled, or failed): one
+          // that finishes normally lets go in `runFlush`, under the lock.
           synchronized(lock) { if (flushJob === self) flushJob = null }
         }
       }.also {
@@ -309,13 +311,25 @@ class ListenReporter(
     return job
   }
 
-  private suspend fun runFlush() {
+  private suspend fun runFlush(self: Job) {
     try {
       restore()
-      do {
+      while (true) {
         synchronized(lock) { flushAgain = false }
         drain()
-      } while (synchronized(lock) { flushAgain && pending.isNotEmpty() })
+        // Deciding to stop and letting go of [flushJob] happen under one lock:
+        // a `record()` arriving after this sees no running flush and starts
+        // its own, rather than handing its listen to one that has already
+        // decided it is done (which would leave it until the next foreground,
+        // past its notice window, and send log out to the unsynced alert
+        // without a try).
+        val done = synchronized(lock) {
+          if (flushAgain && pending.isNotEmpty()) return@synchronized false
+          if (flushJob === self) flushJob = null
+          true
+        }
+        if (done) return
+      }
     } catch (cancelled: CancellationException) {
       throw cancelled
     } catch (_: Exception) {
