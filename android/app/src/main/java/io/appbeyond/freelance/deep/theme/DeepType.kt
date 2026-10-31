@@ -76,8 +76,8 @@ private val Sans = FontFamily(
  *
  * Standing in for SF Rounded, which has no Android equivalent. Nunito is the
  * closest free face with the weight range the three numeral tokens need. This is
- * a judgement call, flagged in ANDROID_ROADMAP.md as open until it has been seen
- * beside the iOS build.
+ * a judgement call, open until it has been seen beside the iOS build: Nunito has
+ * no tabular figures, so the session numeral shifts width (issue #71).
  */
 private val Rounded = FontFamily(
   Font(
