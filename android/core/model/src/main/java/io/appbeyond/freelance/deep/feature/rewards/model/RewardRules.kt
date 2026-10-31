@@ -15,6 +15,11 @@ object RewardRules {
    * promises a fifth heart the practice sync will not deliver. */
   const val deepSessionDailyLimit = 4
 
+  /** How many finished tracks can earn per day (`TRACK_COMPLETED.perDay`). The
+   * server sends the live figure with every listen; this is only the fallback
+   * when it doesn't. */
+  const val trackDailyLimit = 3
+
   /** The most hearts one day can hand over, across every award kind
    * (`DAILY_HEARTS_CAP`). A ceiling, not a target: the day fills up and then
    * rests, so practice never turns into farming. */

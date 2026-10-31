@@ -14,7 +14,6 @@ import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.config.AppConfig
 import io.appbeyond.freelance.deep.feature.compassion.store.HeartLedger
 import io.appbeyond.freelance.deep.feature.deepsound.model.ListenRules
-import io.appbeyond.freelance.deep.feature.deepsound.player.ApiTrackListenReporter
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.TrackListenReporting
 import io.appbeyond.freelance.deep.feature.deepsound.store.ApiSoundLibrary
@@ -40,6 +39,7 @@ import io.appbeyond.freelance.deep.feature.rewards.PauseNightRewards
 import io.appbeyond.freelance.deep.feature.rewards.PracticeRewards
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.store.ContinuityWitness
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporter
 import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
 import io.appbeyond.freelance.deep.feature.reminders.AlarmReminderScheduler
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
@@ -85,8 +85,8 @@ class AppDependencies(context: Context) {
 
   /**
    * Process-lifetime scope for work that must outlive any single screen —
-   * [onboardingStore]'s eager DataStore load, the fire-and-forget listen
-   * reports, the rewards sync, gifts of hearts, and the stores' writes.
+   * [onboardingStore]'s eager DataStore load, the queued listen reports, the
+   * rewards sync, gifts of hearts, and the stores' writes.
    * `SupervisorJob` so a failure in one can never cancel another.
    */
   private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -321,18 +321,36 @@ class AppDependencies(context: Context) {
     scope = appScope,
   )
 
+  private val soundListens: SoundListensService = retrofit.create(SoundListensService::class.java)
+
   /**
-   * Told by the service when a track plays through to its natural end. Rides
-   * the one Retrofit, so the report carries the member's timezone and the award
-   * lands on their local day, as iOS's `reportListen` does; the award it earns
-   * is folded and handed to [ingestAwards].
+   * Finished tracks, queued durably in `deep.sound.pendingListens` and
+   * reported with their finish time, so a dropped connection never costs the
+   * heart; the rules themselves live server-side. Each finish keeps its day
+   * in [practiceJournal] first, whatever the server says. Rides the one
+   * Retrofit, so the report carries the member's timezone and the award lands
+   * on their local day; the grant goes to [ingestAwards]. Its notices are what
+   * the mini player and Now Playing say.
    */
-  val trackListens: TrackListenReporting = ApiTrackListenReporter(
-    service = retrofit.create(SoundListensService::class.java),
+  val listenReporter: ListenReporter = ListenReporter(
+    report = soundListens::reportListen,
+    recordActivity = practiceJournal::recordTrackDay,
+    queueBlob = DataStoreBlobStore(context.applicationContext, "deep.sound.pendingListens"),
+    stampBlob = DataStoreBlobStore(context.applicationContext, "deep.sound.dayCompleteNoticed"),
     scope = appScope,
-    currentAccountId = { accountStore.account.value?.id },
-    ingestAwards = ingestAwards,
-  )
+    clock = clock,
+    zone = zone,
+  ).also { reporter -> reporter.awardSink = ingestAwards }
+
+  /**
+   * Told by the service when a track plays through to its natural end. The
+   * finish is stamped now, on the caller's thread, and queued on [appScope] —
+   * so a listen recorded as the service winds down still lands on disk.
+   */
+  val trackListens: TrackListenReporting = TrackListenReporting { trackId ->
+    val finishedAt = clock.instant()
+    launchQuietly("listen record") { listenReporter.record(trackId, finishedAt) }
+  }
 
   // Week five: giving, the daily reminder, and the language picker (above).
 
@@ -466,20 +484,23 @@ class AppDependencies(context: Context) {
   private val isSignedIn: Boolean get() = accountStore.account.value != null
 
   /**
-   * Pulls the garden (and the wallet riding it) and syncs the practice
-   * journal — pushing the offline queue, then merging sessions recorded on
-   * other installs — in parallel on [appScope]. A no-op while signed out.
+   * Pulls the garden (and the wallet riding it), syncs the practice journal —
+   * pushing the offline queue, then merging sessions recorded on other
+   * installs — and offers the queued listens, in parallel on [appScope]. A
+   * no-op while signed out.
    *
    * iOS runs this from three seams in `AppRootView`: `bootstrap()`, the
    * `.flow → .main` phase change, and every return to `.active`. Here
    * `AppRoot` calls it as the shell is composed (launch and sign-in alike)
-   * and on every process foreground after that. Both stores are
-   * single-flight, so an overlapping call is harmless.
+   * and on every process foreground after that. All three are single-flight,
+   * so an overlapping call is harmless.
    */
   fun syncRewards() {
     if (!isSignedIn) return
     launchQuietly("garden refresh") { gardenStore.refresh() }
     launchQuietly("practice sync") { practiceJournal.refresh() }
+    // Listens finished offline, or cut off by a kill, go out here.
+    launchQuietly("listen flush") { listenReporter.flush() }
   }
 
   /**
@@ -504,9 +525,10 @@ class AppDependencies(context: Context) {
 
   /**
    * Forgets everything the account's stores hold for the signed-out member —
-   * journal, garden, hearts, the continuity day — on disk and in memory, so
-   * the next member never inherits any of it, and switches the daily reminder
-   * off and back to its default time (iOS only switches it off). Every exit
+   * journal, queued listens, garden, hearts, the continuity day — on disk and
+   * in memory, so the next member never inherits any of it, and switches the
+   * daily reminder off and back to its default time (iOS only switches it
+   * off). Every exit
    * calls this: Settings' log out and account deletion, the server ending a session
    * ([accountStore]'s involuntary sign-out), `AppRoot`'s rejected launch
    * restore, and the account watcher below. Idempotent, so the overlap is
@@ -517,6 +539,9 @@ class AppDependencies(context: Context) {
   suspend fun resetAccountState() {
     withContext(NonCancellable) {
       practiceJournal.reset()
+      // Queued listens and today's notices belong to the account: a report
+      // still in flight is dropped as it lands, never credited to the next.
+      listenReporter.reset()
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
       continuityWitness.resetLocalState()
@@ -550,6 +575,7 @@ class AppDependencies(context: Context) {
     launchQuietly("garden restore") { gardenStore.restore() }
     launchQuietly("practice restore") { practiceJournal.restore() }
     launchQuietly("continuity restore") { continuityWitness.restore() }
+    launchQuietly("listen queue restore") { listenReporter.restore() }
 
     // The reminder window rolls forward on every return to the app, and
     // rebuilds as the app leaves it so a practice finished just now quiets

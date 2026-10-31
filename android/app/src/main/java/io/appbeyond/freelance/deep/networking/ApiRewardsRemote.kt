@@ -10,8 +10,9 @@ import java.util.UUID
 /**
  * [RewardsRemote] over deep-api — the Android twin of `APIRewardsRemote` in
  * `RewardsRemote.swift`, minus `reportListen` and `claimPauseAward`: on Android
- * each award producer owns its own call (the listen report lives with the
- * player, `ApiTrackListenReporter`) and hands its folded grant to the shared
+ * each award producer owns its own call (the listen report is
+ * `SoundListensService.reportListen`, behind `ListenReporter`'s durable
+ * queue) and hands its folded grant to the shared
  * ingest, so this seam stays the garden-and-wallet one `GardenStore` and
  * `HeartLedger` need.
  *

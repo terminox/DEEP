@@ -8,6 +8,8 @@ import io.appbeyond.freelance.deep.feature.rewards.model.AwardCap
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardKind
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardOutcome
+import io.appbeyond.freelance.deep.feature.rewards.model.ListenOutcome
+import io.appbeyond.freelance.deep.feature.rewards.model.ListenTally
 import io.appbeyond.freelance.deep.feature.rewards.model.PlantProgress
 import io.appbeyond.freelance.deep.feature.rewards.model.RewardRules
 import io.appbeyond.freelance.deep.feature.rewards.model.WalletSummary
@@ -157,13 +159,24 @@ data class PlantProgressDto(
   val currentStageIndex: Int? = null,
 )
 
+/** The day's track-heart tally after a listen (`listens` in `routes/sound.ts`). */
+@Serializable
+data class ListenTallyDto(
+  val dayKey: String,
+  val earned: Int,
+  val perDay: Int,
+)
+
 /**
- * A single-award response — `POST /me/sound/listens` today, and the pause
- * claim when it lands: the outcome plus the shared `{ wallet, plant }` tail.
+ * `POST /me/sound/listens`: the outcome, the day's tally, and the shared
+ * `{ wallet, plant }` tail. [award] and [listens] are both null for a listen
+ * the server would not place (older than 48h, or too far ahead) — the track
+ * still exists, so that is an answer, not an error.
  */
 @Serializable
-data class AwardResponseDto(
+data class ListenResponseDto(
   val award: AwardOutcomeDto? = null,
+  val listens: ListenTallyDto? = null,
   val wallet: WalletDto? = null,
   val plant: PlantProgressDto? = null,
 )
@@ -262,5 +275,14 @@ fun foldAwards(
   plant = plant?.toDomain(),
 )
 
-/** A single-award response folded into its grant; null when it carried nothing. */
-fun AwardResponseDto.toGrant(): AwardGrant? = foldAwards(listOfNotNull(award), wallet, plant)
+/**
+ * Ported from `APIRewardsRemote.reportListen`: judged when the server placed
+ * the listen on a day, the cap reason read as a known one or null.
+ */
+fun ListenResponseDto.toDomain(): ListenOutcome = ListenOutcome(
+  judged = award != null,
+  granted = award?.granted == true,
+  cappedBy = AwardCap.fromWire(award?.cappedBy),
+  tally = listens?.let { ListenTally(dayKey = it.dayKey, earned = it.earned, perDay = it.perDay) },
+  grant = foldAwards(listOfNotNull(award), wallet, plant),
+)
