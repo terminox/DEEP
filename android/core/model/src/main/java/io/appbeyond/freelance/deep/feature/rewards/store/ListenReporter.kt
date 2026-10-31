@@ -225,8 +225,14 @@ class ListenReporter(
   // MARK: - ListenReporting
 
   override suspend fun record(trackId: String, finishedAt: Instant) {
+    // The account this listen belongs to. A [reset] while it is being written
+    // down — a track ending as the member logs out — means it belongs to an
+    // account that has left: it must not reach the next one's queue, nor its
+    // journal.
+    val stamp = synchronized(lock) { generation }
     restore()
     withContext(NonCancellable) {
+      if (!isCurrent(stamp)) return@withContext
       // A track played to its end keeps the day, whatever the server says
       // about the heart.
       recordActivity(finishedAt)
@@ -234,12 +240,10 @@ class ListenReporter(
       // track that day has nothing to earn, so it isn't queued twice.
       val day = finishedAt.localDate()
       val added = synchronized(lock) {
-        if (pending.any { it.trackId == trackId && it.completedAt.localDate() == day }) {
-          false
-        } else {
-          pending = pending + PendingListen(UUID.randomUUID().toString(), trackId, finishedAt)
-          true
-        }
+        if (generation != stamp) return@synchronized false
+        if (pending.any { it.trackId == trackId && it.completedAt.localDate() == day }) return@synchronized false
+        pending = pending + PendingListen(UUID.randomUUID().toString(), trackId, finishedAt)
+        true
       }
       if (added) persistQueue()
     }

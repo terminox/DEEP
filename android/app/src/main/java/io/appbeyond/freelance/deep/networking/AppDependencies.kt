@@ -347,10 +347,19 @@ class AppDependencies(context: Context) {
    * Told by the service when a track plays through to its natural end. The
    * finish is stamped now, on the caller's thread, and queued on [appScope] —
    * so a listen recorded as the service winds down still lands on disk.
+   *
+   * Bound to the member who was listening, as the pause's `activitySink` is
+   * to the signed-in check: a listen whose member has signed out (or been
+   * replaced) by the time it is written down is dropped, never queued for —
+   * or kept in the journal of — the next account. A sign-out landing while
+   * it is being written is caught by the reporter's own generation stamp.
    */
   val trackListens: TrackListenReporting = TrackListenReporting { trackId ->
     val finishedAt = clock.instant()
-    launchQuietly("listen record") { listenReporter.record(trackId, finishedAt) }
+    val listener = accountStore.account.value?.id ?: return@TrackListenReporting
+    launchQuietly("listen record") {
+      if (accountStore.account.value?.id == listener) listenReporter.record(trackId, finishedAt)
+    }
   }
 
   // Week five: giving, the daily reminder, and the language picker (above).
@@ -543,10 +552,12 @@ class AppDependencies(context: Context) {
    */
   suspend fun resetAccountState() {
     withContext(NonCancellable) {
-      practiceJournal.reset()
       // Queued listens and today's notices belong to the account: a report
       // still in flight is dropped as it lands, never credited to the next.
+      // Before the journal, so a listen being written down as this runs sees
+      // the reset and keeps its day out of the journal about to be emptied.
       listenReporter.reset()
+      practiceJournal.reset()
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
       continuityWitness.resetLocalState()

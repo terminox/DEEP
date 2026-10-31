@@ -370,6 +370,36 @@ class ListenReporterTest {
   }
 
   @Test
+  @DisplayName("A track ending as the member logs out is never queued for the next account")
+  fun resetWhileRecordingDropsTheListen() = runTest {
+    val activityGate = CompletableDeferred<Unit>()
+    val server = ListenServer()
+    val queueBlob = InMemoryBlobStore()
+    val reporter = ListenReporter(
+      report = server::report,
+      // The journal's disk write, still in flight when the log out lands.
+      recordActivity = { activityGate.await() },
+      queueBlob = queueBlob,
+      stampBlob = InMemoryBlobStore(),
+      scope = backgroundScope,
+      clock = TestClock(morning),
+      zone = ZoneOffset.UTC,
+    )
+    reporter.restore()
+
+    val recording = launch { reporter.record("rain", morning) }
+    runCurrent()
+    reporter.reset()
+    activityGate.complete(Unit)
+    recording.join()
+    reporter.flush()
+
+    assertTrue(reporter.queued.isEmpty())
+    assertNull(queueBlob.value, "Nothing reaches the disk the next account reads.")
+    assertTrue(server.calls.isEmpty(), "Nothing is reported under the next account's token.")
+  }
+
+  @Test
   @DisplayName("A reset mid-request drops the signed-out account's answer")
   fun resetDropsInFlightAnswer() = runTest {
     val rig = rig()
