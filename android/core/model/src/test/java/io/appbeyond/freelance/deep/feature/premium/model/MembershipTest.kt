@@ -52,26 +52,34 @@ class MembershipTest {
     assertEquals(SubscriptionManagement.GooglePlay("deep.pro.yearly"), management)
     assertEquals(
       "https://play.google.com/store/account/subscriptions?sku=deep.pro.yearly&package=io.appbeyond.freelance.deep",
-      management.url("io.appbeyond.freelance.deep"),
+      management?.url("io.appbeyond.freelance.deep"),
     )
   }
 
   @Test
-  @DisplayName("A purchase made elsewhere is managed at the page RevenueCat names")
-  fun elsewhere() {
+  @DisplayName("An App Store purchase is managed on Apple's page, whatever RevenueCat names")
+  fun appStore() {
     val management = SubscriptionManagement.of(
       store = "APP_STORE",
       productId = "deep.pro.yearly",
-      managementUrl = "https://apps.apple.com/account/subscriptions",
+      managementUrl = "https://billing.example.test/manage",
     )
-    assertEquals("https://apps.apple.com/account/subscriptions", management.url("io.appbeyond.freelance.deep"))
+    assertEquals(SubscriptionManagement.APP_STORE_SUBSCRIPTIONS, management?.url("io.appbeyond.freelance.deep"))
   }
 
   @Test
-  @DisplayName("Elsewhere with no page named falls back to Play's subscriptions")
-  fun elsewhereWithoutPage() {
-    val management = SubscriptionManagement.of(store = "PROMOTIONAL", productId = "deep.pro.yearly", managementUrl = null)
-    assertEquals(SubscriptionManagement.PLAY_SUBSCRIPTIONS, management.url("io.appbeyond.freelance.deep"))
+  @DisplayName("A granted membership has nothing to manage")
+  fun promotional() {
+    assertNull(SubscriptionManagement.of(store = "PROMOTIONAL", productId = "deep.pro.yearly", managementUrl = null))
+  }
+
+  @Test
+  @DisplayName("Any other store goes to the page RevenueCat names, else Play's subscriptions")
+  fun elsewhere() {
+    val named = SubscriptionManagement.of(store = "STRIPE", productId = "x", managementUrl = "https://billing.example.test/manage")
+    assertEquals("https://billing.example.test/manage", named?.url("io.appbeyond.freelance.deep"))
+    val unnamed = SubscriptionManagement.of(store = "STRIPE", productId = "x", managementUrl = null)
+    assertEquals(SubscriptionManagement.PLAY_SUBSCRIPTIONS, unnamed?.url("io.appbeyond.freelance.deep"))
   }
 
   @Test
@@ -96,7 +104,15 @@ class MembershipTest {
       storeManagement = SubscriptionManagement.GooglePlay(null),
       server = ServerEntitlement(isActive = true, store = "PROMOTIONAL"),
     )
-    assertEquals(SubscriptionManagement.PLAY_SUBSCRIPTIONS, granted.url("io.appbeyond.freelance.deep"))
+    assertNull(granted)
+
+    // A build with no store: the server's word is all there is.
+    val iPhone = SubscriptionManagement.forMember(
+      store = SubscriptionState.None,
+      storeManagement = null,
+      server = ServerEntitlement(isActive = true, store = "APP_STORE"),
+    )
+    assertEquals(SubscriptionManagement.Web(SubscriptionManagement.APP_STORE_SUBSCRIPTIONS), iPhone)
   }
 
   // MARK: - Store cache

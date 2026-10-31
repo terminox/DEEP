@@ -267,10 +267,13 @@ fun SettingsScreen(
     }
   }
 
-  /** Google Play's page for a Play purchase; the page RevenueCat names for anything bought elsewhere. */
+  // Google Play's page for a Play purchase, Apple's for one made on an
+  // iPhone, the page RevenueCat names for anything else — and nothing at all
+  // for a granted membership, which has no billing to manage.
+  val management = SubscriptionManagement.forMember(storeStatus, storeManagement, serverEntitlement)
   fun manageSubscription() {
-    val management = SubscriptionManagement.forMember(storeStatus, storeManagement, serverEntitlement)
-    runCatching { uriHandler.openUri(management.url(packageName)) }
+    val target = management ?: return
+    runCatching { uriHandler.openUri(target.url(packageName)) }
   }
 
   fun restorePurchases() {
@@ -343,7 +346,7 @@ fun SettingsScreen(
           // "Upgrade" above a chip still reading "Checking…", and offer a
           // paying member what they already have.
           onUpgrade = onUpgrade.takeIf { storeStatus == SubscriptionState.None && !hasPremium },
-          onManage = if (hasPremium) ::manageSubscription else null,
+          onManage = if (hasPremium && management != null) ::manageSubscription else null,
           restorePhase = restorePhase,
           onRestore = ::restorePurchases,
         )

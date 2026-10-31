@@ -55,7 +55,7 @@ sealed interface SubscriptionManagement {
    */
   data class GooglePlay(val subscriptionId: String?) : SubscriptionManagement
 
-  /** Bought somewhere else (the App Store, the web): the page RevenueCat names for it. */
+  /** Bought somewhere else (the App Store, the web): the page that manages it. */
   data class Web(val url: String) : SubscriptionManagement
 
   /** The address to open; [packageName] is this build's application id. */
@@ -73,35 +73,47 @@ sealed interface SubscriptionManagement {
     /** Play's own list of the account's subscriptions. */
     const val PLAY_SUBSCRIPTIONS = "https://play.google.com/store/account/subscriptions"
 
-    /** The `store` value RevenueCat (and deep-api) give a Google Play purchase. */
+    /** Apple's own page for the account's subscriptions — a membership bought on an iPhone. */
+    const val APP_STORE_SUBSCRIPTIONS = "https://apps.apple.com/account/subscriptions"
+
+    /** The `store` values RevenueCat (and deep-api) give each kind of purchase. */
     const val PLAY_STORE = "PLAY_STORE"
+    const val APP_STORE = "APP_STORE"
+    const val MAC_APP_STORE = "MAC_APP_STORE"
+
+    /** A membership granted rather than bought — nothing anywhere to manage. */
+    const val PROMOTIONAL = "PROMOTIONAL"
 
     /**
-     * The rule: a Play purchase is managed on Play's page for that
-     * subscription; anything else at the URL RevenueCat names for it, when it
-     * names one; and failing both, Play's general subscriptions page.
+     * The rule, by where the membership came from: a Play purchase on Play's
+     * page for that subscription; an App Store one on Apple's page (a member
+     * who bought on an iPhone and signs in here); a granted one nowhere —
+     * null, and Settings offers no Manage row; anything else at the URL
+     * RevenueCat names for it, and failing that Play's general page.
      *
      * @param store the entitlement's store, as RevenueCat or the server spells it.
      * @param productId the entitlement's product, in either id shape.
      * @param managementUrl RevenueCat's `managementURL`, if it gave one.
      */
-    fun of(store: String?, productId: String?, managementUrl: String?): SubscriptionManagement = when {
-      store == PLAY_STORE -> GooglePlay(productId?.let(DeepProduct::subscriptionId))
-      managementUrl != null -> Web(managementUrl)
-      else -> GooglePlay(null)
+    fun of(store: String?, productId: String?, managementUrl: String?): SubscriptionManagement? = when (store) {
+      PLAY_STORE -> GooglePlay(productId?.let(DeepProduct::subscriptionId))
+      APP_STORE, MAC_APP_STORE -> Web(APP_STORE_SUBSCRIPTIONS)
+      PROMOTIONAL -> null
+      else -> managementUrl?.let(::Web) ?: GooglePlay(null)
     }
 
     /**
-     * Where Settings sends a member: the store's own answer when the store
-     * sees the membership; otherwise — a membership only the server knows
-     * about (granted, or bought on another platform) — the server's account
-     * of where it was bought, still offered RevenueCat's page.
+     * Where Settings sends a member, or null when there is nothing to manage:
+     * the store's own answer when the store sees the membership; otherwise —
+     * a membership only the server knows about (granted, bought on another
+     * platform, or any membership in a build with no store) — the server's
+     * account of where it came from, still offered RevenueCat's page.
      */
     fun forMember(
       store: SubscriptionState,
-      storeManagement: SubscriptionManagement,
+      storeManagement: SubscriptionManagement?,
       server: ServerEntitlement?,
-    ): SubscriptionManagement {
+    ): SubscriptionManagement? {
       if (store is SubscriptionState.Subscribed || server?.isActive != true) return storeManagement
       return of(server.store, server.productId, (storeManagement as? Web)?.url)
     }

@@ -106,8 +106,8 @@ class RevenueCatSubscriptionStore(
   private val _plans = MutableStateFlow<List<SubscriptionPlan>>(emptyList())
   override val plans: StateFlow<List<SubscriptionPlan>> = _plans.asStateFlow()
 
-  private val _management = MutableStateFlow<SubscriptionManagement>(SubscriptionManagement.GooglePlay(null))
-  override val management: StateFlow<SubscriptionManagement> = _management.asStateFlow()
+  private val _management = MutableStateFlow<SubscriptionManagement?>(SubscriptionManagement.GooglePlay(null))
+  override val management: StateFlow<SubscriptionManagement?> = _management.asStateFlow()
 
   /** The configured SDK, or null when there is no key. Every call awaits it. */
   private val ready = CompletableDeferred<Purchases?>()

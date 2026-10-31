@@ -38,9 +38,10 @@ interface SubscriptionStore {
 
   /**
    * Where this member manages DEEP Premium — told as plainly as Settings
-   * needs it, so no screen ever touches the purchasing SDK's own types.
+   * needs it, so no screen ever touches the purchasing SDK's own types. Null
+   * when there is nothing to manage (a granted membership).
    */
-  val management: StateFlow<SubscriptionManagement>
+  val management: StateFlow<SubscriptionManagement?>
 
   /** Fetches the plans from the store. Safe to call repeatedly. */
   suspend fun loadPlans()
@@ -89,8 +90,8 @@ class PreviewSubscriptionStore(
 ) : SubscriptionStore {
   override val status: StateFlow<SubscriptionState> = MutableStateFlow(status).asStateFlow()
   override val plans: StateFlow<List<SubscriptionPlan>> = MutableStateFlow(emptyList<SubscriptionPlan>()).asStateFlow()
-  override val management: StateFlow<SubscriptionManagement> =
-    MutableStateFlow<SubscriptionManagement>(SubscriptionManagement.GooglePlay(null)).asStateFlow()
+  override val management: StateFlow<SubscriptionManagement?> =
+    MutableStateFlow<SubscriptionManagement?>(SubscriptionManagement.GooglePlay(null)).asStateFlow()
 
   override suspend fun loadPlans() = Unit
 

@@ -52,8 +52,8 @@ class MockSubscriptionStore(
   private val _plans = MutableStateFlow(if (loading == Loading.Succeeds) plans else emptyList())
   override val plans: StateFlow<List<SubscriptionPlan>> = _plans.asStateFlow()
 
-  override val management: StateFlow<SubscriptionManagement> =
-    MutableStateFlow<SubscriptionManagement>(SubscriptionManagement.GooglePlay(DeepProduct.YEARLY)).asStateFlow()
+  override val management: StateFlow<SubscriptionManagement?> =
+    MutableStateFlow<SubscriptionManagement?>(SubscriptionManagement.GooglePlay(DeepProduct.YEARLY)).asStateFlow()
 
   override suspend fun loadPlans() {
     when (loading) {
