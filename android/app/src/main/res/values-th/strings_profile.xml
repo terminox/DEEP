@@ -24,6 +24,7 @@
   <string name="settings_restoring">กำลังกู้คืน…</string>
   <string name="settings_restored">กู้คืนแล้ว</string> <!-- no iOS Thai; from "กู้คืนแล้ว ยินดีต้อนรับกลับมา" -->
   <string name="settings_restore_failed">เชื่อมต่อ Google Play ไม่ได้ ลองอีกครั้งในอีกสักครู่</string> <!-- iOS's App Store line, Google Play here -->
+  <string name="settings_section_legal">ข้อกำหนดและนโยบาย</string>
   <string name="settings_section_account">บัญชี</string> <!-- no iOS Thai -->
   <string name="settings_log_out">ออกจากระบบ</string>
   <string name="settings_delete_account">ลบบัญชี</string> <!-- no iOS Thai -->
