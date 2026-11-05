@@ -54,7 +54,7 @@ val revenueCatTestStoreKey = "test_riWvcLkFtmCvaxzRrfVhYDSItVV"
 // epoch seconds instead, which doesn't fit: versionCode is a signed 32-bit int
 // that a store track never lets decrease. Weeks 1 to 7 shipped codes 1 to 7,
 // all below 10000.
-val deepVersion = "1.0.0"
+val deepVersion = "1.1.0"
 val deepVersionCode: Int =
   deepVersion.split('.').map(String::toInt).let { (major, minor, patch) ->
     require(minor < 100 && patch < 100) { "minor and patch must stay below 100: $deepVersion" }
@@ -92,7 +92,9 @@ android {
   compileSdk = 37
 
   defaultConfig {
-    applicationId = "io.appbeyond.freelance.deep"
+    // Permanent: Google Play never lets this change after the first upload. It
+    // is in the client's name; the code `namespace` above isn't public.
+    applicationId = "space.deeppeace.app"
     minSdk = 26
     targetSdk = 36
 

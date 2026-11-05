@@ -28,11 +28,11 @@ GRADLE_FILE="$ANDROID/app/build.gradle.kts"
 KEYSTORE_PROPS="$ANDROID/keystore.properties"
 LOG_DIR="$ANDROID/build/release-logs"
 DIST="$ANDROID/dist"
-PACKAGE="io.appbeyond.freelance.deep"
+PACKAGE="space.deeppeace.app"
 API_HOST="deep-api-696592457470.asia-southeast1.run.app"
 MIN_SDK=26
 # Play's floor for new apps and updates.
-MIN_TARGET_SDK=35
+MIN_TARGET_SDK=36
 KEYCHAIN_SERVICE="deep-android-release"
 KEYCHAIN_ACCOUNT="deep"
 
@@ -232,6 +232,10 @@ fi
 
 cat "$WORK"/apk/classes*.dex >"$WORK/dex"
 grep -qa "https://$API_HOST" "$WORK/dex" || die "the production API host is not in the code"
+# RevenueCat's Test Store keys read as test_ plus a long token. One in a shipping
+# build would sell nothing real and crash outside debug.
+! grep -qaE 'test_[A-Za-z0-9]{20,}' "$WORK/dex" || die "a RevenueCat Test Store key is in the code"
+ok "no RevenueCat Test Store key"
 # The Dev flavor's host, as build.gradle.kts resolves it, must not have leaked
 # into the production flavor.
 DEV_HOST="$(sed -n 's/^deep\.devApiHost=//p' "$ANDROID/local.properties" 2>/dev/null | tail -1 || true)"
