@@ -236,6 +236,16 @@
         }
       }
     },
+    "Aurora" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ออโรร่า"
+          }
+        }
+      }
+    },
     "Couldn't switch plants — try again in a moment." : {
       "localizations" : {
         "th" : {
@@ -252,6 +262,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "เสร็จสิ้น"
+          }
+        }
+      }
+    },
+    "Experiments" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การทดลอง"
           }
         }
       }
