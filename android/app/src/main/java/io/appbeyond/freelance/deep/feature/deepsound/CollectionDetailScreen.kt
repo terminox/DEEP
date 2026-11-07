@@ -144,9 +144,10 @@ private const val TABULAR_FIGURES = "tnum"
  * one premium answer ([rememberHasPremium]): a locked track wears
  * [PremiumLockBadge] before its length, and Play, Shuffle and a tapped row
  * queue only what [PremiumGate.playable] lets through — never a locked sound,
- * never one whose audio the server withheld. Tapping a locked row does
- * nothing yet; the DEEP Premium invitation it will open arrives with the
- * paywall.
+ * never one whose audio the server withheld. Tapping a locked row — or one
+ * whose audio was withheld — opens the DEEP Premium invitation instead
+ * ([onOpenPaywall]), as do Play and Shuffle when nothing here can play; in a
+ * mixed collection they simply skip what is locked.
  *
  * **Fresh verdicts.** The copy this screen was opened with carries the
  * server's verdicts (and withheld audio) from when it was fetched. Every copy
@@ -167,6 +168,8 @@ private const val TABULAR_FIGURES = "tnum"
  * @param player the shared player — the same one the shell's mini player reads.
  * @param playlistStore where a long-pressed track is saved or removed.
  * @param onBack pops the screen.
+ * @param onOpenPaywall opens the DEEP Premium invitation — the door a locked
+ *   sound opens (iOS's `openPaywall(.lockedSound)`).
  */
 @Composable
 fun CollectionDetailScreen(
@@ -176,6 +179,7 @@ fun CollectionDetailScreen(
   playlistStore: PlaylistStore,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
+  onOpenPaywall: () -> Unit = {},
 ) {
   val playback by player.playback.collectAsStateWithLifecycle()
   val playlist by playlistStore.state.collectAsStateWithLifecycle()
@@ -241,14 +245,20 @@ fun CollectionDetailScreen(
               .padding(horizontal = Dp.edge),
             horizontalArrangement = Arrangement.spacedBy(ACTIONS_SPACING),
           ) {
-            // Both queue only what this listener may hear. Nothing to hear
-            // stays inert until the DEEP Premium invitation exists to open.
+            // Both queue only what this listener may hear, and nothing to
+            // hear opens the invitation.
             SoundActionButton(
               title = stringResource(R.string.deepsound_play),
               icon = SoundIcons.Play,
-              // From the first track that can play, in order — whatever Shuffle was.
+              // From the first track that can play, in order — whatever Shuffle
+              // was. A collection with no tracks at all has nothing to sell
+              // either: it does nothing, as iOS's `tracks.isEmpty` guard.
               onClick = {
-                if (playable.isNotEmpty()) player.play(playable, startIndex = 0, shuffled = false)
+                when {
+                  current.tracks.isEmpty() -> Unit
+                  playable.isNotEmpty() -> player.play(playable, startIndex = 0, shuffled = false)
+                  else -> onOpenPaywall()
+                }
               },
               modifier = Modifier.weight(1f),
             )
@@ -258,7 +268,11 @@ fun CollectionDetailScreen(
               // The whole collection dealt in a random order, from a random
               // track that can play.
               onClick = {
-                if (playable.isNotEmpty()) player.play(playable, startIndex = null, shuffled = true)
+                when {
+                  current.tracks.isEmpty() -> Unit
+                  playable.isNotEmpty() -> player.play(playable, startIndex = null, shuffled = true)
+                  else -> onOpenPaywall()
+                }
               },
               modifier = Modifier.weight(1f),
             )
@@ -276,9 +290,12 @@ fun CollectionDetailScreen(
             isSaved = track.id in savedIds,
             onPlay = {
               // A locked sound — or one whose audio the server withheld — never
-              // starts. From here, keeping the listener's Shuffle.
+              // starts: it opens the invitation instead. From here, keeping
+              // the listener's Shuffle.
               if (PremiumGate.canStart(track, current, hasPremium)) {
                 player.playFrom(playable, playable.indexOfFirst { it.track.id == track.id }.coerceAtLeast(0))
+              } else {
+                onOpenPaywall()
               }
             },
             onToggleSaved = { scope.launch { playlistStore.toggle(track, current) } },

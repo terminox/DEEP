@@ -1,9 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Thai twin of values/strings_premium.xml, ported from iOS Deep/Deep/Localizable.xcstrings.
+  Where iOS names the App Store or the Apple Account, Google Play and the
+  Google Account stand in their place.
 -->
 <resources>
 
   <string name="premium_part_of">เป็นส่วนหนึ่งของ DEEP Premium</string>
+
+  <string name="premium_legal">อ่าน%1$sและ%2$sของเรา</string>
+
+  <string name="paywall_headline">DEEP Premium</string>
+  <string name="paywall_headline_welcome">ยินดีต้อนรับสู่ DEEP Premium</string>
+  <string name="paywall_headline_member">คุณเป็นสมาชิกอยู่แล้ว</string>
+
+  <string name="paywall_subhead_settings">ทุกเสียง ทุกช่วงเวลา — เป็นของคุณทุกเมื่อที่ต้องการ</string>
+  <string name="paywall_subhead_locked_sound">เสียงนี้เป็นส่วนหนึ่งของ DEEP Premium พร้อมกับทุกอย่างในคลังเสียง</string>
+  <string name="paywall_subhead_locked_plant">ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium พร้อมกับทุกเสียงในคลังเสียง</string>
+  <string name="paywall_subhead_onboarding">ทดลองใช้ DEEP Premium ฟรี 7 วัน ยังไม่ต้องตัดสินใจวันนี้</string>
+  <plurals name="paywall_subhead_onboarding_trial">
+    <item quantity="other">ทดลองใช้ DEEP Premium ฟรี %1$d วัน ยังไม่ต้องตัดสินใจวันนี้</item>
+  </plurals>
+  <string name="paywall_subhead_welcome">ทุกอย่างเปิดให้คุณแล้ว</string>
+
+  <string name="paywall_member_yearly">สมาชิก DEEP Premium รายปีของคุณกำลังใช้งานอยู่</string>
+  <string name="paywall_member_monthly">สมาชิก DEEP Premium รายเดือนของคุณกำลังใช้งานอยู่</string>
+  <string name="paywall_member">สมาชิก DEEP Premium ของคุณกำลังใช้งานอยู่</string>
+  <string name="paywall_restored">กู้คืนแล้ว ยินดีต้อนรับกลับมา</string>
+
+  <string name="paywall_benefit_sounds">ทุกเสียงในคลัง</string>
+  <string name="paywall_benefit_plants">ต้นไม้พิเศษสำหรับสวนใจของคุณ</string>
+
+  <plurals name="paywall_days_free">
+    <item quantity="other">ทดลองฟรี %1$d วัน</item>
+  </plurals>
+  <string name="paywall_plan_yearly">รายปี</string>
+  <string name="paywall_plan_monthly">รายเดือน</string>
+  <string name="paywall_per_month">%1$s ต่อเดือน</string>
+  <string name="paywall_billed_monthly">เรียกเก็บรายเดือน</string>
+  <!-- no iOS Thai (iOS leaves the trial note unlocalised); worded as "%d DAYS FREE" is -->
+  <plurals name="paywall_trial_note">
+    <item quantity="other">ทดลองฟรี %1$d วัน</item>
+  </plurals>
+  <string name="paywall_save">ประหยัด %1$s</string>
+  <string name="paywall_unreachable">เราเชื่อมต่อ Google Play ไม่ได้ในตอนนี้</string>
+  <string name="paywall_try_again">ลองอีกครั้ง</string>
+
+  <plurals name="paywall_billing_trial_yearly">
+    <item quantity="other">ฟรี %1$d วัน จากนั้น %2$s ต่อเดือน เรียกเก็บรายปี %3$s\nยกเลิกได้ทุกเมื่อ</item>
+  </plurals>
+  <plurals name="paywall_billing_trial_monthly">
+    <item quantity="other">ฟรี %1$d วัน จากนั้น %2$s ต่อเดือน\nยกเลิกได้ทุกเมื่อ</item>
+  </plurals>
+  <string name="paywall_billing_yearly">%1$s ต่อเดือน เรียกเก็บรายปี %2$s\nยกเลิกได้ทุกเมื่อ</string>
+  <string name="paywall_billing_monthly">%1$s ต่อเดือน\nยกเลิกได้ทุกเมื่อ</string>
+  <string name="paywall_renews">การสมัครสมาชิกจะต่ออายุอัตโนมัติ จนกว่าคุณจะยกเลิกใน Google Play</string>
+  <string name="paywall_restore">กู้คืนการซื้อ</string>
+  <string name="paywall_restoring">กำลังกู้คืน…</string>
+  <string name="paywall_restore_nothing">ไม่มีรายการให้กู้คืนสำหรับบัญชี Google นี้</string>
+  <string name="paywall_restore_failed">เรากู้คืนไม่สำเร็จในตอนนี้ กรุณาลองใหม่อีกครั้งในอีกสักครู่</string>
+
+  <string name="paywall_one_moment">สักครู่</string>
+  <string name="paywall_subscribe">สมัครสมาชิก</string>
+  <plurals name="paywall_start_trial">
+    <item quantity="other">เริ่มทดลองฟรี %1$d วัน</item>
+  </plurals>
+  <string name="paywall_subscribe_hint">สมัครสมาชิก DEEP Premium</string>
+  <string name="paywall_start_trial_hint">เริ่มทดลองใช้ DEEP Premium ฟรี</string>
+  <string name="paywall_everything_open">ทุกอย่างเปิดแล้ว</string>
+  <string name="paywall_done">เสร็จสิ้น</string>
+  <string name="paywall_not_now">ยังไม่ใช่ตอนนี้</string>
+  <string name="paywall_purchase_failed">การชำระเงินไม่สำเร็จ ยังไม่มีการเรียกเก็บเงิน</string>
+  <string name="paywall_purchase_pending">การซื้อนี้ต้องได้รับการอนุมัติก่อนจึงจะเสร็จสมบูรณ์</string>
 
 </resources>

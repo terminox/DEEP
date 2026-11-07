@@ -180,6 +180,9 @@ class AppDependencies(context: Context) {
   /** Set by [useMockSubscriptions]; read once, as [subscriptionStore] is built. */
   @Volatile private var mockSubscriptionsRequested = false
 
+  /** The fixture [useMockSubscriptions] named, if any — `MockSubscriptionStore.variant`. */
+  @Volatile private var mockSubscriptionsVariant: String? = null
+
   /**
    * Debug builds only: the in-memory [MockSubscriptionStore] stands in for
    * RevenueCat, so the whole purchase mechanic — plans, the purchase, the
@@ -187,9 +190,16 @@ class AppDependencies(context: Context) {
    * network (iOS's `-DeepMockSubscriptions` launch argument). Has no effect
    * once the store has been built, and none at all in a release build, where
    * [BuildConfig.DEBUG] is a compile-time `false` and R8 drops the mock.
+   *
+   * @param variant which fixture to stand up — a store still loading, one
+   *   that can't be reached, mixed trials, a failing purchase… (see
+   *   `MockSubscriptionStore.variant`); null is the free plan.
    */
-  fun useMockSubscriptions() {
-    if (BuildConfig.DEBUG) mockSubscriptionsRequested = true
+  fun useMockSubscriptions(variant: String? = null) {
+    if (BuildConfig.DEBUG) {
+      mockSubscriptionsRequested = true
+      mockSubscriptionsVariant = variant
+    }
   }
 
   /**
@@ -199,7 +209,7 @@ class AppDependencies(context: Context) {
    */
   val subscriptionStore: SubscriptionStore by lazy {
     if (BuildConfig.DEBUG && mockSubscriptionsRequested) {
-      MockSubscriptionStore.free
+      MockSubscriptionStore.variant(mockSubscriptionsVariant)
     } else {
       RevenueCatSubscriptionStore(
         context = appContext,

@@ -1,5 +1,8 @@
 package io.appbeyond.freelance.deep.feature.premium.model
 
+import java.math.BigDecimal
+import java.util.Locale
+
 /**
  * A purchasable DEEP Premium plan, projected from a RevenueCat `Package` so
  * nothing above the store ever depends on the SDK.
@@ -18,6 +21,10 @@ package io.appbeyond.freelance.deep.feature.premium.model
  *   way Play reports it — exact, so no float ever rounds a cent away.
  * @property freeTrialDays the free trial this member can still take, in
  *   days; null promises nothing.
+ * @property priceLocale how this store spells money, when the store says so
+ *   (the fixtures pin US English, as iOS's do). Null — Play, which reports
+ *   only a currency — formats derived figures in the device's own locale,
+ *   the one Play formatted [displayPrice] in.
  */
 data class SubscriptionPlan(
   val id: String,
@@ -26,13 +33,19 @@ data class SubscriptionPlan(
   val priceMicros: Long,
   val currencyCode: String,
   val freeTrialDays: Int? = null,
+  val priceLocale: Locale? = null,
 ) {
+  /** [priceMicros] as an exact amount of [currencyCode], for arithmetic the label can't do. */
+  val price: BigDecimal get() = BigDecimal.valueOf(priceMicros, MICROS_SCALE).stripTrailingZeros()
+
   enum class Period {
     Monthly,
     Yearly,
   }
 
   companion object {
+    private const val MICROS_SCALE = 6
+
     /** Yearly first, whatever order the offering lists them in — the paywall preselects the first. */
     fun canonicalOrder(plans: List<SubscriptionPlan>): List<SubscriptionPlan> =
       plans.filter { it.period == Period.Yearly } + plans.filter { it.period == Period.Monthly }

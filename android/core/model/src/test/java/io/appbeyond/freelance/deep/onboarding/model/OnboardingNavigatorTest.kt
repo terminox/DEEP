@@ -180,6 +180,37 @@ class OnboardingNavigatorTest {
   }
 
   @Test
+  @DisplayName("A new account meets the Premium invitation only when there is a store to buy from")
+  fun afterSignUpFollowsTheStore() {
+    assertEquals(OnboardingRoute.Premium, OnboardingNavigator.afterSignUp(storeAvailable = true))
+    assertEquals(OnboardingRoute.CraftingSpace, OnboardingNavigator.afterSignUp(storeAvailable = false))
+  }
+
+  @Test
+  @DisplayName("showsChrome is false on the Premium invitation")
+  fun showsChromeFalseOnPremium() {
+    val nav = OnboardingNav(stack = listOf(OnboardingRoute.SignUp, OnboardingRoute.Premium))
+    assertEquals(false, OnboardingNavigator.showsChrome(nav))
+  }
+
+  @Test
+  @DisplayName("back is a no-op on the Premium invitation: the account it sits past already exists")
+  fun backNoOpOnPremium() {
+    val nav = OnboardingNav(stack = listOf(OnboardingRoute.CreateAccount, OnboardingRoute.SignUp, OnboardingRoute.Premium))
+    assertSame(nav, OnboardingNavigator.back(nav))
+  }
+
+  @Test
+  @DisplayName("sign-up advances to Premium, and Premium on to CraftingSpace")
+  fun signUpThroughPremium() {
+    val signUp = OnboardingNav(stack = listOf(OnboardingRoute.CreateAccount, OnboardingRoute.SignUp))
+    val premium = OnboardingNavigator.advance(signUp, OnboardingRoute.Premium, configLoaded = true, signedIn = true)
+    assertEquals(OnboardingRoute.Premium, premium.current)
+    val crafting = OnboardingNavigator.advance(premium, OnboardingRoute.CraftingSpace, configLoaded = true, signedIn = true)
+    assertEquals(OnboardingRoute.CraftingSpace, crafting.current)
+  }
+
+  @Test
   @DisplayName("showsChrome is true on every other routed screen")
   fun showsChromeTrueOtherwise() {
     val nav = OnboardingNav(stack = listOf(OnboardingRoute.Quiz(0)))
@@ -210,6 +241,7 @@ class OnboardingNavigatorTest {
     assertNull(onboardingProgress(OnboardingRoute.CreateAccount, questionCount = 5))
     assertNull(onboardingProgress(OnboardingRoute.SignUp, questionCount = 5))
     assertNull(onboardingProgress(OnboardingRoute.LogIn, questionCount = 5))
+    assertNull(onboardingProgress(OnboardingRoute.Premium, questionCount = 5))
     assertNull(onboardingProgress(OnboardingRoute.CraftingSpace, questionCount = 5))
   }
 

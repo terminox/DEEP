@@ -141,9 +141,11 @@ private enum class RestorePhase { Idle, Working, Restored, Failed }
  *
  * Deliberate gaps against iOS, each a product decision rather than an
  * omission:
- * - **Upgrade to DEEP Premium** shows only once [onUpgrade] is handed in —
- *   the paywall's own work. Until then a member on the free plan sees Restore
- *   alone.
+ * - **Upgrade to DEEP Premium** shows only when [onUpgrade] is handed in
+ *   (the shell pushes the paywall with it), and only once the store has
+ *   answered "none" and nothing else says premium — an unknown store would
+ *   put "Upgrade" over a chip still reading "Checking…", and offer a paying
+ *   member what they already have.
  * - **Both exits reset onboarding and every account store** (practice journal,
  *   listen queue, garden, heart ledger, continuity day, and the daily reminder —
  *   [resetAccountState]); the playlist and the player are cleared by
@@ -350,7 +352,12 @@ fun SettingsScreen(
           // Only once the store has said there is nothing — Unknown would put
           // "Upgrade" above a chip still reading "Checking…", and offer a
           // paying member what they already have.
-          onUpgrade = onUpgrade.takeIf { storeStatus == SubscriptionState.None && !hasPremium },
+          // And only in a build with a store to buy from: without one the
+          // invitation could only say Google Play can't be reached (decided
+          // with the onboarding step — OnboardingNavigator.afterSignUp).
+          onUpgrade = onUpgrade.takeIf {
+            subscriptionStore.isAvailable && storeStatus == SubscriptionState.None && !hasPremium
+          },
           onManage = if (hasPremium && management != null) ::manageSubscription else null,
           restorePhase = restorePhase,
           onRestore = ::restorePurchases,

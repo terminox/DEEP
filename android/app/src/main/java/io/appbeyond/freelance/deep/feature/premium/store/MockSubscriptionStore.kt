@@ -7,9 +7,11 @@ import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionManagement
 import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionPlan
 import io.appbeyond.freelance.deep.feature.premium.model.SubscriptionState
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 
 /**
  * In-memory [SubscriptionStore] for previews, tests and the emulator — plans
@@ -31,6 +33,7 @@ class MockSubscriptionStore(
   plans: List<SubscriptionPlan> = samplePlans,
   private val loading: Loading = Loading.Succeeds,
   private val purchasing: Purchasing = Purchasing.Succeeds,
+  private val restoring: Restoring = Restoring.FindsNothing,
 ) : SubscriptionStore {
 
   /** What [loadPlans] does. [Hangs] never returns, parking the caller in its loading state. */
@@ -38,6 +41,13 @@ class MockSubscriptionStore(
 
   /** What [purchase] does. */
   enum class Purchasing { Succeeds, Cancels, Pends, Fails }
+
+  /**
+   * What [restore] does — beyond iOS's mock, whose restore finds nothing, so
+   * the emulator can also reach "Restored. Welcome back." and the quiet
+   * failure line.
+   */
+  enum class Restoring { FindsNothing, FindsMembership, Fails }
 
   class Failure : Exception("The mock store was told to fail.")
 
@@ -68,8 +78,11 @@ class MockSubscriptionStore(
     }
   }
 
-  override suspend fun purchase(activity: Activity, plan: SubscriptionPlan): PurchaseOutcome =
-    when (purchasing) {
+  override suspend fun purchase(activity: Activity, plan: SubscriptionPlan): PurchaseOutcome {
+    // The store's own sheet takes a moment; without one the busy state would
+    // never show on the emulator.
+    delay(STORE_BEAT_MILLIS)
+    return when (purchasing) {
       Purchasing.Succeeds -> {
         _status.value = SubscriptionState.Subscribed(plan.id)
         PurchaseOutcome.Purchased
@@ -78,12 +91,23 @@ class MockSubscriptionStore(
       Purchasing.Pends -> PurchaseOutcome.Pending
       Purchasing.Fails -> throw Failure()
     }
+  }
 
-  override suspend fun restore() = Unit
+  override suspend fun restore() {
+    delay(STORE_BEAT_MILLIS)
+    when (restoring) {
+      Restoring.FindsNothing -> Unit
+      Restoring.FindsMembership -> _status.value = SubscriptionState.Subscribed(DeepProduct.YEARLY)
+      Restoring.Fails -> throw Failure()
+    }
+  }
 
   companion object {
     /** The fixtures are priced in US dollars, as iOS's are, so a preview renders the same money anywhere. */
     private const val CURRENCY = "USD"
+
+    /** …spelled the way a US storefront spells them, on any device — iOS's `en_US` currency style. */
+    private val PRICE_LOCALE: Locale = Locale.US
 
     private fun plan(id: String, period: SubscriptionPlan.Period, display: String, micros: Long, trialDays: Int?) =
       SubscriptionPlan(
@@ -93,6 +117,7 @@ class MockSubscriptionStore(
         priceMicros = micros,
         currencyCode = CURRENCY,
         freeTrialDays = trialDays,
+        priceLocale = PRICE_LOCALE,
       )
 
     /** $91.98 a year and $19.98 a month, each with a seven-day trial — iOS's `samplePlans`. */
@@ -121,5 +146,39 @@ class MockSubscriptionStore(
     val unreachable: MockSubscriptionStore get() = MockSubscriptionStore(plans = emptyList(), loading = Loading.Fails)
 
     val purchaseFails: MockSubscriptionStore get() = MockSubscriptionStore(purchasing = Purchasing.Fails)
+
+    /** A purchase awaiting someone's approval — the paywall's quiet approval note. */
+    val purchasePends: MockSubscriptionStore get() = MockSubscriptionStore(purchasing = Purchasing.Pends)
+
+    /** Backing out of the store's sheet — the paywall says nothing at all. */
+    val purchaseCancels: MockSubscriptionStore get() = MockSubscriptionStore(purchasing = Purchasing.Cancels)
+
+    /** A restore that brings a yearly membership back. */
+    val restores: MockSubscriptionStore get() = MockSubscriptionStore(restoring = Restoring.FindsMembership)
+
+    /** A restore that can't reach the store. */
+    val restoreFails: MockSubscriptionStore get() = MockSubscriptionStore(restoring = Restoring.Fails)
+
+    /**
+     * The fixture a debug launch names with
+     * `--es deep.mockSubscriptions.variant <name>`, so every paywall state can
+     * be staged on an emulator: `free` (the default, and anything unknown),
+     * `subscribed`, `mixedTrials`, `loading`, `unreachable`, `purchaseFails`,
+     * `purchasePends`, `purchaseCancels`, `restores`, `restoreFails`.
+     */
+    fun variant(name: String?): MockSubscriptionStore = when (name) {
+      "subscribed" -> subscribed
+      "mixedTrials" -> mixedTrials
+      "loading" -> loadingPlans
+      "unreachable" -> unreachable
+      "purchaseFails" -> purchaseFails
+      "purchasePends" -> purchasePends
+      "purchaseCancels" -> purchaseCancels
+      "restores" -> restores
+      "restoreFails" -> restoreFails
+      else -> free
+    }
+
+    private const val STORE_BEAT_MILLIS = 1_000L
   }
 }

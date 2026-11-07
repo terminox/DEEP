@@ -131,7 +131,9 @@ sealed interface HomeState {
  * @param onOpenCollection asks the coordinator to push a collection's detail —
  *   iOS's `openCollection`, which a tile's or card's body calls.
  * @param onPlayCollection starts a collection playing in place — the small
- *   round play button on a tile or card (iOS's `soundPlayer.play(collection)`).
+ *   round play button on a tile or card (iOS's `soundPlayer.play(collection)`)
+ *   — or, when the premium gate leaves nothing to play, opens the DEEP
+ *   Premium invitation.
  * @param onOpenCollectionList asks the coordinator to push a titled list of
  *   collections — a section's "See all" or an Explore category (iOS's
  *   `openCollectionList`).

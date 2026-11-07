@@ -60,6 +60,9 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingRemote
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
 import io.appbeyond.freelance.deep.feature.onboarding.transition.RippleRevealOverlay
+import io.appbeyond.freelance.deep.feature.premium.LocalSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.PaywallScreen
+import io.appbeyond.freelance.deep.feature.premium.model.PaywallSource
 import io.appbeyond.freelance.deep.onboarding.model.ConfigRetryDelaysMillis
 import io.appbeyond.freelance.deep.onboarding.model.NavDirection
 import io.appbeyond.freelance.deep.onboarding.model.OnboardingConfig
@@ -99,7 +102,9 @@ import kotlinx.coroutines.delay
  * progress bar — floats above the transitioning screens, so only what is
  * beneath it changes. Back (the chrome button, or system / predictive back,
  * which covers iOS's edge swipe) is a plain stack pop everywhere except the
- * crafting loader, which can't be backed out of, and an auth screen with a
+ * crafting loader, which can't be backed out of, the DEEP Premium invitation
+ * after sign-up (iOS's `.premium` step), which sits past a created account
+ * and moves on only through its own "Not right now", and an auth screen with a
  * request in flight, which holds back itself and hides the chrome meanwhile.
  * Those screens' handlers are composed inside [AnimatedContent], after the two
  * here, so as the most recently registered enabled handler theirs wins.
@@ -122,6 +127,7 @@ fun OnboardingCoordinator(
   modifier: Modifier = Modifier,
 ) {
   val reduceMotion = rememberReduceMotion()
+  val subscriptions = LocalSubscriptionStore.current
   val account by accountStore.account.collectAsState()
 
   var nav by remember { mutableStateOf(OnboardingNav()) }
@@ -177,7 +183,14 @@ fun OnboardingCoordinator(
     configAttempt += 1
   }
 
-  fun advance(route: OnboardingRoute) {
+  fun advance(requested: OnboardingRoute) {
+    // The Premium step only where there is a store to buy from — see
+    // OnboardingNavigator.afterSignUp for the decision.
+    val route = if (requested == OnboardingRoute.Premium) {
+      OnboardingNavigator.afterSignUp(storeAvailable = subscriptions.isAvailable)
+    } else {
+      requested
+    }
     val loaded = configLoad is ConfigLoad.Loaded
     val next = OnboardingNavigator.advance(nav, route, configLoaded = loaded, signedIn = signedIn)
     if (route is OnboardingRoute.Quiz && !loaded) {
@@ -209,10 +222,15 @@ fun OnboardingCoordinator(
     nav = next
   }
 
-  BackHandler(enabled = nav.stack.isNotEmpty() && nav.current != OnboardingRoute.CraftingSpace) { goBack() }
-  // The crafting loader is committing the gathered answers: back is held
-  // rather than letting it fall through and close the app mid-save.
-  BackHandler(enabled = nav.current == OnboardingRoute.CraftingSpace) {}
+  BackHandler(enabled = OnboardingNavigator.showsChrome(nav)) { goBack() }
+  // The crafting loader is committing the gathered answers, and the DEEP
+  // Premium invitation sits past an account that now exists: back is held on
+  // both rather than letting it fall through and close the app — or step back
+  // to a sign-up form for an account already made. The invitation's way on is
+  // its own "Not right now".
+  BackHandler(
+    enabled = nav.current == OnboardingRoute.CraftingSpace || nav.current == OnboardingRoute.Premium,
+  ) {}
 
   val density = LocalDensity.current
   val driftPx = with(density) { Dp.drift.roundToPx() }
@@ -298,6 +316,15 @@ fun OnboardingCoordinator(
               onSubmittingChange = { authInFlight = it },
             )
           }
+
+          // Not `Routed`: it carries no chrome, so it needs no inset for one.
+          // Buying and declining both go on to crafting. It stands on the
+          // persistent atmosphere AppRoot keeps under every step.
+          OnboardingRoute.Premium -> PaywallScreen(
+            source = PaywallSource.Onboarding,
+            onFinish = { advance(OnboardingRoute.CraftingSpace) },
+            drawsAtmosphere = false,
+          )
 
           OnboardingRoute.CraftingSpace -> CraftingSpaceScreen(onboardingStore = onboardingStore, remote = remote)
         }

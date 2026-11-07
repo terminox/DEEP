@@ -83,7 +83,8 @@ import io.appbeyond.freelance.deep.theme.tile
  * lambdas. A DEEP Premium collection this listener is locked out of keeps its
  * play button and wears [PremiumLockBadge] at the artwork's top-trailing
  * corner; [onPlay] queues only what the premium gate lets through (the
- * caller's job, as on iOS), so a locked collection's button starts nothing.
+ * caller's job, as on iOS), so a locked collection's button opens the DEEP
+ * Premium invitation instead of starting anything.
  */
 
 // MARK: - Constants

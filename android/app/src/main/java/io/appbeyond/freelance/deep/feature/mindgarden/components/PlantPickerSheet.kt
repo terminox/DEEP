@@ -29,13 +29,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +49,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -72,16 +71,15 @@ import io.appbeyond.freelance.deep.feature.onboarding.components.FilledCheckMark
 import io.appbeyond.freelance.deep.feature.onboarding.components.HollowMark
 import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockCorner
 import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockSize
+import io.appbeyond.freelance.deep.feature.premium.model.PaywallSource
 import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
 import io.appbeyond.freelance.deep.feature.premium.rememberHasPremium
-import io.appbeyond.freelance.deep.feature.rewards.store.MockRewardsRemote
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.PlantGrowthHalo
 import io.appbeyond.freelance.deep.shared.components.SkeletonBlock
 import io.appbeyond.freelance.deep.shared.components.SkeletonTextLine
 import io.appbeyond.freelance.deep.shared.components.SunlightFact
 import io.appbeyond.freelance.deep.shared.components.skeletonBreath
-import io.appbeyond.freelance.deep.shared.persistence.InMemoryBlobStore
 import io.appbeyond.freelance.deep.theme.CONFIRMATION_HOLD_MILLIS
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
@@ -179,33 +177,35 @@ private val SELECTION_MARK = 22.dp
  *
  * A DEEP Premium plant the member doesn't grow (`PremiumGate`, against the
  * one premium answer) wears the lock badge on its portrait and can't be
- * staged; a staged choice that becomes locked under the sheet — a lapse
- * mid-session — falls back to the plant already growing. The plant already
- * growing is never locked. Tapping a locked row does nothing yet: the DEEP
- * Premium invitation it will open arrives with the paywall.
+ * staged: tapping it opens the DEEP Premium invitation ([onOpenPaywall]),
+ * pushed over this content by [PlantPickerCoordinator][io.appbeyond.freelance.deep.feature.mindgarden.PlantPickerCoordinator].
+ * A staged choice that becomes locked under the sheet — a lapse mid-session —
+ * falls back to the plant already growing, and should the server refuse a
+ * switch as DEEP Premium anyway, its caption shows and the invitation opens:
+ * they asked for this plant. The plant already growing is never locked.
  *
- * Ported from Deep/Deep/Features/MindGarden/Components/PlantPickerSheet.swift,
- * on the lyrics sheet's frame (a Material3 [ModalBottomSheet] in DEEP's
- * tokens) but standing on the [AtmosphereBackground] rather than a flat
- * surface, as iOS's `presentationBackground` does. The grabber is drawn inside
- * the atmosphere so the sheet reads as one surface to its top edge. iOS opens
- * at a 560pt detent; here the sheet hugs its content, which for the seeded
- * catalog lands at about that height and grows to full height for a longer one.
+ * Ported from Deep/Deep/Features/MindGarden/Components/PlantPickerSheet.swift.
+ * The sheet itself — a Material3 [ModalBottomSheet] in DEEP's tokens — belongs
+ * to the coordinator; this is the content standing on the
+ * [AtmosphereBackground], as iOS's `presentationBackground` does. iOS opens at
+ * a 560pt detent; here the sheet hugs this content, which for the seeded
+ * catalog lands at about that height and grows to full height for a longer
+ * one.
  *
  * DIVERGENCE: [PlantCatalog.Failed] (or a catalog that came back empty) shows
  * a quiet line and a "Try again" chip instead of iOS's endless skeleton.
  *
  * @param garden the store the catalog, the banked tallies and the switch go
  *   through. The sheet asks it for the catalog when it opens.
- * @param onDismiss the sheet has gone — swiped away, kept, or switched.
+ * @param onClose lets the sheet go — kept, or switched.
+ * @param onOpenPaywall opens the DEEP Premium invitation over the plants.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlantPickerSheet(
   garden: GardenStore,
-  onDismiss: () -> Unit,
+  onClose: () -> Unit,
+  onOpenPaywall: (PaywallSource) -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val scope = rememberCoroutineScope()
   val haptics = LocalHapticFeedback.current
   val state by garden.state.collectAsStateWithLifecycle()
@@ -214,72 +214,64 @@ fun PlantPickerSheet(
 
   // The plant the bar would grow. Null until something is tapped — which reads
   // as the plant already growing, so the sheet opens marked correctly even when
-  // the first garden snapshot lands after it does.
-  var draftId by remember { mutableStateOf<String?>(null) }
+  // the first garden snapshot lands after it does. Saveable, so a staged
+  // choice survives a visit to the invitation and back.
+  var draftId by rememberSaveable { mutableStateOf<String?>(null) }
   // Set while the switch is in flight, so the bar finishes its sentence before
   // the sheet leaves.
   var isConfirming by remember { mutableStateOf(false) }
 
   LaunchedEffect(garden) { garden.loadCatalogIfNeeded() }
 
-  fun close() {
-    scope.launch {
-      sheetState.hide()
-      onDismiss()
-    }
-  }
-
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    sheetState = sheetState,
-    shape = RoundedCornerShape(topStart = Dp.card, topEnd = Dp.card),
-    containerColor = Color.moonCream,
-    contentColor = Color.deepPlum,
-    tonalElevation = 0.dp,
-    dragHandle = null,
-  ) {
-    // The staged plant — never a locked one. A draft that became locked under
-    // the sheet (a lapse mid-session) falls back to the plant already growing.
-    val stagedId = draftId
-      ?.takeIf { id -> state.catalog.plants.firstOrNull { it.id == id }?.let { !isLocked(it) } == true }
-      ?: state.plant?.id
-    PlantPickerBody(
-      state = state,
-      stagedId = stagedId,
-      isConfirming = isConfirming,
-      isLocked = ::isLocked,
-      onStage = { plant ->
-        // A locked plant is shown, never staged.
-        if (isLocked(plant)) return@PlantPickerBody
-        if (plant.id != stagedId) {
-          haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+  // The staged plant — never a locked one. A draft that became locked under
+  // the sheet (a lapse mid-session) falls back to the plant already growing.
+  val stagedId = draftId
+    ?.takeIf { id -> state.catalog.plants.firstOrNull { it.id == id }?.let { !isLocked(it) } == true }
+    ?: state.plant?.id
+  PlantPickerBody(
+    state = state,
+    stagedId = stagedId,
+    isConfirming = isConfirming,
+    isLocked = ::isLocked,
+    onStage = { plant ->
+      // A locked plant is shown, never staged: asked for, so the invitation
+      // is earned.
+      if (isLocked(plant)) {
+        onOpenPaywall(PaywallSource.LockedPlant)
+        return@PlantPickerBody
+      }
+      if (plant.id != stagedId) {
+        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+      }
+      draftId = plant.id
+    },
+    onConfirm = { plant ->
+      // Never staged, so never here — and refused regardless, so no path
+      // sends a locked plant to the server.
+      if (isLocked(plant)) {
+        onOpenPaywall(PaywallSource.LockedPlant)
+        return@PlantPickerBody
+      }
+      isConfirming = true
+      scope.launch {
+        garden.selectPlant(plant)
+        val settled = garden.state.value
+        // Refused — the connection's caption, or the server's DEEP Premium
+        // one with the row now wearing its lock. Either way the sheet stays,
+        // back on what grows; the DEEP Premium refusal opens the invitation.
+        if (settled.switchFailure != null || settled.plant?.id != plant.id) {
+          isConfirming = false
+          draftId = settled.plant?.id
+          if (settled.switchFailure == PlantSwitchFailure.PremiumLocked) onOpenPaywall(PaywallSource.LockedPlant)
+          return@launch
         }
-        draftId = plant.id
-      },
-      onConfirm = { plant ->
-        // Never staged, so never here — and refused regardless, so no path
-        // sends a locked plant to the server.
-        if (isLocked(plant)) return@PlantPickerBody
-        isConfirming = true
-        scope.launch {
-          garden.selectPlant(plant)
-          val settled = garden.state.value
-          // Refused — the connection's caption, or the server's DEEP Premium
-          // one with the row now wearing its lock. Either way the sheet
-          // stays, back on what grows.
-          if (settled.switchFailure != null || settled.plant?.id != plant.id) {
-            isConfirming = false
-            draftId = settled.plant?.id
-            return@launch
-          }
-          delay(CONFIRMATION_HOLD_MILLIS)
-          close()
-        }
-      },
-      onKeep = ::close,
-      onRetry = { scope.launch { garden.retryCatalog() } },
-    )
-  }
+        delay(CONFIRMATION_HOLD_MILLIS)
+        onClose()
+      }
+    },
+    onKeep = onClose,
+    onRetry = { scope.launch { garden.retryCatalog() } },
+  )
 }
 
 /**
@@ -403,8 +395,9 @@ private fun PlantList(
  * A DEEP Premium plant this member may not grow ([isLocked]) is listed like
  * any other — the server shows it to everyone — but wears the lock badge at
  * its portrait's foot, with an empty space where the selection mark would be
- * so locked and open rows line up, and is never staged. TalkBack hears
- * "Part of DEEP Premium" as its state (Compose has no hint of its own).
+ * so locked and open rows line up, and is never staged: a tap opens the
+ * invitation instead. TalkBack hears "Part of DEEP Premium" as its state
+ * (Compose has no hint of its own).
  */
 @Composable
 private fun PlantChoiceRow(
@@ -435,12 +428,8 @@ private fun PlantChoiceRow(
         contentDescription = summary
         role = Role.RadioButton
         selected = isStaged
-        if (isLocked) {
-          stateDescription = premium
-          disabled()
-        } else {
-          onClick { onClick(); true }
-        }
+        if (isLocked) stateDescription = premium
+        onClick { onClick(); true }
       }
       .padding(vertical = ROW_PADDING_VERTICAL, horizontal = ROW_PADDING_HORIZONTAL),
     horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
@@ -731,7 +720,8 @@ private fun QuietLabel(title: String, tint: Color, modifier: Modifier = Modifier
 
 /*
  * The sheet itself previews poorly — a ModalBottomSheet opens in its own
- * window — so most of these render its body on the sheet's surface instead.
+ * window — so these render the body on the sheet's surface instead; the
+ * interactive sheet lives with PlantPickerCoordinator.
  */
 
 private val PreviewTallies = mapOf("oak" to 240, "sakura" to 160, "lotus" to 0, "moonflower" to 360)
@@ -759,17 +749,6 @@ private fun PickerPreviewSurface(content: @Composable () -> Unit) {
       content()
     }
   }
-}
-
-/** The real sheet over a mock garden — run it in interactive mode. */
-@Preview(showBackground = true, name = "Plant picker — sheet (interactive)")
-@Composable
-private fun PlantPickerSheetPreview() {
-  val garden = remember {
-    GardenStore(remote = MockRewardsRemote(sunlightByPlant = PreviewTallies), blob = InMemoryBlobStore())
-      .apply { seed(Plant.oakFixture, sunlight = 240, sunlightByPlant = PreviewTallies) }
-  }
-  DeepTheme { PlantPickerSheet(garden = garden, onDismiss = {}) }
 }
 
 @Preview(showBackground = true, name = "Plant picker — keep")

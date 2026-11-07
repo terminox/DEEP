@@ -209,9 +209,15 @@ const val CONFIRMATION_HOLD_MILLIS = 500L
 /**
  * How long a passing note stays before it settles back — Settings' "Restored"
  * beside its row, or the quiet line under it when the store couldn't be
- * reached (iOS's 2.5s on Restore purchases).
+ * reached, and the paywall's "That didn't go through" (iOS's 2.5s on both).
  */
 const val NOTE_HOLD_MILLIS = 2_500L
+
+/**
+ * How long the DEEP Premium welcome stays before the paywall steps aside — a
+ * beat to read "Welcome to DEEP Premium", then out. No confetti (iOS's 1.8s).
+ */
+const val WELCOME_HOLD_MILLIS = 1_800L
 
 /**
  * How long a card blooms in before the numbers on it start to move, so the

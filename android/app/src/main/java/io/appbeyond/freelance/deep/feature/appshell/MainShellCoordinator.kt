@@ -16,6 +16,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -70,6 +73,8 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.MockAccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.playlist.PlaylistScreen
+import io.appbeyond.freelance.deep.feature.premium.PaywallScreen
+import io.appbeyond.freelance.deep.feature.premium.model.PaywallSource
 import io.appbeyond.freelance.deep.feature.profile.LanguageScreen
 import io.appbeyond.freelance.deep.feature.profile.SettingsScreen
 import io.appbeyond.freelance.deep.feature.reminders.DailyReminderScreen
@@ -136,6 +141,14 @@ sealed interface DeepRoute {
     val title: String,
     val collections: List<SoundCollection>,
   ) : DeepRoute
+
+  /**
+   * The DEEP Premium invitation, pushed onto whichever tab's door opened it —
+   * Settings' Upgrade row on You, a locked sound on Sounds, Home or You. A
+   * real screen on the stack, as iOS's `Route.premium(source)`, so the tab bar
+   * stays; "Not right now", "Done" and a finished purchase all pop it.
+   */
+  data class Paywall(val source: PaywallSource) : DeepRoute
 }
 
 /**
@@ -149,6 +162,7 @@ data class HomeActions(
   val openCollection: (SoundCollection) -> Unit,
   val openCollectionList: (title: String, collections: List<SoundCollection>) -> Unit,
   val openFukuLounge: () -> Unit = {},
+  val openPaywall: (PaywallSource) -> Unit = {},
 )
 
 /**
@@ -297,6 +311,24 @@ fun MainShellCoordinator(
   }
 
   /**
+   * Pushes the DEEP Premium invitation onto [tab] — the door a locked sound
+   * or Settings' Upgrade row opens. A second tap landing before the first
+   * push has drawn is dropped rather than stacking two invitations.
+   */
+  fun openPaywall(tab: DeepTab, source: PaywallSource) {
+    if (stacks.getValue(tab).last().route !is DeepRoute.Paywall) push(tab, DeepRoute.Paywall(source))
+  }
+
+  /**
+   * Steps back off the invitation — only if it is still the screen in front,
+   * so a purchase finishing after the member already backed out can't pop
+   * whatever they went back to.
+   */
+  fun finishPaywall(tab: DeepTab) {
+    if (stacks.getValue(tab).last().route is DeepRoute.Paywall) pop(tab)
+  }
+
+  /**
    * Pushes a session's threshold onto the tab in front — the one whose entry
    * card was tapped. A second tap landing before the first push has drawn is
    * dropped rather than stacking two thresholds.
@@ -316,6 +348,7 @@ fun MainShellCoordinator(
         push(DeepTab.Home, DeepRoute.CollectionList(title, collections))
       },
       openFukuLounge = { push(DeepTab.Home, DeepRoute.FukuLounge) },
+      openPaywall = { source -> openPaywall(DeepTab.Home, source) },
     )
   }
 
@@ -410,7 +443,10 @@ fun MainShellCoordinator(
           .fillMaxSize()
           .then(if (covered) Modifier.clearAndSetSemantics {} else Modifier),
       ) {
-        Box(Modifier.weight(1f)) {
+        // The bar below answers for the navigation bar, so nothing above it
+        // pads for it again — a screen pinning an act to its foot (the
+        // paywall) would otherwise float it a gesture bar's height too high.
+        Box(Modifier.weight(1f).consumeWindowInsets(WindowInsets.navigationBars)) {
           CompositionLocalProvider(LocalMiniPlayerClearance provides clearance) {
             AnimatedContent(
               targetState = selected to stack.last(),
@@ -439,6 +475,7 @@ fun MainShellCoordinator(
                         player = soundPlayer,
                         onOpenSettings = { push(DeepTab.You, DeepRoute.Settings) },
                         onExploreDeepSound = { selected = DeepTab.Sounds },
+                        onOpenPaywall = { openPaywall(DeepTab.You, PaywallSource.LockedSound) },
                       )
                     }
 
@@ -452,6 +489,7 @@ fun MainShellCoordinator(
                       onOpenLanguage = { push(DeepTab.You, DeepRoute.Language) },
                       onOpenReminder = { push(DeepTab.You, DeepRoute.DailyReminder) },
                       onBack = { pop(DeepTab.You) },
+                      onUpgrade = { openPaywall(DeepTab.You, PaywallSource.Settings) },
                     )
 
                     DeepRoute.Language -> LanguageScreen(
@@ -485,6 +523,12 @@ fun MainShellCoordinator(
                       player = soundPlayer,
                       playlistStore = playlistStore,
                       onBack = { pop(tab) },
+                      onOpenPaywall = { openPaywall(tab, PaywallSource.LockedSound) },
+                    )
+
+                    is DeepRoute.Paywall -> PaywallScreen(
+                      source = route.source,
+                      onFinish = { finishPaywall(tab) },
                     )
 
                     is DeepRoute.CollectionList -> CollectionListScreen(
@@ -643,6 +687,7 @@ private val TabStacksSaver: Saver<Map<DeepTab, SnapshotStateList<StackEntry>>, A
 
 private const val CAUSE_PREFIX = "cause:"
 private const val SESSION_PREFIX = "session:"
+private const val PAYWALL_PREFIX = "paywall:"
 
 /** This route as a saved key, or null when it can't be rebuilt from one. */
 private fun DeepRoute.savedKey(): String? = when (this) {
@@ -653,6 +698,7 @@ private fun DeepRoute.savedKey(): String? = when (this) {
   DeepRoute.FukuLounge -> "lounge"
   is DeepRoute.CompassionCause -> CAUSE_PREFIX + causeId
   is DeepRoute.SessionThreshold -> SESSION_PREFIX + session.id
+  is DeepRoute.Paywall -> PAYWALL_PREFIX + source.name
   is DeepRoute.Collection, is DeepRoute.CollectionList -> null
 }
 
@@ -663,6 +709,8 @@ private fun routeOf(key: String): DeepRoute? = when {
   key == "reminder" -> DeepRoute.DailyReminder
   key == "lounge" -> DeepRoute.FukuLounge
   key.startsWith(CAUSE_PREFIX) -> DeepRoute.CompassionCause(key.removePrefix(CAUSE_PREFIX))
+  key.startsWith(PAYWALL_PREFIX) ->
+    PaywallSource.entries.firstOrNull { it.name == key.removePrefix(PAYWALL_PREFIX) }?.let(DeepRoute::Paywall)
   // Only the pattern survives: the threshold titles the practice from
   // resources and stretches it to the remembered length itself.
   key.startsWith(SESSION_PREFIX) -> DeepRoute.SessionThreshold(
