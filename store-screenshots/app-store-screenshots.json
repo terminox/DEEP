@@ -1,0 +1,805 @@
+{
+  "schemaVersion": 3,
+  "appName": "DEEP",
+  "themeId": "deep",
+  "fontId": "deep-cormorant",
+  "connectedCanvas": true,
+  "locales": [
+    "en",
+    "th"
+  ],
+  "locale": "th",
+  "device": "android",
+  "orientation": "portrait",
+  "appIcon": "/app-icon.png",
+  "slidesByDevice": {
+    "iphone": [
+      {
+        "id": "deep-iphone-2",
+        "layout": "hero",
+        "label": {
+          "en": "GLOBAL PAUSE",
+          "th": "GLOBAL PAUSE"
+        },
+        "headline": {
+          "en": "Pause with\nthe world.",
+          "th": "หยุดพัก\nไปพร้อมกับโลก"
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/gp-live.png",
+        "typography": {
+          "labelScale": 1.45
+        },
+        "inverted": true
+      },
+      {
+        "id": "deep-iphone-4",
+        "layout": "hero",
+        "label": {
+          "en": "DEEP SESSION",
+          "th": "เซสชัน DEEP"
+        },
+        "headline": {
+          "en": "Be with\nyourself.",
+          "th": "อยู่กับ\nตัวเอง"
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/session-b.png",
+        "typography": {
+          "labelScale": 1.45
+        },
+        "inverted": true
+      },
+      {
+        "id": "deep-iphone-5",
+        "layout": "device-bottom",
+        "label": {
+          "en": "MIND GARDEN",
+          "th": "สวนแห่งใจ"
+        },
+        "headline": {
+          "en": "Grow along\nwith yourself.",
+          "th": "เติบโต\nไปพร้อมกับคุณ"
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/garden.png",
+        "typography": {
+          "labelScale": 1.45
+        }
+      },
+      {
+        "id": "deep-iphone-6",
+        "layout": "device-bottom",
+        "label": {
+          "en": "COMPASSION",
+          "th": "ความเมตตา"
+        },
+        "headline": {
+          "en": "Quiet minutes\nbecome hearts.",
+          "th": "นาทีที่สงบ\nกลายเป็นหัวใจ"
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/compassion.png",
+        "typography": {
+          "labelScale": 1.45
+        }
+      },
+      {
+        "id": "deep-iphone-7",
+        "layout": "device-top",
+        "label": {
+          "en": "DEEP SOUND",
+          "th": "DEEP SOUND"
+        },
+        "headline": {
+          "en": "Sound for when\nwords are\ntoo much.",
+          "th": "เสียงสำหรับวัน\nที่ไม่อยากพูดอะไร"
+        },
+        "screenshot": "/screenshots/apple/iphone/{locale}/sound-browse.png",
+        "inverted": true,
+        "typography": {
+          "labelScale": 1.45
+        }
+      }
+    ],
+    "android": [
+      {
+        "id": "deep-android-1",
+        "layout": "hero",
+        "label": {
+          "en": "GLOBAL PAUSE",
+          "th": "GLOBAL PAUSE"
+        },
+        "headline": {
+          "en": "Pause with\nthe world.",
+          "th": "หยุดพัก\nไปพร้อมกับโลก"
+        },
+        "screenshot": "/screenshots/android/phone/{locale}/gp-live.png",
+        "inverted": true,
+        "typography": {
+          "labelScale": 1.45
+        }
+      },
+      {
+        "id": "deep-android-2",
+        "layout": "device-bottom",
+        "label": {
+          "en": "DJ FUKU'S LOUNGE",
+          "th": "เลานจ์ของ DJ FUKU"
+        },
+        "headline": {
+          "en": "Gather before\nthe pause.",
+          "th": "มารวมตัวกัน\nก่อนหยุดพัก"
+        },
+        "screenshot": "/screenshots/android/phone/{locale}/home.png",
+        "transforms": {
+          "device": {
+            "x": 205,
+            "y": 575,
+            "width": 670,
+            "height": 1452,
+            "rotation": 0,
+            "zIndex": 3
+          }
+        },
+        "typography": {
+          "labelScale": 1.45
+        }
+      },
+      {
+        "id": "deep-android-4",
+        "layout": "hero",
+        "label": {
+          "en": "DEEP SESSION",
+          "th": "เซสชัน DEEP"
+        },
+        "headline": {
+          "en": "Be with\nyourself.",
+          "th": "อยู่กับ\nตัวเอง"
+        },
+        "screenshot": "/screenshots/android/phone/{locale}/session-a.png",
+        "typography": {
+          "labelScale": 1.45
+        },
+        "inverted": true
+      },
+      {
+        "id": "deep-android-5",
+        "layout": "two-devices",
+        "label": {
+          "en": "MIND GARDEN",
+          "th": "สวนแห่งใจ"
+        },
+        "headline": {
+          "en": "Grow along\nwith yourself.",
+          "th": "เติบโต\nไปพร้อมกับคุณ"
+        },
+        "screenshot": "/screenshots/android/phone/{locale}/garden.png",
+        "screenshotSecondary": "/screenshots/android/phone/{locale}/garden-grew.png",
+        "transforms": {
+          "device": {
+            "x": 420,
+            "y": 600,
+            "width": 620,
+            "height": 1343,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "deviceSecondary": {
+            "x": 50,
+            "y": 760,
+            "width": 540,
+            "height": 1170,
+            "rotation": 0,
+            "zIndex": 2
+          }
+        },
+        "typography": {
+          "labelScale": 1.45
+        }
+      },
+      {
+        "id": "deep-android-6",
+        "layout": "device-bottom",
+        "label": {
+          "en": "COMPASSION",
+          "th": "ความเมตตา"
+        },
+        "headline": {
+          "en": "Quiet minutes\nbecome hearts.",
+          "th": "นาทีที่สงบ\nกลายเป็นหัวใจ"
+        },
+        "screenshot": "/screenshots/android/phone/{locale}/compassion.png",
+        "transforms": {
+          "device": {
+            "x": 205,
+            "y": 575,
+            "width": 670,
+            "height": 1452,
+            "rotation": 0,
+            "zIndex": 3
+          }
+        },
+        "typography": {
+          "labelScale": 1.45
+        }
+      },
+      {
+        "id": "deep-android-7",
+        "layout": "device-top",
+        "label": {
+          "en": "DEEP SOUND",
+          "th": "DEEP SOUND"
+        },
+        "headline": {
+          "en": "Sound for when\nwords are\ntoo much.",
+          "th": "เสียงสำหรับวัน\nที่ไม่อยากพูดอะไร"
+        },
+        "screenshot": "/screenshots/android/phone/{locale}/sound-collection.png",
+        "inverted": true,
+        "typography": {
+          "labelScale": 1.45
+        },
+        "transforms": {
+          "device": {
+            "x": 190,
+            "y": -340,
+            "width": 700,
+            "height": 1517,
+            "rotation": 0,
+            "zIndex": 3
+          },
+          "caption": {
+            "x": 86,
+            "y": 1300,
+            "width": 908,
+            "height": 560,
+            "rotation": 0,
+            "zIndex": 4
+          }
+        }
+      }
+    ],
+    "ipad": [
+      {
+        "id": "s_mppgoot8_a",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe big screen."
+        },
+        "screenshot": "",
+        "transforms": {
+          "device": {
+            "x": 68.64736263219729,
+            "y": 818.7701245593419,
+            "width": 1525.7087999999999,
+            "height": 1981.4399999999998,
+            "rotation": 0,
+            "zIndex": 3
+          }
+        }
+      },
+      {
+        "id": "s_mppgoot8_b",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Built for\nfocus."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mppgoot8_c",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Always within reach."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "tvos": [
+      {
+        "id": "s_mw6ef1yu_d",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe living room."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_e",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_f",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mw6ef1yu_g",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so\nmuch more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "watchos": [
+      {
+        "id": "s_mw6ef1yu_h",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "On your\nwrist."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_i",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One glance.\nDone."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_j",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Always\nwith you."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "carplay": [
+      {
+        "id": "s_mw6ef1yu_k",
+        "layout": "split-landscape",
+        "label": {
+          "en": "CARPLAY"
+        },
+        "headline": {
+          "en": "Eyes on\nthe road."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_l",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Everything, one tap away."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_m",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Made for every drive."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "mac": [
+      {
+        "id": "s_mw6ef1yu_n",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nyour Mac."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_o",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Everything in\none window."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_p",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "One shortcut away."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mw6ef1yu_q",
+        "layout": "two-devices",
+        "label": {
+          "en": "FEATURE 03"
+        },
+        "headline": {
+          "en": "Work across windows."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mw6ef1yu_r",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so\nmuch more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "android-7": [
+      {
+        "id": "s_mppgoot8_d",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Pocket-sized\npower."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mppgoot8_e",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "android-10": [
+      {
+        "id": "s_mppgoot8_f",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Made for\nthe big screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mppgoot8_g",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "Wide canvas,\nbigger ideas."
+        },
+        "screenshot": ""
+      }
+    ],
+    "feature-graphic": [
+      {
+        "id": "deep-fg-1",
+        "layout": "feature-graphic",
+        "label": {},
+        "headline": {
+          "en": "Pause with the world.",
+          "th": "หยุดพักไปพร้อมกับโลก"
+        },
+        "screenshot": ""
+      }
+    ],
+    "duo-outer": [
+      {
+        "id": "s_mw6ef1yu_x",
+        "layout": "hero",
+        "label": {
+          "en": "MEET YOUR APP"
+        },
+        "headline": {
+          "en": "Everything,\none hand."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_y",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_z",
+        "layout": "two-devices",
+        "label": {
+          "en": "OPEN IT"
+        },
+        "headline": {
+          "en": "Open it for\nthe full view."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mw6ef1yu_10",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mw6ef1yu_11",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so\nmuch more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "duo-outer-landscape": [
+      {
+        "id": "s_mw6ef1yu_12",
+        "layout": "hero",
+        "label": {
+          "en": "TURN IT"
+        },
+        "headline": {
+          "en": "Made for the wide view."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_13",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_14",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "duo-inner": [
+      {
+        "id": "s_mw6ef1yu_15",
+        "layout": "hero",
+        "label": {
+          "en": "UNFOLD IT"
+        },
+        "headline": {
+          "en": "Room for\nthe whole view."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_16",
+        "layout": "device-bottom",
+        "label": {
+          "en": "FEATURE 01"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_17",
+        "layout": "two-devices",
+        "label": {
+          "en": "FOLDED + OPEN"
+        },
+        "headline": {
+          "en": "Turn it, open it,\nkeep going."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mw6ef1yu_18",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "Flip the contrast."
+        },
+        "screenshot": "",
+        "inverted": true
+      }
+    ],
+    "duo-inner-landscape": [
+      {
+        "id": "s_mw6ef1yu_19",
+        "layout": "hero",
+        "label": {
+          "en": "UNFOLD IT"
+        },
+        "headline": {
+          "en": "Lead with the two-pane view."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_1a",
+        "layout": "two-devices",
+        "label": {
+          "en": "FOLDED + OPEN"
+        },
+        "headline": {
+          "en": "Same moment, closed and open."
+        },
+        "screenshot": "",
+        "screenshotSecondary": ""
+      },
+      {
+        "id": "s_mw6ef1yu_1b",
+        "layout": "split-landscape",
+        "label": {
+          "en": "FEATURE 02"
+        },
+        "headline": {
+          "en": "One idea\nper screen."
+        },
+        "screenshot": ""
+      },
+      {
+        "id": "s_mw6ef1yu_1c",
+        "layout": "device-top",
+        "label": {
+          "en": "FEATURE 03"
+        },
+        "headline": {
+          "en": "Show what only the wide screen can."
+        },
+        "screenshot": "",
+        "inverted": true
+      },
+      {
+        "id": "s_mw6ef1yu_1d",
+        "layout": "no-device",
+        "label": {
+          "en": "MORE"
+        },
+        "headline": {
+          "en": "And so much more."
+        },
+        "screenshot": ""
+      }
+    ],
+    "creative-universal": [
+      {
+        "id": "s_mw6ef1yu_1e",
+        "layout": "split-landscape",
+        "label": {
+          "en": "NEW"
+        },
+        "headline": {
+          "en": "Your app,\nat a glance."
+        },
+        "screenshot": ""
+      }
+    ],
+    "creative-header": [
+      {
+        "id": "s_mw6ef1yu_1f",
+        "layout": "split-landscape",
+        "label": {
+          "en": "NEW"
+        },
+        "headline": {
+          "en": "Your app,\nat a glance."
+        },
+        "screenshot": ""
+      }
+    ],
+    "creative-search": [
+      {
+        "id": "s_mw6ef1yu_1g",
+        "layout": "split-landscape",
+        "label": {
+          "en": "NEW"
+        },
+        "headline": {
+          "en": "Your app,\nat a glance."
+        },
+        "screenshot": ""
+      }
+    ]
+  },
+  "crossScreenMockupsByDevice": {
+    "iphone": [],
+    "ipad": [],
+    "android": [],
+    "android-7": [],
+    "android-10": [],
+    "feature-graphic": []
+  },
+  "scene": {
+    "backdrop": "gradient",
+    "span": true,
+    "decoration": "blobs",
+    "shadow": 22,
+    "glow": 45,
+    "tilt": 0,
+    "headlineWeight": 500,
+    "headlineScale": 1.1,
+    "headlineCase": "as-typed",
+    "captionAlign": "center"
+  }
+}
