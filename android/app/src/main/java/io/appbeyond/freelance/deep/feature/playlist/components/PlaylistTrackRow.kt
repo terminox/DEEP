@@ -43,6 +43,8 @@ import io.appbeyond.freelance.deep.feature.deepsound.SoundIcons
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundQueueEntry
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTime
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistFixtures
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockCorner
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockSize
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.theme.DeepTheme
@@ -77,8 +79,8 @@ private val DURATION_STYLE = DeepType.micro.copy(fontFeatureSettings = "tnum")
 /** The remove menu's glyph. */
 private val MENU_GLYPH = 18.dp
 
-/** The DEEP Premium lock — iOS's `lock.fill` at `.caption` size. */
-private val LOCK_GLYPH = 12.dp
+/** The lock badge's inset on the smaller artwork — iOS's `inset: 4`. */
+private val LOCK_INSET = 4.dp
 
 // MARK: - Row
 
@@ -95,12 +97,13 @@ private val LOCK_GLYPH = 12.dp
  * a sound out is one tap from saving it again.
  *
  * A DEEP Premium sound this listener is locked out of keeps its row — anyone
- * may keep one — and wears iOS's caption-size `lock.fill` at the trailing
- * edge; the screen never plays it.
+ * may keep one — and wears [PremiumLockCorner] on its artwork, as iOS's row
+ * does since #66; the screen never plays it.
  *
  * @param isCurrent true while this is the sound playing, which tints the title
  *   the way a collection's track list does.
- * @param isLocked the track is DEEP Premium and locked for this listener.
+ * @param isLocked the sound is locked for this listener — the screen asks
+ *   `PremiumGate`, never the row.
  */
 @Composable
 fun PlaylistTrackRow(
@@ -109,14 +112,14 @@ fun PlaylistTrackRow(
   onPlay: () -> Unit,
   onRemove: () -> Unit,
   modifier: Modifier = Modifier,
-  isLocked: Boolean = entry.track.isLocked,
+  isLocked: Boolean = false,
 ) {
   var menuOpen by remember { mutableStateOf(false) }
   val haptics = LocalHapticFeedback.current
   val removeLabel = stringResource(R.string.playlist_remove)
   val described = stringResource(R.string.playlist_row_a11y, entry.track.title, entry.collection.title)
   // The row reads as one element, so the lock joins its sentence.
-  val description = if (isLocked) "$described, ${stringResource(R.string.deepsound_locked)}" else described
+  val description = if (isLocked) "$described, ${stringResource(R.string.premium_part_of)}" else described
 
   Box(modifier) {
     Row(
@@ -143,14 +146,17 @@ fun PlaylistTrackRow(
       horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      ArtworkImage(
-        url = entry.collection.imageUrl,
-        palette = entry.collection.palette,
-        modifier = Modifier
-          .size(PLAYLIST_ARTWORK_SIZE)
-          .clip(RoundedCornerShape(PLAYLIST_ARTWORK_RADIUS))
-          .clearAndSetSemantics {},
-      )
+      // Silent to TalkBack: the row's own sentence already names the lock.
+      Box(Modifier.clearAndSetSemantics {}) {
+        ArtworkImage(
+          url = entry.collection.imageUrl,
+          palette = entry.collection.palette,
+          modifier = Modifier
+            .size(PLAYLIST_ARTWORK_SIZE)
+            .clip(RoundedCornerShape(PLAYLIST_ARTWORK_RADIUS)),
+        )
+        PremiumLockCorner(isLocked = isLocked, size = PremiumLockSize.Compact, inset = LOCK_INSET)
+      }
 
       // A Spacer here would bid against this column and truncate titles that
       // had room; a greedy weight lets the text take what it needs.
@@ -176,15 +182,6 @@ fun PlaylistTrackRow(
           text = SoundTime.clock(entry.track.durationSeconds.toDouble()),
           style = DURATION_STYLE,
           color = Color.driftGrey,
-        )
-      }
-
-      if (isLocked) {
-        Icon(
-          SoundIcons.Lock,
-          contentDescription = null,
-          tint = Color.driftGrey,
-          modifier = Modifier.size(LOCK_GLYPH).clearAndSetSemantics {},
         )
       }
     }
@@ -225,7 +222,7 @@ private fun PlaylistTrackRowPreview() {
       ) {
         PlaylistTrackRow(entry = PlaylistFixtures.saved[0], isCurrent = false, onPlay = {}, onRemove = {})
         PlaylistTrackRow(entry = PlaylistFixtures.saved[1], isCurrent = true, onPlay = {}, onRemove = {})
-        PlaylistTrackRow(entry = PlaylistFixtures.saved[2], isCurrent = false, onPlay = {}, onRemove = {}, isLocked = true)
+        PlaylistTrackRow(entry = PlaylistFixtures.withPremium[0], isCurrent = false, onPlay = {}, onRemove = {}, isLocked = true)
       }
     }
   }

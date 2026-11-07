@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -62,13 +63,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.appshell.DeepIcons
-import io.appbeyond.freelance.deep.feature.deepsound.SoundIcons
 import io.appbeyond.freelance.deep.feature.mindgarden.model.GardenGrowth
 import io.appbeyond.freelance.deep.feature.mindgarden.model.Plant
 import io.appbeyond.freelance.deep.feature.mindgarden.store.GardenStore
 import io.appbeyond.freelance.deep.feature.mindgarden.store.GardenStore.PlantCatalog
+import io.appbeyond.freelance.deep.feature.mindgarden.store.PlantSwitchFailure
 import io.appbeyond.freelance.deep.feature.onboarding.components.FilledCheckMark
 import io.appbeyond.freelance.deep.feature.onboarding.components.HollowMark
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockCorner
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockSize
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
+import io.appbeyond.freelance.deep.feature.premium.rememberHasPremium
 import io.appbeyond.freelance.deep.feature.rewards.store.MockRewardsRemote
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.PlantGrowthHalo
@@ -154,9 +159,8 @@ private val RETRY_PADDING_VERTICAL = 12.dp
 
 private const val SKELETON_ROWS = 3
 
-/** A locked plant's mark: the lock, centred in the selection mark's 22dp. */
+/** The selection mark's footprint, kept empty on a locked row so locked and open rows line up — iOS's 22pt. */
 private val SELECTION_MARK = 22.dp
-private val LOCK_GLYPH = 14.dp
 
 // MARK: - Sheet
 
@@ -170,8 +174,15 @@ private val LOCK_GLYPH = 14.dp
  * Nothing changes until it is confirmed. Tapping a row only stages a choice
  * (with a selection tick); the bar at the foot commits it, holds "Growing …"
  * for half a second, and lets the sheet go. A refused switch keeps the sheet
- * open with [GardenStore.State.switchFailed] as a quiet caption, and the
+ * open with [GardenStore.State.switchFailure] as a quiet caption, and the
  * staged choice falls back to whatever is actually growing.
+ *
+ * A DEEP Premium plant the member doesn't grow (`PremiumGate`, against the
+ * one premium answer) wears the lock badge on its portrait and can't be
+ * staged; a staged choice that becomes locked under the sheet — a lapse
+ * mid-session — falls back to the plant already growing. The plant already
+ * growing is never locked. Tapping a locked row does nothing yet: the DEEP
+ * Premium invitation it will open arrives with the paywall.
  *
  * Ported from Deep/Deep/Features/MindGarden/Components/PlantPickerSheet.swift,
  * on the lyrics sheet's frame (a Material3 [ModalBottomSheet] in DEEP's
@@ -198,6 +209,8 @@ fun PlantPickerSheet(
   val scope = rememberCoroutineScope()
   val haptics = LocalHapticFeedback.current
   val state by garden.state.collectAsStateWithLifecycle()
+  val hasPremium = rememberHasPremium()
+  fun isLocked(plant: Plant) = PremiumGate.isLocked(plant, growingId = state.plant?.id, hasPremium = hasPremium)
 
   // The plant the bar would grow. Null until something is tapped — which reads
   // as the plant already growing, so the sheet opens marked correctly even when
@@ -225,24 +238,36 @@ fun PlantPickerSheet(
     tonalElevation = 0.dp,
     dragHandle = null,
   ) {
+    // The staged plant — never a locked one. A draft that became locked under
+    // the sheet (a lapse mid-session) falls back to the plant already growing.
+    val stagedId = draftId
+      ?.takeIf { id -> state.catalog.plants.firstOrNull { it.id == id }?.let { !isLocked(it) } == true }
+      ?: state.plant?.id
     PlantPickerBody(
       state = state,
-      stagedId = draftId ?: state.plant?.id,
+      stagedId = stagedId,
       isConfirming = isConfirming,
+      isLocked = ::isLocked,
       onStage = { plant ->
-        if (plant.id != (draftId ?: state.plant?.id)) {
+        // A locked plant is shown, never staged.
+        if (isLocked(plant)) return@PlantPickerBody
+        if (plant.id != stagedId) {
           haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         }
         draftId = plant.id
       },
       onConfirm = { plant ->
+        // Never staged, so never here — and refused regardless, so no path
+        // sends a locked plant to the server.
+        if (isLocked(plant)) return@PlantPickerBody
         isConfirming = true
         scope.launch {
           garden.selectPlant(plant)
           val settled = garden.state.value
-          // Refused — with the caption, or (a DEEP Premium lock) by the row
-          // now wearing its lock. Either way the sheet stays, back on what grows.
-          if (settled.switchFailed || settled.plant?.id != plant.id) {
+          // Refused — the connection's caption, or the server's DEEP Premium
+          // one with the row now wearing its lock. Either way the sheet
+          // stays, back on what grows.
+          if (settled.switchFailure != null || settled.plant?.id != plant.id) {
             isConfirming = false
             draftId = settled.plant?.id
             return@launch
@@ -270,6 +295,7 @@ private fun PlantPickerBody(
   state: GardenStore.State,
   stagedId: String?,
   isConfirming: Boolean,
+  isLocked: (Plant) -> Boolean,
   onStage: (Plant) -> Unit,
   onConfirm: (Plant) -> Unit,
   onKeep: () -> Unit,
@@ -310,6 +336,7 @@ private fun PlantPickerBody(
               plants = plants,
               sunlightByPlant = state.sunlightByPlant,
               stagedId = stagedId,
+              isLocked = isLocked,
               onStage = onStage,
             )
           }
@@ -320,7 +347,7 @@ private fun PlantPickerBody(
         stagedPlant = stagedPlant,
         isGrowingStaged = isGrowingStaged,
         isConfirming = isConfirming,
-        switchFailed = state.switchFailed,
+        switchFailure = state.switchFailure,
         onConfirm = onConfirm,
         onKeep = onKeep,
       )
@@ -346,6 +373,7 @@ private fun PlantList(
   plants: List<Plant>,
   sunlightByPlant: Map<String, Int>,
   stagedId: String?,
+  isLocked: (Plant) -> Boolean,
   onStage: (Plant) -> Unit,
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(LIST_SPACING)) {
@@ -356,8 +384,8 @@ private fun PlantList(
         // plant's current form rather than the selected plant's.
         earned = GardenGrowth(plant = plant, sunlight = sunlightByPlant[plant.id] ?: 0),
         isStaged = plant.id == stagedId,
-        // A locked plant is shown, never chosen.
-        onClick = { if (!plant.isLocked) onStage(plant) },
+        isLocked = isLocked(plant),
+        onClick = { onStage(plant) },
       )
     }
   }
@@ -372,12 +400,11 @@ private fun PlantList(
  * reads as its plant before a word is read. Staged, it takes a lavender ring
  * and the filled check the onboarding pickers use.
  *
- * A DEEP Premium plant this member may not grow ([Plant.isLocked]) is listed
- * like any other — the server shows it to everyone — but its mark is the
- * grey lock DEEP Sound's track rows wear, and tapping it stages nothing.
- * There is no iOS counterpart to copy at 705b6b4, where the catalog left
- * premium plants out; Android has no way to become a member, so the lock is
- * the whole story.
+ * A DEEP Premium plant this member may not grow ([isLocked]) is listed like
+ * any other — the server shows it to everyone — but wears the lock badge at
+ * its portrait's foot, with an empty space where the selection mark would be
+ * so locked and open rows line up, and is never staged. TalkBack hears
+ * "Part of DEEP Premium" as its state (Compose has no hint of its own).
  */
 @Composable
 private fun PlantChoiceRow(
@@ -386,6 +413,7 @@ private fun PlantChoiceRow(
   isStaged: Boolean,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  isLocked: Boolean = false,
 ) {
   val border by animateDpAsState(
     targetValue = if (isStaged) STAGED_BORDER else 0.dp,
@@ -393,7 +421,7 @@ private fun PlantChoiceRow(
     label = "plant-row-border",
   )
   val summary = stringResource(R.string.picker_row_summary, plant.name, earned.stage.name, earned.sunlight)
-  val locked = stringResource(R.string.deepsound_locked)
+  val premium = stringResource(R.string.premium_part_of)
   val shape = RoundedCornerShape(Dp.card)
 
   Row(
@@ -407,8 +435,8 @@ private fun PlantChoiceRow(
         contentDescription = summary
         role = Role.RadioButton
         selected = isStaged
-        if (plant.isLocked) {
-          stateDescription = locked
+        if (isLocked) {
+          stateDescription = premium
           disabled()
         } else {
           onClick { onClick(); true }
@@ -418,15 +446,23 @@ private fun PlantChoiceRow(
     horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    PlantGrowthHalo(
-      progress = earned.evolutionProgress.toFloat(),
-      portraitUrl = earned.stage.mascotUrl ?: earned.stage.mascotBgUrl,
-      fallbackUrl = plant.imageUrl,
-      palette = plant.palette,
-      portraitDiameter = ROW_PORTRAIT,
-      ringGap = ROW_RING_GAP,
-      ringWidth = ROW_RING_WIDTH,
-    )
+    Box {
+      PlantGrowthHalo(
+        progress = earned.evolutionProgress.toFloat(),
+        portraitUrl = earned.stage.mascotUrl ?: earned.stage.mascotBgUrl,
+        fallbackUrl = plant.imageUrl,
+        palette = plant.palette,
+        portraitDiameter = ROW_PORTRAIT,
+        ringGap = ROW_RING_GAP,
+        ringWidth = ROW_RING_WIDTH,
+      )
+      PremiumLockCorner(
+        isLocked = isLocked,
+        size = PremiumLockSize.Row,
+        alignment = Alignment.BottomEnd,
+        inset = 0.dp,
+      )
+    }
 
     // A greedy column rather than a Spacer: a Spacer would bid against the
     // text for width and wrap the name on a row with room to spare.
@@ -442,7 +478,7 @@ private fun PlantChoiceRow(
     }
 
     AnimatedContent(
-      targetState = isStaged,
+      targetState = if (isLocked) null else isStaged,
       transitionSpec = {
         (scaleIn(settle(), initialScale = 0.6f) + fadeIn(settle()))
           .togetherWith(scaleOut(settle(), targetScale = 0.6f) + fadeOut(settle()))
@@ -450,12 +486,11 @@ private fun PlantChoiceRow(
       contentAlignment = Alignment.Center,
       label = "plant-row-mark",
     ) { staged ->
-      when {
-        plant.isLocked -> Box(Modifier.size(SELECTION_MARK), contentAlignment = Alignment.Center) {
-          Icon(SoundIcons.Lock, contentDescription = null, tint = Color.driftGrey, modifier = Modifier.size(LOCK_GLYPH))
-        }
-        staged -> FilledCheckMark()
-        else -> HollowMark(alpha = HOLLOW_MARK_ALPHA)
+      when (staged) {
+        // Nothing to select: the badge on the portrait says why.
+        null -> Spacer(Modifier.size(SELECTION_MARK))
+        true -> FilledCheckMark()
+        false -> HollowMark(alpha = HOLLOW_MARK_ALPHA)
       }
     }
   }
@@ -562,10 +597,13 @@ private fun ConfirmBar(
   stagedPlant: Plant?,
   isGrowingStaged: Boolean,
   isConfirming: Boolean,
-  switchFailed: Boolean,
+  switchFailure: PlantSwitchFailure?,
   onConfirm: (Plant) -> Unit,
   onKeep: () -> Unit,
 ) {
+  // Held through the caption's fade-out, so the words don't vanish before it does.
+  var shownFailure by remember { mutableStateOf(switchFailure) }
+  if (switchFailure != null) shownFailure = switchFailure
   val bar = when {
     stagedPlant == null -> BarState.Waiting
     isConfirming -> BarState.Growing(stagedPlant.name)
@@ -618,13 +656,17 @@ private fun ConfirmBar(
     }
 
     AnimatedVisibility(
-      visible = switchFailed,
+      visible = switchFailure != null,
       enter = fadeIn(settle()),
       exit = fadeOut(settle()),
       label = "picker-switch-failure",
     ) {
       Text(
-        stringResource(R.string.picker_switch_failed),
+        stringResource(
+          // The server's DEEP Premium refusal reads as itself, not as a
+          // connection that failed.
+          if (shownFailure == PlantSwitchFailure.PremiumLocked) R.string.picker_switch_premium else R.string.picker_switch_failed,
+        ),
         style = DeepType.caption,
         color = Color.driftGrey,
         textAlign = TextAlign.Center,
@@ -692,15 +734,23 @@ private fun QuietLabel(title: String, tint: Color, modifier: Modifier = Modifier
  * window — so most of these render its body on the sheet's surface instead.
  */
 
-private val PreviewTallies = mapOf("oak" to 240, "sakura" to 160, "lotus" to 0)
+private val PreviewTallies = mapOf("oak" to 240, "sakura" to 160, "lotus" to 0, "moonflower" to 360)
 
-private fun previewState(catalog: PlantCatalog, switchFailed: Boolean = false) = GardenStore.State(
-  plant = Plant.oakFixture,
-  sunlight = 240,
+private fun previewState(
+  catalog: PlantCatalog,
+  switchFailure: PlantSwitchFailure? = null,
+  plant: Plant = Plant.oakFixture,
+) = GardenStore.State(
+  plant = plant,
+  sunlight = PreviewTallies[plant.id] ?: 0,
   sunlightByPlant = PreviewTallies,
   catalog = catalog,
-  switchFailed = switchFailed,
+  switchFailure = switchFailure,
 )
+
+/** The gate as the sheet applies it, for the stateless body's previews. */
+private fun previewLock(hasPremium: Boolean, growing: Plant = Plant.oakFixture): (Plant) -> Boolean =
+  { PremiumGate.isLocked(it, growingId = growing.id, hasPremium = hasPremium) }
 
 @Composable
 private fun PickerPreviewSurface(content: @Composable () -> Unit) {
@@ -730,6 +780,7 @@ private fun PlantPickerKeepPreview() {
       state = previewState(PlantCatalog.Loaded(Plant.fixtures)),
       stagedId = "oak",
       isConfirming = false,
+      isLocked = previewLock(hasPremium = false),
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )
   }
@@ -743,21 +794,64 @@ private fun PlantPickerGrowPreview() {
       state = previewState(PlantCatalog.Loaded(Plant.fixtures)),
       stagedId = "sakura",
       isConfirming = false,
+      isLocked = previewLock(hasPremium = false),
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )
   }
 }
 
-@Preview(showBackground = true, name = "Plant picker — DEEP Premium locked")
+@Preview(showBackground = true, name = "Plant picker — a premium plant, locked")
 @Composable
 private fun PlantPickerLockedPreview() {
   PickerPreviewSurface {
     PlantPickerBody(
-      state = previewState(
-        PlantCatalog.Loaded(Plant.fixtures.map { if (it.id == "lotus") it.copy(isLocked = true) else it }),
-      ),
+      state = previewState(PlantCatalog.Loaded(Plant.fixturesWithPremium)),
       stagedId = "oak",
       isConfirming = false,
+      isLocked = previewLock(hasPremium = false),
+      onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Plant picker — a member, premium plant open")
+@Composable
+private fun PlantPickerMemberPreview() {
+  PickerPreviewSurface {
+    PlantPickerBody(
+      state = previewState(PlantCatalog.Loaded(Plant.fixturesWithPremium)),
+      stagedId = "moonflower",
+      isConfirming = false,
+      isLocked = previewLock(hasPremium = true),
+      onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Plant picker — lapsed, growing the premium plant")
+@Composable
+private fun PlantPickerLapsedPreview() {
+  // The plant stays theirs: no badge, no lock, still growing.
+  PickerPreviewSurface {
+    PlantPickerBody(
+      state = previewState(PlantCatalog.Loaded(Plant.fixturesWithPremium), plant = Plant.moonflowerFixture),
+      stagedId = "moonflower",
+      isConfirming = false,
+      isLocked = previewLock(hasPremium = false, growing = Plant.moonflowerFixture),
+      onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
+    )
+  }
+}
+
+@Preview(showBackground = true, name = "Plant picker — refused as DEEP Premium")
+@Composable
+private fun PlantPickerPremiumRefusedPreview() {
+  PickerPreviewSurface {
+    PlantPickerBody(
+      state = previewState(PlantCatalog.Loaded(Plant.fixturesWithPremium), switchFailure = PlantSwitchFailure.PremiumLocked),
+      stagedId = "oak",
+      isConfirming = false,
+      isLocked = previewLock(hasPremium = false),
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )
   }
@@ -768,9 +862,10 @@ private fun PlantPickerLockedPreview() {
 private fun PlantPickerRefusedPreview() {
   PickerPreviewSurface {
     PlantPickerBody(
-      state = previewState(PlantCatalog.Loaded(Plant.fixtures), switchFailed = true),
+      state = previewState(PlantCatalog.Loaded(Plant.fixtures), switchFailure = PlantSwitchFailure.Unreachable),
       stagedId = "oak",
       isConfirming = false,
+      isLocked = previewLock(hasPremium = false),
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )
   }
@@ -784,6 +879,7 @@ private fun PlantPickerLoadingPreview() {
       state = previewState(PlantCatalog.Loading),
       stagedId = "oak",
       isConfirming = false,
+      isLocked = previewLock(hasPremium = false),
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )
   }
@@ -797,6 +893,7 @@ private fun PlantPickerFailedPreview() {
       state = previewState(PlantCatalog.Failed),
       stagedId = "oak",
       isConfirming = false,
+      isLocked = previewLock(hasPremium = false),
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )
   }
@@ -810,6 +907,7 @@ private fun PlantPickerLargeTypePreview() {
       state = previewState(PlantCatalog.Loaded(Plant.fixtures)),
       stagedId = "sakura",
       isConfirming = true,
+      isLocked = previewLock(hasPremium = false),
       onStage = {}, onConfirm = {}, onKeep = {}, onRetry = {},
     )
   }

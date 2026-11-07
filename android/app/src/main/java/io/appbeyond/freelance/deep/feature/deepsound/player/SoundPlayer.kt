@@ -79,9 +79,15 @@ import kotlin.random.Random
  *
  * @param settings where the Repeat choice is kept — `deep.sound` in
  *   production.
+ * @param hasPremium the listener's DEEP Premium answer at the moment a queue
+ *   is loaded — what decides which tracks may join it (`SoundQueue.playable`).
  */
 @MainThread
-class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPlaying {
+class SoundPlayer(
+  context: Context,
+  private val settings: BlobStoring,
+  private val hasPremium: () -> Boolean = { false },
+) : SoundPlaying {
 
   private val context = context.applicationContext
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -136,11 +142,12 @@ class SoundPlayer(context: Context, private val settings: BlobStoring) : SoundPl
       return
     }
     if (isPlaybackHeld) return
-    // DEEP Premium tracks this listener is locked out of never join the queue,
-    // so neither this class nor the lock screen can advance onto one; nor,
-    // beside tracks that have audio, does one without. A queue that is all
-    // locked plays nothing, and leaves what was loaded alone.
-    val start = SoundQueue.playable(entries, startIndex) ?: return
+    // DEEP Premium tracks this listener is locked out of — and premium audio
+    // the server withheld — never join the queue, so neither this class nor
+    // the lock screen can advance onto one; nor, beside tracks that have
+    // audio, does one without. A queue with nothing that can start plays
+    // nothing, and leaves what was loaded alone.
+    val start = SoundQueue.playable(entries, startIndex, hasPremium()) ?: return
     load(_playback.value.queue.replacing(start.entries, start.index, shuffled, random))
   }
 

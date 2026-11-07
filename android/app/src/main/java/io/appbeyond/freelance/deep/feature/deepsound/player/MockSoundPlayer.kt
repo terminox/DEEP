@@ -31,6 +31,7 @@ class MockSoundPlayer(
   volume: Double = SoundPlayback.DEFAULT_VOLUME,
   repeatMode: RepeatMode = RepeatMode.Off,
   isShuffled: Boolean = false,
+  private val hasPremium: () -> Boolean = { false },
 ) : SoundPlaying {
 
   /** Seeded, so a preview deals the same shuffle every time it renders. */
@@ -56,8 +57,8 @@ class MockSoundPlayer(
       return
     }
     if (isPlaybackHeld) return
-    // The real player's rule: locked tracks never join the queue.
-    val start = SoundQueue.playable(entries, startIndex) ?: return
+    // The real player's rule: what the premium gate refuses never joins the queue.
+    val start = SoundQueue.playable(entries, startIndex, hasPremium()) ?: return
     _playback.value = state.copy(
       queue = state.queue.replacing(start.entries, start.index, shuffled, random),
       isPlaying = true,

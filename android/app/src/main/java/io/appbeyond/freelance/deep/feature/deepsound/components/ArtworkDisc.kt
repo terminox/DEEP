@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.feature.deepsound.SoundIcons
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.deepPlum
-import io.appbeyond.freelance.deep.theme.driftGrey
 import io.appbeyond.freelance.deep.theme.edge
 import io.appbeyond.freelance.deep.theme.lavenderMist
 
@@ -53,20 +52,16 @@ enum class ArtworkDiscSize(
 /**
  * The white disc that sits on a collection's artwork: the home tiles' and
  * feature cards' play button (`HomeTile.playButton` / `FeatureCard.playButton`
- * in Deep/Deep/Features/GlobalPause/Components), or — on a collection this
- * listener is locked out of — the DEEP Premium lock in its place.
+ * in Deep/Deep/Features/GlobalPause/Components).
  *
- * Only the look. The caller makes it a button (the play disc) or leaves it a
- * plain mark (the lock), so a lock is never a tap target that does nothing.
- *
- * @param isLocked draws the lock in drift grey — iOS's caption-lock tone —
- *   rather than the plum play glyph.
+ * Only the look; the caller makes it a button. A DEEP Premium collection keeps
+ * it — the lock is a badge of its own at the artwork's other corner
+ * ([io.appbeyond.freelance.deep.feature.premium.components.PremiumLockBadge]).
  */
 @Composable
 fun ArtworkDisc(
   size: ArtworkDiscSize,
   modifier: Modifier = Modifier,
-  isLocked: Boolean = false,
 ) {
   Box(
     modifier
@@ -83,18 +78,13 @@ fun ArtworkDisc(
     contentAlignment = Alignment.Center,
   ) {
     Icon(
-      imageVector = if (isLocked) SoundIcons.Lock else SoundIcons.Play,
+      imageVector = SoundIcons.Play,
       contentDescription = null,
-      tint = if (isLocked) Color.driftGrey else Color.deepPlum,
+      tint = Color.deepPlum,
       modifier = Modifier.size(size.glyph),
     )
   }
 }
-
-/** Shorthand for the lock-only disc — the same disc, never a button. */
-@Composable
-fun ArtworkLockDisc(size: ArtworkDiscSize, modifier: Modifier = Modifier) =
-  ArtworkDisc(size = size, modifier = modifier, isLocked = true)
 
 // MARK: - Preview
 
@@ -110,9 +100,7 @@ private fun ArtworkDiscPreview() {
       verticalAlignment = Alignment.CenterVertically,
     ) {
       ArtworkDisc(ArtworkDiscSize.Small)
-      ArtworkLockDisc(ArtworkDiscSize.Small)
       ArtworkDisc(ArtworkDiscSize.Large)
-      ArtworkLockDisc(ArtworkDiscSize.Large)
     }
   }
 }

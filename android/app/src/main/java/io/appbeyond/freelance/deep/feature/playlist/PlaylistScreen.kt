@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -35,6 +36,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
+import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
+import io.appbeyond.freelance.deep.feature.premium.store.FakePremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.rememberHasPremium
 import io.appbeyond.freelance.deep.feature.deepsound.PlayerIcons
 import io.appbeyond.freelance.deep.feature.deepsound.SoundIcons
 import io.appbeyond.freelance.deep.feature.deepsound.components.SoundActionButton
@@ -127,9 +132,12 @@ private val CHIP_PADDING_VERTICAL = 12.dp
  * Tapping a sound — or Play, or Shuffle — starts the whole saved list as the
  * queue from that sound. Each entry carries its own collection, so the artwork
  * and origin line change track by track. A DEEP Premium sound locked for this
- * listener shows its lock and is left out of the queue (the player drops
- * locked tracks); tapping it does nothing more, since Android has no way to
- * become a member.
+ * listener (`PremiumGate`, each entry judged by its own collection) wears the
+ * lock badge on its artwork and is left out of the queue, as is one whose
+ * audio the server withheld; tapping it does nothing yet — the DEEP Premium
+ * invitation it will open arrives with the paywall. The saved sounds are
+ * re-fetched whenever the premium answer moves (`AppDependencies.startPremium`),
+ * so a new member's withheld audio arrives without a visit.
  *
  * A leaf: navigation arrives as [onOpenSettings] (and [onExploreDeepSound],
  * the empty state's way out — `null` hides that button), and the shell owns
@@ -146,6 +154,7 @@ fun PlaylistScreen(
 ) {
   val state by playlistStore.state.collectAsStateWithLifecycle()
   val playback by player.playback.collectAsStateWithLifecycle()
+  val hasPremium = rememberHasPremium()
   val scope = rememberCoroutineScope()
   val bottomInset = Dp.rhythm + LocalMiniPlayerClearance.current
   val listState = rememberLazyListState()
@@ -196,10 +205,11 @@ fun PlaylistScreen(
             } else {
               savedSounds(
                 entries = shown.entries,
+                hasPremium = hasPremium,
                 playback = playback,
-                onPlay = { index -> player.playFrom(shown.entries, index) },
-                onPlayAll = { shuffled ->
-                  player.play(shown.entries, startIndex = if (shuffled) null else 0, shuffled = shuffled)
+                onPlay = { queue, index -> player.playFrom(queue, index) },
+                onPlayAll = { queue, shuffled ->
+                  player.play(queue, startIndex = if (shuffled) null else 0, shuffled = shuffled)
                 },
                 onRemove = { entry -> scope.launch { playlistStore.toggle(entry.track, entry.collection) } },
               )
@@ -252,20 +262,25 @@ private fun PlaylistHeader(onOpenSettings: () -> Unit) {
 // MARK: - Content
 
 /**
- * The saved sounds: Play and Shuffle, then a row per sound.
+ * The saved sounds: Play and Shuffle, then a row per sound. Every way to
+ * start queues only what [PremiumGate.playable] lets through, so a run never
+ * carries on into a locked sound.
  *
- * @param onPlay a row tapped: plays from that sound, keeping the listener's
- *   shuffle setting.
+ * @param onPlay a row tapped: plays that queue from that sound, keeping the
+ *   listener's shuffle setting.
  * @param onPlayAll Play (false) sets off from the top in order; Shuffle (true)
- *   deals the whole playlist in a random order.
+ *   deals the whole queue in a random order.
  */
 private fun LazyListScope.savedSounds(
   entries: List<SoundQueueEntry>,
+  hasPremium: Boolean,
   playback: SoundPlayback,
-  onPlay: (Int) -> Unit,
-  onPlayAll: (shuffled: Boolean) -> Unit,
+  onPlay: (queue: List<SoundQueueEntry>, index: Int) -> Unit,
+  onPlayAll: (queue: List<SoundQueueEntry>, shuffled: Boolean) -> Unit,
   onRemove: (SoundQueueEntry) -> Unit,
 ) {
+  val playable = PremiumGate.playable(entries, hasPremium)
+
   item(key = "actions") {
     Row(
       Modifier.animateKind(this)
@@ -276,25 +291,35 @@ private fun LazyListScope.savedSounds(
       SoundActionButton(
         title = stringResource(R.string.deepsound_play),
         icon = PlayerIcons.Play,
-        // From the top; the player skips ahead past any locked sound.
-        onClick = { onPlayAll(false) },
+        // From the first sound this listener may hear, in order.
+        onClick = { if (playable.isNotEmpty()) onPlayAll(playable, false) },
         modifier = Modifier.weight(1f),
       )
       SoundActionButton(
         title = stringResource(R.string.deepsound_shuffle),
         icon = SoundIcons.Shuffle,
         // From a random sound that can play, the rest dealt after it.
-        onClick = { onPlayAll(true) },
+        onClick = { if (playable.isNotEmpty()) onPlayAll(playable, true) },
         modifier = Modifier.weight(1f),
       )
     }
   }
 
-  itemsIndexed(entries, key = { _, entry -> entry.track.id }) { index, entry ->
+  itemsIndexed(entries, key = { _, entry -> entry.track.id }) { _, entry ->
     PlaylistTrackRow(
       entry = entry,
       isCurrent = playback.isCurrent(entry.track, entry.collection),
-      onPlay = { if (!entry.track.isLocked) onPlay(index) },
+      isLocked = PremiumGate.isLocked(entry.track, entry.collection, hasPremium),
+      onPlay = {
+        if (PremiumGate.canStart(entry.track, entry.collection, hasPremium)) {
+          // Matched on the track and its origin: a queue entry carries no
+          // playlist id, and the same sound is saved at most once.
+          val index = playable.indexOfFirst {
+            it.track.id == entry.track.id && it.collection.id == entry.collection.id
+          }
+          onPlay(playable, index.coerceAtLeast(0))
+        }
+      },
       onRemove = { onRemove(entry) },
       modifier = Modifier
         .animateItem()
@@ -392,6 +417,20 @@ private fun PlaylistSavedPreview() {
       player = remember { MockSoundPlayer.idle() },
       onOpenSettings = {},
     )
+  }
+}
+
+@Preview(showBackground = true, name = "Playlist — a premium sound, locked")
+@Composable
+private fun PlaylistLockedPreview() {
+  DeepTheme {
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = false)) {
+      PlaylistScreen(
+        playlistStore = remember { MockPlaylistStore.withPremium },
+        player = remember { MockSoundPlayer.idle() },
+        onOpenSettings = {},
+      )
+    }
   }
 }
 

@@ -46,6 +46,8 @@ import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.deepsound.PlayerIcons
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporting
+import io.appbeyond.freelance.deep.feature.rewards.store.MockListenReporter
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.theme.DeepTheme
@@ -146,6 +148,12 @@ private val EXPAND_DRAG_DISTANCE = 300.dp
  * The progress line reads [SoundPlaying.elapsed] only in the draw phase, so its
  * four-a-second tick redraws a 2dp line rather than recomposing the pill.
  *
+ * When a finished track's heart lands, the collection line gives way for a few
+ * seconds to [listenReporter]'s notice in its compact form ("+1 heart",
+ * "3/3 hearts today"), and an earned heart is felt — once, even with Now
+ * Playing composed too. No bloom here: the capsule clips anything rising out
+ * of it.
+ *
  * @param onDragUp the swipe's progress, 0…1, over a [EXPAND_DRAG_DISTANCE]
  *   travel. Downward travel clamps to 0.
  * @param onDragUpEnd the release velocity in px/s, positive upward (toward
@@ -154,12 +162,15 @@ private val EXPAND_DRAG_DISTANCE = 300.dp
 @Composable
 fun MiniPlayerPill(
   player: SoundPlaying,
+  listenReporter: ListenReporting,
   onExpand: () -> Unit,
   modifier: Modifier = Modifier,
   onDragUp: (fraction: Float) -> Unit = {},
   onDragUpEnd: (velocity: Float) -> Unit = {},
 ) {
   val playback by player.playback.collectAsStateWithLifecycle()
+  val notice by listenReporter.notice.collectAsStateWithLifecycle()
+  rememberListenHeart(listenReporter, notice)
   // Kept as a State and read only inside `drawWithContent` below.
   val elapsed = player.elapsed.collectAsStateWithLifecycle()
   val duration = rememberUpdatedState(playback.duration)
@@ -247,13 +258,18 @@ fun MiniPlayerPill(
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
         )
-        Text(
-          text = collection?.title.orEmpty(),
-          style = SUBTITLE_STYLE,
-          color = Color.driftGrey,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
+        ListenNoticeLine(
+          notice = notice,
+          label = { ListenNoticeLabel(it, style = SUBTITLE_STYLE, compact = true) },
+        ) {
+          Text(
+            text = collection?.title.orEmpty(),
+            style = SUBTITLE_STYLE,
+            color = Color.driftGrey,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
       }
 
       TransportGlyph(
@@ -306,11 +322,16 @@ private fun TransportGlyph(
  * with the atmosphere so the frosted surface reads in context.
  */
 @Composable
-private fun PillPreviewFrame(player: SoundPlaying) {
+private fun PillPreviewFrame(player: SoundPlaying, listenReporter: ListenReporting = MockListenReporter()) {
   DeepTheme {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
       AtmosphereBackground(animated = false)
-      MiniPlayerPill(player = player, onExpand = {}, modifier = Modifier.padding(horizontal = Dp.edge))
+      MiniPlayerPill(
+        player = player,
+        listenReporter = listenReporter,
+        onExpand = {},
+        modifier = Modifier.padding(horizontal = Dp.edge),
+      )
     }
   }
 }
@@ -319,6 +340,24 @@ private fun PillPreviewFrame(player: SoundPlaying) {
 @Composable
 private fun MiniPlayerPillPlayingPreview() {
   PillPreviewFrame(remember { MockSoundPlayer.playing() })
+}
+
+@Preview(showBackground = true, name = "Mini player — heart earned")
+@Composable
+private fun MiniPlayerPillHeartEarnedPreview() {
+  PillPreviewFrame(remember { MockSoundPlayer.playing() }, remember { MockListenReporter.earned() })
+}
+
+@Preview(showBackground = true, name = "Mini player — today's hearts in")
+@Composable
+private fun MiniPlayerPillDayCompletePreview() {
+  PillPreviewFrame(remember { MockSoundPlayer.playing() }, remember { MockListenReporter.dayComplete() })
+}
+
+@Preview(showBackground = true, name = "Mini player — today's hearts in, Thai, smallest phone", widthDp = 320, locale = "th")
+@Composable
+private fun MiniPlayerPillDayCompleteThaiPreview() {
+  PillPreviewFrame(remember { MockSoundPlayer.playing() }, remember { MockListenReporter.dayComplete() })
 }
 
 @Preview(showBackground = true, name = "Mini player — paused")

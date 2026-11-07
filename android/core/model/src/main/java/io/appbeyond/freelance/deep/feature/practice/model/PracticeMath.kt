@@ -4,6 +4,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeParseException
 import kotlin.math.max
 
 /**
@@ -25,6 +26,11 @@ data class ContinuityTransition(val before: Int, val after: Int) {
  * Pure aggregate math over the practice journal. The server keeps a dumb log;
  * everything the garden shows — today's minutes, streaks — is derived here,
  * in the user's own calendar, so day boundaries follow the device timezone.
+ *
+ * Minutes and the session cap are DEEP Sessions only. The rhythm (streaks,
+ * continuity) counts *any* practice day: a finished session, a sound listened
+ * to its end, or a Global Pause the server counted — the `extraDays` every
+ * rhythm function takes.
  *
  * Ported from Deep/Deep/Features/Practice/Models/PracticeMath.swift. iOS
  * passes a `Calendar` (which carries the device's `TimeZone`) and an explicit
@@ -111,8 +117,8 @@ object PracticeMath {
   /**
    * The run before today and the run now — see [ContinuityTransition].
    *
-   * @param extraDays days kept by something other than a session — an
-   *   attended Global Pause.
+   * @param extraDays days kept by something other than a session — a sound
+   *   listened to its end, an attended Global Pause, the server's activity days.
    */
   fun continuityTransition(
     completions: List<PracticeCompletion>,
@@ -140,6 +146,25 @@ object PracticeMath {
    */
   fun hasPauseDay(pauseDays: Set<LocalDate>, zone: ZoneId, clock: Clock): Boolean =
     clock.instant().atZone(zone).toLocalDate() in pauseDays
+
+  /**
+   * The day a "YYYY-MM-DD" key names — a server activity day or a stored
+   * marker — or null for a key that doesn't parse (an impossible date
+   * included).
+   *
+   * The key is always an ISO (Gregorian) date, whatever calendar the device
+   * reads in: [LocalDate.parse] never consults the locale, so a Thai phone's
+   * Buddhist calendar can't turn "2026" into 2026 BE (1483 AD), the bug iOS
+   * guards against with an explicit Gregorian calendar.
+   */
+  fun day(fromKey: String): LocalDate? = try {
+    LocalDate.parse(fromKey)
+  } catch (_: DateTimeParseException) {
+    null
+  }
+
+  /** Every key that names a day, as days — see [day]. */
+  fun days(fromKeys: Collection<String>): Set<LocalDate> = fromKeys.mapNotNullTo(HashSet()) { day(it) }
 
   /** Distinct local-midnight days with at least one completion. */
   private fun practiceDays(completions: List<PracticeCompletion>, zone: ZoneId): Set<LocalDate> =

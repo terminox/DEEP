@@ -1,8 +1,15 @@
 package io.appbeyond.freelance.deep.auth
 
+import io.appbeyond.freelance.deep.feature.premium.model.ServerEntitlement
+
 /** What `GET /me` produced during launch restore, abstracted away from HTTP. */
 sealed interface MeFetch {
-  data class Fetched(val account: Account) : MeFetch
+  /**
+   * [entitlement] is the DEEP Premium answer `/me` carries beside the member
+   * — null from a server that predates it. The restore decision never reads
+   * it; the account store passes it on.
+   */
+  data class Fetched(val account: Account, val entitlement: ServerEntitlement? = null) : MeFetch
   /** 401 after the refresh path gave up, or any other 4xx. */
   data object Rejected : MeFetch
   /** Offline, timeout, 5xx, undecodable. */

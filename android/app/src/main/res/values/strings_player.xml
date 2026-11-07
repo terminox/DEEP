@@ -5,10 +5,17 @@
   the transport labels iOS gets for free from SF Symbols' automatic VoiceOver
   names are spelled out here, since an Android glyph has none of its own.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
   <!-- Mini player — MiniPlayerBar.swift -->
   <string name="player_not_playing">Not playing</string>
   <string name="player_now_playing_a11y">Now playing %1$s. Tap to open the player.</string>
+
+  <!-- A listen's heart, swapped into the subtitle line — ListenNoticeLabel.swift.
+       The full sentences are also what TalkBack hears (ListenReporter.swift). -->
+  <string name="player_listen_earned">+1 heart</string>
+  <string name="player_listen_earned_a11y">You earned 1 heart for listening</string>
+  <string name="player_listen_day_complete" tools:ignore="PluralsCandidate">Today\'s %1$d sound hearts are in</string>
+  <string name="player_listen_day_complete_compact" tools:ignore="PluralsCandidate">%1$d/%2$d hearts today</string>
 
   <!-- Transport and utilities — VoiceOver names of the SF Symbols iOS draws -->
   <string name="player_play">Play</string>

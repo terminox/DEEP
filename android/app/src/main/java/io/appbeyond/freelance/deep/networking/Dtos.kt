@@ -59,10 +59,10 @@ data class PauseSectionDto(
  * [subtitle] is nullable here although the column is not, because the translated
  * projection may resolve to nothing for a language that has no override.
  *
- * [isLocked] is the server's DEEP Premium answer for this caller (deep-api
- * #65): a premium collection seen by a non-member. [isPremium] stays for the
- * badge; the lock is what the app acts on. Absent from a server that predates
- * the lock, so it defaults to unlocked and such a server plays as before.
+ * [isLocked] is the server's DEEP Premium verdict for this caller (deep-api
+ * #65): a premium collection seen by a non-member. Both it and [isPremium]
+ * go through `PremiumGate`, where the verdict can only add a lock — so absent
+ * (an older server) and `false` mean the same, and a plain default suffices.
  */
 @Serializable
 data class CollectionDto(

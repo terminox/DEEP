@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,12 @@ import io.appbeyond.freelance.deep.feature.deepsound.SoundFixtures
 import io.appbeyond.freelance.deep.feature.deepsound.SoundIcons
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTime
+import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockCorner
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockSize
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
+import io.appbeyond.freelance.deep.feature.premium.rememberHasPremium
+import io.appbeyond.freelance.deep.feature.premium.store.FakePremiumAccess
 import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
@@ -73,6 +80,9 @@ private val ROW_TEXT_SPACING = 3.dp
 
 /** A row's inner padding — iOS's `.padding(12)`. */
 private val ROW_PADDING = 12.dp
+
+/** The lock badge's inset on the row's artwork — iOS's `inset: 5`, for the smaller art. */
+private val LOCK_INSET = 5.dp
 
 /** The trailing chevron — iOS's `.font(.system(size: 13, weight: .semibold))`. */
 private val CHEVRON_SIZE = 16.dp
@@ -184,8 +194,9 @@ private fun ListTopBar(title: String, onBack: () -> Unit) {
 // MARK: - Row
 
 /**
- * One collection: artwork, title, subtitle and a "{n} tracks · {x} min" meta
- * line, with a trailing chevron. The text column takes `Modifier.weight(1f)`
+ * One collection: artwork, title, subtitle and a "{n} tracks, {x} min" meta
+ * line, with a trailing chevron. A DEEP Premium collection this listener is
+ * locked out of wears [PremiumLockCorner] on its artwork. The text column takes `Modifier.weight(1f)`
  * rather than sitting beside a `Spacer` — a `Spacer` bids against it for width
  * and truncates titles that have room to spare (the same fix `CollectionTile`
  * and `HomeTile`'s ports already carry).
@@ -209,8 +220,15 @@ private fun CollectionRow(
     R.string.deepsound_minutes,
     SoundTime.minutes(collection.totalDurationSeconds.toDouble()),
   )
-  val meta = stringResource(R.string.deepsound_collection_meta, trackCount, minutes)
-  val a11yLabel = "${collection.title}, $trackCount"
+  val meta = pluralStringResource(
+    R.plurals.deepsound_collection_meta,
+    collection.trackCount,
+    collection.trackCount,
+    minutes,
+  )
+  val locked = PremiumGate.isLocked(collection, rememberHasPremium())
+  val premium = stringResource(R.string.premium_part_of)
+  val a11yLabel = listOfNotNull(collection.title, trackCount, if (locked) premium else null).joinToString(", ")
 
   Row(
     modifier
@@ -231,14 +249,17 @@ private fun CollectionRow(
     horizontalArrangement = Arrangement.spacedBy(ROW_SPACING),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    ArtworkImage(
-      url = collection.imageUrl,
-      palette = collection.palette,
-      contentDescription = null,
-      modifier = Modifier
-        .size(ARTWORK_SIZE)
-        .clip(RoundedCornerShape(ARTWORK_RADIUS)),
-    )
+    Box {
+      ArtworkImage(
+        url = collection.imageUrl,
+        palette = collection.palette,
+        contentDescription = null,
+        modifier = Modifier
+          .size(ARTWORK_SIZE)
+          .clip(RoundedCornerShape(ARTWORK_RADIUS)),
+      )
+      PremiumLockCorner(isLocked = locked, size = PremiumLockSize.Row, inset = LOCK_INSET)
+    }
 
     Column(
       Modifier.weight(1f),
@@ -288,5 +309,20 @@ private fun CollectionListPreview() {
       onOpenCollection = {},
       onBack = {},
     )
+  }
+}
+
+@Preview(showBackground = true, name = "Collection list — DEEP Premium locked")
+@Composable
+private fun CollectionListLockedPreview() {
+  DeepTheme {
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = false)) {
+      CollectionListScreen(
+        title = "Sleep",
+        collections = listOf(SoundFixtures.premiumSample) + SoundFixtures.sleep,
+        onOpenCollection = {},
+        onBack = {},
+      )
+    }
   }
 }

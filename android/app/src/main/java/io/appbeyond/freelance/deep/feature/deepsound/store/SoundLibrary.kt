@@ -1,7 +1,9 @@
 package io.appbeyond.freelance.deep.feature.deepsound.store
 
+import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundShelf
 import io.appbeyond.freelance.deep.feature.deepsound.model.TrackLyrics
+import io.appbeyond.freelance.deep.feature.premium.model.KeptContent
 
 /**
  * The content seam for DEEP Sound. Ported from `SoundContentRepository.swift`,
@@ -34,6 +36,29 @@ interface SoundLibrary {
    * alive under the pushed screen.
    */
   val cachedShelves: List<SoundShelf>? get() = null
+
+  /**
+   * `GET /sound/collections/{id}` (optional auth) — one collection, fresh,
+   * for a detail screen whose copy was fetched before the listener's DEEP
+   * Premium answer changed: the verdicts (and the withheld audio) it carries
+   * are the asker's.
+   */
+  suspend fun collection(id: String): SoundCollection
+
+  /**
+   * The freshest copy of a collection kept for the signed-in account — from
+   * an earlier [collection] or riding the kept [shelves] — stamped with the
+   * DEEP Premium content epoch it was fetched under. Null when nothing is
+   * kept for it.
+   */
+  fun keptCollection(id: String): KeptContent<SoundCollection>? = null
+
+  /**
+   * Fetches again everything kept for the signed-in account, so content
+   * carrying an older premium answer's verdicts is replaced even while no
+   * screen is showing it. Never throws.
+   */
+  suspend fun refreshKept() {}
 
   /** `GET /sound/tracks/{id}/lyrics` (anon) — every language for the track; empty when it has none. */
   suspend fun lyrics(trackId: String): List<TrackLyrics>

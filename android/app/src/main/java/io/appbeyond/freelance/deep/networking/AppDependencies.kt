@@ -10,11 +10,11 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.auth.TokenStoring
+import io.appbeyond.freelance.deep.BuildConfig
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.config.AppConfig
 import io.appbeyond.freelance.deep.feature.compassion.store.HeartLedger
 import io.appbeyond.freelance.deep.feature.deepsound.model.ListenRules
-import io.appbeyond.freelance.deep.feature.deepsound.player.ApiTrackListenReporter
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.TrackListenReporting
 import io.appbeyond.freelance.deep.feature.deepsound.store.ApiSoundLibrary
@@ -35,11 +35,19 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingRemote
 import io.appbeyond.freelance.deep.feature.playlist.store.ApiPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistCache
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
+import io.appbeyond.freelance.deep.feature.premium.store.ApiEntitlementFetcher
+import io.appbeyond.freelance.deep.feature.premium.store.MockSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.store.PremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.store.ReconciledPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.store.RevenueCatSubscriptionStore
+import io.appbeyond.freelance.deep.feature.premium.store.SubscriptionStatusCache
+import io.appbeyond.freelance.deep.feature.premium.store.SubscriptionStore
 import io.appbeyond.freelance.deep.feature.practice.store.PracticeJournal
 import io.appbeyond.freelance.deep.feature.rewards.PauseNightRewards
 import io.appbeyond.freelance.deep.feature.rewards.PracticeRewards
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
 import io.appbeyond.freelance.deep.feature.rewards.store.ContinuityWitness
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporter
 import io.appbeyond.freelance.deep.feature.rewards.store.RewardsRemote
 import io.appbeyond.freelance.deep.feature.reminders.AlarmReminderScheduler
 import io.appbeyond.freelance.deep.feature.reminders.store.ReminderStore
@@ -52,11 +60,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.time.Clock
@@ -83,10 +95,12 @@ class AppDependencies(context: Context) {
 
   val config: AppConfig = AppConfig
 
+  private val appContext: Context = context.applicationContext
+
   /**
    * Process-lifetime scope for work that must outlive any single screen —
-   * [onboardingStore]'s eager DataStore load, the fire-and-forget listen
-   * reports, the rewards sync, gifts of hearts, and the stores' writes.
+   * [onboardingStore]'s eager DataStore load, the queued listen reports, the
+   * rewards sync, gifts of hearts, and the stores' writes.
    * `SupervisorJob` so a failure in one can never cancel another.
    */
   private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -154,6 +168,68 @@ class AppDependencies(context: Context) {
     DataStoreOnboardingProgressStore(context.applicationContext, appScope)
   val onboardingStore: OnboardingProgressStore = onboardingProgressStore
 
+  private val authService: AuthService = retrofit.create(AuthService::class.java)
+
+  // DEEP Premium. Built lazily, on the first thing that asks — in practice
+  // `MainActivity`, through [startPremium] — and never by this constructor:
+  // a debug build may still be told, by the activity's launch intent, to
+  // swap in the in-memory store ([useMockSubscriptions]), and the process
+  // starts before that intent can be read. Declared above the account store
+  // because its sinks reach both.
+
+  /** Set by [useMockSubscriptions]; read once, as [subscriptionStore] is built. */
+  @Volatile private var mockSubscriptionsRequested = false
+
+  /**
+   * Debug builds only: the in-memory [MockSubscriptionStore] stands in for
+   * RevenueCat, so the whole purchase mechanic — plans, the purchase, the
+   * flipped plan chip — is drivable on an emulator with no store and no
+   * network (iOS's `-DeepMockSubscriptions` launch argument). Has no effect
+   * once the store has been built, and none at all in a release build, where
+   * [BuildConfig.DEBUG] is a compile-time `false` and R8 drops the mock.
+   */
+  fun useMockSubscriptions() {
+    if (BuildConfig.DEBUG) mockSubscriptionsRequested = true
+  }
+
+  /**
+   * DEEP Premium's purchasing store: RevenueCat, speaking for the DEEP user id
+   * from the first moment — the last signed-in member to start with, then
+   * every sign-in and sign-out after (the account store's identity sink).
+   */
+  val subscriptionStore: SubscriptionStore by lazy {
+    if (BuildConfig.DEBUG && mockSubscriptionsRequested) {
+      MockSubscriptionStore.free
+    } else {
+      RevenueCatSubscriptionStore(
+        context = appContext,
+        apiKey = config.revenueCatApiKey,
+        cache = SubscriptionStatusCache(DataStoreBlobStore(appContext, "deep.subscription")),
+        scope = appScope,
+        lastKnownUserId = apiAccountStore::lastKnownUserId,
+        // Only the dev flavor carries a Test Store key; see the store's doc.
+        allowTestStoreInRelease = config.isDev,
+        verboseLogging = config.isDev,
+      )
+    }
+  }
+
+  /**
+   * The one DEEP Premium answer every lock reads — the store's, the server's
+   * (remembered per member in `deep.premium`), and a short grace window
+   * after a purchase.
+   */
+  private val reconciledPremiumAccess: ReconciledPremiumAccess by lazy {
+    ReconciledPremiumAccess(
+      storeStatus = subscriptionStore.status,
+      fetcher = ApiEntitlementFetcher(auth = authService, isSignedIn = { isSignedIn }),
+      blob = DataStoreBlobStore(appContext, "deep.premium"),
+      scope = appScope,
+    )
+  }
+
+  val premiumAccess: PremiumAccess get() = reconciledPremiumAccess
+
   /**
    * Built after [onboardingStore] because it holds on to it: when the server
    * ends a signed-in session — a refused refresh, a rejected restore — the
@@ -162,9 +238,14 @@ class AppDependencies(context: Context) {
    * week four the same exit also forgets their garden, hearts, journal and
    * continuity day ([resetAccountState]); the stores it reaches are built
    * below, and the callback can only run long after construction.
+   *
+   * It reports who is signed in, and what the server said about their DEEP
+   * Premium, without learning what either is for: RevenueCat follows the
+   * identity (when it is the live store), and [premiumAccess] follows both —
+   * forgetting a signed-out member's answer, adopting the next one's.
    */
-  val accountStore: AccountStore = ApiAccountStore(
-    auth = retrofit.create(AuthService::class.java),
+  private val apiAccountStore: ApiAccountStore = ApiAccountStore(
+    auth = authService,
     tokens = tokens,
     refresher = tokenRefresher,
     cache = AccountCache(context.applicationContext),
@@ -172,7 +253,14 @@ class AppDependencies(context: Context) {
       onboardingProgressStore.reset()
       resetAccountState()
     },
+    identitySink = { userId ->
+      reconciledPremiumAccess.identify(userId)
+      (subscriptionStore as? RevenueCatSubscriptionStore)?.identify(userId)
+    },
+    entitlementSink = { entitlement -> reconciledPremiumAccess.adopt(entitlement) },
   )
+
+  val accountStore: AccountStore = apiAccountStore
 
   val onboardingRemote: OnboardingRemote =
     ApiOnboardingRemote(retrofit.create(OnboardingService::class.java))
@@ -197,13 +285,15 @@ class AppDependencies(context: Context) {
 
   /**
    * The one player. Connects to the service lazily, on the first track, so a
-   * member who never opens DEEP Sound never starts it.
+   * member who never opens DEEP Sound never starts it. It reads the DEEP
+   * Premium answer as each queue loads, so a locked sound never joins one.
    */
   val soundPlayer: SoundPlayer = SoundPlayer(
     context = context.applicationContext,
     // The listener's Repeat choice: the phone's, like the language, so it
     // outlives a log out — iOS keeps it in `UserDefaults`.
     settings = DataStoreBlobStore(context.applicationContext, "deep.sound"),
+    hasPremium = { premiumAccess.hasPremium.value },
   )
 
   private val soundService: SoundService = retrofit.create(SoundService::class.java)
@@ -216,6 +306,7 @@ class AppDependencies(context: Context) {
   val soundLibrary: SoundLibrary = ApiSoundLibrary(
     service = soundService,
     currentAccountId = { accountStore.account.value?.id },
+    currentEpoch = { premiumAccess.contentEpoch.value },
   )
 
   /**
@@ -226,6 +317,9 @@ class AppDependencies(context: Context) {
     service = soundService,
     cache = PlaylistCache(context.applicationContext),
     scope = appScope,
+    accountIds = accountStore.account
+      .map { it?.id?.takeIf(String::isNotEmpty) }
+      .stateIn(appScope, SharingStarted.Eagerly, null),
   )
 
   // Week four: the Mind Garden, hearts, the practice journal and the reward
@@ -321,18 +415,45 @@ class AppDependencies(context: Context) {
     scope = appScope,
   )
 
+  private val soundListens: SoundListensService = retrofit.create(SoundListensService::class.java)
+
   /**
-   * Told by the service when a track plays through to its natural end. Rides
-   * the one Retrofit, so the report carries the member's timezone and the award
-   * lands on their local day, as iOS's `reportListen` does; the award it earns
-   * is folded and handed to [ingestAwards].
+   * Finished tracks, queued durably in `deep.sound.pendingListens` and
+   * reported with their finish time, so a dropped connection never costs the
+   * heart; the rules themselves live server-side. Each finish keeps its day
+   * in [practiceJournal] first, whatever the server says. Rides the one
+   * Retrofit, so the report carries the member's timezone and the award lands
+   * on their local day; the grant goes to [ingestAwards]. Its notices are what
+   * the mini player and Now Playing say.
    */
-  val trackListens: TrackListenReporting = ApiTrackListenReporter(
-    service = retrofit.create(SoundListensService::class.java),
+  val listenReporter: ListenReporter = ListenReporter(
+    report = soundListens::reportListen,
+    recordActivity = practiceJournal::recordTrackDay,
+    queueBlob = DataStoreBlobStore(context.applicationContext, "deep.sound.pendingListens"),
+    stampBlob = DataStoreBlobStore(context.applicationContext, "deep.sound.dayCompleteNoticed"),
     scope = appScope,
-    currentAccountId = { accountStore.account.value?.id },
-    ingestAwards = ingestAwards,
-  )
+    clock = clock,
+    zone = zone,
+  ).also { reporter -> reporter.awardSink = ingestAwards }
+
+  /**
+   * Told by the service when a track plays through to its natural end. The
+   * finish is stamped now, on the caller's thread, and queued on [appScope] —
+   * so a listen recorded as the service winds down still lands on disk.
+   *
+   * Bound to the member who was listening, as the pause's `activitySink` is
+   * to the signed-in check: a listen whose member has signed out (or been
+   * replaced) by the time it is written down is dropped, never queued for —
+   * or kept in the journal of — the next account. A sign-out landing while
+   * it is being written is caught by the reporter's own generation stamp.
+   */
+  val trackListens: TrackListenReporting = TrackListenReporting { trackId ->
+    val finishedAt = clock.instant()
+    val listener = accountStore.account.value?.id ?: return@TrackListenReporting
+    launchQuietly("listen record") {
+      if (accountStore.account.value?.id == listener) listenReporter.record(trackId, finishedAt)
+    }
+  }
 
   // Week five: giving, the daily reminder, and the language picker (above).
 
@@ -465,48 +586,108 @@ class AppDependencies(context: Context) {
 
   private val isSignedIn: Boolean get() = accountStore.account.value != null
 
+  // DEEP Premium, continued: the seams `AppRoot` and the shell call.
+
+  @Volatile private var premiumStarted = false
+
   /**
-   * Pulls the garden (and the wallet riding it) and syncs the practice
-   * journal — pushing the offline queue, then merging sessions recorded on
-   * other installs — in parallel on [appScope]. A no-op while signed out.
+   * Builds DEEP Premium (after `MainActivity` has had its say on
+   * [useMockSubscriptions]) and starts what follows its answer:
+   *
+   * - the remembered server answer is read at once, so a member's locks are
+   *   right from the first frame after the launch beat;
+   * - every move of [PremiumAccess.contentEpoch] re-fetches everything kept
+   *   whose verdicts were baked in — the DEEP Sound shelves and kept
+   *   collections, the Home feed, the saved sounds (a refresh asked
+   *   mid-flight queues rather than drops) and the plant catalog — here,
+   *   app-wide, not from the screens: a screen on a tab that isn't showing
+   *   isn't composed when the epoch moves (iOS's tabs stay alive), so a
+   *   screen-level reload alone missed it. Screens still re-fetch on their
+   *   own when what they hold is stamped older than the current epoch.
+   *
+   * Idempotent; called from `MainActivity.onCreate`.
+   */
+  fun startPremium() {
+    if (premiumStarted) return
+    premiumStarted = true
+    launchQuietly("premium restore") { reconciledPremiumAccess.restore() }
+    appScope.launch {
+      reconciledPremiumAccess.contentEpoch.drop(1).collect {
+        if (isSignedIn) launchQuietly("playlist reload") { playlistStore.load() }
+        launchQuietly("plant catalog reload") { gardenStore.reloadCatalog() }
+        launchQuietly("sound library reload") { soundLibrary.refreshKept() }
+        // Keyed as `MainActivity` keys the Home feed: by the signed-in account.
+        launchQuietly("home feed reload") { pauseHome.load(accountStore.account.value?.id) }
+      }
+    }
+  }
+
+  /**
+   * Launch: asks the server about DEEP Premium only if the session restore's
+   * `/me` didn't carry the answer already (an older server, or offline).
+   */
+  suspend fun refreshPremiumIfUnanswered() {
+    if (isSignedIn) reconciledPremiumAccess.refreshIfUnanswered()
+  }
+
+  /**
+   * Every return to the foreground while signed in: a membership can start,
+   * lapse or be refunded while the app sleeps.
+   */
+  fun refreshPremium() {
+    if (isSignedIn) launchQuietly("premium refresh") { reconciledPremiumAccess.refresh() }
+  }
+
+  /**
+   * Pulls the garden (and the wallet riding it), syncs the practice journal —
+   * pushing the offline queue, then merging sessions recorded on other
+   * installs — and offers the queued listens, in parallel on [appScope]. A
+   * no-op while signed out.
    *
    * iOS runs this from three seams in `AppRootView`: `bootstrap()`, the
    * `.flow → .main` phase change, and every return to `.active`. Here
    * `AppRoot` calls it as the shell is composed (launch and sign-in alike)
-   * and on every process foreground after that. Both stores are
-   * single-flight, so an overlapping call is harmless.
+   * and on every process foreground after that. All three are single-flight,
+   * so an overlapping call is harmless.
    */
   fun syncRewards() {
     if (!isSignedIn) return
     launchQuietly("garden refresh") { gardenStore.refresh() }
     launchQuietly("practice sync") { practiceJournal.refresh() }
+    // Listens finished offline, or cut off by a kill, go out here.
+    launchQuietly("listen flush") { listenReporter.flush() }
   }
 
   /**
-   * Offers the practice journal's unsynced sessions to the server, giving up
-   * after three seconds. Settings' log out runs this *before* ending the
-   * session, while the token still works.
-   *
-   * DIVERGENCE: iOS's log out drops unsynced sessions — the journal is reset
-   * and whatever never reached the server is gone. A short best-effort push
-   * first keeps an offline-then-reconnected member's practice (and the hearts
-   * it earns) without ever holding a log out hostage to a dead network.
+   * Offers the practice journal's unsynced sessions and the queued listens to
+   * the server, side by side, each giving up after [LOG_OUT_FLUSH_TIMEOUT].
+   * True when nothing is left behind. Settings' log out runs this *before*
+   * ending the session, while the token still works, and asks the member
+   * before dropping whatever is left — iOS's `SettingsView.logOut()`. A dead
+   * network delays the log out by seconds at most.
    */
-  suspend fun flushPracticeJournal() {
-    try {
-      withTimeoutOrNull(PRACTICE_FLUSH_TIMEOUT_MILLIS) { practiceJournal.push() }
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (unexpected: Exception) {
-      Log.w(TAG, "Practice flush before log out failed; signing out anyway.", unexpected)
+  suspend fun flushBeforeLogOut(): Boolean = try {
+    coroutineScope {
+      val practice = async { practiceJournal.flushPending(LOG_OUT_FLUSH_TIMEOUT) }
+      val listens = async { listenReporter.flush(LOG_OUT_FLUSH_TIMEOUT) }
+      val practiceSynced = practice.await()
+      val listensSynced = listens.await()
+      practiceSynced && listensSynced
     }
+  } catch (cancelled: CancellationException) {
+    throw cancelled
+  } catch (unexpected: Exception) {
+    // Unknown is not synced: the member is asked rather than losing practice.
+    Log.w(TAG, "Flush before log out failed.", unexpected)
+    false
   }
 
   /**
    * Forgets everything the account's stores hold for the signed-out member —
-   * journal, garden, hearts, the continuity day — on disk and in memory, so
-   * the next member never inherits any of it, and switches the daily reminder
-   * off and back to its default time (iOS only switches it off). Every exit
+   * journal, queued listens, garden, hearts, the continuity day — on disk and
+   * in memory, so the next member never inherits any of it, and switches the
+   * daily reminder off and back to its default time (iOS only switches it
+   * off). Every exit
    * calls this: Settings' log out and account deletion, the server ending a session
    * ([accountStore]'s involuntary sign-out), `AppRoot`'s rejected launch
    * restore, and the account watcher below. Idempotent, so the overlap is
@@ -516,6 +697,11 @@ class AppDependencies(context: Context) {
    */
   suspend fun resetAccountState() {
     withContext(NonCancellable) {
+      // Queued listens and today's notices belong to the account: a report
+      // still in flight is dropped as it lands, never credited to the next.
+      // Before the journal, so a listen being written down as this runs sees
+      // the reset and keeps its day out of the journal about to be emptied.
+      listenReporter.reset()
       practiceJournal.reset()
       gardenStore.resetLocalState()
       heartLedger.resetLocalState()
@@ -550,6 +736,7 @@ class AppDependencies(context: Context) {
     launchQuietly("garden restore") { gardenStore.restore() }
     launchQuietly("practice restore") { practiceJournal.restore() }
     launchQuietly("continuity restore") { continuityWitness.restore() }
+    launchQuietly("listen queue restore") { listenReporter.restore() }
 
     // The reminder window rolls forward on every return to the app, and
     // rebuilds as the app leaves it so a practice finished just now quiets
@@ -599,8 +786,8 @@ class AppDependencies(context: Context) {
   private companion object {
     const val TAG = "AppDependencies"
 
-    /** How long a log out waits on the practice flush before giving up on it. */
-    const val PRACTICE_FLUSH_TIMEOUT_MILLIS = 3_000L
+    /** How long a log out waits on each flush before asking the member — iOS's three seconds. */
+    val LOG_OUT_FLUSH_TIMEOUT: Duration = Duration.ofSeconds(3)
   }
 }
 

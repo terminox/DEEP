@@ -71,6 +71,8 @@
     <item>Every oak was once a quiet seed.</item>
     <item>Today asks only a few soft minutes.</item>
   </string-array>
-  <!-- The picker's quiet caption after the server refuses a plant switch. -->
+  <!-- The picker's quiet caption after a plant switch didn't reach the server. -->
   <string name="picker_switch_failed">Couldn\'t switch plants — try again in a moment.</string>
+  <!-- …and after the server refused it as DEEP Premium (403 premium_locked). -->
+  <string name="picker_switch_premium">This plant is part of DEEP Premium.</string>
 </resources>

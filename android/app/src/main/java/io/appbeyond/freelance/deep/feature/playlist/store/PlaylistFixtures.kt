@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.playlist.store
 
+import io.appbeyond.freelance.deep.feature.deepsound.SoundFixtures
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundQueueEntry
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibraryFixtures
 
@@ -19,4 +20,8 @@ object PlaylistFixtures {
     SoundQueueEntry(SoundLibraryFixtures.morning[1].tracks[0], SoundLibraryFixtures.morning[1]),
     SoundQueueEntry(SoundLibraryFixtures.calm[0].tracks[0], SoundLibraryFixtures.calm[0]),
   )
+
+  /** The saved sounds with a DEEP Premium one on top — the row a free listener sees locked. */
+  val withPremium: List<SoundQueueEntry> =
+    listOf(SoundQueueEntry(SoundFixtures.premiumSample.tracks[0], SoundFixtures.premiumSample)) + saved
 }

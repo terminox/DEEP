@@ -33,6 +33,8 @@ import io.appbeyond.freelance.deep.feature.deepsession.model.DeepSession
 import io.appbeyond.freelance.deep.feature.globalpause.currentCardLift
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
+import io.appbeyond.freelance.deep.feature.rewards.store.ListenReporting
+import io.appbeyond.freelance.deep.feature.rewards.store.MockListenReporter
 import io.appbeyond.freelance.deep.feature.deepsound.store.MockSoundLibrary
 import io.appbeyond.freelance.deep.feature.deepsound.store.SoundLibrary
 import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
@@ -132,16 +134,23 @@ private object Handoff {
  *   session plays its own bell and breath, and a track underneath would talk
  *   over both. It stays loaded, so the mini player picks up where the member
  *   left off — iOS's `pause()` in `DeepSessionCoordinatorView.onAppear`.
- * @param soundLibrary / playlistStore handed on to the shell for DEEP Sound
- *   and the You tab's saved sounds.
+ * @param listenReporter / soundLibrary / playlistStore handed on to the shell
+ *   for the player's heart notices, DEEP Sound and the You tab's saved sounds.
  * @param syncRewards pulls the garden and wallet and syncs the practice
  *   journal (`AppDependencies.syncRewards`). Called as the shell is composed —
  *   which covers both a restored launch and a fresh sign-in or sign-up — and
  *   on every process foreground while it stays composed: iOS's `bootstrap()`,
  *   `.flow → .main` and scene-phase `.active` seams in one place.
- * @param flushPracticeJournal / resetAccountState the rewards side of every
+ * @param flushBeforeLogOut / resetAccountState the rewards side of every
  *   exit, handed on to Settings, and the reset is also run here when the
  *   server rejects a restored session.
+ * @param refreshPremiumIfUnanswered asks the server about DEEP Premium during
+ *   the launch beat, only when the session restore's `/me` didn't carry the
+ *   answer (`AppDependencies.refreshPremiumIfUnanswered`).
+ * @param refreshPremium asks it again on every return to the foreground while
+ *   the shell is up — a membership can start, lapse or be refunded while the
+ *   app sleeps. Not on the shell's first appearance: launch and a fresh
+ *   sign-in have just carried the answer.
  * @param reminderStore / preferences the daily reminder and the language
  *   picker, handed on to Settings' preference screens.
  * @param compassionContent / compassionCauseContent the Compassion tab's root
@@ -162,12 +171,15 @@ fun AppRoot(
   reminderStore: ReminderStore,
   preferences: PreferenceActions,
   soundPlayer: SoundPlaying,
+  listenReporter: ListenReporting,
   soundLibrary: SoundLibrary,
   playlistStore: PlaylistStore,
   syncRewards: () -> Unit,
-  flushPracticeJournal: suspend () -> Unit,
+  flushBeforeLogOut: suspend () -> Boolean,
   resetAccountState: suspend () -> Unit,
   modifier: Modifier = Modifier,
+  refreshPremiumIfUnanswered: suspend () -> Unit = {},
+  refreshPremium: () -> Unit = {},
   flowContent: @Composable () -> Unit = {},
   homeContent: @Composable (actions: HomeActions) -> Unit = {},
   gardenContent: @Composable (actions: HomeActions) -> Unit = {},
@@ -213,6 +225,9 @@ fun AppRoot(
         accountStore.restore()
         onboardingLoaded.await()
         if (accountStore.account.value != null) {
+          // Beside the onboarding fetch, so their timeouts overlap rather than
+          // stack against an unreachable host. Never throws.
+          val premiumAnswered = async { refreshPremiumIfUnanswered() }
           // The server's copy wins over this phone's: a member who finished
           // onboarding on another install must land in the shell here too.
           try {
@@ -237,6 +252,7 @@ fun AppRoot(
           } catch (_: Exception) {
             // A local write that failed: keep what is on disk and carry on.
           }
+          premiumAnswered.await()
         }
         floor.join()
       }
@@ -312,8 +328,10 @@ fun AppRoot(
             // one effect also fires as the shell first composes — once per
             // entry into Main, whether from the launch beat or a fresh sign-in,
             // and never twice at cold start.
+            val premiumStarts = remember { PremiumStarts() }
             LifecycleEventEffect(Lifecycle.Event.ON_START, ProcessLifecycleOwner.get()) {
               syncRewards()
+              if (premiumStarts.seenFirst) refreshPremium() else premiumStarts.seenFirst = true
             }
             MainShellCoordinator(
               accountStore = accountStore,
@@ -322,9 +340,10 @@ fun AppRoot(
               reminderStore = reminderStore,
               preferences = preferences,
               soundPlayer = soundPlayer,
+              listenReporter = listenReporter,
               soundLibrary = soundLibrary,
               playlistStore = playlistStore,
-              flushPracticeJournal = flushPracticeJournal,
+              flushBeforeLogOut = flushBeforeLogOut,
               resetAccountState = resetAccountState,
               homeContent = homeContent,
               gardenContent = gardenContent,
@@ -409,6 +428,15 @@ fun AppRoot(
 }
 
 /**
+ * Whether the shell has seen its first ON_START — the replay as it composes,
+ * which launch or a fresh sign-in has already answered DEEP Premium for. A
+ * plain holder rather than state: nothing draws from it.
+ */
+private class PremiumStarts {
+  var seenFirst = false
+}
+
+/**
  * Makes a full-screen cover the end of the line for touches, as iOS's
  * full-screen presentations are: without it a tap on the cover's empty
  * atmosphere fell through to the tab bar and shell beneath, which are only
@@ -438,10 +466,11 @@ private fun AppRootPreview() {
     },
     preferences = PreferenceActions.none,
     soundPlayer = MockSoundPlayer.idle(),
+    listenReporter = MockListenReporter(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
-    flushPracticeJournal = {},
+    flushBeforeLogOut = { true },
     resetAccountState = {},
     homeContent = { TabPlaceholderScreen(DeepTab.Home) },
   )
@@ -461,10 +490,11 @@ private fun AppRootFirstLaunchPreview() {
     },
     preferences = PreferenceActions.none,
     soundPlayer = MockSoundPlayer.idle(),
+    listenReporter = MockListenReporter(),
     soundLibrary = remember { MockSoundLibrary.loaded },
     playlistStore = MockPlaylistStore.empty,
     syncRewards = {},
-    flushPracticeJournal = {},
+    flushBeforeLogOut = { true },
     resetAccountState = {},
     flowContent = { TabPlaceholderScreen(DeepTab.Compassion) },
   )

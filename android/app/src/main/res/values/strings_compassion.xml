@@ -77,6 +77,9 @@
   <string name="donate_practice_earns">Practice earns more.</string>
   <string name="donate_delete">Delete</string>
   <string name="donate_hold_to_clear">Hold to clear</string>
+  <!-- The thank-you the sheet becomes once hearts have gone; its count reuses donate_amount_hearts -->
+  <string name="donate_thanks_title">Thank you for giving to %1$s</string>
+  <string name="donate_thanks_done">Done</string>
   <plurals name="compassion_rollback">
     <item quantity="one">That heart couldn\'t be sent — it\'s back in your balance.</item>
     <item quantity="other">Those %1$s hearts couldn\'t be sent — they\'re back in your balance.</item>

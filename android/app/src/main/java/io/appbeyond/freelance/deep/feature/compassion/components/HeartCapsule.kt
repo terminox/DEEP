@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -62,16 +63,18 @@ private const val DISABLED_ALPHA = 0.45f
 /**
  * The house gradient CTA the giving surfaces share: a lavenderMist →
  * blushPowder capsule, a white heart, a white sectionTitle label — iOS's
- * `SendAHeartBar.sendButton`, the cause card's donate capsule, and the donate
- * sheet's action, which all draw the same recipe.
+ * `SendAHeartBar.sendButton`, the cause card's donate capsule, the donate
+ * sheet's action and its thank-you's "Done", which all draw the same recipe.
  *
  * One title for the life of a screen: when there is nothing to commit the
  * capsule dims and ignores taps rather than swapping its label (iOS's donate
- * sheet relabels it per amount — "Donate 10 hearts", "Pick an amount",
- * "Donated 10 hearts"; Android keeps the title fixed and lets the readout
- * above it carry the amount). Disabled stays a gradient at reduced opacity,
- * drawn with `ModulateAlpha` so the bloom isn't cut into a rectangle.
+ * sheet relabels it per amount — "Send 10 hearts", "Pick an amount"; Android
+ * keeps the title fixed and lets the readout above it carry the amount).
+ * Disabled stays a gradient at reduced opacity, drawn with `ModulateAlpha` so
+ * the bloom isn't cut into a rectangle.
  *
+ * @param icon the white glyph before the label; null for a plain capsule
+ *   (the thank-you's "Done", which sends nothing).
  * @param bloom the lavender lift beneath; off inside a frosted card, where a
  *   second bloom gathers into a smudge.
  * @param trailing optional content after the label (the cause bar's "12 left").
@@ -81,6 +84,7 @@ fun HeartCapsule(
   title: String,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  icon: ImageVector? = CompassionIcons.HeartFill,
   enabled: Boolean = true,
   bloom: Boolean = true,
   compact: Boolean = false,
@@ -151,12 +155,14 @@ fun HeartCapsule(
     horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 10.dp, Alignment.CenterHorizontally),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Icon(
-      imageVector = CompassionIcons.HeartFill,
-      contentDescription = null,
-      tint = Color.White,
-      modifier = Modifier.size(if (compact) 15.dp else 17.dp),
-    )
+    if (icon != null) {
+      Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = Color.White,
+        modifier = Modifier.size(if (compact) 15.dp else 17.dp),
+      )
+    }
     Text(
       text = title,
       style = DeepType.sectionTitle,
@@ -177,9 +183,10 @@ private fun HeartCapsulePreview() {
   Box(Modifier.fillMaxSize().background(Color.moonCream)) {
     AtmosphereBackground(animated = false)
     Column(Modifier.padding(Dp.edge), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-      HeartCapsule(title = "Donate hearts", onClick = {})
-      HeartCapsule(title = "Donate hearts", onClick = {}, enabled = false)
-      HeartCapsule(title = "Donate hearts", onClick = {}, bloom = false, compact = true)
+      HeartCapsule(title = "Send hearts", onClick = {})
+      HeartCapsule(title = "Send hearts", onClick = {}, enabled = false)
+      HeartCapsule(title = "Send hearts", onClick = {}, bloom = false, compact = true)
+      HeartCapsule(title = "Done", onClick = {}, icon = null)
       HeartCapsule(title = "Send a heart", onClick = {}) {
         Text("2,450 left", style = DeepType.caption, color = Color.White.copy(alpha = 0.85f))
       }

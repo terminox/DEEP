@@ -63,6 +63,8 @@
   <string name="donate_no_hearts">ยังไม่มีหัวใจให้มอบ</string>
   <string name="donate_today_full">วันนี้ได้รับครบแล้ว — พรุ่งนี้มีเพิ่มอีก</string> <!-- no iOS Thai -->
   <string name="donate_practice_earns">ฝึกฝนเพื่อรับเพิ่ม</string>
+  <string name="donate_thanks_title">ขอบคุณที่มอบหัวใจให้ %1$s</string>
+  <string name="donate_thanks_done">เสร็จสิ้น</string>
   <string name="donate_delete">ลบ</string>
   <string name="donate_hold_to_clear">กดค้างเพื่อล้าง</string>
   <plurals name="compassion_rollback">

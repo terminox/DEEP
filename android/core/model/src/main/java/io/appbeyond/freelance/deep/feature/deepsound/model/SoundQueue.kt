@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.deepsound.model
 
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
 import kotlin.random.Random
 
 /**
@@ -248,8 +249,12 @@ class SoundQueue<E> private constructor(
     /**
      * [entries] as a player can actually hold them, and where to begin.
      *
-     * Every locked entry is left out: iOS's `CollectionDetailView.playable` /
-     * `PlaylistView.playable`, a run never carries on into a locked sound.
+     * Every entry [PremiumGate.canStart] refuses is left out — a DEEP Premium
+     * sound this listener is locked out of, or one whose audio the server
+     * withheld: iOS's `PremiumGate.playable`, a run never carries on into a
+     * locked sound. Left out of the list the player holds, not merely skipped,
+     * so the lock screen and a headset, which drive the service's player
+     * directly, can't reach one either.
      * Once anything left has audio, every entry without any leaves too — the
      * queue skips those at every step anyway, and a player's own list holding
      * only what it can stream is what keeps a track ending in the background
@@ -260,10 +265,12 @@ class SoundQueue<E> private constructor(
      * The start is the entry asked for by [startIndex] — or, when that one has
      * left, the first one after it that stayed, wrapping round. A null
      * [startIndex] stays null: a shuffle picks its own. Null when nothing in
-     * [entries] is unlocked, which callers treat as "play nothing".
+     * [entries] can start, which callers treat as "play nothing".
+     *
+     * @param hasPremium the listener's one DEEP Premium answer (`PremiumAccess`).
      */
-    fun playable(entries: List<SoundQueueEntry>, startIndex: Int?): Start? {
-      val unlocked = entries.indices.filterNot { entries[it].track.isLocked }
+    fun playable(entries: List<SoundQueueEntry>, startIndex: Int?, hasPremium: Boolean): Start? {
+      val unlocked = entries.indices.filter { PremiumGate.canStart(entries[it].track, entries[it].collection, hasPremium) }
       if (unlocked.isEmpty()) return null
       val kept = unlocked.filter { hasAudio(entries[it]) }.ifEmpty { unlocked }
       val queue = kept.map { entries[it] }

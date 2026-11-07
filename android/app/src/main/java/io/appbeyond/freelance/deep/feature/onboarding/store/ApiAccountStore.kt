@@ -8,6 +8,7 @@ import io.appbeyond.freelance.deep.auth.TokenPair
 import io.appbeyond.freelance.deep.auth.TokenRefresher
 import io.appbeyond.freelance.deep.auth.TokenStoring
 import io.appbeyond.freelance.deep.auth.resolveRestore
+import io.appbeyond.freelance.deep.feature.premium.model.ServerEntitlement
 import io.appbeyond.freelance.deep.networking.AuthResponseDto
 import io.appbeyond.freelance.deep.networking.AuthService
 import io.appbeyond.freelance.deep.networking.DeepApiException
@@ -15,6 +16,7 @@ import io.appbeyond.freelance.deep.networking.LogInRequestDto
 import io.appbeyond.freelance.deep.networking.SignUpRequestDto
 import io.appbeyond.freelance.deep.networking.apiCall
 import io.appbeyond.freelance.deep.networking.toAccount
+import io.appbeyond.freelance.deep.networking.toDomain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +50,16 @@ import kotlinx.coroutines.flow.asStateFlow
  *   next person on this device never inherits the last member's answers,
  *   garden or hearts. Runs after [account] has gone null. Never runs for
  *   someone who was never signed in.
+ * @param identitySink hears the DEEP user id whenever a member is signed in
+ *   (sign-up, login, launch — the cached id when launch is offline) and null
+ *   whenever a session ends (log out, deletion, a rejected session). The
+ *   composition root points it at DEEP Premium's store and access, so this
+ *   store never learns RevenueCat exists — iOS's `identitySink`. Runs in the
+ *   same step as [account] moves, so it never lags behind it.
+ * @param entitlementSink hears the DEEP Premium answer the server sends
+ *   beside the member on `/me`, sign-up and login, after [identitySink] has
+ *   heard who it is for. Passed along unread — this store decides nothing
+ *   about premium. Null from an older server.
  */
 class ApiAccountStore(
   private val auth: AuthService,
@@ -55,6 +67,8 @@ class ApiAccountStore(
   private val refresher: TokenRefresher,
   private val cache: AccountCache,
   private val onInvoluntarySignOut: suspend () -> Unit = {},
+  private val identitySink: suspend (String?) -> Unit = {},
+  private val entitlementSink: suspend (ServerEntitlement?) -> Unit = {},
 ) : AccountStore {
 
   private val _account = MutableStateFlow<Account?>(null)
@@ -76,6 +90,10 @@ class ApiAccountStore(
       when (val outcome = resolveRestore(hasTokens = hasTokens, fetch = fetch, cached = cached)) {
         RestoreOutcome.SignedOut -> {
           refresher.end { forgetLocally() }
+          // forgetLocally told the sink only if this store held an account;
+          // a launch that held none still has to say "nobody", or a store
+          // configured for the last member would keep speaking for them.
+          bestEffort("report a signed-out launch") { identitySink(null) }
           // Tokens on disk means somebody had signed in on this device; the
           // server has now said that session is over. Nobody had, and there is
           // an anonymous member's onboarding in progress worth keeping.
@@ -83,7 +101,15 @@ class ApiAccountStore(
         }
         is RestoreOutcome.SignedIn -> {
           _account.value = outcome.account
+          // The placeholder an offline launch with no cache stands in has no
+          // id to report — iOS reports nothing then, too.
+          if (outcome.account.id.isNotEmpty()) {
+            bestEffort("report the restored member") { identitySink(outcome.account.id) }
+          }
           if (outcome.cache) bestEffort("cache the restored account") { cache.write(outcome.account) }
+          if (fetch is MeFetch.Fetched) {
+            bestEffort("pass on the DEEP Premium answer") { entitlementSink(fetch.entitlement) }
+          }
         }
       }
     } catch (cancelled: CancellationException) {
@@ -99,7 +125,7 @@ class ApiAccountStore(
   /** `GET /me`, abstracted into the pure [MeFetch] vocabulary [resolveRestore] decides on. */
   private suspend fun fetchMe(): MeFetch =
     try {
-      MeFetch.Fetched(apiCall { auth.me() }.user.toAccount())
+      apiCall { auth.me() }.let { me -> MeFetch.Fetched(me.user.toAccount(), me.entitlement?.toDomain()) }
     } catch (rejected: DeepApiException) {
       when {
         rejected is DeepApiException.Unauthorized -> MeFetch.Rejected
@@ -132,10 +158,27 @@ class ApiAccountStore(
       // Published in the same locked step as the tokens, so a late refusal of
       // the previous session can't land between the two and null this account.
       _account.value = account
+      bestEffort("report the signed-in member") { identitySink(account.id) }
       bestEffort("cache the signed-in account") { cache.write(account) }
     }
+    bestEffort("pass on the DEEP Premium answer") { entitlementSink(response.entitlement?.toDomain()) }
     return account
   }
+
+  /**
+   * The DEEP user id of the last signed-in member, straight from the offline
+   * cache — available at launch before [restore] has asked the server, so
+   * DEEP Premium's store can start out speaking for the right member. iOS's
+   * `lastKnownUserID`. Null when nobody is cached, or the read fails.
+   */
+  suspend fun lastKnownUserId(): String? =
+    try {
+      cache.read()?.id?.takeIf { it.isNotEmpty() }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Exception) {
+      null
+    }
 
   /**
    * Drops the account and its offline copy. Runs under the refresher's lock
@@ -147,7 +190,9 @@ class ApiAccountStore(
    * token-less restore clears again anyway.
    */
   private suspend fun forgetLocally() {
+    val hadAccount = _account.value != null
     _account.value = null
+    if (hadAccount) bestEffort("report the session's end") { identitySink(null) }
     bestEffort("clear the cached account") { cache.clear() }
   }
 

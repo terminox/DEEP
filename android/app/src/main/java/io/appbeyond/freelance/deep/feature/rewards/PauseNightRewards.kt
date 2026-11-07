@@ -38,8 +38,18 @@ class PauseNightRewards(
   }
 
   /**
+   * Lets the journal hydrate — at most [PracticeRewards.HYDRATION_TIMEOUT] —
+   * so the rhythm the ending shows is the account's real one. The visit runs
+   * this alongside settling tonight's claim.
+   */
+  suspend fun hydrate() {
+    journal.awaitHydration(PracticeRewards.HYDRATION_TIMEOUT)
+  }
+
+  /**
    * Folds the night onto [before]. The rhythm is read from the journal now,
-   * after an eligible claim has already kept the day there.
+   * after an eligible claim has already kept the day there; a journal never
+   * hydrated leaves the beat unknown, so it rests.
    */
   suspend fun receipt(before: GlobalPauseRewardSnapshot): RewardReceipt {
     journal.restore()
@@ -51,6 +61,7 @@ class PauseNightRewards(
       heartBalanceAfter = ledger.state.value.balance,
       heartsEarnedTodayAfter = ledger.heartsEarnedToday,
       continuity = journal.continuityTransition(),
+      continuityKnown = journal.isHydrated,
       attendanceMissed = night.pauseAwardMissed,
       attendancePending = night.pauseAwardPending,
     )

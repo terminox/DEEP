@@ -27,6 +27,12 @@ class MockSoundLibrary(
     return emptyList()
   }
 
+  override suspend fun collection(id: String): SoundCollection {
+    if (fails) throw DeepApiException.Transport("Mock failure")
+    return fixtureShelves.flatMap { it.collections }.firstOrNull { it.id == id }
+      ?: throw DeepApiException.Http(status = 404, code = "not_found", serverMessage = "Collection not found")
+  }
+
   companion object {
     /** The bundled fixture shelves — the environment default, so previews are hermetic. */
     val loaded: MockSoundLibrary get() = MockSoundLibrary()

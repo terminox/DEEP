@@ -31,7 +31,7 @@ private class FailingPracticeRemote : PracticeRemote {
 
   override suspend fun push(sessions: List<PracticeCompletion>): PracticePushResult = throw RemoteFailure()
 
-  override suspend fun pull(): List<PracticeCompletion> = throw RemoteFailure()
+  override suspend fun pull(): PracticeLog = throw RemoteFailure()
 }
 
 /**
@@ -60,7 +60,10 @@ private class RecordingPracticeRemote(
   var grant: AwardGrant? = null,
   var canned: List<PracticeCompletion> = emptyList(),
   val gate: CompletableDeferred<Unit>? = null,
+  var activityDays: List<String>? = null,
 ) : PracticeRemote {
+  var pulls = 0
+
   val uploadedBatches = mutableListOf<List<PracticeCompletion>>()
 
   override suspend fun push(sessions: List<PracticeCompletion>): PracticePushResult {
@@ -69,9 +72,10 @@ private class RecordingPracticeRemote(
     return PracticePushResult(synced = sessions.map { it.id }, grant = grant)
   }
 
-  override suspend fun pull(): List<PracticeCompletion> {
+  override suspend fun pull(): PracticeLog {
+    pulls++
     gate?.await()
-    return canned
+    return PracticeLog(canned, activityDays)
   }
 }
 
@@ -253,7 +257,7 @@ class PracticeJournalTest {
         return PracticePushResult(synced = sessions.map { it.id }, grant = null)
       }
 
-      override suspend fun pull(): List<PracticeCompletion> = emptyList()
+      override suspend fun pull(): PracticeLog = PracticeLog(emptyList())
     }
     val journal = journal(remote, seeded(List(450) { pending() }))
 
@@ -543,5 +547,155 @@ class PracticeJournalTest {
     } finally {
       java.util.Locale.setDefault(original)
     }
+  }
+
+  // MARK: - Any practice keeps the rhythm (iOS PR #58)
+
+  @Test
+  @DisplayName("A sound listened to its end keeps the day, adds no minutes, and doesn't rest the reminder")
+  fun trackDayKeepsTheRhythm() = runTest {
+    val yesterday = now.minus(Duration.ofDays(1))
+    val blob = seeded(listOf(pending(at = yesterday, synced = true)))
+    val journal = journal(FailingPracticeRemote(), blob)
+
+    journal.recordTrackDay(now)
+    journal.recordTrackDay(now.plusSeconds(60))
+
+    assertEquals(ContinuityTransition(1, 2), journal.continuityTransition())
+    assertEquals(0, journal.minutesToday())
+    assertFalse(journal.reminderRestsToday(), "A listen keeps the day but leaves the reminder on (iOS PR #62).")
+    assertEquals(listOf("2026-07-23"), journal.state.value.trackDays)
+    val relaunched = journal(FailingPracticeRemote(), blob)
+    relaunched.restore()
+    assertEquals(2, relaunched.currentStreakDays())
+
+    journal.reset()
+    assertEquals(0, journal.currentStreakDays())
+  }
+
+  @Test
+  @DisplayName("The server's activity days count toward the rhythm; an older server's silence keeps them")
+  fun remoteActivityDaysCount() = runTest {
+    val remote = RecordingPracticeRemote(activityDays = listOf("2026-07-21", "2026-07-22", "not-a-day"))
+    val journal = journal(remote)
+
+    journal.pull()
+    assertEquals(ContinuityTransition(2, 2), journal.continuityTransition())
+    assertEquals(2, journal.longestStreakDays())
+
+    remote.activityDays = null
+    journal.pull()
+    assertEquals(listOf("2026-07-21", "2026-07-22", "not-a-day"), journal.state.value.remoteActivityDays)
+    assertEquals(2, journal.currentStreakDays())
+  }
+
+  @Test
+  @DisplayName("Server day keys read as Gregorian on a Thai device's Buddhist calendar")
+  fun remoteActivityDaysAreGregorian() = runTest {
+    val original = java.util.Locale.getDefault()
+    try {
+      java.util.Locale.setDefault(java.util.Locale.forLanguageTag("th-TH-u-ca-buddhist"))
+      val journal = journal(RecordingPracticeRemote(activityDays = listOf("2026-07-22", "2026-07-23")))
+      journal.pull()
+      assertEquals(ContinuityTransition(1, 2), journal.continuityTransition())
+    } finally {
+      java.util.Locale.setDefault(original)
+    }
+  }
+
+  @Test
+  @DisplayName("The journal is hydrated once a pull lands — it survives a relaunch and leaves with the account")
+  fun hydratesOnFirstPull() = runTest {
+    val blob = InMemoryBlobStore()
+    val journal = journal(RecordingPracticeRemote(), blob)
+    journal.restore()
+    assertFalse(journal.isHydrated)
+
+    journal.pull()
+    assertTrue(journal.isHydrated, "Even a pull that brings nothing new hydrates.")
+    val relaunched = journal(MockPracticeRemote(), blob)
+    relaunched.restore()
+    assertTrue(relaunched.isHydrated)
+
+    relaunched.reset()
+    assertFalse(relaunched.isHydrated)
+  }
+
+  @Test
+  @DisplayName("A failed pull leaves the journal unhydrated")
+  fun failedPullDoesNotHydrate() = runTest {
+    val journal = journal(FailingPracticeRemote())
+    journal.pull()
+    assertFalse(journal.isHydrated)
+  }
+
+  @Test
+  @DisplayName("awaitHydration pulls when needed, and not again once hydrated")
+  fun awaitHydrationPulls() = runTest {
+    val remote = RecordingPracticeRemote(activityDays = listOf("2026-07-22"))
+    val journal = journal(remote)
+
+    journal.awaitHydration(Duration.ofSeconds(2))
+    assertTrue(journal.isHydrated)
+    assertEquals(1, remote.pulls)
+    assertEquals(ContinuityTransition(1, 1), journal.continuityTransition())
+
+    journal.awaitHydration(Duration.ofSeconds(2))
+    assertEquals(1, remote.pulls)
+  }
+
+  @Test
+  @DisplayName("awaitHydration gives up at its timeout when the server can't be reached")
+  fun awaitHydrationTimesOut() = runTest {
+    val journal = journal(FailingPracticeRemote())
+    val started = testScheduler.currentTime
+
+    journal.awaitHydration(Duration.ofSeconds(2))
+
+    assertFalse(journal.isHydrated)
+    assertEquals(2_000, testScheduler.currentTime - started)
+  }
+
+  @Test
+  @DisplayName("A pull already in flight ends the wait when it lands")
+  fun awaitHydrationJoinsAPullInFlight() = runTest {
+    val gate = CompletableDeferred<Unit>()
+    val journal = journal(RecordingPracticeRemote(gate = gate))
+    val syncing = launch { journal.pull() }
+    runCurrent()
+
+    val waiting = launch { journal.awaitHydration(Duration.ofSeconds(2)) }
+    runCurrent()
+    assertFalse(waiting.isCompleted)
+    gate.complete(Unit)
+    syncing.join()
+    waiting.join()
+
+    assertTrue(journal.isHydrated)
+  }
+
+  @Test
+  @DisplayName("flushPending reports whether anything is still unsynced")
+  fun flushPendingReportsUnsynced() = runTest {
+    assertTrue(journal(FailingPracticeRemote()).flushPending(Duration.ofSeconds(3)), "Nothing to send.")
+
+    val blob = seeded(listOf(pending()))
+    val offline = journal(FailingPracticeRemote(), blob)
+    assertFalse(offline.flushPending(Duration.ofSeconds(3)))
+    assertTrue(offline.hasUnsynced)
+
+    val online = journal(RecordingPracticeRemote(), blob)
+    assertTrue(online.flushPending(Duration.ofSeconds(3)))
+    assertFalse(online.hasUnsynced)
+  }
+
+  @Test
+  @DisplayName("flushPending stops waiting at its timeout")
+  fun flushPendingTimesOut() = runTest {
+    val journal = journal(RecordingPracticeRemote(gate = CompletableDeferred()), seeded(listOf(pending())))
+    val started = testScheduler.currentTime
+
+    assertFalse(journal.flushPending(Duration.ofSeconds(3)))
+    assertEquals(3_000, testScheduler.currentTime - started)
   }
 }

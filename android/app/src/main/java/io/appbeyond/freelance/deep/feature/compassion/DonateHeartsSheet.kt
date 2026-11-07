@@ -2,8 +2,11 @@ package io.appbeyond.freelance.deep.feature.compassion
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -31,6 +34,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,7 +47,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -60,16 +70,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.feature.compassion.components.CompassionMotif
+import io.appbeyond.freelance.deep.feature.compassion.components.GivingThanks
 import io.appbeyond.freelance.deep.feature.compassion.components.HeartCapsule
+import io.appbeyond.freelance.deep.feature.compassion.components.RisingHearts
 import io.appbeyond.freelance.deep.feature.compassion.components.RollbackCaption
+import io.appbeyond.freelance.deep.feature.compassion.model.RisingHeartsField
 import io.appbeyond.freelance.deep.feature.compassion.store.HeartLedger
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
-import io.appbeyond.freelance.deep.shared.components.HeartBurst
 import io.appbeyond.freelance.deep.shared.components.RollingText
+import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.shared.localization.AppFormat
 import io.appbeyond.freelance.deep.shared.localization.rememberAppLocale
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
+import io.appbeyond.freelance.deep.theme.bloom
 import io.appbeyond.freelance.deep.theme.blushPowder
 import io.appbeyond.freelance.deep.theme.card
 import io.appbeyond.freelance.deep.theme.chip
@@ -93,8 +107,20 @@ import java.time.ZoneId
 /** The opening suggestion — iOS's `min(10, balance)`. */
 private const val OPENING_AMOUNT = 10
 
-/** The beat the heart blooms for before the sheet leaves — iOS's 0.9s. */
-private const val DONATED_HOLD_MILLIS = 900L
+/**
+ * How long the form steps back before the thanks blooms in, so the two never
+ * cross — iOS's 0.35s.
+ */
+private const val THANKS_HOLD_MILLIS = 350L
+
+/** The form receding behind the thanks — iOS's 0.96 (no scale under reduced motion). */
+private const val FORM_RECEDE_SCALE = 0.96f
+
+/** The thanks blooming in from — iOS's `.scale(scale: 0.92)` transition. */
+private const val THANKS_BLOOM_FROM = 0.92f
+
+/** Where the hearts lift off: the action's top centre, this far in — iOS's `minY + 8`. */
+private val LIFT_OFF_INSET = 8.dp
 
 /** The pad's keys — iOS's 52pt pebbles, 10pt apart. */
 private val KEY_HEIGHT = 52.dp
@@ -123,11 +149,17 @@ private val DIGITS = listOf(listOf(1, 2, 3), listOf(4, 5, 6), listOf(7, 8, 9))
  * typing. A Material3 [ModalBottomSheet] in DEEP's tokens, standing on the
  * atmosphere as iOS's `presentationBackground` does — the plant picker's frame.
  *
+ * Giving is the moment the sheet exists for, so it is given room: hearts rise
+ * from the button in proportion to the gift ([RisingHearts]), the form fades
+ * back, and the sheet blooms into the app's thank-you ([GivingThanks]), which
+ * the member closes themselves. If the server refuses the spend, the thanks
+ * gives way to the form again and its rollback caption.
+ *
  * One deliberate change from iOS: its action relabels itself per amount
- * ("Donate 10 hearts", "Pick an amount", "Donated 10 hearts") and becomes a
- * frosted note at an empty balance. DEEP's action buttons keep one title for
- * the life of a screen, so here it is always "Donate hearts" — dimmed while
- * there is nothing to commit — and the readout above it carries the amount.
+ * ("Send 10 hearts", "Pick an amount") and becomes a frosted note at an empty
+ * balance. DEEP's action buttons keep one title for the life of a screen, so
+ * here it is always "Send hearts" — dimmed while there is nothing to commit —
+ * and the readout above it carries the amount.
  *
  * @param give sends the hearts. Run on a scope that outlives the sheet, so a
  *   gift is never cut off by the sheet's own exit.
@@ -180,29 +212,62 @@ internal fun DonateHeartsBody(
 ) {
   val state by ledger.state.collectAsStateWithLifecycle()
   val haptics = LocalHapticFeedback.current
-  val balance = state.balance
+  val density = LocalDensity.current
+  val reduceMotion = rememberReduceMotion()
   val isTodayFull = state.isFullOn(ledger.today())
+
+  // Set once hearts have gone: what was actually given, which may be less than
+  // was asked. Fades the form back and lifts the hearts.
+  var given by remember { mutableStateOf<Int?>(null) }
+  // Follows `given` a beat behind, so the thanks blooms into a sheet the form
+  // has already left rather than crossing it.
+  var thanking by remember { mutableStateOf(false) }
+  // What the thanks says, kept through its exit after a refusal clears `given`.
+  var thanked by remember { mutableIntStateOf(0) }
+  // The balance at the tap, held while the form steps back: giving the last
+  // heart would otherwise drop the quick amounts and reflow the sheet under
+  // the thanks.
+  var heldBalance by remember { mutableIntStateOf(0) }
+  val balance = if (given != null) heldBalance else state.balance
+  // Each gift rolls its own field of hearts.
+  var gifts by remember { mutableIntStateOf(0) }
+  // Where this gift's hearts left from, frozen at the tap.
+  var liftOff by remember { mutableStateOf<Offset?>(null) }
+  val anchors = remember { LiftOffAnchors() }
 
   var amount by rememberSaveable { mutableIntStateOf(minOf(OPENING_AMOUNT, balance)) }
   // Whether the next digit starts a new number: true after a quick amount (and
   // for the opening suggestion), so typing over "All" writes what was typed.
   var entryIsFresh by rememberSaveable { mutableStateOf(true) }
-  var burst by remember { mutableIntStateOf(0) }
-  // Set once hearts have gone; holds what was actually given.
-  var donated by remember { mutableStateOf<Int?>(null) }
 
   var firstAmount by remember { mutableStateOf(true) }
   LaunchedEffect(amount) {
     if (firstAmount) firstAmount = false else haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
   }
-  LaunchedEffect(donated) {
-    if (donated != null) {
-      // Hold for a beat so the heart has time to bloom — dismissing on the same
-      // frame would cut the one moment in this feature worth feeling.
-      delay(DONATED_HOLD_MILLIS)
-      onDone()
+  // The second beat of a gift: once the form has stepped back, the thanks
+  // blooms in. A refusal inside the beat cancels it.
+  LaunchedEffect(given) {
+    if (given == null) return@LaunchedEffect
+    delay(THANKS_HOLD_MILLIS)
+    thanking = true
+  }
+
+  val failure = state.spendFailure?.takeIf { it.categoryId == cause.id }
+  // The server refused: the hearts are back in the balance, so the thanks
+  // gives way to the form and its rollback caption.
+  LaunchedEffect(failure) {
+    if (failure != null && given != null) {
+      given = null
+      thanking = false
     }
   }
+
+  val formAlpha = animateFloatAsState(if (given == null) 1f else 0f, bloom(), label = "donate-form-alpha")
+  val formScale = animateFloatAsState(
+    targetValue = if (given == null || reduceMotion) 1f else FORM_RECEDE_SCALE,
+    animationSpec = bloom(),
+    label = "donate-form-scale",
+  )
 
   fun touch() = ledger.clearSpendFailure()
 
@@ -213,17 +278,22 @@ internal fun DonateHeartsBody(
     entryIsFresh = false
   }
 
+  // Gives, and lifts the hearts from the button the member just pressed. The
+  // thanks follows a beat later; the sheet stays until they close it.
   fun donate() {
-    val given = minOf(amount, balance)
-    if (given <= 0 || donated != null) return
-    give(given, cause.id)
-    burst += 1
-    donated = given
+    val gift = minOf(amount, balance)
+    if (gift <= 0 || given != null) return
+    touch()
+    give(gift, cause.id)
+    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+    liftOff = anchors.liftOff(with(density) { LIFT_OFF_INSET.toPx() })
+    heldBalance = balance
+    thanked = gift
+    gifts += 1
+    given = gift
   }
 
-  val failure = state.spendFailure?.takeIf { it.categoryId == cause.id }
-
-  Box(modifier.fillMaxWidth()) {
+  Box(modifier.fillMaxWidth().onPlaced { anchors.body = it }) {
     AtmosphereBackground(Modifier.matchParentSize())
 
     Column(Modifier.fillMaxWidth()) {
@@ -234,7 +304,17 @@ internal fun DonateHeartsBody(
       Column(
         Modifier
           .fillMaxWidth()
-          .verticalScroll(rememberScrollState())
+          // Once the hearts are gone the form steps back for the thanks:
+          // hidden from TalkBack, still, and (below) closed to touches.
+          .then(if (given != null) Modifier.clearAndSetSemantics {} else Modifier)
+          .verticalScroll(rememberScrollState(), enabled = given == null)
+          .graphicsLayer {
+            alpha = formAlpha.value
+            scaleX = formScale.value
+            scaleY = formScale.value
+            // Not an offscreen layer: one would cut the capsule's bloom square.
+            compositingStrategy = CompositingStrategy.ModulateAlpha
+          }
           .padding(horizontal = Dp.edge)
           .padding(top = 8.dp, bottom = Dp.rhythm)
           .navigationBarsPadding()
@@ -255,14 +335,14 @@ internal fun DonateHeartsBody(
               entryIsFresh = true
             },
           )
-        } else if (donated == null) {
+        } else if (given == null) {
           // Where a member finds out there is nothing to send — the cause
           // card's capsule is live whatever the balance.
           EmptyNote(isTodayFull)
         }
 
         HeartAmountPad(
-          enabled = donated == null,
+          enabled = given == null,
           onDigit = ::append,
           onDelete = {
             touch()
@@ -276,14 +356,13 @@ internal fun DonateHeartsBody(
           },
         )
 
-        HeartBurst(trigger = burst) {
-          HeartCapsule(
-            title = stringResource(R.string.compassion_donate_hearts),
-            enabled = donated == null && amount > 0 && balance > 0,
-            accessibilityLabel = pluralStringResource(R.plurals.donate_action_to, amount, amount, cause.name),
-            onClick = ::donate,
-          )
-        }
+        HeartCapsule(
+          title = stringResource(R.string.compassion_donate_hearts),
+          enabled = given == null && amount > 0 && balance > 0,
+          accessibilityLabel = pluralStringResource(R.plurals.donate_action_to, amount, amount, cause.name),
+          onClick = ::donate,
+          modifier = Modifier.onPlaced { anchors.action = it },
+        )
 
         // A refused spend rolled back quietly; touching the pad clears it.
         AnimatedVisibility(visible = failure != null, enter = fadeIn(settle()), exit = fadeOut(settle())) {
@@ -291,6 +370,51 @@ internal fun DonateHeartsBody(
         }
       }
     }
+
+    if (given != null) {
+      // Takes the form's touches without consuming them, so the sheet still
+      // drags down from anywhere.
+      Box(
+        Modifier
+          .matchParentSize()
+          .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } },
+      )
+    }
+
+    AnimatedVisibility(
+      visible = thanking,
+      modifier = Modifier.matchParentSize(),
+      enter = if (reduceMotion) fadeIn(bloom()) else fadeIn(bloom()) + scaleIn(bloom(), THANKS_BLOOM_FROM),
+      exit = if (reduceMotion) fadeOut(bloom()) else fadeOut(bloom()) + scaleOut(bloom(), THANKS_BLOOM_FROM),
+    ) {
+      Box(Modifier.fillMaxSize().navigationBarsPadding(), contentAlignment = Alignment.Center) {
+        GivingThanks(cause = cause, amount = thanked, onDone = onDone)
+      }
+    }
+
+    val gift = given
+    val origin = liftOff
+    if (gift != null && origin != null && !reduceMotion) {
+      key(gifts) {
+        RisingHearts(count = RisingHeartsField.count(gift), origin = origin, modifier = Modifier.matchParentSize())
+      }
+    }
+  }
+}
+
+/**
+ * Where the hearts lift off from, read at the tap: the action capsule's top
+ * centre in the body's own space, wherever the form has scrolled. Plain
+ * fields, not state — nothing draws from them.
+ */
+private class LiftOffAnchors {
+  var body: LayoutCoordinates? = null
+  var action: LayoutCoordinates? = null
+
+  fun liftOff(inset: Float): Offset? {
+    val body = body?.takeIf { it.isAttached } ?: return null
+    val action = action?.takeIf { it.isAttached } ?: return null
+    return body.localPositionOf(action, Offset(action.size.width / 2f, inset))
   }
 }
 

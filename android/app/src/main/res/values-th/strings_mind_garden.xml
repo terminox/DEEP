@@ -54,5 +54,6 @@
     <item>ต้นโอ๊กทุกต้นเคยเป็นเมล็ดที่เงียบงัน</item>
     <item>วันนี้ขอเพียงไม่กี่นาทีอันอ่อนโยน</item>
   </string-array>
-  <string name="picker_switch_failed">เปลี่ยนต้นไม้ไม่ได้ — ลองอีกครั้งในอีกสักครู่</string> <!-- no iOS Thai -->
+  <string name="picker_switch_failed">เปลี่ยนต้นไม้ไม่สำเร็จ ลองใหม่อีกครั้งในอีกสักครู่</string>
+  <string name="picker_switch_premium">ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium</string>
 </resources>

@@ -32,9 +32,12 @@ data class RewardReceipt(
   /** Whether an earlier practice today already witnessed the rhythm — the one
    * day-stamp `ContinuityWitness` keeps for every feature. */
   val continuityWitnessedToday: Boolean,
-  /** Whether the continuity figures can be trusted. False while a Global Pause
-   * claim is unanswered: whether tonight keeps the day isn't known yet, so the
-   * beat rests rather than show a rhythm that may be about to move. */
+  /** Whether the continuity figures can be trusted. False when the practice
+   * journal had never been hydrated from the server by the time the ending
+   * was composed (a fresh install, a just-signed-in account offline), and
+   * while a Global Pause claim is unanswered — whether tonight keeps the day
+   * isn't known yet. The beat then rests rather than show a number that may
+   * be wrong. */
   val continuityKnown: Boolean = true,
   /** A Global Pause night earned no attendance hearts because the member
    * wasn't present through the meditation — the ending says so rather than

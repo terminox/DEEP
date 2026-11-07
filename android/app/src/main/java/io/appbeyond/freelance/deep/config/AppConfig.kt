@@ -59,6 +59,13 @@ object AppConfig {
   /** True only for the local dev build — used to surface debug affordances. */
   val isDev: Boolean get() = environment == AppEnvironment.Dev
 
+  /**
+   * RevenueCat's public SDK key for this flavor, or null when it has none —
+   * every flavor but dev until a Play Store app exists in the DEEP Premium
+   * project. Null leaves the purchasing SDK unconfigured.
+   */
+  val revenueCatApiKey: String? = BuildConfig.REVENUECAT_API_KEY.trim().ifEmpty { null }
+
   val versionName: String = BuildConfig.VERSION_NAME
   val versionCode: Int = BuildConfig.VERSION_CODE
 }

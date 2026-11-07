@@ -207,6 +207,13 @@ const val BREATHE_FLOOR_MILLIS = 900L
 const val CONFIRMATION_HOLD_MILLIS = 500L
 
 /**
+ * How long a passing note stays before it settles back — Settings' "Restored"
+ * beside its row, or the quiet line under it when the store couldn't be
+ * reached (iOS's 2.5s on Restore purchases).
+ */
+const val NOTE_HOLD_MILLIS = 2_500L
+
+/**
  * How long a card blooms in before the numbers on it start to move, so the
  * eye has landed before anything counts. Each reward ritual step waits this
  * long after its entrance (iOS's `Task.sleep(for: .milliseconds(350))`).

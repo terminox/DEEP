@@ -61,9 +61,10 @@ private val GLOW_OFFSET_Y = 2.dp
 /**
  * A filled heart drawn to its box: the outline of `DeepIcons.Heart`, its
  * 3.75…20.25 × 3.75…20 extent stretched to fill the shape's bounds, so the
- * glow hugs the heart rather than a padded square.
+ * glow hugs the heart rather than a padded square. Shared with the donate
+ * sheet's `RisingHearts`, so every giving heart is the same heart.
  */
-private val HeartShape = GenericShape { size, _ ->
+internal val HeartShape = GenericShape { size, _ ->
   val minX = 3.75f
   val minY = 3.75f
   val sx = size.width / (20.25f - minX)
@@ -94,11 +95,16 @@ private val HeartShape = GenericShape { size, _ ->
  * modifier cannot host an overlay). The heart never takes touches and never
  * changes [content]'s size. Reduced motion skips the float; the haptic still
  * fires. A [trigger] of 0 (or less) only buzzes, as iOS's guard does.
+ *
+ * @param haptic false when the caller feels the heart itself — a listen's
+ *   heart is felt once across every surface showing it, so Now Playing's bloom
+ *   stays silent (iOS's `heartBurst(trigger:haptic:)`).
  */
 @Composable
 fun HeartBurst(
   trigger: Int,
   modifier: Modifier = Modifier,
+  haptic: Boolean = true,
   content: @Composable () -> Unit,
 ) {
   val haptics = LocalHapticFeedback.current
@@ -112,7 +118,7 @@ fun HeartBurst(
   LaunchedEffect(trigger) {
     if (trigger == seen) return@LaunchedEffect
     seen = trigger
-    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+    if (haptic) haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
     if (trigger <= 0) return@LaunchedEffect
     if (reduceMotion) {
       opacity.snapTo(0f)

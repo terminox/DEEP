@@ -1,6 +1,7 @@
 package io.appbeyond.freelance.deep.networking
 
 import io.appbeyond.freelance.deep.feature.practice.model.PracticeCompletion
+import io.appbeyond.freelance.deep.feature.practice.store.PracticeLog
 import io.appbeyond.freelance.deep.feature.practice.store.PracticePushResult
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -57,10 +58,16 @@ data class PracticeSessionDto(
   val completedAt: String? = null,
 )
 
-/** `GET /me/practice/sessions` — the member's log, newest first, capped at 1,000. */
+/**
+ * `GET /me/practice/sessions` — the member's log, newest first, capped at
+ * 1,000. [activityDays] are the member-local days ("YYYY-MM-DD") kept by
+ * practice that is not a session — a finished track, an attended Global Pause
+ * — read off the award ledger; absent from an older server.
+ */
 @Serializable
 data class PracticeSessionsResponseDto(
   val sessions: List<PracticeSessionDto> = emptyList(),
+  val activityDays: List<String>? = null,
 )
 
 // MARK: - Mapping
@@ -87,8 +94,14 @@ fun PracticeSyncResponseDto.toDomain(): PracticePushResult = PracticePushResult(
   grant = foldAwards(awards, wallet, plant),
 )
 
+/** The whole log: the sessions, and the activity days passed through as keys. */
+fun PracticeSessionsResponseDto.toDomain(): PracticeLog = PracticeLog(
+  completions = completions(),
+  activityDays = activityDays,
+)
+
 /** Ported from `APIPracticeRemote.fetchAll`: a row without a valid id or date is dropped. */
-fun PracticeSessionsResponseDto.toDomain(): List<PracticeCompletion> = sessions.mapNotNull { dto ->
+private fun PracticeSessionsResponseDto.completions(): List<PracticeCompletion> = sessions.mapNotNull { dto ->
   val id = dto.id?.let(::uuidOrNull) ?: return@mapNotNull null
   val completedAt = dto.completedAt
     ?.let { runCatching { IsoInstantSerializer.parse(it) }.getOrNull() }

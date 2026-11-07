@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +32,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import io.appbeyond.freelance.deep.R
+import io.appbeyond.freelance.deep.feature.premium.LocalPremiumAccess
+import io.appbeyond.freelance.deep.feature.premium.components.PremiumLockCorner
+import io.appbeyond.freelance.deep.feature.premium.model.PremiumGate
+import io.appbeyond.freelance.deep.feature.premium.rememberHasPremium
+import io.appbeyond.freelance.deep.feature.premium.store.FakePremiumAccess
 import io.appbeyond.freelance.deep.feature.deepsound.SoundFixtures
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.shared.components.ArtworkImage
@@ -53,9 +60,6 @@ private const val ARTWORK_SHADOW_ALPHA = 0.2f
 private val ARTWORK_SHADOW_RADIUS = 12.dp
 private val ARTWORK_SHADOW_OFFSET_Y = 8.dp
 
-/** The lock disc's inset from the artwork's corner — `HomeTile`'s `.padding(8)`. */
-private val LOCK_DISC_INSET = 8.dp
-
 // MARK: - Tile
 
 /**
@@ -71,10 +75,11 @@ private val LOCK_DISC_INSET = 8.dp
  * The lift is `Modifier.dropShadow`, as in `frostedCard`: a platform elevation
  * shadow reads as hard grey against the atmosphere.
  *
- * A collection with nothing this listener can play (DEEP Premium, locked)
- * carries the lock disc at its artwork's corner, where the home tiles keep
- * their play button. It still opens: the catalogue is visible to everyone,
- * and the detail shows which sounds are locked.
+ * A DEEP Premium collection this listener is locked out of wears
+ * [io.appbeyond.freelance.deep.feature.premium.components.PremiumLockBadge] at its artwork's top-trailing corner — iOS's
+ * `.premiumLockBadge(PremiumGate.isLocked(collection, …))` — and loses it in
+ * place the moment they become a member. It still opens: the catalogue is
+ * visible to everyone, and the detail shows which sounds are locked.
  */
 @Composable
 fun CollectionTile(
@@ -84,7 +89,8 @@ fun CollectionTile(
   size: Dp = COLLECTION_TILE_SIZE,
 ) {
   val shape = RoundedCornerShape(Dp.tile)
-  val locked = stringResource(R.string.deepsound_locked)
+  val locked = PremiumGate.isLocked(collection, rememberHasPremium())
+  val premium = stringResource(R.string.premium_part_of)
 
   Column(
     modifier
@@ -96,7 +102,7 @@ fun CollectionTile(
         role = Role.Button,
         onClick = { onOpen(collection) },
       )
-      .semantics { if (collection.locksEveryTrack) stateDescription = locked },
+      .semantics { if (locked) stateDescription = premium },
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Box {
@@ -116,14 +122,7 @@ fun CollectionTile(
           )
           .clip(shape),
       )
-      if (collection.locksEveryTrack) {
-        ArtworkLockDisc(
-          ArtworkDiscSize.Small,
-          Modifier
-            .align(Alignment.BottomEnd)
-            .padding(LOCK_DISC_INSET),
-        )
-      }
+      PremiumLockCorner(isLocked = locked)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -159,12 +158,34 @@ private fun CollectionTilePreview() {
   }
 }
 
-@Preview(showBackground = true, name = "Collection tile — DEEP Premium locked")
+@Preview(showBackground = true, name = "Collection tiles — free and locked")
 @Composable
 private fun CollectionTileLockedPreview() {
   DeepTheme {
-    Box(Modifier.background(Color.moonCream).padding(Dp.edge)) {
-      CollectionTile(collection = SoundFixtures.oceanDepths.copy(isLocked = true), onOpen = {})
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = false)) {
+      Row(
+        Modifier.background(Color.moonCream).padding(Dp.edge),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        CollectionTile(collection = SoundFixtures.oceanDepths, onOpen = {})
+        CollectionTile(collection = SoundFixtures.premiumSample, onOpen = {})
+      }
+    }
+  }
+}
+
+@Preview(showBackground = true, name = "Collection tiles — member")
+@Composable
+private fun CollectionTileMemberPreview() {
+  DeepTheme {
+    CompositionLocalProvider(LocalPremiumAccess provides FakePremiumAccess(hasPremium = true)) {
+      Row(
+        Modifier.background(Color.moonCream).padding(Dp.edge),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        CollectionTile(collection = SoundFixtures.oceanDepths, onOpen = {})
+        CollectionTile(collection = SoundFixtures.premiumSample, onOpen = {})
+      }
     }
   }
 }
