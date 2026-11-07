@@ -139,13 +139,13 @@ private val EXPAND_DRAG_DISTANCE = 300.dp
  * [onExpand]; so does a swipe up, which reports its progress instead so the
  * shell can scrub the morph under the finger. This leaf hosts no
  * `SharedTransitionLayout` or transition state of its own — the shell owns
- * both and threads the shared-element modifier in through [artworkModifier].
+ * both and attaches the shared bounds through [modifier]. The artwork does not
+ * fly on its own: Now Playing's photograph is the whole screen, which grows
+ * out of the whole pill.
  *
  * The progress line reads [SoundPlaying.elapsed] only in the draw phase, so its
  * four-a-second tick redraws a 2dp line rather than recomposing the pill.
  *
- * @param artworkModifier applied first on the artwork, before its size — where
- *   the shell attaches `Modifier.sharedElement(...)`.
  * @param onDragUp the swipe's progress, 0…1, over a [EXPAND_DRAG_DISTANCE]
  *   travel. Downward travel clamps to 0.
  * @param onDragUpEnd the release velocity in px/s, positive upward (toward
@@ -156,7 +156,6 @@ fun MiniPlayerPill(
   player: SoundPlaying,
   onExpand: () -> Unit,
   modifier: Modifier = Modifier,
-  artworkModifier: Modifier = Modifier,
   onDragUp: (fraction: Float) -> Unit = {},
   onDragUpEnd: (velocity: Float) -> Unit = {},
 ) {
@@ -228,7 +227,7 @@ fun MiniPlayerPill(
       ArtworkImage(
         url = collection?.imageUrl,
         palette = collection?.palette,
-        modifier = artworkModifier
+        modifier = Modifier
           .size(ARTWORK_SIZE)
           .clip(RoundedCornerShape(ARTWORK_RADIUS))
           .clearAndSetSemantics {},

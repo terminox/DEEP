@@ -18,7 +18,15 @@
   <string name="player_lyrics">Lyrics</string>
   <string name="player_volume">Volume</string>
   <string name="player_position">Playback position</string>
-  <string name="player_close">Close the player</string>
+  <string name="player_close">Close</string>
+
+  <!-- Shuffle and Repeat — NowPlayingView.swift, with their spoken states -->
+  <string name="player_shuffle">Shuffle</string>
+  <string name="player_repeat">Repeat</string>
+  <string name="player_mode_on">On</string>
+  <string name="player_mode_off">Off</string>
+  <string name="player_repeat_all">All</string>
+  <string name="player_repeat_one">One</string>
 
   <!-- Save to playlist — SaveTrackButton.swift -->
   <string name="player_save_to_playlist">Save to playlist</string>

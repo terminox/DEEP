@@ -110,8 +110,12 @@ class GlobalPauseAudioPlayer(
     }
 
     override fun onPlaybackSuppressionReasonChanged(reason: Int) {
-      // A call or a prompt is over: the stream moved on while we were quiet.
-      if (reason == Player.PLAYBACK_SUPPRESSION_REASON_NONE) recoverToLiveEdge()
+      // A call or a prompt is over: the stream moved on while we were quiet. But
+      // a transient loss turning permanent clears the suppression too, as it
+      // drops playWhenReady — that is the member's choice, not an all-clear.
+      if (reason != Player.PLAYBACK_SUPPRESSION_REASON_NONE) return
+      if (player?.playWhenReady != true || yieldedFocus) return
+      recoverToLiveEdge()
     }
 
     override fun onPlaybackStateChanged(state: Int) {
@@ -226,7 +230,8 @@ class GlobalPauseAudioPlayer(
     if (recovery?.isActive == true) return
     recovery = scope.launch {
       delay(RECOVERY_DELAY_MILLIS)
-      recoverToLiveEdge()
+      // Given away for good, the meditation waits for the member's return.
+      if (!yieldedFocus) recoverToLiveEdge()
     }
   }
 

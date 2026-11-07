@@ -76,6 +76,8 @@ private const val TRACK_ALPHA = 0.22f
  * @param onValueChangeFinished called once when the finger lifts — the
  *   scrubber seeks here rather than on every move.
  * @param activeColor the filled part of the track.
+ * @param trackHeight the track's thickness at rest — iOS's `trackHeight`. It
+ *   swells by the same amount from any height while held.
  */
 @Composable
 fun SoundSlider(
@@ -84,10 +86,11 @@ fun SoundSlider(
   modifier: Modifier = Modifier,
   onValueChangeFinished: () -> Unit = {},
   activeColor: Color = Color.lavenderMist,
+  trackHeight: Dp = TRACK_HEIGHT,
 ) {
   var isDragging by remember { mutableStateOf(false) }
-  val trackHeight by animateDpAsState(
-    targetValue = if (isDragging) TRACK_HEIGHT + DRAG_SWELL else TRACK_HEIGHT,
+  val shownHeight by animateDpAsState(
+    targetValue = if (isDragging) trackHeight + DRAG_SWELL else trackHeight,
     animationSpec = settle(),
     label = "sound-slider-track",
   )
@@ -131,7 +134,7 @@ fun SoundSlider(
         }
       }
       .drawBehind {
-        val height = trackHeight.toPx()
+        val height = shownHeight.toPx()
         val top = (size.height - height) / 2f
         val radius = CornerRadius(height / 2f)
         val track = RoundRect(0f, top, size.width, top + height, radius)

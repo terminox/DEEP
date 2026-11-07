@@ -76,6 +76,8 @@ import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessagesPage
 import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
 import io.appbeyond.freelance.deep.feature.globalpause.store.FixturePauseEventRemote
 import io.appbeyond.freelance.deep.feature.globalpause.store.GlobalPauseSession
+import io.appbeyond.freelance.deep.feature.globalpause.store.LoungeRadioPlaying
+import io.appbeyond.freelance.deep.feature.globalpause.store.MockLoungeRadioPlayer
 import io.appbeyond.freelance.deep.feature.globalpause.store.PeaceMessageFeed
 import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
@@ -111,20 +113,19 @@ import java.time.LocalTime
  *
  * The hero follows the member's own hour, so the room looks like the time of
  * day they are actually in. Once a session, at the top of the lobby phase,
- * Fuku goes on air: the intro clip plays aloud and hands off to that same
- * ambient footage. It is a broadcast, not a playlist — keyed to the synced
- * clock, so walking in late drops you into the middle of it — and the ON AIR
- * badge burns for exactly the set's minutes.
+ * Fuku goes on air: the intro clip plays aloud, hands off to that same
+ * ambient footage, and the lounge track streams underneath until it runs out.
+ * It is a broadcast, not a playlist — keyed to the synced clock, so walking in
+ * late drops you into the middle of the set — and the ON AIR badge burns for
+ * exactly the set's minutes. Tapping the badge mutes whichever is playing.
  *
  * Ported from Deep/Deep/Features/GlobalPause/Screens/GlobalPauseLobbyView.swift.
- * **Out of scope this milestone** (`ANDROID_ROADMAP.md`): the lounge track
- * itself (iOS's `LoungeRadioPlayer`) — the set's music stage shows the badge
- * over the ambient loop without the stream. The intro clip's own voice plays,
- * and the badge mutes it.
  *
  * @param fetchMessages one page of `GET /pause/messages`.
- * @param soundPlayer paused while Fuku talks; and if the member presses play
- *   on their own music, theirs wins and the set steps aside.
+ * @param soundPlayer paused for the set, intro and music both; and if the
+ *   member presses play on their own music, theirs wins and the set steps aside.
+ * @param radio the lounge track. Owned outside the lounge, so the Global Pause
+ *   can silence it on its way in; the lounge stops it as it leaves.
  * @param onJoin the live card was tapped: present the session.
  */
 @Composable
@@ -133,6 +134,7 @@ fun GlobalPauseLobbyScreen(
   scene: GlobeScene,
   fetchMessages: suspend (limit: Int, cursor: String?) -> PeaceMessagesPage,
   soundPlayer: SoundPlaying,
+  radio: LoungeRadioPlaying,
   onJoin: () -> Unit,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
@@ -160,8 +162,22 @@ fun GlobalPauseLobbyScreen(
     // The intro is one clip playing through; re-entering it would replay it.
     if (next is LoungeBroadcast.Stage.Intro && stage is LoungeBroadcast.Stage.Intro) return
     stage = next
-    // Fuku is talking over his own clip; whatever else was playing waits.
-    if (next is LoungeBroadcast.Stage.Intro && !isMuted) soundPlayer.pause()
+
+    when (next) {
+      LoungeBroadcast.Stage.Off -> radio.stop()
+      is LoungeBroadcast.Stage.Intro -> {
+        // Fuku is talking over his own clip; the track waits its turn.
+        radio.stop()
+        soundPlayer.pause()
+      }
+      is LoungeBroadcast.Stage.Music -> {
+        soundPlayer.pause()
+        radio.liveOffsetProvider = { session.loungeElapsed }
+        val url = session.state.value.schedule?.lobbyAudioUrl ?: return
+        radio.join(url, next.offset)
+        radio.setMuted(isMuted)
+      }
+    }
   }
 
   LaunchedEffect(Unit) {
@@ -173,16 +189,25 @@ fun GlobalPauseLobbyScreen(
   // The session flips this at the set's edges off its own boundary timer.
   LaunchedEffect(pause.isFukuOnAir, pause.schedule) { resolveStage() }
   // Their own music wins if they choose it: pressing play takes the room back
-  // — set off, badge down. Only a press made here counts, not whatever was
-  // already playing as they walked in (Fuku's intro pauses that).
+  // — set off, badge down — rather than two pieces of music at once. Only a
+  // press made here counts, not whatever was already playing as they walked in
+  // (the set pauses that).
   LaunchedEffect(soundPlayer) {
     soundPlayer.playback
       .map { it.isPlaying }
       .distinctUntilChanged()
       .drop(1)
       .filter { it }
-      .collect { if (stage != LoungeBroadcast.Stage.Off) stage = LoungeBroadcast.Stage.Off }
+      .collect {
+        if (stage != LoungeBroadcast.Stage.Off) {
+          radio.stop()
+          stage = LoungeBroadcast.Stage.Off
+        }
+      }
   }
+  // Leaving the room leaves the broadcast — back, or another tab. The session
+  // keeps running it; coming back rejoins wherever it has got to.
+  DisposableEffect(radio) { onDispose { radio.stop() } }
 
   val listState = rememberLazyListState()
   ScrollToTopOnReselect(listState)
@@ -257,7 +282,10 @@ fun GlobalPauseLobbyScreen(
             if (stage != LoungeBroadcast.Stage.Off) {
               OnAirPill(
                 isMuted = isMuted,
-                onTap = { isMuted = !isMuted },
+                onTap = {
+                  isMuted = !isMuted
+                  radio.setMuted(isMuted)
+                },
                 modifier = Modifier.padding(horizontal = Dp.edge),
               )
             }
@@ -497,6 +525,7 @@ private fun GlobalPauseLobbyPreview() {
       scene = remember { GlobeScene() },
       fetchMessages = remote::messages,
       soundPlayer = remember { MockSoundPlayer.idle() },
+      radio = remember { MockLoungeRadioPlayer() },
       onJoin = {},
       onBack = {},
     )

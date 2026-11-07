@@ -16,9 +16,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.size.Precision
 import io.appbeyond.freelance.deep.theme.blushPowder
 import io.appbeyond.freelance.deep.theme.lavenderMist
 import io.appbeyond.freelance.deep.theme.moonCream
@@ -41,6 +45,12 @@ import io.appbeyond.freelance.deep.theme.softLilac
  *   is no photo (no url, still loading, or failed) — iOS's
  *   `placeholderSystemImage`. Hidden once the image lands, so a transparent
  *   image (a garden mascot) never shows it through.
+ * @param decodeSize the pixel size to decode the photo for, where its first
+ *   layout is no guide — Now Playing's full-bleed photograph, which opens out
+ *   of the mini player's 36dp thumbnail and would otherwise decode at that
+ *   size. Null decodes for the laid-out size, as every tile does. Never
+ *   upscaled past the photo's own pixels. iOS's second, screen-size
+ *   `ImageLoader`.
  */
 @Composable
 fun ArtworkImage(
@@ -49,8 +59,21 @@ fun ArtworkImage(
   modifier: Modifier = Modifier,
   contentDescription: String? = null,
   placeholderIcon: ImageVector? = null,
+  decodeSize: IntSize? = null,
 ) {
   var loaded by remember(url) { mutableStateOf(false) }
+  val context = LocalPlatformContext.current
+  val model = remember(url, decodeSize, context) {
+    if (url == null || decodeSize == null) {
+      url
+    } else {
+      ImageRequest.Builder(context)
+        .data(url)
+        .size(decodeSize.width, decodeSize.height)
+        .precision(Precision.INEXACT)
+        .build()
+    }
+  }
 
   Box(modifier.background(paletteBrush(palette)), contentAlignment = Alignment.Center) {
     if (placeholderIcon != null && !loaded) {
@@ -61,9 +84,9 @@ fun ArtworkImage(
         modifier = Modifier.size(PLACEHOLDER_SIZE),
       )
     }
-    if (url != null) {
+    if (model != null) {
       AsyncImage(
-        model = url,
+        model = model,
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
         onState = { loaded = it is AsyncImagePainter.State.Success },

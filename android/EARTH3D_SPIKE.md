@@ -4,7 +4,7 @@
 
 Scope: can an OpenGL ES 3.0 pipeline carry `Deep/Deep/Features/GlobalPause/Earth3D/` on a
 mid-range phone, and what is the shape of that port. The GLES-3.0-over-AGSL decision is
-settled in `ANDROID_ROADMAP.md` and is not revisited here.
+settled (GLES 3.0 reaches API 26; AGSL is API 33+) and is not revisited here.
 
 ## Verdict
 
@@ -625,8 +625,8 @@ The week-2 prototype, about two hours:
 2. Fill the glow UBO with 64 synthetic sources at the `.buried` defaults (a ring of points at
    the real radii), so the loops run at production width.
 3. Render to a plain `GLSurfaceView` at 1080x2400, then at 0.6 scale, on one real mid-range
-   phone. Not an emulator — `ANDROID_ROADMAP.md` already flags emulator timings as misleading,
-   and for this question they are worthless.
+   phone. Not an emulator — emulator timings mislead, and for this question they are
+   worthless. (Still open on real hardware: issue #72.)
 4. Report: ms/frame at each scale; the same with Fix A and Fix B applied; sustained fps after
    five minutes; and the `GL_EXTENSIONS` string plus a `glCheckFramebufferStatus` on an
    `RGBA16F` attachment.

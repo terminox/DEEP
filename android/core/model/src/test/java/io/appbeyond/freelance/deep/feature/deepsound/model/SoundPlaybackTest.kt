@@ -2,6 +2,7 @@ package io.appbeyond.freelance.deep.feature.deepsound.model
 
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -25,6 +26,18 @@ class SoundPlaybackTest {
   private fun track(id: String = "track-1", durationSeconds: Int = 180, audioUrl: String? = "https://example.com/a.mp3"): SoundTrack =
     SoundTrack(id = id, title = "Waves", durationSeconds = durationSeconds, audioUrl = audioUrl)
 
+  private fun playback(entries: List<SoundQueueEntry>, index: Int = 0): SoundPlayback =
+    SoundPlayback(
+      queue = SoundQueue.start(
+        entries,
+        startIndex = index,
+        shuffled = false,
+        repeatMode = RepeatMode.Off,
+        canPlay = SoundQueue.hasAudio,
+        random = Random(0),
+      ),
+    )
+
   // MARK: - Idle
 
   @Test
@@ -46,7 +59,7 @@ class SoundPlaybackTest {
   fun nullAudioUrlHasTrackButIsNotPlayable() {
     val t = track(audioUrl = null)
     val c = collection(tracks = arrayOf(t))
-    val playback = SoundPlayback(entries = c.queue())
+    val playback = playback(c.queue())
 
     assertTrue(playback.hasTrack)
     assertFalse(playback.isCurrentPlayable)
@@ -57,7 +70,7 @@ class SoundPlaybackTest {
   fun realAudioUrlIsPlayable() {
     val t = track(audioUrl = "https://example.com/a.mp3")
     val c = collection(tracks = arrayOf(t))
-    val playback = SoundPlayback(entries = c.queue())
+    val playback = playback(c.queue())
 
     assertTrue(playback.isCurrentPlayable)
   }
@@ -69,7 +82,7 @@ class SoundPlaybackTest {
   fun durationComesFromBackend() {
     val t = track(durationSeconds = 245)
     val c = collection(tracks = arrayOf(t))
-    val playback = SoundPlayback(entries = c.queue())
+    val playback = playback(c.queue())
 
     assertEquals(245.0, playback.duration)
   }
@@ -81,7 +94,7 @@ class SoundPlaybackTest {
   fun isCurrentMatchesTrackAndCollection() {
     val t = track(id = "track-1")
     val c = collection(id = "collection-1", tracks = arrayOf(t))
-    val playback = SoundPlayback(entries = c.queue())
+    val playback = playback(c.queue())
 
     assertTrue(playback.isCurrent(t, c))
   }
@@ -92,7 +105,7 @@ class SoundPlaybackTest {
     val t = track(id = "track-1")
     val c = collection(id = "collection-1", tracks = arrayOf(t))
     val otherCollection = collection(id = "collection-2", tracks = arrayOf(t))
-    val playback = SoundPlayback(entries = c.queue())
+    val playback = playback(c.queue())
 
     assertFalse(playback.isCurrent(t, otherCollection))
   }
@@ -103,7 +116,7 @@ class SoundPlaybackTest {
     val t = track(id = "track-1")
     val otherTrack = track(id = "track-2")
     val c = collection(id = "collection-1", tracks = arrayOf(t, otherTrack))
-    val playback = SoundPlayback(entries = c.queue(), index = 0)
+    val playback = playback(c.queue(), index = 0)
 
     assertFalse(playback.isCurrent(otherTrack, c))
   }
@@ -111,16 +124,14 @@ class SoundPlaybackTest {
   // MARK: - out-of-range index
 
   @Test
-  @DisplayName("an out-of-range index reads as no track at all")
-  fun outOfRangeIndexIsNull() {
-    val t = track()
-    val c = collection(tracks = arrayOf(t))
-    val playback = SoundPlayback(entries = c.queue(), index = 5)
+  @DisplayName("an out-of-range start lands on the last track")
+  fun outOfRangeIndexClamps() {
+    val first = track(id = "track-1")
+    val last = track(id = "track-2")
+    val c = collection(tracks = arrayOf(first, last))
+    val playback = playback(c.queue(), index = 5)
 
-    assertNull(playback.currentEntry)
-    assertNull(playback.currentTrack)
-    assertNull(playback.collection)
-    assertFalse(playback.hasTrack)
-    assertFalse(playback.isCurrentPlayable)
+    assertEquals(1, playback.index)
+    assertEquals("track-2", playback.currentTrack?.id)
   }
 }

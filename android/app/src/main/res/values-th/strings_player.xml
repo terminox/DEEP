@@ -16,7 +16,15 @@
   <string name="player_lyrics">เนื้อเพลง</string>
   <string name="player_volume">ระดับเสียง</string> <!-- no iOS Thai -->
   <string name="player_position">ตำแหน่งการเล่น</string> <!-- no iOS Thai -->
-  <string name="player_close">ปิดเครื่องเล่น</string> <!-- no iOS Thai -->
+  <string name="player_close">ปิด</string>
+
+  <!-- Shuffle and Repeat -->
+  <string name="player_shuffle">สุ่ม</string>
+  <string name="player_repeat">เล่นซ้ำ</string>
+  <string name="player_mode_on">เปิด</string>
+  <string name="player_mode_off">ปิด</string>
+  <string name="player_repeat_all">ทั้งหมด</string>
+  <string name="player_repeat_one">เพลงเดียว</string>
 
   <!-- Save to playlist -->
   <string name="player_save_to_playlist">บันทึกลงเพลย์ลิสต์</string>

@@ -56,7 +56,7 @@ import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTime
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundTrack
 import io.appbeyond.freelance.deep.feature.deepsound.player.MockSoundPlayer
 import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
-import io.appbeyond.freelance.deep.feature.deepsound.player.play
+import io.appbeyond.freelance.deep.feature.deepsound.player.playFrom
 import io.appbeyond.freelance.deep.feature.playlist.store.MockPlaylistStore
 import io.appbeyond.freelance.deep.feature.playlist.store.PlaylistStore
 import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
@@ -75,7 +75,6 @@ import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.softPress
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 // MARK: - Constants
 
@@ -193,18 +192,22 @@ fun CollectionDetailScreen(
             SoundActionButton(
               title = stringResource(R.string.deepsound_play),
               icon = SoundIcons.Play,
-              onClick = { if (collection.tracks.isNotEmpty()) player.play(collection, startIndex = 0) },
+              // From the first track, in order — whatever Shuffle was.
+              onClick = {
+                if (collection.tracks.isNotEmpty()) {
+                  player.play(collection.queue(), startIndex = 0, shuffled = false)
+                }
+              },
               modifier = Modifier.weight(1f),
             )
             SoundActionButton(
               title = stringResource(R.string.deepsound_shuffle),
               icon = SoundIcons.Shuffle,
-              // A random place to begin among the tracks that can play; the
-              // queue itself stays in order, as on iOS.
+              // The whole collection dealt in a random order, from a random
+              // track that can play.
               onClick = {
-                val unlocked = collection.tracks.indices.filterNot { collection.tracks[it].isLocked }
-                if (unlocked.isNotEmpty()) {
-                  player.play(collection, startIndex = unlocked[Random.nextInt(unlocked.size)])
+                if (collection.tracks.isNotEmpty()) {
+                  player.play(collection.queue(), startIndex = null, shuffled = true)
                 }
               },
               modifier = Modifier.weight(1f),
@@ -221,7 +224,7 @@ fun CollectionDetailScreen(
             isCurrent = playback.isCurrent(track, collection),
             isLocked = track.isLocked,
             isSaved = track.id in savedIds,
-            onPlay = { if (!track.isLocked) player.play(collection.queue(), index) },
+            onPlay = { if (!track.isLocked) player.playFrom(collection.queue(), index) },
             onToggleSaved = { scope.launch { playlistStore.toggle(track, collection) } },
             modifier = Modifier.padding(horizontal = Dp.edge),
           )

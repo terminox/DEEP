@@ -203,6 +203,16 @@ class GlobalPauseSession(
   val loungeBroadcast: LoungeBroadcast?
     get() = _state.value.schedule?.loungeBroadcast(measuredIntro)
 
+  /**
+   * How far into the lounge track the synced clock's now is — the offset a
+   * latecomer joins on, and what the radio re-seeks to after an interruption.
+   * Null outside the set's music stage: iOS answers zero there, but a radio
+   * coming back after the set has signed off should stop, not replay the
+   * opening bars until the boundary timer catches up.
+   */
+  val loungeElapsed: Duration?
+    get() = (loungeBroadcast?.stage(clock.now()) as? LoungeBroadcast.Stage.Music)?.offset
+
   /** Whether a session is entered — presence is being renewed. */
   val isInSession: Boolean get() = heartbeatJob != null
 

@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.deepsound.player
 
+import io.appbeyond.freelance.deep.feature.deepsound.model.RepeatMode
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundCollection
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundPlayback
 import io.appbeyond.freelance.deep.feature.deepsound.model.SoundQueueEntry
@@ -21,7 +22,10 @@ import kotlinx.coroutines.flow.StateFlow
  */
 interface SoundPlaying {
 
-  /** The queue, where it stands, whether it is playing, and the player's gain. */
+  /**
+   * The queue, where it stands, whether it is playing, its Repeat and Shuffle
+   * settings, and the player's gain.
+   */
   val playback: StateFlow<SoundPlayback>
 
   /**
@@ -34,9 +38,10 @@ interface SoundPlaying {
   /**
    * Loads a queue and starts it. Each entry names the collection its track came
    * from, so a queue may cross collections (a playlist) or stay inside one (a
-   * collection) without the player needing to know which it has.
+   * collection) without the player needing to know which it has. Shuffled with
+   * a null [startIndex], it starts from a random track.
    */
-  fun play(entries: List<SoundQueueEntry>, startIndex: Int = 0)
+  fun play(entries: List<SoundQueueEntry>, startIndex: Int?, shuffled: Boolean)
 
   fun togglePlayPause()
 
@@ -49,11 +54,30 @@ interface SoundPlaying {
    */
   fun pause()
 
-  /** The next track, wrapping to the start — the queue repeats forever. */
+  /**
+   * The next track — even in Repeat One — wrapping from the last to the first.
+   * Playback carries on after a wrap only in Repeat All (see `SoundQueue`).
+   */
   fun next()
 
-  /** Restarts the track after three seconds of it; before that, the previous track. */
+  /**
+   * Restarts the track after three seconds of it; before that, the previous
+   * track — or, at the first track outside Repeat All, the start of this one.
+   */
   fun previous()
+
+  /**
+   * What happens when a track ends — see `SoundQueue` for the rules. Kept
+   * between launches; it reads back through [playback].
+   */
+  fun setRepeatMode(mode: RepeatMode)
+
+  /**
+   * Turning shuffle on keeps the current track and deals the rest in a random
+   * order; turning it off resumes the original order from the current track.
+   * For this session only, as on iOS.
+   */
+  fun setShuffled(shuffled: Boolean)
 
   /** Seek to a 0…1 fraction of the current track. */
   fun seek(toProgress: Double)
@@ -80,8 +104,21 @@ interface SoundPlaying {
 }
 
 /**
+ * Starts a queue from a given track — a tapped row — keeping the listener's
+ * shuffle setting.
+ */
+fun SoundPlaying.playFrom(entries: List<SoundQueueEntry>, startIndex: Int) =
+  play(entries, startIndex, shuffled = playback.value.isShuffled)
+
+/**
  * Starts a collection, optionally from a given track — every entry shares the
  * one collection, so the origin line stays put for the whole queue.
  */
 fun SoundPlaying.play(collection: SoundCollection, startIndex: Int = 0) =
-  play(collection.queue(), startIndex)
+  playFrom(collection.queue(), startIndex)
+
+/** Steps the Repeat control on — off, all, one, and round again. */
+fun SoundPlaying.cycleRepeatMode() = setRepeatMode(playback.value.repeatMode.next)
+
+/** Flips Shuffle. */
+fun SoundPlaying.toggleShuffled() = setShuffled(!playback.value.isShuffled)
