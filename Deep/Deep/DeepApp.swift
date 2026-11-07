@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct DeepApp: App {
+  /// Answers which orientations DEEP may use (portrait, except where a screen
+  /// asks for more through `OrientationLock`).
+  @UIApplicationDelegateAdaptor(DeepAppDelegate.self) private var appDelegate
+
   var body: some Scene {
     WindowGroup {
       // `AppRootView` gates first-run onboarding vs. the main tab shell and

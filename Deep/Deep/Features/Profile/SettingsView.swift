@@ -38,6 +38,9 @@ struct SettingsView: View {
   @State private var deleteFailed = false
   @State private var isLoggingOut = false
   @State private var showUnsyncedConfirm = false
+  #if EXPERIMENTS
+  @State private var showAurora = false
+  #endif
 
   private enum RestorePhase: Equatable {
     case idle, working, restored, failed
@@ -53,6 +56,9 @@ struct SettingsView: View {
         VStack(spacing: .rhythm) {
           identityHeader
           preferencesSection
+          #if EXPERIMENTS
+          experimentsSection
+          #endif
           membershipSection
           accountSection
           footer
@@ -68,6 +74,9 @@ struct SettingsView: View {
     .toolbarBackground(.hidden, for: .navigationBar)
     .task { await subscriptionStore.loadPlans() }
     .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
+    #if EXPERIMENTS
+    .fullScreenCover(isPresented: $showAurora) { AuroraExperimentView() }
+    #endif
     .confirmationDialog(
       "Log out of DEEP?",
       isPresented: $showLogoutConfirm,
@@ -210,6 +219,21 @@ struct SettingsView: View {
       .pickerDate()
       .formatted(.dateTime.hour().minute().locale(.app))
   }
+
+  // MARK: - Experiments
+
+  #if EXPERIMENTS
+  /// Work in progress shown to Dev, Staging and client (CentralFlight) builds
+  /// only; Prod compiles it out. Aurora is the EEG art demo on a simulated
+  /// Muse 2 headband, and the one screen in DEEP that turns landscape.
+  private var experimentsSection: some View {
+    SettingsSection(title: "Experiments") {
+      SettingsRow(icon: "testtube.2", title: "Aurora", accessory: .chevron) {
+        showAurora = true
+      }
+    }
+  }
+  #endif
 
   // MARK: - Membership
 
