@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.networking
 
+import io.appbeyond.freelance.deep.feature.globalpause.model.BlockedMember
 import io.appbeyond.freelance.deep.feature.globalpause.model.Intention
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseLiveSnapshot
 import io.appbeyond.freelance.deep.feature.globalpause.model.PausePhaseKey
@@ -131,6 +132,7 @@ data class PauseLiveDto(
 
 // MARK: - Messages and the reflection
 
+/** [isMine] is true only for a signed-in caller's own message; older servers omit it. */
 @Serializable
 data class PeaceMessageDto(
   val id: String,
@@ -139,6 +141,7 @@ data class PeaceMessageDto(
   val text: String,
   val intention: String? = null,
   val createdAt: String,
+  val isMine: Boolean = false,
 )
 
 /** `GET /pause/messages` — newest first, keyset-paged by an opaque cursor. */
@@ -186,6 +189,36 @@ data class PauseAwardResponse(
   val wallet: WalletDto? = null,
   val plant: PlantProgressDto? = null,
   val serverNow: String? = null,
+)
+
+// MARK: - Report and Block
+
+/** `POST /pause/messages/:id/report` body. */
+@Serializable
+data class PeaceMessageReportRequest(val reason: String)
+
+/** `{ ok: true }` — the report and the unblock answer with this. */
+@Serializable
+data class ModerationOkResponse(val ok: Boolean = true)
+
+@Serializable
+data class BlockedMemberDto(
+  val id: String,
+  val displayName: String,
+  val createdAt: String,
+)
+
+/** `POST /pause/messages/:id/block-author`. [block] is null when the author's account is gone. */
+@Serializable
+data class BlockAuthorResponse(
+  val ok: Boolean = true,
+  val block: BlockedMemberDto? = null,
+)
+
+/** `GET /me/blocks`, newest first. */
+@Serializable
+data class BlockedMembersResponse(
+  val blocks: List<BlockedMemberDto> = emptyList(),
 )
 
 // MARK: - Mapping down to :core:model
@@ -241,5 +274,12 @@ fun PeaceMessageDto.toDomain(): PeaceMessage = PeaceMessage(
   countryIso = countryIso,
   text = text,
   intention = intention,
+  createdAt = IsoInstantSerializer.parse(createdAt),
+  isMine = isMine,
+)
+
+fun BlockedMemberDto.toDomain(): BlockedMember = BlockedMember(
+  id = id,
+  displayName = displayName,
   createdAt = IsoInstantSerializer.parse(createdAt),
 )

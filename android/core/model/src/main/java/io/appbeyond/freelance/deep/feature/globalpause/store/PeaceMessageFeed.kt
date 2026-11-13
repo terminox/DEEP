@@ -23,6 +23,11 @@ import kotlinx.coroutines.flow.update
  * - [refresh] replaces the feed and bumps an epoch, so a [loadMore] still in
  *   flight from the old feed can tell its page is stale. A failed refresh keeps
  *   the feed it had.
+ * - [hide] takes a message out of view the moment the member reports it or
+ *   blocks its author, before the server has answered; [unhide] puts it back
+ *   if the server refuses. A hidden id stays hidden through later pages and
+ *   refreshes, so a page fetched while the report was in flight can't bring
+ *   it back.
  *
  * Not thread-safe by design: one screen drives it from the main thread.
  *
@@ -33,11 +38,20 @@ class PeaceMessageFeed(
   private val fetch: suspend (limit: Int, cursor: String?) -> PeaceMessagesPage,
 ) {
 
+  /**
+   * @property messages everything paged in, hidden ones included.
+   * @property hidden ids taken out of view on this device.
+   */
   data class State(
     val messages: List<PeaceMessage> = emptyList(),
     val nextCursor: String? = null,
     val isLoadingMore: Boolean = false,
-  )
+    val hidden: Set<String> = emptySet(),
+  ) {
+    /** The feed as the member sees it. */
+    val visible: List<PeaceMessage>
+      get() = if (hidden.isEmpty()) messages else messages.filter { it.id !in hidden }
+  }
 
   private val _state = MutableStateFlow(State())
   val state: StateFlow<State> = _state.asStateFlow()
@@ -76,6 +90,14 @@ class PeaceMessageFeed(
     val page = attempt { fetch(pageSize, null) } ?: return
     epoch += 1
     _state.update { it.copy(messages = page.messages, nextCursor = page.nextCursor) }
+  }
+
+  fun hide(id: String) {
+    _state.update { it.copy(hidden = it.hidden + id) }
+  }
+
+  fun unhide(id: String) {
+    _state.update { it.copy(hidden = it.hidden - id) }
   }
 
   private suspend fun <T> attempt(block: suspend () -> T): T? =

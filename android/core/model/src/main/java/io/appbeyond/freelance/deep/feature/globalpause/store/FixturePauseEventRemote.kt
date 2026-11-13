@@ -1,5 +1,6 @@
 package io.appbeyond.freelance.deep.feature.globalpause.store
 
+import io.appbeyond.freelance.deep.feature.globalpause.model.BlockedMember
 import io.appbeyond.freelance.deep.feature.globalpause.model.Intention
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseJoinPoint
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseLiveSnapshot
@@ -7,6 +8,7 @@ import io.appbeyond.freelance.deep.feature.globalpause.model.PausePhaseKey
 import io.appbeyond.freelance.deep.feature.globalpause.model.PausePhaseWindow
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseSchedule
 import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessage
+import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessageReportReason
 import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessagesPage
 import io.appbeyond.freelance.deep.feature.globalpause.model.PostedPeaceMessage
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
@@ -33,6 +35,18 @@ class FixturePauseEventRemote(
 ) : PauseEventRemote {
 
   private val posted = mutableListOf<PeaceMessage>()
+
+  // Report and Block, as the server keeps them: per caller, and the feed
+  // leaves out what the caller reported or whose author they blocked. The
+  // fixture's authors are told apart by name.
+
+  /** Every report that landed, as "<messageId>:<reason>". */
+  val reports = mutableListOf<String>()
+  private val reported = mutableSetOf<String>()
+  private val blocks = mutableListOf<BlockedMember>()
+
+  /** How many moderation calls fail before one lands. */
+  var moderationFailures = 0
 
   // Claim switches, as iOS's MockRewardsRemote has them.
 
@@ -101,7 +115,9 @@ class FixturePauseEventRemote(
 
   override suspend fun messages(limit: Int, cursor: String?): PeaceMessagesPage {
     // Fixture cursor: the plain offset into the sample feed.
-    val all = posted + sampleMessages(clock.instant())
+    val blockedNames = blocks.mapTo(HashSet()) { it.displayName }
+    val all = (posted + sampleMessages(clock.instant()))
+      .filter { it.id !in reported && it.displayName !in blockedNames }
     val offset = cursor?.toIntOrNull() ?: 0
     val page = all.drop(offset).take(limit)
     val next = offset + page.size
@@ -116,6 +132,7 @@ class FixturePauseEventRemote(
       text = text,
       intention = intention,
       createdAt = clock.instant(),
+      isMine = true,
     )
     val isFirstOfTheNight = posted.isEmpty()
     posted.add(0, message)
@@ -140,6 +157,38 @@ class FixturePauseEventRemote(
     if (claimedTonight) return PauseAwardClaim(eligible = true, grant = null)
     claimedTonight = true
     return PauseAwardClaim(eligible = true, grant = AwardGrant(hearts = 5, sunlight = 5, plantId = "oak"))
+  }
+
+  override suspend fun report(messageId: String, reason: PeaceMessageReportReason) {
+    failIfAsked()
+    if (reported.add(messageId)) reports += "$messageId:${reason.wire}"
+  }
+
+  override suspend fun blockAuthor(messageId: String): BlockedMember? {
+    failIfAsked()
+    val author = (posted + sampleMessages(clock.instant())).firstOrNull { it.id == messageId }?.displayName
+      ?: return null
+    blocks.firstOrNull { it.displayName == author }?.let { return it }
+    val block = BlockedMember(id = "block-${blocks.size + 1}", displayName = author, createdAt = clock.instant())
+    blocks.add(0, block)
+    return block
+  }
+
+  override suspend fun blockedMembers(): List<BlockedMember> {
+    failIfAsked()
+    return blocks.toList()
+  }
+
+  override suspend fun unblock(blockId: String) {
+    failIfAsked()
+    blocks.removeAll { it.id == blockId }
+  }
+
+  private fun failIfAsked() {
+    if (moderationFailures > 0) {
+      moderationFailures -= 1
+      throw java.io.IOException("offline")
+    }
   }
 
   companion object {

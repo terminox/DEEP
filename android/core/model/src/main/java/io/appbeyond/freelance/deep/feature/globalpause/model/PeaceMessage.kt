@@ -12,6 +12,9 @@ import java.util.Locale
  *
  * @property intention the key the author tagged it with, null when untagged.
  *   Resolved to display copy against tonight's options.
+ * @property isMine true only when the signed-in caller wrote it. The server
+ *   decides; an older server omits it, which reads false. A card that is not
+ *   the member's own offers Report and Block.
  */
 data class PeaceMessage(
   val id: String,
@@ -20,6 +23,7 @@ data class PeaceMessage(
   val text: String,
   val intention: String?,
   val createdAt: Instant,
+  val isMine: Boolean = false,
 ) {
 
   /** The country's display name in [locale]; empty when the place isn't known. */
