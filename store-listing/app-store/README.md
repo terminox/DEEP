@@ -6,7 +6,7 @@ Everything App Store Connect asks for, ready before the client's account is set 
 |---|---|---|
 | Name, subtitle, promotional text, description, keywords, URLs (en-US, th) | `metadata/<locale>/*.txt` | The version's localizations; App Information |
 | Copyright, categories | `metadata/*.txt` | The version; App Information |
-| Screenshots, 6.9" iPhone (en-US, th) | `screenshots/iphone-6.9/<locale>/` | The version ▸ iPhone screenshots |
+| Screenshots, iPhone (en-US, th) | the existing iPhone set from `store-screenshots/` | The version ▸ iPhone screenshots |
 | Paywall screenshots | `screenshots/paywall/<locale>.png` | Each subscription ▸ Review Information |
 | Review notes, demo account | `review-notes.md` | The version ▸ App Review Information |
 | Privacy label | `app-privacy.md` | App Privacy |
