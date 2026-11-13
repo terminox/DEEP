@@ -39,22 +39,25 @@ model User {
 
   selectedPlant Plant? @relation("SelectedPlant", fields: [selectedPlantId], references: [id], onDelete: SetNull)
 
-  sessions         AuthSession[]
-  onboarding       OnboardingProfile?
-  practiceSessions PracticeSession[]
-  peaceMessages    PeaceMessage[]
-  reflections      PauseReflection[]
-  plantProgress    UserPlantProgress[]
-  awards           Award[]
-  earnTallies      DailyEarnTally[]
-  wallet           UserWallet?
-  heartSpends      HeartSpend[]
-  pauseAttendances PauseAttendance[]
-  playlists        Playlist[]
-  contentDrafts    ContentDraft[]
+  sessions            AuthSession[]
+  onboarding          OnboardingProfile?
+  practiceSessions    PracticeSession[]
+  peaceMessages       PeaceMessage[]
+  reflections         PauseReflection[]
+  plantProgress       UserPlantProgress[]
+  awards              Award[]
+  earnTallies         DailyEarnTally[]
+  wallet              UserWallet?
+  heartSpends         HeartSpend[]
+  pauseAttendances    PauseAttendance[]
+  playlists           Playlist[]
+  contentDrafts       ContentDraft[]
   // DEEP Premium standing, as RevenueCat last reported it. A relation only —
   // never loaded by serializeUser / the admin user list.
-  subscription     Subscription?
+  subscription        Subscription?
+  peaceMessageReports PeaceMessageReport[]
+  blocksMade          UserBlock[]          @relation("BlocksMade")
+  blockedBy           UserBlock[]          @relation("BlockedBy")
 
   @@map("users")
 }
@@ -518,12 +521,57 @@ model PeaceMessage {
   pauseDate   String
   createdAt   DateTime           @default(now())
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user    User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reports PeaceMessageReport[]
 
   @@index([pauseDate, status, createdAt])
   // The all-nights public feed: newest first, keyset-paged on (createdAt, id).
   @@index([status, createdAt, id])
   @@map("peace_messages")
+}
+
+enum PeaceMessageReportReason {
+  OFFENSIVE
+  HARASSMENT
+  SPAM
+  OTHER
+}
+
+// One member's report of one peace message (Apple Guideline 1.2). Enough
+// distinct reporters hide the message until an admin restores it; a reporter
+// stops seeing it straight away.
+model PeaceMessageReport {
+  id         String                   @id @default(uuid())
+  messageId  String
+  reporterId String
+  reason     PeaceMessageReportReason
+  createdAt  DateTime                 @default(now())
+
+  message  PeaceMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporter User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, reporterId])
+  @@index([messageId])
+  // The feeds exclude what the caller reported; account deletion cascades on it too.
+  @@index([reporterId])
+  @@map("peace_message_reports")
+}
+
+// A member hiding another member's peace messages from their own feeds. The
+// blocked member's id never leaves the server; clients only see the block's id.
+model UserBlock {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+  @@map("user_blocks")
 }
 
 // One row per user per night: the intention and mood chosen in the feedback
