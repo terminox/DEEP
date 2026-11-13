@@ -27,7 +27,7 @@ These product ids are hard-coded in the app (`DeepProduct`), in `Deep.storekit`,
 | Display name (th) | DEEP Premium รายเดือน | DEEP Premium รายปี |
 | Description (th, ≤45) | ทุกเสียงและต้นไม้พิเศษ จ่ายรายเดือน | ทุกเสียงและต้นไม้พิเศษ จ่ายรายปี |
 
-Prices come from `Deep/Deep/Deep.storekit`. Other territories follow Apple's equalization of the USD price unless the client sets local prices. **Ask the client** whether she wants rounded Thai prices (for example ฿349 / ฿2,090) rather than the equalized ones.
+Prices come from `Deep/Deep/Deep.storekit`. Other territories follow Apple's equalization of the USD price unless the client sets local prices. In Thailand that came out at **฿399 / month** and **฿1,990 / year**; the client can change either in App Store Connect.
 
 The onboarding paywall only says "free for seven days" when a 7-day trial is on offer. If the trial length changes, change that line too.
 
