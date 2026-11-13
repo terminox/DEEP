@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Thai twin of values/strings_safety.xml. Agreed with the iOS catalog
+  (Localizable.xcstrings) so both platforms read the same.
+-->
+<resources>
+
+  <!-- The card's menu -->
+  <string name="safety_more">เพิ่มเติม</string>
+  <string name="safety_report">รายงาน</string>
+  <string name="safety_block">บล็อก %1$s</string>
+
+  <!-- Report: the reason picker and the thanks -->
+  <string name="safety_report_title">รายงานข้อความนี้</string>
+  <string name="safety_reason_offensive">ไม่เหมาะสม</string>
+  <string name="safety_reason_harassment">การคุกคาม</string>
+  <string name="safety_reason_spam">สแปม</string>
+  <string name="safety_reason_other">เหตุผลอื่น</string>
+  <string name="safety_report_thanks">ขอบคุณที่แจ้งให้เราทราบ เราจะตรวจสอบให้</string>
+
+  <!-- Block: the confirmation -->
+  <string name="safety_block_title">บล็อก %1$s ใช่ไหม</string>
+  <string name="safety_block_body">คุณจะไม่เห็นข้อความแห่งสันติของเขาอีก</string>
+  <string name="safety_block_confirm">บล็อก</string>
+
+  <string name="safety_cancel">ยกเลิก</string>
+  <string name="safety_failed">เกิดข้อผิดพลาด โปรดลองอีกครั้ง</string>
+
+  <!-- The reflection composer, when the server's filter refuses a message (422 message_rejected) -->
+  <string name="pause_reflection_note_rejected">ข้อความนี้แชร์ไม่ได้ โปรดใช้ถ้อยคำที่อ่อนโยน</string>
+
+  <!-- Settings -->
+  <string name="settings_section_community">ชุมชน</string>
+  <string name="settings_blocked_members">สมาชิกที่บล็อกไว้</string>
+  <string name="settings_contact_us">ติดต่อเรา</string>
+
+  <!-- Blocked members -->
+  <string name="blocked_title">สมาชิกที่บล็อกไว้</string>
+  <string name="blocked_unblock">เลิกบล็อก</string>
+  <string name="blocked_unblock_a11y">เลิกบล็อก %1$s</string>
+  <string name="blocked_empty">คุณยังไม่ได้บล็อกใคร</string>
+  <string name="blocked_footnote">ข้อความแห่งสันติของสมาชิกที่เลิกบล็อกแล้วจะกลับมาแสดงอีกครั้ง</string>
+  <string name="blocked_load_failed">เราโหลดรายชื่อสมาชิกที่บล็อกไว้ไม่ได้</string>
+  <string name="blocked_retry">ลองอีกครั้ง</string>
+</resources>

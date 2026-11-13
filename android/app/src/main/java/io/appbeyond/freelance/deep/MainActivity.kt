@@ -36,6 +36,8 @@ import io.appbeyond.freelance.deep.feature.globalpause.globe.EarthGlobeRendering
 import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeFlight
 import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeScene
 import io.appbeyond.freelance.deep.feature.globalpause.globe.LocalGlobeRendering
+import io.appbeyond.freelance.deep.feature.globalpause.store.BlockedMembersList
+import io.appbeyond.freelance.deep.feature.profile.BlockedMembersScreen
 import io.appbeyond.freelance.deep.shared.components.rememberReduceMotion
 import io.appbeyond.freelance.deep.feature.mindgarden.MindGardenHomeScreen
 import io.appbeyond.freelance.deep.feature.onboarding.OnboardingCoordinator
@@ -288,6 +290,7 @@ class MainActivity : ComponentActivity() {
             )
           },
           fukuLoungeContent = { onJoin, onBack ->
+            val account by dependencies.accountStore.account.collectAsStateWithLifecycle()
             GlobalPauseLobbyScreen(
               session = dependencies.globalPause,
               scene = globeScene,
@@ -295,6 +298,20 @@ class MainActivity : ComponentActivity() {
               soundPlayer = dependencies.soundPlayer,
               radio = loungeRadio,
               onJoin = onJoin,
+              onBack = onBack,
+              isSignedIn = account != null,
+              reportMessage = dependencies.pauseEvents::report,
+              blockAuthor = dependencies.pauseEvents::blockAuthor,
+            )
+          },
+          blockedMembersContent = { onBack ->
+            BlockedMembersScreen(
+              list = remember {
+                BlockedMembersList(
+                  fetch = dependencies.pauseEvents::blockedMembers,
+                  remove = dependencies.pauseEvents::unblock,
+                )
+              },
               onBack = onBack,
             )
           },

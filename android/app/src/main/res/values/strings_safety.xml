@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Report and Block for peace messages, Blocked members and Contact us.
+  Shared copy with iOS (Localizable.xcstrings); keep the two in step.
+-->
+<resources>
+
+  <!-- The card's menu -->
+  <string name="safety_more">More</string>
+  <string name="safety_report">Report</string>
+  <string name="safety_block">Block %1$s</string>
+
+  <!-- Report: the reason picker and the thanks -->
+  <string name="safety_report_title">Report this message</string>
+  <string name="safety_reason_offensive">Offensive</string>
+  <string name="safety_reason_harassment">Harassment</string>
+  <string name="safety_reason_spam">Spam</string>
+  <string name="safety_reason_other">Something else</string>
+  <string name="safety_report_thanks">Thanks for telling us. We\'ll take a look.</string>
+
+  <!-- Block: the confirmation -->
+  <string name="safety_block_title">Block %1$s?</string>
+  <string name="safety_block_body">You won\'t see their peace messages.</string>
+  <string name="safety_block_confirm">Block</string>
+
+  <string name="safety_cancel">Cancel</string>
+  <string name="safety_failed">Something went wrong. Please try again.</string>
+
+  <!-- The reflection composer, when the server's filter refuses a message (422 message_rejected) -->
+  <string name="pause_reflection_note_rejected">This message can\'t be shared. Please keep it kind.</string>
+
+  <!-- Settings -->
+  <string name="settings_section_community">Community</string>
+  <string name="settings_blocked_members">Blocked members</string>
+  <string name="settings_contact_us">Contact us</string>
+
+  <!-- Blocked members -->
+  <string name="blocked_title">Blocked members</string>
+  <string name="blocked_unblock">Unblock</string>
+  <string name="blocked_unblock_a11y">Unblock %1$s</string>
+  <string name="blocked_empty">You haven\'t blocked anyone.</string>
+  <string name="blocked_footnote">Unblocked members\' peace messages will show again.</string>
+  <string name="blocked_load_failed">We couldn\'t load your blocked members.</string>
+  <string name="blocked_retry">Try again</string>
+</resources>

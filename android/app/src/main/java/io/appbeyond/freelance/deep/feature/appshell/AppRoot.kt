@@ -188,6 +188,7 @@ fun AppRoot(
   deepSessionContent: @Composable (session: DeepSession, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
   fukuLoungeContent: @Composable (onJoin: () -> Unit, onBack: () -> Unit) -> Unit = { _, _ -> },
+  blockedMembersContent: @Composable (onBack: () -> Unit) -> Unit = {},
   canJoinGlobalPause: () -> Boolean = { false },
   globalPauseContent: @Composable (visibility: AnimatedVisibilityScope, onFinish: () -> Unit) -> Unit =
     { _, _ -> },
@@ -371,6 +372,7 @@ fun AppRoot(
                 }
               },
               fukuLoungeContent = fukuLoungeContent,
+              blockedMembersContent = blockedMembersContent,
               miniPlayerSuppressed = runningSession != null || pauseOpen,
             )
           }
