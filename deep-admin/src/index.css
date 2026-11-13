@@ -621,7 +621,8 @@ textarea {
   color: var(--danger);
 }
 
-.badge-reported {
+.badge-reported,
+.badge-suspended {
   background: var(--danger-soft);
   color: var(--danger);
 }

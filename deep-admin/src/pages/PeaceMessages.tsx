@@ -112,6 +112,8 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
       <td>
         {message.reportCount > 0 ? (
           <span className="badge badge-reported">{message.reportCount}</span>
+        ) : message.totalReportCount > 0 ? (
+          <span className="muted">{message.totalReportCount} reviewed</span>
         ) : (
           <span className="muted">—</span>
         )}
@@ -158,7 +160,8 @@ function PeaceMessagesPage() {
           <div className="page-subtitle">
             Moderate messages shared during the Global Pause feedback phase.
             Members' reports hide a message automatically once enough of them
-            agree; Publish restores it.
+            agree; Publish restores it. Publish or Hide settles the reports so
+            far, so only new reports count toward hiding it again.
           </div>
         </div>
       </div>

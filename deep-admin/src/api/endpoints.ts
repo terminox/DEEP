@@ -78,6 +78,18 @@ export async function listUsers(): Promise<AdminUser[]> {
   return data.users
 }
 
+// Suspend or restore a member's peace messages. Takes effect immediately.
+export async function setUserSuspended(
+  userId: string,
+  suspended: boolean
+): Promise<AdminUser> {
+  const { data } = await http.patch<{ user: AdminUser }>(
+    `/admin/users/${encodeURIComponent(userId)}`,
+    { suspended }
+  )
+  return data.user
+}
+
 // DEEP Premium standing for one user. Loaded on demand from the Users page;
 // the list itself never carries subscription state.
 export async function getUserMembership(userId: string): Promise<Membership> {
