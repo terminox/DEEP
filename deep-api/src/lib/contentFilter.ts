@@ -11,10 +11,12 @@ const ENGLISH = [
   "fuck", "fucks", "fucked", "fucker", "fuckers", "fucking", "fuckin", "motherfucker",
   "motherfuckers", "shit", "shits", "shitty", "shitting", "bullshit", "bitch", "bitches",
   "cunt", "cunts", "asshole", "assholes", "whore", "whores", "slut", "sluts", "nigger",
-  "niggers", "nigga", "niggas", "faggot", "faggots", "retard", "retards", "retarded", "kike",
-  "kikes", "tranny", "trannies", "wetback", "wetbacks", "porn", "porno", "blowjob", "blowjobs",
-  "dildo", "dildos", "jizz", "kill yourself",
+  "niggers", "nigga", "niggas", "faggot", "faggots", "retarded", "tranny", "trannies",
+  "wetback", "wetbacks", "porn", "porno", "blowjob", "blowjobs", "dildo", "dildos", "jizz",
+  "kill yourself",
 ];
+// Left out on purpose: "retard" (French "en retard", late) and "kike" (Kike,
+// a common Spanish nickname for Enrique). DEEP is read in many languages.
 
 // Thai has no spaces between words, so these match anywhere in the text. Each
 // is chosen (or fenced with a lookahead) so it never sits inside an innocent

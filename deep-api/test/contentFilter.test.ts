@@ -45,6 +45,13 @@ test("lets kind English through, including words that contain a listed term", ()
   }
 });
 
+test("lets other languages' innocent words through, and still refuses the English slur", () => {
+  for (const text of ["Je suis en retard", "Désolé, un peu en retard ce soir", "Kike", "Paz desde Madrid, Kike"]) {
+    assert.equal(isRejectedText(text), false, text);
+  }
+  assert.equal(isRejectedText("that is so retarded"), true);
+});
+
 test("lets kind Thai through, including words that contain a fenced term", () => {
   for (const text of [
     "ขอให้โลกสงบสุข",
