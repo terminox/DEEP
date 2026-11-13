@@ -1,7 +1,8 @@
 // End-to-end proof of Report and Block on peace messages (Apple Guideline 1.2):
-// the post filter, reports that hide a message, blocks that hide an author for
-// the blocker only, isMine, keyset pagination under exclusions, the admin
-// queue, and account deletion cascading through both new tables.
+// the post and display-name filter, reports that hide a message, admin
+// decisions that review those reports, blocks that hide an author for the
+// blocker only, suspension, isMine, keyset pagination under exclusions, the
+// admin queue, and account deletion cascading through both new tables.
 //
 // Drives the real HTTP routes with fastify inject() against a THROWAWAY
 // database, and refuses to run against anything not named *_verify / *_test.
@@ -52,8 +53,8 @@ async function main() {
     const body = json(res);
     return { id: body.user.id as string, as: { authorization: `Bearer ${body.accessToken}` } };
   };
-  const [alice, bob, carol, dave, erin] = await Promise.all(
-    ["alice", "bob", "carol", "dave", "erin"].map(signup),
+  const [alice, bob, carol, dave, erin, frank] = await Promise.all(
+    ["alice", "bob", "carol", "dave", "erin", "frank"].map(signup),
   );
   const anon: Headers = {};
 
@@ -117,6 +118,28 @@ async function main() {
   const b1 = json(await postMessage(bob.as, "Calm night to everyone")).message.id as string;
   const c1 = json(await postMessage(carol.as, "Sending love")).message.id as string;
   pass("1. 422 message_rejected for EN/TH abuse; innocent EN/TH posts unchanged");
+
+  // ---- 1b. Display names go through the same filter, capped at 40 ----
+  const signupAs = (displayName: string, who: string) =>
+    post("/auth/signup", anon, {
+      email: `${who}-${tag}@deep.test`,
+      password: "password123",
+      displayName,
+    });
+  for (const name of ["Big Shit", "ไอ้สัตว์"]) {
+    const res = await signupAs(name, `rude-${Buffer.from(name).toString("hex").slice(0, 8)}`);
+    assert.equal(res.statusCode, 422, name);
+    assert.equal(json(res).error.code, "display_name_rejected", name);
+  }
+  assert.equal((await signupAs("x".repeat(41), "long")).statusCode, 400, "41 characters");
+  assert.equal((await signupAs("Kike", "kike")).statusCode, 200, "a Spanish nickname");
+  assert.equal((await signupAs("y".repeat(40), "forty")).statusCode, 200, "40 characters");
+  assert.equal(
+    await prisma.user.count({ where: { email: { startsWith: "rude-", endsWith: `-${tag}@deep.test` } } }),
+    0,
+    "a refused name creates no account",
+  );
+  pass("1b. signup: 422 display_name_rejected for EN/TH abuse; 400 past 40 chars; kind names pass");
 
   // ---- 2. isMine, and per-caller caching headers ----
   const asAlice = (await wholeFeed(alice.as)).flat();
@@ -210,6 +233,35 @@ async function main() {
   await sees(bob.as, [a1], false, "but never back for someone who reported it");
   pass("5. admin list carries reportCount; reported=true is most-reported first; PATCH restores");
 
+  // ---- 5b. An admin decision reviews the reports it settled ----
+  type AdminRow = { id: string; reportCount: number; totalReportCount: number };
+  const adminRows = async (qs = "") =>
+    json(await get(`/admin/pause/messages${qs}`, asAdmin)).messages as AdminRow[];
+  assert.equal(
+    await prisma.peaceMessageReport.count({ where: { messageId: a1, reviewedAt: null } }),
+    0,
+    "Publish marks every outstanding report reviewed",
+  );
+  assert.ok(!(await adminRows("?reported=true")).some((m) => m.id === a1), "restored: out of the queue");
+  const restored = (await adminRows()).find((m) => m.id === a1)!;
+  assert.deepEqual([restored.reportCount, restored.totalReportCount], [0, 3]);
+
+  // One new report must not undo the admin's decision: it starts a fresh count.
+  assert.equal((await post(`/pause/messages/${a1}/report`, frank.as, { reason: "spam" })).statusCode, 200);
+  assert.equal((await prisma.peaceMessage.findUnique({ where: { id: a1 } }))!.status, "PUBLISHED");
+  await sees(erin.as, [a1], true, "a single report after a restore leaves it up");
+  await sees(frank.as, [a1], false, "but gone at once for the new reporter");
+  const requeued = (await adminRows("?reported=true")).find((m) => m.id === a1)!;
+  assert.deepEqual([requeued.reportCount, requeued.totalReportCount], [1, 4], "back in the queue, counting only the new report");
+
+  // Hide is a decision too: the message leaves the queue.
+  const patch = (id: string, status: string) =>
+    app.inject({ method: "PATCH", url: `/admin/pause/messages/${id}`, headers: asAdmin, payload: { status } });
+  assert.equal((await patch(a2, "HIDDEN")).statusCode, 200);
+  assert.ok(!(await adminRows("?reported=true")).some((m) => m.id === a2), "hidden: out of the queue");
+  assert.equal((await patch(a2, "PUBLISHED")).statusCode, 200);
+  pass("5b. Publish/Hide review the outstanding reports: a restored message needs a fresh threshold");
+
   // ---- 6. Block: hides every message by the author, for the blocker only ----
   const ownBlock = await post(`/pause/messages/${b1}/block-author`, bob.as);
   assert.equal(ownBlock.statusCode, 400);
@@ -299,18 +351,49 @@ async function main() {
   assert.ok((await feedIds(bob.as)).has(orphan.id), "authorless messages stay visible to blockers");
   pass("9. block-author on a deleted author's message → { ok, block: null }; still visible to blockers");
 
+  // ---- 9b. Suspension: no posting, out of every feed, nothing else changes ----
+  const suspend = (id: string, suspended: boolean, headers: Headers = asAdmin) =>
+    app.inject({ method: "PATCH", url: `/admin/users/${id}`, headers, payload: { suspended } });
+  assert.equal((await suspend(carol.id, true, erin.as)).statusCode, 403, "members can't suspend");
+  assert.equal((await suspend(crypto.randomUUID(), true)).statusCode, 404);
+  const suspended = await suspend(carol.id, true);
+  assert.equal(suspended.statusCode, 200);
+  const since = json(suspended).user.suspendedAt as string;
+  assert.ok(since, "suspendedAt is set");
+  assert.equal(json(await suspend(carol.id, true)).user.suspendedAt, since, "suspending again keeps the date");
+  const listedUsers = json(await get("/admin/users", asAdmin)).users as { id: string; suspendedAt: string | null }[];
+  assert.equal(listedUsers.find((u) => u.id === carol.id)?.suspendedAt, since);
+  assert.equal(listedUsers.find((u) => u.id === erin.id)?.suspendedAt, null);
+
+  const refused = await postMessage(carol.as, "Still here");
+  assert.equal(refused.statusCode, 403);
+  assert.equal(json(refused).error.code, "account_suspended");
+  await sees(erin.as, [c1], false, "a suspended member's messages leave erin's feeds");
+  await sees(anon, [c1], false, "and anonymous feeds");
+  await sees(carol.as, [c1], false, "and their own");
+  assert.ok((await feedIds(anon)).has(orphan.id), "authorless messages survive the suspension filter");
+  const me = await get("/me", carol.as);
+  assert.equal(me.statusCode, 200, "a suspended member stays signed in");
+  assert.ok(!me.body.includes("suspendedAt"), "suspension is never sent to the member");
+  assert.equal((await get("/me/blocks", carol.as)).statusCode, 200, "other features keep working");
+
+  assert.equal(json(await suspend(carol.id, false)).user.suspendedAt, null);
+  await sees(erin.as, [c1], true, "unsuspended: back in the feeds");
+  assert.equal((await postMessage(carol.as, "Back with a calm heart")).statusCode, 200);
+  pass("9b. suspend: admin-only; 403 account_suspended on post; out of all feeds; session untouched; unsuspend restores");
+
   // ---- 10. Account deletion cascades through both tables ----
   assert.equal((await del("/me", alice.as)).statusCode, 200);
   assert.equal(await prisma.userBlock.count({ where: { blockedId: alice.id } }), 0, "blocks on her go");
   assert.deepEqual(json(await get("/me/blocks", bob.as)).blocks, []);
   assert.equal((await prisma.peaceMessage.findUnique({ where: { id: a1 } }))!.userId, null);
-  assert.equal(await prisma.peaceMessageReport.count({ where: { messageId: a1 } }), 3, "reports on her messages stay");
+  assert.equal(await prisma.peaceMessageReport.count({ where: { messageId: a1 } }), 4, "reports on her messages stay");
 
   await post(`/pause/messages/${c1}/block-author`, bob.as);
   assert.equal((await del("/me", bob.as)).statusCode, 200);
   assert.equal(await prisma.peaceMessageReport.count({ where: { reporterId: bob.id } }), 0);
   assert.equal(await prisma.userBlock.count({ where: { blockerId: bob.id } }), 0);
-  assert.equal(await prisma.peaceMessageReport.count({ where: { messageId: a1 } }), 2);
+  assert.equal(await prisma.peaceMessageReport.count({ where: { messageId: a1 } }), 3);
   pass("10. DELETE /me cascades reports and blocks on both sides; reports on survivors' posts stay");
 
   console.log("\nAll Report and Block checks passed.");
