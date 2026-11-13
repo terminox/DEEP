@@ -29,6 +29,9 @@ struct SettingsView: View {
   @Environment(\.openLanguage) private var openLanguage
   @Environment(\.openDailyReminder) private var openDailyReminder
   @Environment(\.openPaywall) private var openPaywall
+  @Environment(\.openBlockedMembers) private var openBlockedMembers
+  @Environment(\.moderationStore) private var moderationStore
+  @Environment(\.legalLinks) private var legalLinks
 
   @State private var showLogoutConfirm = false
   @State private var showDeleteConfirm = false
@@ -60,6 +63,7 @@ struct SettingsView: View {
           experimentsSection
           #endif
           membershipSection
+          communitySection
           accountSection
           footer
         }
@@ -313,6 +317,37 @@ struct SettingsView: View {
     }
   }
 
+  // MARK: - Community
+
+  /// Living alongside other members: who this member has blocked, how to reach
+  /// a person at DEEP, and the two documents the community runs on.
+  private var communitySection: some View {
+    // Resolved here: the section renders its title verbatim.
+    SettingsSection(title: String(localized: "Community", bundle: .app, locale: .app)) {
+      // Blocks belong to an account; signed out there are none to list.
+      if accountStore.isSignedIn {
+        SettingsRow(
+          icon: "hand.raised",
+          "Blocked members",
+          accessory: .chevron,
+          action: openBlockedMembers
+        )
+      }
+      SettingsRow(icon: "envelope", "Contact us") {
+        openURL(Self.supportMail)
+      }
+      SettingsRow(icon: "doc.text", "Terms of Service") {
+        openURL(legalLinks.terms)
+      }
+      SettingsRow(icon: "lock.shield", "Privacy Policy") {
+        openURL(legalLinks.privacy)
+      }
+    }
+  }
+
+  /// Where a member reaches a person at DEEP.
+  private static let supportMail = URL(string: "mailto:support@deeppeace.space")!
+
   // MARK: - Account
 
   private var accountSection: some View {
@@ -375,6 +410,7 @@ struct SettingsView: View {
     heartLedger.resetLocalState()
     continuityWitness.resetLocalState()
     playlistStore.resetLocalState()
+    moderationStore.resetLocalState()
     // The nudge is about practice, and practice leaves with the account —
     // so the queue goes too. The *language* stays: what you read in
     // belongs to the phone, not to whoever is signed into it.
@@ -397,6 +433,7 @@ struct SettingsView: View {
         heartLedger.resetLocalState()
         continuityWitness.resetLocalState()
         playlistStore.resetLocalState()
+        moderationStore.resetLocalState()
         // The nudge is about practice, and practice leaves with the account —
         // so the queue goes too. The *language* stays: what you read in
         // belongs to the phone, not to whoever is signed into it.

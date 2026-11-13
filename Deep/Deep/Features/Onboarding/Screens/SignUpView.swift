@@ -8,6 +8,8 @@ struct SignUpView: View {
   @Environment(\.accountStore) private var accountStore
   @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.onboardingAdvance) private var advance
+  @Environment(\.legalLinks) private var legalLinks
+  @Environment(\.locale) private var locale
 
   @State private var name = ""
   @State private var email = ""
@@ -88,7 +90,18 @@ struct SignUpView: View {
 
         Spacer()
 
-        OnboardingPrimaryButton(title: "Create account", isEnabled: canSubmit, action: submit)
+        VStack(spacing: 14) {
+          OnboardingPrimaryButton(title: "Create account", isEnabled: canSubmit, action: submit)
+
+          // The same footer recipe as `CreateAccountView`, worded for the tap
+          // that actually creates the account.
+          Text(LegalCopy.accountCreation(legalLinks, locale: locale))
+            .font(DeepType.micro)
+            .foregroundStyle(.driftGrey)
+            .tint(.deepPlum)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+        }
       }
       .padding(.horizontal, .edge)
       .padding(.bottom, .rhythm)
