@@ -111,9 +111,10 @@ struct OnboardingCoordinatorView: View {
     let total = config.questions.count + 1
     switch currentRoute {
     case .quiz(let index):
-      return (Double(index + 1) / Double(total), "\(index + 1) of \(total)")
+      let step = index + 1
+      return (Double(step) / Double(total), String(localized: "\(step) of \(total)", bundle: .app, locale: .app))
     case .mindTree:
-      return (1.0, "\(total) of \(total)")
+      return (1.0, String(localized: "\(total) of \(total)", bundle: .app, locale: .app))
     default:
       return nil
     }

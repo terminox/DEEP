@@ -128,7 +128,7 @@ struct Earth3DView: View {
     interaction.onCountryTap = { country in
       revealTask?.cancel()
       withAnimation(.bloom) {
-        revealedName = country.name
+        revealedName = country.displayName
       }
       revealTask = Task { @MainActor in
         try? await Task.sleep(nanoseconds: 2_400_000_000)

@@ -131,16 +131,20 @@ struct CompassionPortfolioCard: View {
     var parts: [String] = []
     parts.append(
       ledger.canGive
-        ? "\(ledger.balance) hearts to give"
-        : "No hearts left to give"
+        ? String(localized: "\(ledger.balance) hearts to give", bundle: .app, locale: .app)
+        : String(localized: "No hearts left to give", bundle: .app, locale: .app)
     )
     if ledger.heartsGiven > 0 {
-      parts.append("\(ledger.heartsGiven) given")
+      parts.append(String(localized: "\(ledger.heartsGiven) given", bundle: .app, locale: .app))
     }
     parts.append(
       ledger.isTodayFull
-        ? "Today is full, \(HeartLedger.dailyEarnCeiling) hearts earned"
-        : "\(ledger.heartsEarnedToday) of \(HeartLedger.dailyEarnCeiling) hearts earned today"
+        ? String(localized: "Today is full, \(HeartLedger.dailyEarnCeiling) hearts earned", bundle: .app, locale: .app)
+        : String(
+          localized: "\(ledger.heartsEarnedToday) of \(HeartLedger.dailyEarnCeiling) hearts earned today",
+          bundle: .app,
+          locale: .app
+        )
     )
     return parts.joined(separator: ". ")
   }

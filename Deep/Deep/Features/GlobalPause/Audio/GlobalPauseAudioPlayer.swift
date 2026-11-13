@@ -220,7 +220,7 @@ final class GlobalPauseAudioPlayer: GlobalPauseAudioPlaying {
     guard mode == .meditation else { return }
     MPNowPlayingInfoCenter.default().nowPlayingInfo = [
       MPMediaItemPropertyTitle: "Global Pause",
-      MPMediaItemPropertyArtist: "The world, breathing together",
+      MPMediaItemPropertyArtist: String(localized: "The world, breathing together", bundle: .app, locale: .app),
       MPMediaItemPropertyPlaybackDuration: meditationDuration,
       MPNowPlayingInfoPropertyElapsedPlaybackTime: elapsed,
       MPNowPlayingInfoPropertyPlaybackRate: 1.0,

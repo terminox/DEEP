@@ -8,7 +8,7 @@ import SwiftUI
 /// inside one card without a seam.
 struct SettingsToggleRow: View {
   var icon: String? = nil
-  let title: String
+  let title: LocalizedStringKey
   @Binding var isOn: Bool
 
   var body: some View {
@@ -38,7 +38,7 @@ struct SettingsToggleRow: View {
 /// showing a date field would invite someone to set one.
 struct SettingsTimeRow: View {
   var icon: String? = nil
-  let title: String
+  let title: LocalizedStringKey
   @Binding var date: Date
 
   var body: some View {

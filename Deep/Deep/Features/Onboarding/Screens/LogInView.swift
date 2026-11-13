@@ -66,8 +66,10 @@ struct LogInView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       if isSubmitting {
-        BreatheLoadingView(line: "Take a deep breath.\nWe're signing you in.")
-          .transition(.opacity)
+        BreatheLoadingView(
+          line: String(localized: "Take a deep breath.\nWe're signing you in.", bundle: .app, locale: .app)
+        )
+        .transition(.opacity)
       }
     }
     .animation(.exhale, value: isSubmitting)
@@ -111,7 +113,7 @@ struct LogInView: View {
 
   private func message(for error: Error) -> String {
     (error as? LocalizedError)?.errorDescription
-      ?? "We couldn't sign you in just now. Please try again."
+      ?? String(localized: "We couldn't sign you in just now. Please try again.", bundle: .app, locale: .app)
   }
 }
 

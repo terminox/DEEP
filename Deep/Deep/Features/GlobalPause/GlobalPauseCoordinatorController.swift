@@ -353,7 +353,8 @@ final class GlobalPauseCoordinatorController: UIViewController {
       gardenStore: gardenStore,
       continuityWitness: continuityWitness,
       accountStore: accountStore,
-      imageLoader: imageLoader
+      imageLoader: imageLoader,
+      locale: languageStore.locale
     ) { [weak self, weak presenter] in
       presenter?.dismiss(animated: true)
       self?.sessionAudio = nil

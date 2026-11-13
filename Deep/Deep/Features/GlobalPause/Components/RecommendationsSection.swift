@@ -11,7 +11,7 @@ struct RecommendationsSection: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      HomeSectionHeader(title: title)
+      HomeSectionHeader(verbatim: title)
 
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(alignment: .top, spacing: 16) {

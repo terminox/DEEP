@@ -44,7 +44,11 @@ final class GlobalPauseSession {
 
   /// What the card says when there is no next pause to name — before the first
   /// schedule lands, or on a server with no sessions configured at all.
-  static let restingLine = "Breathe with the world, together"
+  /// Computed, not stored: it resolves in the language picked at the moment
+  /// it is read, so a language switch never leaves it in the old one.
+  nonisolated static var restingLine: String {
+    String(localized: "Breathe with the world, together", bundle: .app, locale: .app)
+  }
   private(set) var participantCount = 0
   private(set) var participantsByCountry: [String: Int] = [:]
   /// Tallied by continent code — what the live session names beneath the

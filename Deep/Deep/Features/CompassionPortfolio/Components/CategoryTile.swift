@@ -133,9 +133,10 @@ struct CategoryTile: View {
     .padding(.vertical, 8)
     .pebble(cornerRadius: .tile)
     .accessibilityElement(children: .ignore)
+    // One literal, not a `+` chain: concatenation yields a plain `String`,
+    // which the modifier reads verbatim instead of looking it up.
     .accessibilityLabel(
-      "\(live.heartsShared.formatted()) hearts pooled, "
-        + "\(Int((share * 100).rounded())) percent of giving"
+      "\(live.heartsShared.formatted()) hearts pooled, \(Int((share * 100).rounded())) percent of giving"
     )
   }
 

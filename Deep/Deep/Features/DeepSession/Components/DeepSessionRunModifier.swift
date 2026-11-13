@@ -29,6 +29,7 @@ private struct DeepSessionRunModifier: ViewModifier {
   @Environment(\.continuityWitness) private var continuityWitness
   @Environment(\.imageLoader) private var imageLoader
   @Environment(\.videoCache) private var videoCache
+  @Environment(\.locale) private var locale
 
   /// Owned out here, not by the practice: the bell is struck on the last exhale
   /// and rings for close to four seconds — long enough for a member to tap
@@ -56,6 +57,9 @@ private struct DeepSessionRunModifier: ViewModifier {
             // reason wherever stage footage appears.
             .environment(\.imageLoader, imageLoader)
             .environment(\.videoCache, videoCache)
+            // The picked language, which the boundary strips too — without it
+            // the practice and its rewards read in the device language.
+            .environment(\.locale, locale)
             .preferredColorScheme(.light)
         }
         .frame(width: 0, height: 0)

@@ -23,7 +23,7 @@ struct LanguageView: View {
           SettingsSection {
             ForEach(AppLanguage.allCases) { language in
               SettingsRow(
-                title: language.endonym,
+                verbatim: language.endonym,
                 accessory: languageStore.selection == language ? .check : .none
               ) {
                 select(language)

@@ -10,8 +10,8 @@ struct CausesSection: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
       SectionHeader(
-        title: String(localized: "Where your hearts go"),
-        subtitle: String(localized: "Each heart is a vote for the causes you'd like DEEP to support.")
+        title: "Where your hearts go",
+        subtitle: "Each heart is a vote for the causes you'd like DEEP to support."
       )
 
       ScrollView(.horizontal, showsIndicators: false) {

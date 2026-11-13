@@ -6,7 +6,7 @@ import SwiftUI
 /// When `isEnabled` is false it fades and ignores taps — matching the reference's
 /// dimmed "Next" before a choice is made — but never feels like an error.
 struct OnboardingPrimaryButton: View {
-  let title: String
+  let title: LocalizedStringKey
   var systemImage: String? = nil
   var isEnabled: Bool = true
   let action: () -> Void

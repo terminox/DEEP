@@ -89,16 +89,16 @@ final class MockSubscriptionStore: SubscriptionStore {
   )
 
   nonisolated static let samplePlans: [SubscriptionPlan] = [
-    plan(id: DeepProduct.yearly, period: .yearly, price: "91.98", trialDays: 7),
-    plan(id: DeepProduct.monthly, period: .monthly, price: "19.98", trialDays: 7),
+    plan(id: DeepProduct.yearly, period: .yearly, price: "59.99", trialDays: 7),
+    plan(id: DeepProduct.monthly, period: .monthly, price: "9.99", trialDays: 7),
   ]
 
   /// What the bundled `Deep.storekit` actually describes today: a free trial on
   /// the year, none on the month. The paywall must then put the claim on the
   /// row that owns it rather than over both.
   nonisolated static let mixedTrialPlans: [SubscriptionPlan] = [
-    plan(id: DeepProduct.yearly, period: .yearly, price: "91.98", trialDays: 7),
-    plan(id: DeepProduct.monthly, period: .monthly, price: "19.98", trialDays: nil),
+    plan(id: DeepProduct.yearly, period: .yearly, price: "59.99", trialDays: 7),
+    plan(id: DeepProduct.monthly, period: .monthly, price: "9.99", trialDays: nil),
   ]
 
   /// Builds a fixture through the same recipe the real store uses, so the mock
@@ -109,7 +109,7 @@ final class MockSubscriptionStore: SubscriptionStore {
     price: String,
     trialDays: Int?
   ) -> SubscriptionPlan {
-    // Decimals come from strings: a float literal would round 19.98 before the
+    // Decimals come from strings: a float literal would round 59.99 before the
     // formatter ever sees it.
     let amount = Decimal(string: price) ?? 0
     let displayPrice = currency.format(amount)
@@ -125,9 +125,7 @@ final class MockSubscriptionStore: SubscriptionStore {
         price: amount,
         currency: currency
       ),
-      trialNote: trialDays.map {
-        SubscriptionPlanFormatting.trialNote(count: $0, unit: .day)
-      },
+      trial: trialDays.map { SubscriptionPlanFormatting.Trial(count: $0, unit: .day) },
       freeTrialDays: trialDays
     )
   }

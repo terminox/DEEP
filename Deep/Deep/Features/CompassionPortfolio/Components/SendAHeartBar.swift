@@ -38,8 +38,12 @@ struct SendAHeartBar: View {
 
   private func rollbackLine(for failure: HeartLedger.SpendFailure) -> String {
     failure.amount == 1
-      ? "That heart couldn't be sent — it's back in your balance."
-      : "Those \(failure.amount.formatted()) hearts couldn't be sent — they're back in your balance."
+      ? String(localized: "That heart couldn't be sent — it's back in your balance.", bundle: .app, locale: .app)
+      : String(
+        localized: "Those \(failure.amount.formatted()) hearts couldn't be sent — they're back in your balance.",
+        bundle: .app,
+        locale: .app
+      )
   }
 
   private var sendButton: some View {

@@ -23,7 +23,7 @@ struct MiniPlayerBar: View {
           .frame(width: 36, height: 36)
 
         VStack(alignment: .leading, spacing: 1) {
-          Text(track?.title ?? "Not playing")
+          Text(track?.title ?? String(localized: "Not playing", bundle: .app, locale: .app))
             .font(DeepType.caption.weight(.medium))
             .foregroundStyle(.deepPlum)
             .lineLimit(1)
@@ -107,7 +107,7 @@ struct MiniPlayerInlineBar: View {
         )
           .frame(width: 28, height: 28)
 
-        Text(player.currentTrack?.title ?? "Not playing")
+        Text(player.currentTrack?.title ?? String(localized: "Not playing", bundle: .app, locale: .app))
           .font(DeepType.caption)
           .foregroundStyle(.deepPlum)
           .lineLimit(1)

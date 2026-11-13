@@ -15,10 +15,11 @@ struct PeaceMessage: Identifiable, Hashable {
   /// report or block. False for anything an older server sent.
   var isMine: Bool = false
 
-  /// Country display name from the ISO code, in the user's locale.
+  /// Country display name from the ISO code, in the language picked in-app —
+  /// `Locale.current` would follow the device and name it in English.
   var countryName: String {
     guard let countryISO else { return "" }
-    return Locale.current.localizedString(forRegionCode: countryISO) ?? countryISO
+    return Locale.app.localizedString(forRegionCode: countryISO) ?? countryISO
   }
 
   /// The tag's display label, looked up in the options tonight's schedule

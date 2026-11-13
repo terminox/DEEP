@@ -27,8 +27,10 @@ struct SubscriptionPlan: Identifiable, Equatable {
   let currency: Decimal.FormatStyle.Currency
   /// Short price-per-period label, e.g. "$7.67/mo".
   var perMonthLabel: String? = nil
-  /// Optional free-trial note, e.g. "7-day free trial".
-  var trialNote: String? = nil
+  /// The free trial this member can still take, as numbers. The paywall words
+  /// it at display time (`SubscriptionPlanFormatting.trialNote`) so the note
+  /// follows the language picked in-app, even after plans have loaded.
+  var trial: SubscriptionPlanFormatting.Trial? = nil
   /// The trial's length in days, when the store offers one this member is
   /// still eligible for. `nil` means: promise nothing.
   var freeTrialDays: Int? = nil

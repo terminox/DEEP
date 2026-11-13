@@ -108,7 +108,7 @@ final class EarthSceneView: UIView {
 
     configureReveal()
     interaction.onCountryTap = { [weak self] country in
-      self?.reveal(country.name)
+      self?.reveal(country.displayName)
     }
   }
 

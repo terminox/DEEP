@@ -41,10 +41,17 @@ val cloudRunApi = "https://deep-api-696592457470.asia-southeast1.run.app"
 // against RevenueCat's own simulated store with no Play Console at all. The
 // SDK refuses a Test Store key in a non-debuggable build unless told otherwise
 // (see RevenueCatSubscriptionStore), so that key must never reach a shipping
-// flavor. Staging, pilot and prod stay empty until a Play Store app exists in
-// the project: an empty key never configures the SDK, and the app reads "not
-// subscribed" with no plans to offer. Public by design, safe to commit.
+// flavor. Staging and pilot stay empty: an empty key never configures the SDK,
+// and every paywall door shows "Coming soon". Public by design, safe to commit.
 val revenueCatTestStoreKey = "test_riWvcLkFtmCvaxzRrfVhYDSItVV"
+
+// The DEEP Premium project's Google Play app ("DEEP Android", package
+// space.deeppeace.app). Only prod carries it, since the other flavors' package
+// suffixes aren't that app. It goes live with `sellsOnPlay`: Play can't hold
+// subscriptions until the client's merchant account exists, and a configured
+// SDK with nothing to sell would show the store's error instead of "Coming soon".
+val revenueCatPlayKey = "goog_qTlCZcIoKmvhXGYJrgyhmzFdBuc"
+val sellsOnPlay = false
 
 // The release version, the one number a person reads. iOS ships the same
 // marketing version; each platform keeps its own build number.
@@ -145,7 +152,7 @@ android {
       dimension = "environment"
       buildConfigField("String", "APP_ENV", "\"prod\"")
       buildConfigField("String", "API_BASE_URL", "\"$cloudRunApi\"")
-      buildConfigField("String", "REVENUECAT_API_KEY", "\"\"")
+      buildConfigField("String", "REVENUECAT_API_KEY", "\"${if (sellsOnPlay) revenueCatPlayKey else ""}\"")
       resValue("string", "app_name", "DEEP")
     }
   }
