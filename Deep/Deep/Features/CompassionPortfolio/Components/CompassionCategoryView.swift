@@ -72,17 +72,17 @@ struct CompassionCategoryView: View {
   private var communityStats: [ImpactStat] {
     [
       ImpactStat(
-        label: "Hearts pooled",
+        label: String(localized: "Hearts pooled", bundle: .app, locale: .app),
         value: live.heartsShared.formatted(.number.notation(.compactName).locale(.app)),
         symbol: "heart.fill"
       ),
       ImpactStat(
-        label: "People reached",
+        label: String(localized: "People reached", bundle: .app, locale: .app),
         value: live.peopleReached.formatted(.number.notation(.compactName).locale(.app)),
         symbol: "person.2.fill"
       ),
       ImpactStat(
-        label: "Share of giving",
+        label: String(localized: "Share of giving", bundle: .app, locale: .app),
         value: "\(Int((ledger.categories.shareOfGiving(live) * 100).rounded()))%",
         symbol: "chart.pie.fill"
       ),
@@ -216,10 +216,12 @@ private struct YourPartCard: View {
 
   private var line: String {
     guard heartsGiven > 0 else {
-      return "No hearts here yet — the first one is yours to send."
+      return String(localized: "No hearts here yet — the first one is yours to send.", bundle: .app, locale: .app)
     }
-    let hearts = heartsGiven == 1 ? "heart" : "hearts"
-    return "You've sent \(heartsGiven.formatted()) \(hearts) to this cause."
+    let count = heartsGiven.formatted()
+    return heartsGiven == 1
+      ? String(localized: "You've sent \(count) heart to this cause.", bundle: .app, locale: .app)
+      : String(localized: "You've sent \(count) hearts to this cause.", bundle: .app, locale: .app)
   }
 
   var body: some View {

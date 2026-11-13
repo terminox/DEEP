@@ -127,7 +127,9 @@ struct DeepSessionView: View {
     }
 
     countdown = countdownSeconds
-    AccessibilityNotification.Announcement("Settling in. \(countdownSeconds)").post()
+    AccessibilityNotification.Announcement(
+      String(localized: "Settling in. \(countdownSeconds)", bundle: .app, locale: .app)
+    ).post()
     if reduceMotion {
       swell = 0.6
       glow = 0.7

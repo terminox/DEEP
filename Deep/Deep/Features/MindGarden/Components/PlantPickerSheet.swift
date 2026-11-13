@@ -248,7 +248,7 @@ struct PlantPickerSheet: View {
     .shadow(color: Color.lavenderMist.opacity(0.35), radius: 18, y: 10)
   }
 
-  private func quietLabel(_ title: String, tint: Color) -> some View {
+  private func quietLabel(_ title: LocalizedStringKey, tint: Color) -> some View {
     Text(title)
       .font(DeepType.sectionTitle)
       .foregroundStyle(tint)

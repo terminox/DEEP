@@ -244,8 +244,12 @@ struct DonateHeartsView: View {
 
   private func rollbackLine(for failure: HeartLedger.SpendFailure) -> String {
     failure.amount == 1
-      ? "That heart couldn't be sent — it's back in your balance."
-      : "Those \(failure.amount.formatted()) hearts couldn't be sent — they're back in your balance."
+      ? String(localized: "That heart couldn't be sent — it's back in your balance.", bundle: .app, locale: .app)
+      : String(
+        localized: "Those \(failure.amount.formatted()) hearts couldn't be sent — they're back in your balance.",
+        bundle: .app,
+        locale: .app
+      )
   }
 
   // MARK: - Action
@@ -315,7 +319,9 @@ struct DonateHeartsView: View {
   /// that isn't coming is exactly what the session completion screen refuses to
   /// do.
   private var earnLine: String {
-    ledger.isTodayFull ? "Today is full — more tomorrow." : "Practice earns more."
+    ledger.isTodayFull
+      ? String(localized: "Today is full — more tomorrow.", bundle: .app, locale: .app)
+      : String(localized: "Practice earns more.", bundle: .app, locale: .app)
   }
 
   private func capsuleLabel<Content: View>(

@@ -113,6 +113,6 @@ extension TimeInterval {
   /// Human duration like "32 min" for collection metadata.
   var minutesString: String {
     let minutes = max(1, Int((self / 60).rounded()))
-    return "\(minutes) min"
+    return String(localized: "\(minutes) min", bundle: .app, locale: .app)
   }
 }

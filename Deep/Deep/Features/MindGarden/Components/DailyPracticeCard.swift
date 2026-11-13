@@ -27,9 +27,11 @@ struct DailyPracticeCard: View {
   }
 
   private var accessibilitySummary: String {
-    state.minutesRemaining == 0
-      ? "Today’s goal complete, \(state.minutesToday) of \(state.dailyGoalMinutes) minutes"
-      : "Begin today’s practice, \(state.minutesToday) of \(state.dailyGoalMinutes) minutes complete"
+    let today = state.minutesToday
+    let goal = state.dailyGoalMinutes
+    return state.minutesRemaining == 0
+      ? String(localized: "Today’s goal complete, \(today) of \(goal) minutes", bundle: .app, locale: .app)
+      : String(localized: "Begin today’s practice, \(today) of \(goal) minutes complete", bundle: .app, locale: .app)
   }
 
   var body: some View {

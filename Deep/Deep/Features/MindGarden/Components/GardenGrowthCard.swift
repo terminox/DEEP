@@ -153,9 +153,13 @@ private struct PlantGrowthRow: View {
 
   private var summary: String {
     guard let next = growth.nextStage, let goal = growth.sunlightToEvolve else {
-      return "\(growth.stage.name), fully grown"
+      return String(localized: "\(growth.stage.name), fully grown", bundle: .app, locale: .app)
     }
-    return "\(growth.stage.name), \(growth.sunlight) of \(goal) sunlight to \(next.name)"
+    return String(
+      localized: "\(growth.stage.name), \(growth.sunlight) of \(goal) sunlight to \(next.name)",
+      bundle: .app,
+      locale: .app
+    )
   }
 }
 

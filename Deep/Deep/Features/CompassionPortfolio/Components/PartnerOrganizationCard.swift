@@ -35,7 +35,7 @@ struct PartnerOrganizationCard: View {
 
       HStack(spacing: 8) {
         metaChip(symbol: "globe", text: partner.scope)
-        metaChip(symbol: "calendar", text: "Since \(String(partner.since))")
+        metaChip(symbol: "calendar", text: String(localized: "Since \(String(partner.since))", bundle: .app, locale: .app))
         Spacer(minLength: 0)
       }
 
