@@ -16,6 +16,13 @@ enum SubscriptionPlanFormatting {
     case year
   }
 
+  /// A free trial as the store records it, kept as numbers so the sentence
+  /// that names it is written at display time, in the reading language.
+  struct Trial: Equatable, Sendable {
+    let count: Int
+    let unit: PeriodUnit
+  }
+
   /// For a yearly plan, the effective per-month cost; for a monthly plan, the
   /// price itself, passed through exactly as the store already formatted it.
   ///
@@ -61,16 +68,38 @@ enum SubscriptionPlanFormatting {
     currency.rounded(rule: .toNearestOrAwayFromZero).format(amount)
   }
 
-  /// A free-trial note in the units a member actually reads.
+  /// A free-trial note in the units a member actually reads, in `locale`'s
+  /// language.
   ///
   /// Weeks are spoken as days — the stores record a trial as one week, but it
-  /// is offered, and understood, as seven days.
-  nonisolated static func trialNote(count: Int, unit: PeriodUnit) -> String {
+  /// is offered, and understood, as seven days. The count is a format argument
+  /// of one catalog entry per unit, never spliced into English, so a language
+  /// whose noun changes with the number gets a plural variation to fill in.
+  nonisolated static func trialNote(count: Int, unit: PeriodUnit, locale: Locale) -> String {
+    let bundle = Bundle.localized(for: locale)
     switch unit {
-    case .day: return "\(count)-day free trial"
-    case .week: return "\(count * 7)-day free trial"
-    case .month: return "\(count)-month free trial"
-    case .year: return "\(count)-year free trial"
+    case .day, .week:
+      let days = unit == .week ? count * 7 : count
+      return String(
+        localized: "\(days)-day free trial",
+        bundle: bundle,
+        locale: locale,
+        comment: "Paywall plan row. The placeholder is a number of days."
+      )
+    case .month:
+      return String(
+        localized: "\(count)-month free trial",
+        bundle: bundle,
+        locale: locale,
+        comment: "Paywall plan row. The placeholder is a number of months."
+      )
+    case .year:
+      return String(
+        localized: "\(count)-year free trial",
+        bundle: bundle,
+        locale: locale,
+        comment: "Paywall plan row. The placeholder is a number of years."
+      )
     }
   }
 

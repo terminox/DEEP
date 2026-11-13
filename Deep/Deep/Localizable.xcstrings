@@ -151,6 +151,39 @@
         }
       }
     },
+    "%lld-day free trial" : {
+      "comment" : "Paywall plan row. The placeholder is a number of days.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทดลองฟรี %lld วัน"
+          }
+        }
+      }
+    },
+    "%lld-month free trial" : {
+      "comment" : "Paywall plan row. The placeholder is a number of months.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทดลองฟรี %lld เดือน"
+          }
+        }
+      }
+    },
+    "%lld-year free trial" : {
+      "comment" : "Paywall plan row. The placeholder is a number of years.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทดลองฟรี %lld ปี"
+          }
+        }
+      }
+    },
     "%lld/%lld hearts today" : {
       "localizations" : {
         "en" : {
