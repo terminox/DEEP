@@ -58,7 +58,7 @@ fi
 # a value written twice is a value that drifts.
 setting() { # name — the AppStore configuration's resolved value
   xcodebuild -project "$PROJECT" -scheme "Deep AppStore" -configuration AppStore \
-    -showBuildSettings 2>/dev/null | sed -n "s/^ *$1 = //p" | head -1
+    -showBuildSettings 2>/dev/null | sed -n "s/^ *$1 = //p" | head -1 || true
 }
 TEAM_ID="$(setting DEVELOPMENT_TEAM)"
 BUNDLE_ID="$(setting PRODUCT_BUNDLE_IDENTIFIER)"
@@ -194,7 +194,8 @@ ok "arm64"
 
 ENTS="$(codesign -d --entitlements :- "$APP" 2>/dev/null)"
 grep -q 'beta-reports-active' <<<"$ENTS" || die "not a TestFlight-capable signature"
-grep -A1 'get-task-allow' <<<"$ENTS" | grep -q '<false/>' \
+# codesign may print the whole plist on one line, so match the key and its value together.
+tr -d ' \n\t' <<<"$ENTS" | grep -q '<key>get-task-allow</key><false/>' \
   || die "get-task-allow is true — a development signature, not a distribution one"
 grep -q "$TEAM_ID" <<<"$ENTS" || die "the signature isn't from team $TEAM_ID"
 ok "distribution signature for team $TEAM_ID, TestFlight enabled"

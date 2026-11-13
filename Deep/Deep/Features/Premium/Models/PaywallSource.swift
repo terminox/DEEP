@@ -17,9 +17,9 @@ enum PaywallSource: String, Identifiable, Hashable {
 
   var id: String { rawValue }
 
-  /// `offersTrial` is whether any plan on sale gives this member a free trial —
-  /// eligibility included — so the onboarding door never promises one that the
-  /// store won't honour.
+  /// `offersTrial` is whether a plan on sale gives this member the seven-day
+  /// free trial the onboarding line names — eligibility included — so that door
+  /// never promises a trial the store won't honour.
   func subhead(offersTrial: Bool) -> LocalizedStringKey {
     switch self {
     case .settings:
