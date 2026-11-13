@@ -50,11 +50,14 @@ export async function safetyRoutes(app: FastifyInstance) {
       data: [{ messageId: id, reporterId, reason: REASONS[reason] }],
       skipDuplicates: true,
     });
-    // >= rather than ==: a message an admin restored goes back for another
-    // look as soon as someone new reports it, and a race past the exact count
-    // can't leave it published.
+    // Only reports no admin has reviewed count: restoring a message marks its
+    // reports reviewed, so it takes a fresh threshold of new reporters to hide
+    // it again. >= rather than == so a race past the exact count can't leave
+    // it published.
     if (count > 0 && message.status === "PUBLISHED") {
-      const reporters = await prisma.peaceMessageReport.count({ where: { messageId: id } });
+      const reporters = await prisma.peaceMessageReport.count({
+        where: { messageId: id, reviewedAt: null },
+      });
       if (reporters >= env.REPORT_HIDE_THRESHOLD) {
         await prisma.peaceMessage.update({ where: { id }, data: { status: "HIDDEN" } });
       }

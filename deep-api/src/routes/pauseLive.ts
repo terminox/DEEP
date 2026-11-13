@@ -54,23 +54,30 @@ function serializePeaceMessage(message: PeaceMessage, callerId: string | undefin
   };
 }
 
-// What a signed-in caller asked not to see: messages they reported, and every
-// message by a member they blocked. Anonymous callers see the whole feed.
-async function callerFeedFilter(
-  callerId: string | undefined,
-): Promise<Prisma.PeaceMessageWhereInput> {
-  if (!callerId) return {};
+// Who a public feed leaves out. For everyone: members an admin suspended. For a
+// signed-in caller, also what they asked not to see: messages they reported,
+// and every message by a member they blocked.
+//
+// Each author clause spells out the null case: a message whose author deleted
+// their account (userId null) can't be suspended or blocked, and SQL's NOT IN
+// (and a missing relation) would otherwise drop it.
+async function feedFilter(callerId: string | undefined): Promise<Prisma.PeaceMessageWhereInput> {
+  const notSuspended: Prisma.PeaceMessageWhereInput = {
+    OR: [{ userId: null }, { user: { is: { suspendedAt: null } } }],
+  };
+  if (!callerId) return { AND: [notSuspended] };
   const blocks = await prisma.userBlock.findMany({
     where: { blockerId: callerId },
     select: { blockedId: true },
   });
   return {
-    reports: { none: { reporterId: callerId } },
-    // Spelled out with the null case because SQL's NOT IN drops NULL rows, and
-    // a message whose author deleted their account (userId null) can't be blocked.
-    ...(blocks.length > 0
-      ? { OR: [{ userId: null }, { userId: { notIn: blocks.map((b) => b.blockedId) } }] }
-      : {}),
+    AND: [
+      notSuspended,
+      { reports: { none: { reporterId: callerId } } },
+      ...(blocks.length > 0
+        ? [{ OR: [{ userId: null }, { userId: { notIn: blocks.map((b) => b.blockedId) } }] }]
+        : []),
+    ],
   };
 }
 
@@ -253,7 +260,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       where: {
         pauseDate: localDate(now, config.timezone),
         status: "PUBLISHED",
-        ...(await callerFeedFilter(req.auth?.sub)),
+        ...(await feedFilter(req.auth?.sub)),
       },
       orderBy: { createdAt: "desc" },
       take: LIVE_MESSAGE_COUNT,
@@ -368,6 +375,13 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         intention: z.string().trim().min(1).max(64).optional(),
       })
       .parse(req.body);
+    const auth = req.auth!;
+    const user = await prisma.user.findUnique({ where: { id: auth.sub } });
+    if (!user) throw ApiError.unauthorized();
+    // Suspension only closes peace messages; the rest of DEEP stays open.
+    if (user.suspendedAt) {
+      throw ApiError.forbidden("This account can't share peace messages", "account_suspended");
+    }
     if (isRejectedText(body.text)) {
       throw ApiError.unprocessable("This message can't be shared", "message_rejected");
     }
@@ -375,16 +389,12 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const config = await loadPauseConfig();
     const pauseDate = localDate(now, config.timezone);
 
-    const auth = req.auth!;
     const already = await prisma.peaceMessage.count({
       where: { userId: auth.sub, pauseDate },
     });
     if (already >= MESSAGES_PER_DAY) {
       throw ApiError.forbidden("Message limit reached for today", "message_limit");
     }
-
-    const user = await prisma.user.findUnique({ where: { id: auth.sub } });
-    if (!user) throw ApiError.unauthorized();
 
     const message = await prisma.peaceMessage.create({
       data: {
@@ -445,7 +455,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
       where: {
         status: "PUBLISHED",
         AND: [
-          await callerFeedFilter(req.auth?.sub),
+          await feedFilter(req.auth?.sub),
           cursor
             ? {
                 OR: [
