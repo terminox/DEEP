@@ -22,15 +22,16 @@ struct RewardContinueButton: View {
 
   /// For a caller that has already resolved its title — a `String` chosen at
   /// runtime. Note that such a title does *not* pass through the String
-  /// Catalog; resolve it yourself if it needs translating.
+  /// Catalog; resolve it yourself if it needs translating. Labelled
+  /// `verbatim:` so a literal can't pick this overload over the key one.
   init(
-    title: String,
+    verbatim title: String,
     isFinal: Bool = false,
     isBusy: Bool = false,
     accessibilityHint: LocalizedStringKey? = nil,
     action: @escaping () -> Void
   ) {
-    self.label = Text(title)
+    self.label = Text(verbatim: title)
     self.isFinal = isFinal
     self.isBusy = isBusy
     self.hint = accessibilityHint
@@ -91,9 +92,9 @@ struct RewardContinueButton: View {
 
 #Preview {
   VStack(spacing: .rhythm) {
-    RewardContinueButton(title: "Continue", action: {})
-    RewardContinueButton(title: "Send & continue", isBusy: true, action: {})
-    RewardContinueButton(title: "Carry this calm", isFinal: true, action: {})
+    RewardContinueButton("Continue", action: {})
+    RewardContinueButton("Send & continue", isBusy: true, action: {})
+    RewardContinueButton("Carry this calm", isFinal: true, action: {})
     RewardContinueButton(
       "Start your 7 days free",
       accessibilityHint: "Starts your free trial of DEEP Premium",

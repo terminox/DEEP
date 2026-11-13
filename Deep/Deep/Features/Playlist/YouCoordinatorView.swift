@@ -16,6 +16,7 @@ struct YouCoordinatorView: View {
     case settings
     case language
     case dailyReminder
+    case blockedMembers
     /// A real screen on the stack, not a sheet or a cover: the paywall is a
     /// place you go, the same one the first run walks you through, and it
     /// keeps the system's back gesture rather than a lid you have to find.
@@ -35,6 +36,8 @@ struct YouCoordinatorView: View {
             LanguageView()
           case .dailyReminder:
             DailyReminderView()
+          case .blockedMembers:
+            BlockedMembersView()
           case .premium(let source):
             PaywallView(source: source) { pop() }
               .toolbarVisibility(.hidden, for: .navigationBar)
@@ -45,6 +48,7 @@ struct YouCoordinatorView: View {
     .environment(\.openSettings, { path.append(Route.settings) })
     .environment(\.openLanguage, { path.append(Route.language) })
     .environment(\.openDailyReminder, { path.append(Route.dailyReminder) })
+    .environment(\.openBlockedMembers, { path.append(Route.blockedMembers) })
     .preferredColorScheme(.light)
   }
 
@@ -69,6 +73,9 @@ extension EnvironmentValues {
 
   /// Pushes the daily reminder screen, on the same terms.
   @Entry var openDailyReminder: () -> Void = {}
+
+  /// Pushes the blocked members list, on the same terms.
+  @Entry var openBlockedMembers: () -> Void = {}
 }
 
 #if DEBUG

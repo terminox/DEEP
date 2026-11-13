@@ -105,6 +105,19 @@ enum LegalCopy {
     )
   }
 
+  /// The sign-up form's line, under the button that creates the account —
+  /// the tap that binds, so the documents are named where it happens.
+  static func accountCreation(_ links: LegalLinks, locale: Locale) -> AttributedString {
+    markdown(
+      String(
+        localized: "By creating an account, you agree to our [Terms](\(links.terms.absoluteString)) and [Privacy Policy](\(links.privacy.absoluteString)).",
+        bundle: .localized(for: locale),
+        locale: locale,
+        comment: "Sign-up form footer. The placeholders are URLs — keep the [text](url) markdown intact."
+      )
+    )
+  }
+
   /// The paywall's line, which invites rather than binds.
   static func invitation(_ links: LegalLinks, locale: Locale) -> AttributedString {
     markdown(

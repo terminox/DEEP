@@ -22,20 +22,21 @@ enum Continent: String, CaseIterable, Identifiable, Sendable {
 
   /// The name under the count. Sentence case; a caller that wants an
   /// all-caps label uppercases it there.
+  /// Resolved in the reading language: callers render it verbatim.
   var name: String {
     switch self {
-    case .americas: "Americas"
-    case .europe: "Europe"
-    case .africa: "Africa"
-    case .asia: "Asia"
-    case .oceania: "Oceania"
-    case .antarctica: "Antarctica"
+    case .americas: String(localized: "Americas", bundle: .app, locale: .app)
+    case .europe: String(localized: "Europe", bundle: .app, locale: .app)
+    case .africa: String(localized: "Africa", bundle: .app, locale: .app)
+    case .asia: String(localized: "Asia", bundle: .app, locale: .app)
+    case .oceania: String(localized: "Oceania", bundle: .app, locale: .app)
+    case .antarctica: String(localized: "Antarctica", bundle: .app, locale: .app)
     }
   }
 
   /// The name inside a sentence, for VoiceOver — "1,842 in the Americas".
   var spokenName: String {
-    self == .americas ? "the Americas" : name
+    self == .americas ? String(localized: "the Americas", bundle: .app, locale: .app) : name
   }
 
   /// Reads the server's continent codes (MaxMind's alphabet, which the API

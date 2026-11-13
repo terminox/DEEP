@@ -16,6 +16,7 @@ import { soundRoutes } from "./routes/sound.js";
 import { pauseRoutes } from "./routes/pause.js";
 import { practiceRoutes } from "./routes/practice.js";
 import { pauseLiveRoutes } from "./routes/pauseLive.js";
+import { safetyRoutes } from "./routes/safety.js";
 import { gardenRoutes } from "./routes/garden.js";
 import { heartsRoutes } from "./routes/hearts.js";
 import { playlistRoutes } from "./routes/playlist.js";
@@ -92,6 +93,7 @@ export function buildApp() {
   app.register(pauseRoutes);
   app.register(practiceRoutes);
   app.register(pauseLiveRoutes);
+  app.register(safetyRoutes);
   app.register(gardenRoutes);
   app.register(heartsRoutes);
   app.register(playlistRoutes);

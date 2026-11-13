@@ -260,7 +260,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
@@ -276,7 +276,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
@@ -292,7 +292,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
@@ -308,7 +308,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
@@ -324,7 +324,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
 				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
@@ -339,7 +339,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B1 /* Dev.xcconfig */;
 			buildSettings = {
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 			};
 			name = Dev;
 		};
@@ -347,7 +347,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B2 /* Staging.xcconfig */;
 			buildSettings = {
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 			};
 			name = Staging;
 		};
@@ -355,7 +355,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B3 /* Pilot.xcconfig */;
 			buildSettings = {
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 			};
 			name = Pilot;
 		};
@@ -363,7 +363,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B4 /* Prod.xcconfig */;
 			buildSettings = {
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 			};
 			name = Prod;
 		};
@@ -371,7 +371,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = DEE9CF0000000000000000B6 /* AppStore.xcconfig */;
 			buildSettings = {
-				DEVELOPMENT_TEAM = D45XUJ5XY2;
+				DEVELOPMENT_TEAM = C7Y8F84JCQ;
 			};
 			name = AppStore;
 		};

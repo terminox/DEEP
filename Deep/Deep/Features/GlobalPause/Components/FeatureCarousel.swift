@@ -9,7 +9,7 @@ struct FeatureCarousel: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      HomeSectionHeader(title: title, seeAll: seeAll)
+      HomeSectionHeader(verbatim: title, seeAll: seeAll)
 
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(alignment: .top, spacing: 16) {

@@ -34,6 +34,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
   private let accountStore: any AccountStore
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
+  private let moderationStore: ModerationStore
   private let imageLoader: any ImageLoading
   private let scene = GlobalPauseEarthScene()
   private let navigation = UINavigationController()
@@ -83,6 +84,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     accountStore: any AccountStore,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
+    moderationStore: ModerationStore,
     imageLoader: any ImageLoading
   ) {
     self.player = soundPlayer
@@ -99,6 +101,7 @@ final class GlobalPauseCoordinatorController: UIViewController {
     self.accountStore = accountStore
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
+    self.moderationStore = moderationStore
     self.imageLoader = imageLoader
     super.init(nibName: nil, bundle: nil)
   }
@@ -261,6 +264,9 @@ final class GlobalPauseCoordinatorController: UIViewController {
       GlobalPauseLobbyView(card: card)
         .environment(\.globalPauseSession, pauseSession)
         .environment(\.pauseEventRepository, pauseRepository)
+        // Report and Block are offered only to a signed-in member.
+        .environment(\.accountStore, accountStore)
+        .environment(\.moderationStore, moderationStore)
         .environment(\.loungeRadio, loungeRadio)
         .environment(\.soundPlayer, player)
         .modifier(hostedEnvironment)
@@ -347,7 +353,8 @@ final class GlobalPauseCoordinatorController: UIViewController {
       gardenStore: gardenStore,
       continuityWitness: continuityWitness,
       accountStore: accountStore,
-      imageLoader: imageLoader
+      imageLoader: imageLoader,
+      locale: languageStore.locale
     ) { [weak self, weak presenter] in
       presenter?.dismiss(animated: true)
       self?.sessionAudio = nil

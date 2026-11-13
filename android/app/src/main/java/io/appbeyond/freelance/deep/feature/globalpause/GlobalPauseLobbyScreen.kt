@@ -3,7 +3,10 @@ package io.appbeyond.freelance.deep.feature.globalpause
 import android.view.TextureView
 import androidx.annotation.OptIn
 import androidx.annotation.RawRes
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +33,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -43,7 +47,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,9 +75,13 @@ import io.appbeyond.freelance.deep.feature.deepsound.player.SoundPlaying
 import io.appbeyond.freelance.deep.feature.globalpause.components.GlobalPauseCard
 import io.appbeyond.freelance.deep.feature.globalpause.components.OnAirPill
 import io.appbeyond.freelance.deep.feature.globalpause.components.PeaceMessageCard
+import io.appbeyond.freelance.deep.feature.globalpause.components.PeaceMessageCardActions
 import io.appbeyond.freelance.deep.feature.globalpause.globe.GlobeScene
+import io.appbeyond.freelance.deep.feature.globalpause.model.BlockedMember
 import io.appbeyond.freelance.deep.feature.globalpause.model.FukuClip
 import io.appbeyond.freelance.deep.feature.globalpause.model.LoungeBroadcast
+import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessage
+import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessageReportReason
 import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessagesPage
 import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
 import io.appbeyond.freelance.deep.feature.globalpause.store.FixturePauseEventRemote
@@ -79,6 +89,7 @@ import io.appbeyond.freelance.deep.feature.globalpause.store.GlobalPauseSession
 import io.appbeyond.freelance.deep.feature.globalpause.store.LoungeRadioPlaying
 import io.appbeyond.freelance.deep.feature.globalpause.store.MockLoungeRadioPlayer
 import io.appbeyond.freelance.deep.feature.globalpause.store.PeaceMessageFeed
+import io.appbeyond.freelance.deep.feature.globalpause.store.PeaceMessageModeration
 import io.appbeyond.freelance.deep.feature.profile.HeaderIconButton
 import io.appbeyond.freelance.deep.shared.components.AtmosphereBackground
 import io.appbeyond.freelance.deep.shared.components.HeroRefreshable
@@ -89,19 +100,27 @@ import io.appbeyond.freelance.deep.shared.components.rememberHeroPull
 import io.appbeyond.freelance.deep.shared.components.ScrollToTopOnReselect
 import io.appbeyond.freelance.deep.theme.DeepTheme
 import io.appbeyond.freelance.deep.theme.DeepType
+import io.appbeyond.freelance.deep.theme.NOTE_HOLD_MILLIS
+import io.appbeyond.freelance.deep.theme.chip
 import io.appbeyond.freelance.deep.theme.deepPlum
 import io.appbeyond.freelance.deep.theme.driftGrey
 import io.appbeyond.freelance.deep.theme.edge
+import io.appbeyond.freelance.deep.theme.exhale
+import io.appbeyond.freelance.deep.theme.frostedCard
+import io.appbeyond.freelance.deep.theme.lavenderMist
 import io.appbeyond.freelance.deep.theme.moonCream
 import io.appbeyond.freelance.deep.theme.rhythm
 import io.appbeyond.freelance.deep.theme.settle
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.LocalTime
 
@@ -127,6 +146,10 @@ import java.time.LocalTime
  * @param radio the lounge track. Owned outside the lounge, so the Global Pause
  *   can silence it on its way in; the lounge stops it as it leaves.
  * @param onJoin the live card was tapped: present the session.
+ * @param isSignedIn whether a member is signed in: only they can report a
+ *   message or block its author, so only they see the cards' menu.
+ * @param reportMessage `POST /pause/messages/:id/report`.
+ * @param blockAuthor `POST /pause/messages/:id/block-author`.
  */
 @Composable
 fun GlobalPauseLobbyScreen(
@@ -138,10 +161,47 @@ fun GlobalPauseLobbyScreen(
   onJoin: () -> Unit,
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
+  isSignedIn: Boolean = false,
+  reportMessage: suspend (messageId: String, reason: PeaceMessageReportReason) -> Unit = { _, _ -> },
+  blockAuthor: suspend (messageId: String) -> BlockedMember? = { null },
 ) {
   val pause by session.state.collectAsStateWithLifecycle()
   val feed = remember { PeaceMessageFeed(fetch = fetchMessages) }
   val feedState by feed.state.collectAsStateWithLifecycle()
+  val moderation = remember(feed) { PeaceMessageModeration(feed, sendReport = reportMessage, sendBlock = blockAuthor) }
+  val scope = rememberCoroutineScope()
+
+  // The quiet line Report and Block leave behind. A serial, so the same words
+  // twice in a row still hold for their full time.
+  var note by remember { mutableStateOf<LoungeNote?>(null) }
+  LaunchedEffect(note) {
+    if (note != null) {
+      delay(NOTE_HOLD_MILLIS)
+      note = null
+    }
+  }
+  val thanks = stringResource(R.string.safety_report_thanks)
+  val failed = stringResource(R.string.safety_failed)
+  fun say(text: String) {
+    note = LoungeNote(text, (note?.serial ?: 0) + 1)
+  }
+
+  // Non-cancellable: walking out of the lounge straight after the tap must
+  // still deliver the report or block the member asked for.
+  fun actionsFor(message: PeaceMessage) = PeaceMessageCardActions(
+    onReport = { reason ->
+      scope.launch {
+        val landed = withContext(NonCancellable) { moderation.report(message, reason) }
+        say(if (landed) thanks else failed)
+      }
+    },
+    onBlock = {
+      scope.launch {
+        val landed = withContext(NonCancellable) { moderation.block(message) }
+        if (!landed) say(failed)
+      }
+    },
+  )
   val lift = currentCardLift
 
   var stage by remember { mutableStateOf<LoungeBroadcast.Stage>(LoungeBroadcast.Stage.Off) }
@@ -213,7 +273,7 @@ fun GlobalPauseLobbyScreen(
   ScrollToTopOnReselect(listState)
   val (pull, nestedScroll) = rememberHeroPull(listState)
   val bottomInset = Dp.rhythm * 2 + LocalMiniPlayerClearance.current
-  val shown = PeaceMessageFeed.displayed(feedState.messages, pause.postedMessage)
+  val shown = PeaceMessageFeed.displayed(feedState.visible, pause.postedMessage)
   val intentions = localizedIntentions(pause.schedule?.intentions)
 
   // Pages append as the last card comes into view.
@@ -313,6 +373,7 @@ fun GlobalPauseLobbyScreen(
           PeaceMessageCard(
             message = message,
             intentions = intentions,
+            actions = if (isSignedIn) actionsFor(message) else null,
             modifier = Modifier
               .offset(y = -HERO_OVERLAP)
               .padding(horizontal = Dp.edge, vertical = 6.dp),
@@ -346,9 +407,37 @@ fun GlobalPauseLobbyScreen(
           .align(Alignment.TopCenter)
           .onSizeChanged { barHeight = it.height },
       )
+
+      AnimatedVisibility(
+        visible = note != null,
+        enter = fadeIn(exhale()),
+        exit = fadeOut(exhale()),
+        modifier = Modifier
+          .align(Alignment.BottomCenter)
+          .padding(horizontal = Dp.edge)
+          .padding(bottom = Dp.rhythm + LocalMiniPlayerClearance.current),
+      ) {
+        // Held through the fade out, so the words don't vanish before the pill does.
+        var shownNote by remember { mutableStateOf("") }
+        note?.let { shownNote = it.text }
+        Text(
+          shownNote,
+          style = DeepType.caption,
+          color = Color.deepPlum,
+          textAlign = TextAlign.Center,
+          modifier = Modifier
+            // The lavender wash lifts it off the white cards it floats over.
+            .frostedCard(cornerRadius = Dp.chip, tint = Color.lavenderMist)
+            .padding(horizontal = 18.dp, vertical = 10.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        )
+      }
     }
   }
 }
+
+/** One quiet line in the lounge; [serial] tells two of the same words apart. */
+private data class LoungeNote(val text: String, val serial: Int)
 
 /**
  * The back chevron and the room's name, over a cream veil — Android's answer

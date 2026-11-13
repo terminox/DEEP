@@ -18,8 +18,11 @@ import retrofit2.http.Query
  *   answers it with a 401, and `DeepHttp`'s authenticator refreshes and
  *   retries once — any 401 on a request that carried a bearer, whatever the
  *   route. A refused refresh ends the session as everywhere else.
- * - `requireAuth`: posting a message, the reflection, the award claim.
- * - None: reading the message feed.
+ * - `requireAuth`: posting a message, the reflection, the award claim, and
+ *   Report and Block (the report, the block, the blocked list, unblocking).
+ * - `optionalAuth` too: reading the message feed. A signed-in reader's feed
+ *   leaves out what they reported and whose author they blocked, which the
+ *   bearer `DeepHttp` attaches whenever there is a session is enough for.
  */
 interface PauseEventService {
 
@@ -42,7 +45,11 @@ interface PauseEventService {
     @Query("cursor", encoded = true) cursor: String?,
   ): PeaceMessagesResponse
 
-  /** 403 `message_limit` past three a day; 401 signed out. */
+  /**
+   * 403 `message_limit` past three a day; 403 `account_suspended` for a
+   * suspended account; 401 signed out; 422
+   * `message_rejected` when the text trips the server's content filter.
+   */
   @POST("pause/messages")
   suspend fun postMessage(@Body body: PeaceMessagePostRequest): PeaceMessagePostResponse
 
@@ -55,4 +62,19 @@ interface PauseEventService {
    */
   @POST("me/pause/award")
   suspend fun claimAward(): PauseAwardResponse
+
+  /** Idempotent. 400 `own_message` for the caller's own; 404 unknown id. */
+  @POST("pause/messages/{id}/report")
+  suspend fun report(@Path("id") messageId: String, @Body body: PeaceMessageReportRequest): ModerationOkResponse
+
+  /** No body, as [claimAward]. Idempotent. 400 `own_message`; 404 unknown id. */
+  @POST("pause/messages/{id}/block-author")
+  suspend fun blockAuthor(@Path("id") messageId: String): BlockAuthorResponse
+
+  @GET("me/blocks")
+  suspend fun blockedMembers(): BlockedMembersResponse
+
+  /** Idempotent: an unknown id is a 200 no-op. */
+  @DELETE("me/blocks/{id}")
+  suspend fun unblock(@Path("id") blockId: String): ModerationOkResponse
 }

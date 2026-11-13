@@ -4,9 +4,11 @@ import SwiftUI
 /// style shared by the reflection screen's sections (`IntentionPicker`,
 /// the mood check-in).
 struct SectionHeader: View {
-  let title: String
-  var subtitle: String? = nil
-  var trailing: String? = nil
+  // Keys, not `String`s: every caller passes product copy, and a `String`
+  // would render verbatim instead of in the reading language.
+  let title: LocalizedStringKey
+  var subtitle: LocalizedStringKey? = nil
+  var trailing: LocalizedStringKey? = nil
   var action: () -> Void = {}
 
   var body: some View {
@@ -28,7 +30,7 @@ struct SectionHeader: View {
             .foregroundStyle(.lavenderMist)
           }
           .buttonStyle(.softPress)
-          .accessibilityLabel("See all \(title.lowercased())")
+          .accessibilityLabel(Text("See all \(Text(title))"))
         }
       }
       if let subtitle {

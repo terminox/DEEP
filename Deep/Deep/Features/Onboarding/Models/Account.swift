@@ -38,9 +38,9 @@ enum AccountError: LocalizedError, Equatable {
 
   var errorDescription: String? {
     switch self {
-    case .emptyName: return "Please share a name we can call you."
-    case .invalidEmail: return "That email doesn't look quite right."
-    case .weakPassword: return "Use at least 8 characters."
+    case .emptyName: return String(localized: "Please share a name we can call you.", bundle: .app, locale: .app)
+    case .invalidEmail: return String(localized: "That email doesn't look quite right.", bundle: .app, locale: .app)
+    case .weakPassword: return String(localized: "Use at least 8 characters.", bundle: .app, locale: .app)
     }
   }
 }

@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getUserMembership, listUsers } from '../api/endpoints'
+import { useState, type MouseEvent } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getUserMembership, listUsers, setUserSuspended } from '../api/endpoints'
 import { apiErrorMessage } from '../api/errors'
 import type { AdminUser, Membership } from '../api/types'
 
@@ -103,6 +103,58 @@ function MembershipPanel({ user, onClose }: { user: AdminUser; onClose: () => vo
   )
 }
 
+// Suspension closes peace messages only: the member can't post, and theirs
+// leave every public feed until restored. Nothing else about the account changes.
+function SuspensionCell({ user }: { user: AdminUser }) {
+  const qc = useQueryClient()
+  const [error, setError] = useState<string | null>(null)
+  const suspended = user.suspendedAt !== null
+
+  const toggle = useMutation({
+    mutationFn: () => setUserSuspended(user.id, !suspended),
+    onSuccess: () => {
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (e) => setError(apiErrorMessage(e)),
+  })
+
+  const onClick = (e: MouseEvent) => {
+    // The row itself opens the membership panel.
+    e.stopPropagation()
+    if (
+      !suspended &&
+      !confirm(
+        `Suspend ${user.displayName}? They won't be able to share peace messages, and the ones they shared will be hidden from everyone.`
+      )
+    ) {
+      return
+    }
+    toggle.mutate()
+  }
+
+  return (
+    <td onKeyDown={(e) => e.stopPropagation()}>
+      <div className="row-actions">
+        {suspended && (
+          <span className="badge badge-suspended" title={formatTime(user.suspendedAt)}>
+            Suspended
+          </span>
+        )}
+        <button
+          type="button"
+          className={`btn btn-sm ${suspended ? 'btn-ghost' : 'btn-danger'}`}
+          onClick={onClick}
+          disabled={toggle.isPending}
+        >
+          {suspended ? 'Restore' : 'Suspend'}
+        </button>
+      </div>
+      {error && <div className="error-banner">{error}</div>}
+    </td>
+  )
+}
+
 function UsersPage() {
   const [selected, setSelected] = useState<AdminUser | null>(null)
   const { data, isLoading, error } = useQuery({
@@ -118,7 +170,8 @@ function UsersPage() {
         <div>
           <h1>Users</h1>
           <div className="page-subtitle">
-            Read-only list of app accounts. Select one to see their DEEP Premium membership.
+            App accounts. Select one to see their DEEP Premium membership. Suspend stops a
+            member sharing peace messages and hides the ones they shared.
           </div>
         </div>
       </div>
@@ -140,6 +193,7 @@ function UsersPage() {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Created</th>
+                <th>Peace messages</th>
               </tr>
             </thead>
             <tbody>
@@ -165,11 +219,12 @@ function UsersPage() {
                   <td className="muted">
                     {new Date(u.createdAt).toLocaleDateString()}
                   </td>
+                  <SuspensionCell user={u} />
                 </tr>
               ))}
               {data && data.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="empty">
+                  <td colSpan={5} className="empty">
                     No users yet.
                   </td>
                 </tr>

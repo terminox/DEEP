@@ -91,4 +91,18 @@ class SignUpValidationTest {
     assertNull(SignUpValidation.problem("Mali", "mali@example.com", "  pass  "))
     assertTrue(SignUpValidation.canLogIn("mali@example.com", " "))
   }
+
+  // MARK: - capName
+
+  @Test
+  @DisplayName("capName stops at 40 UTF-16 units, the server's measure, and never splits an emoji")
+  fun capName() {
+    assertEquals("Mali", SignUpValidation.capName("Mali"))
+    assertEquals("a".repeat(40), SignUpValidation.capName("a".repeat(45)))
+    // Thai tone marks are their own UTF-16 units.
+    val thai = "น้ำ".repeat(15)
+    assertEquals(40, SignUpValidation.capName(thai).length)
+    // An emoji straddling the limit is dropped whole.
+    assertEquals("a".repeat(39), SignUpValidation.capName("a".repeat(39) + "🌱"))
+  }
 }

@@ -4,7 +4,13 @@ import SwiftUI
 /// breathing line of serif text. Shown during whole-app waits — launch,
 /// log-in, sign-up. Content-level waits use breathing skeletons instead.
 struct BreatheLoadingView: View {
-  var line: String = "Take a deep breath.\nWe're preparing your space."
+  /// Already in the reading language: it is shown and also announced, and an
+  /// announcement takes a `String`. Callers resolve theirs the same way.
+  var line: String = String(
+    localized: "Take a deep breath.\nWe're preparing your space.",
+    bundle: .app,
+    locale: .app
+  )
   /// Set false where the host already keeps a persistent moonCream + atmosphere
   /// backdrop beneath this view (`AppRootView`), so only the breathing text
   /// renders — and a transition's veil blur can never touch the atmosphere's

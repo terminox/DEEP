@@ -50,6 +50,8 @@
   <string name="onboarding_problem_missing_name">Please share a name we can call you.</string>
   <string name="onboarding_problem_malformed_email">That email doesn\'t look quite right.</string>
   <string name="onboarding_problem_short_password">Use at least 8 characters.</string>
+  <!-- The server's content filter refused the display name (422 display_name_rejected) -->
+  <string name="onboarding_problem_name_rejected">Please choose a different name.</string>
 
   <!-- Log in -->
   <string name="onboarding_log_in_title">Welcome back</string>

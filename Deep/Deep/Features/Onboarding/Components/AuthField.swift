@@ -9,7 +9,7 @@ import UIKit
 /// when `isValid` is true, and — for secure fields — a reveal toggle that
 /// swaps the obscured entry for plain text.
 struct AuthField: View {
-  let placeholder: String
+  let placeholder: LocalizedStringKey
   @Binding var text: String
   var icon: String? = nil
   var isSecure: Bool = false

@@ -43,6 +43,8 @@ final class AppDependencies {
   let pauseClock: SyncedClock
   let pauseRepository: any PauseEventRepository
   let pauseSession: GlobalPauseSession
+  /// Reporting and blocking peace messages, and the member's block list.
+  let moderationStore: ModerationStore
   let imageLoader: any ImageLoading
   /// The same disk cache decoded at screen size, for the one photograph that
   /// fills the whole screen (Now Playing). Kept apart so a full-size decode
@@ -70,7 +72,7 @@ final class AppDependencies {
     // drivable without RevenueCat or a network. It compiles out of every
     // shipping build.
     if ProcessInfo.processInfo.arguments.contains("-DeepMockSubscriptions") {
-      self.subscriptionStore = MockSubscriptionStore.free
+      self.subscriptionStore = MockSubscriptionStore.mixedTrials
     } else {
       self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
     }
@@ -159,6 +161,8 @@ final class AppDependencies {
     let pauseRepository = APIPauseEventRepository(client: client, clock: clock)
     self.pauseClock = clock
     self.pauseRepository = pauseRepository
+    let moderationStore = ModerationStore(remote: APIModerationRemote(client: client))
+    self.moderationStore = moderationStore
     self.pauseSession = GlobalPauseSession(
       clock: clock,
       repository: pauseRepository,
@@ -190,6 +194,7 @@ final class AppDependencies {
       ledger.resetLocalState()
       continuityWitness.resetLocalState()
       playlistStore.resetLocalState()
+      moderationStore.resetLocalState()
       Task { await reminderStore.disable() }
     }
   }

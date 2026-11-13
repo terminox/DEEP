@@ -63,6 +63,22 @@
         }
       }
     },
+    "%@ hearts pooled, %lld percent of giving" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ hearts pooled, %2$lld percent of giving"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รวมหัวใจแล้ว %1$@ ดวง %2$lld เปอร์เซ็นต์ของการให้"
+          }
+        }
+      }
+    },
     "%@ hearts ready to give" : {
       "localizations" : {
         "th" : {
@@ -73,12 +89,126 @@
         }
       }
     },
+    "%@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ in %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ คนใน%2$@"
+          }
+        }
+      }
+    },
+    "%@, %lld of %lld sunlight to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld of %3$lld sunlight to %4$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ แสงแดด %2$lld จาก %3$lld สู่ %4$@"
+          }
+        }
+      }
+    },
+    "%@, fully grown" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ เติบโตเต็มที่แล้ว"
+          }
+        }
+      }
+    },
+    "%@. %lld days of returning. Each return is enough." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@. %2$lld days of returning. Each return is enough."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$lld วันแห่งการกลับมา การกลับมาแต่ละครั้งก็เพียงพอแล้ว"
+          }
+        }
+      }
+    },
+    "%@. 1 day of returning. Each return is enough." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ 1 วันแห่งการกลับมา การกลับมาแต่ละครั้งก็เพียงพอแล้ว"
+          }
+        }
+      }
+    },
+    "%lld given" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "มอบไปแล้ว %lld ดวง"
+          }
+        }
+      }
+    },
     "%lld hearts received" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ได้รับหัวใจ %lld ดวง"
+          }
+        }
+      }
+    },
+    "%lld hearts to give" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "มีหัวใจให้มอบ %lld ดวง"
+          }
+        }
+      }
+    },
+    "%lld min" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld นาที"
+          }
+        }
+      }
+    },
+    "%lld of %lld hearts earned today" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld hearts earned today"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้ได้รับหัวใจ %1$lld จาก %2$lld ดวง"
           }
         }
       }
@@ -147,6 +277,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$lld เพลง ความยาว %2$@"
+          }
+        }
+      }
+    },
+    "%lld-day free trial" : {
+      "comment" : "Paywall plan row. The placeholder is a number of days.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทดลองฟรี %lld วัน"
+          }
+        }
+      }
+    },
+    "%lld-month free trial" : {
+      "comment" : "Paywall plan row. The placeholder is a number of months.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทดลองฟรี %lld เดือน"
+          }
+        }
+      }
+    },
+    "%lld-year free trial" : {
+      "comment" : "Paywall plan row. The placeholder is a number of years.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทดลองฟรี %lld ปี"
           }
         }
       }
@@ -236,12 +399,270 @@
         }
       }
     },
+    "About %lld min left" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เหลืออีกราว %lld นาที"
+          }
+        }
+      }
+    },
+    "About a minute left" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เหลืออีกราวหนึ่งนาที"
+          }
+        }
+      }
+    },
+    "Account" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บัญชี"
+          }
+        }
+      }
+    },
+    "Africa" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แอฟริกา"
+          }
+        }
+      }
+    },
+    "Almost ready" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใกล้พร้อมแล้ว"
+          }
+        }
+      }
+    },
+    "Almost there" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใกล้แล้ว"
+          }
+        }
+      }
+    },
+    "Americas" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อเมริกา"
+          }
+        }
+      }
+    },
+    "Antarctica" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แอนตาร์กติกา"
+          }
+        }
+      }
+    },
+    "Asia" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เอเชีย"
+          }
+        }
+      }
+    },
     "Aurora" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ออโรร่า"
+          }
+        }
+      }
+    },
+    "Block" : {
+      "comment" : "Block confirmation button.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บล็อก"
+          }
+        }
+      }
+    },
+    "Block %@" : {
+      "comment" : "Peace message card menu item. The placeholder is the author's display name.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บล็อก %@"
+          }
+        }
+      }
+    },
+    "Block %@?" : {
+      "comment" : "Block confirmation title. The placeholder is the author's display name.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บล็อก %@ ใช่ไหม"
+          }
+        }
+      }
+    },
+    "Blocked members" : {
+      "comment" : "Settings row and screen title.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สมาชิกที่บล็อกไว้"
+          }
+        }
+      }
+    },
+    "By creating an account, you agree to our [Terms](%@) and [Privacy Policy](%@)." : {
+      "comment" : "Sign-up form footer. The placeholders are URLs — keep the [text](url) markdown intact.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "By creating an account, you agree to our [Terms](%1$@) and [Privacy Policy](%2$@)."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เมื่อสร้างบัญชี ถือว่าคุณยอมรับ[ข้อกำหนด](%1$@)และ[นโยบายความเป็นส่วนตัว](%2$@)ของเรา"
+          }
+        }
+      }
+    },
+    "Contact us" : {
+      "comment" : "Settings row that opens an email to DEEP support.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ติดต่อเรา"
+          }
+        }
+      }
+    },
+    "Begin today’s practice, %lld of %lld minutes complete" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Begin today’s practice, %1$lld of %2$lld minutes complete"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เริ่มการฝึกของวันนี้ ฝึกไปแล้ว %1$lld จาก %2$lld นาที"
+          }
+        }
+      }
+    },
+    "Breathe in" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจเข้า"
+          }
+        }
+      }
+    },
+    "Breathe out" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจออก"
+          }
+        }
+      }
+    },
+    "Breathe with the world, together" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจไปพร้อมกับทั้งโลก"
+          }
+        }
+      }
+    },
+    "Carry this calm" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "พาความสงบนี้ไปด้วย"
+          }
+        }
+      }
+    },
+    "Checking…" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังตรวจสอบ…"
+          }
+        }
+      }
+    },
+    "Choosing sounds that suit you" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังเลือกเสียงที่เหมาะกับคุณ"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ต่อไป"
+          }
+        }
+      }
+    },
+    "Continue with Email" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ดำเนินการต่อด้วยอีเมล"
           }
         }
       }
@@ -256,6 +677,46 @@
         }
       }
     },
+    "Create account" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สร้างบัญชี"
+          }
+        }
+      }
+    },
+    "DEEP Premium, monthly" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DEEP Premium รายเดือน"
+          }
+        }
+      }
+    },
+    "DEEP Premium, yearly" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DEEP Premium รายปี"
+          }
+        }
+      }
+    },
+    "Delete account" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลบบัญชี"
+          }
+        }
+      }
+    },
     "Done" : {
       "localizations" : {
         "th" : {
@@ -266,12 +727,152 @@
         }
       }
     },
+    "Each session feeds your %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทุกเซสชันช่วยหล่อเลี้ยง%@ของคุณ"
+          }
+        }
+      }
+    },
+    "Email" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อีเมล"
+          }
+        }
+      }
+    },
+    "Email already registered" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อีเมลนี้มีบัญชีอยู่แล้ว"
+          }
+        }
+      }
+    },
+    "Europe" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยุโรป"
+          }
+        }
+      }
+    },
     "Experiments" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "การทดลอง"
+          }
+        }
+      }
+    },
+    "Explore" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สำรวจ"
+          }
+        }
+      }
+    },
+    "Free plan" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แพ็กเกจฟรี"
+          }
+        }
+      }
+    },
+    "Friend" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพื่อน"
+          }
+        }
+      }
+    },
+    "from %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จาก %@"
+          }
+        }
+      }
+    },
+    "From the field" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จากพื้นที่จริง"
+          }
+        }
+      }
+    },
+    "garden" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สวน"
+          }
+        }
+      }
+    },
+    "Gathering a little calm" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังรวบรวมความสงบเล็ก ๆ"
+          }
+        }
+      }
+    },
+    "Global Pause. %@." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global Pause %@"
+          }
+        }
+      }
+    },
+    "Global Pause. %@. Going live soon." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global Pause %@ กำลังจะเริ่มถ่ายทอดสดเร็ว ๆ นี้"
+          }
+        }
+      }
+    },
+    "Global Pause. Live. The world is pausing. Join now." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global Pause ถ่ายทอดสด โลกกำลังหยุดพัก เข้าร่วมเลย"
           }
         }
       }
@@ -296,12 +897,431 @@
         }
       }
     },
+    "Harassment" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การคุกคาม"
+          }
+        }
+      }
+    },
+    "More" : {
+      "comment" : "VoiceOver label for the ellipsis menu on a peace message card.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพิ่มเติม"
+          }
+        }
+      }
+    },
+    "Offensive" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่เหมาะสม"
+          }
+        }
+      }
+    },
+    "Incorrect email or password" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อีเมลหรือรหัสผ่านไม่ถูกต้อง"
+          }
+        }
+      }
+    },
+    "Join now" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เข้าร่วมเลย"
+          }
+        }
+      }
+    },
+    "Listening to what you shared" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังรับฟังสิ่งที่คุณแบ่งปัน"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สด"
+          }
+        }
+      }
+    },
+    "LIVE" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สด"
+          }
+        }
+      }
+    },
+    "Live before the Global Pause" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ถ่ายทอดสดก่อน Global Pause"
+          }
+        }
+      }
+    },
+    "Live in %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เริ่มในอีก %@"
+          }
+        }
+      }
+    },
+    "Membership" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การเป็นสมาชิก"
+          }
+        }
+      }
+    },
+    "No hearts here yet — the first one is yours to send." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังไม่มีหัวใจที่นี่ — ดวงแรกรอให้คุณเป็นผู้ส่ง"
+          }
+        }
+      }
+    },
+    "No hearts left to give" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีหัวใจเหลือให้มอบแล้ว"
+          }
+        }
+      }
+    },
+    "Not playing" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่มีเสียงที่กำลังเล่น"
+          }
+        }
+      }
+    },
+    "Oceania" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โอเชียเนีย"
+          }
+        }
+      }
+    },
     "Part of DEEP Premium" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "เป็นส่วนหนึ่งของ DEEP Premium"
+          }
+        }
+      }
+    },
+    "Please choose a different name." : {
+      "comment" : "Sign-up error when the server's content filter turns the display name away.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โปรดเลือกชื่ออื่น"
+          }
+        }
+      }
+    },
+    "Privacy Policy" : {
+      "comment" : "Settings row linking the Privacy Policy.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "นโยบายความเป็นส่วนตัว"
+          }
+        }
+      }
+    },
+    "Report" : {
+      "comment" : "Peace message card menu item, and its VoiceOver action.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รายงาน"
+          }
+        }
+      }
+    },
+    "Report this message" : {
+      "comment" : "Title of the report-reason picker.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รายงานข้อความนี้"
+          }
+        }
+      }
+    },
+    "Something else" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เหตุผลอื่น"
+          }
+        }
+      }
+    },
+    "Something went wrong. Please try again." : {
+      "comment" : "Shown when a report, block or unblock does not go through.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เกิดข้อผิดพลาด โปรดลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Password" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รหัสผ่าน"
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หยุดไว้ก่อน"
+          }
+        }
+      }
+    },
+    "Pausing now: %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังหยุดพักตอนนี้: %@"
+          }
+        }
+      }
+    },
+    "Peace messages" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อความแห่งสันติ"
+          }
+        }
+      }
+    },
+    "People reached" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ผู้คนที่ส่งถึง"
+          }
+        }
+      }
+    },
+    "Please share a name we can call you." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บอกชื่อที่อยากให้เราเรียกคุณหน่อยนะ"
+          }
+        }
+      }
+    },
+    "Practice earns more." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ฝึกฝนเพื่อรับเพิ่ม"
+          }
+        }
+      }
+    },
+    "Preferences" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การปรับแต่ง"
+          }
+        }
+      }
+    },
+    "Projects in this cause" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โครงการในด้านนี้"
+          }
+        }
+      }
+    },
+    "Restored" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กู้คืนแล้ว"
+          }
+        }
+      }
+    },
+    "Return tomorrow for new growth" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กลับมาใหม่พรุ่งนี้ เพื่อการเติบโตครั้งใหม่"
+          }
+        }
+      }
+    },
+    "says: %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กล่าวว่า: %@"
+          }
+        }
+      }
+    },
+    "Send & continue" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ส่งและไปต่อ"
+          }
+        }
+      }
+    },
+    "Session complete" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จบเซสชันแล้ว"
+          }
+        }
+      }
+    },
+    "Settling in. %lld" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตั้งลมหายใจ %lld"
+          }
+        }
+      }
+    },
+    "Shaping your space" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังจัดพื้นที่ของคุณ"
+          }
+        }
+      }
+    },
+    "Share of giving" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สัดส่วนของการให้"
+          }
+        }
+      }
+    },
+    "Sign in from the You tab to leave a message." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เข้าสู่ระบบจากแท็บ “ฉัน” เพื่อฝากข้อความ"
+          }
+        }
+      }
+    },
+    "Since %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตั้งแต่ %@"
+          }
+        }
+      }
+    },
+    "Something looked off in the response. Please try again." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อมูลที่ได้รับดูไม่ถูกต้อง โปรดลองอีกครั้ง"
           }
         }
       }
@@ -316,12 +1336,176 @@
         }
       }
     },
+    "Spam" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สแปม"
+          }
+        }
+      }
+    },
+    "Terms of Service" : {
+      "comment" : "Settings row linking the Terms of Service.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อกำหนดการใช้งาน"
+          }
+        }
+      }
+    },
+    "tagged %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แท็ก %@"
+          }
+        }
+      }
+    },
+    "Take a deep breath.\nWe're creating your space." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจเข้าลึก ๆ\nเรากำลังสร้างพื้นที่ของคุณ"
+          }
+        }
+      }
+    },
+    "Take a deep breath.\nWe're preparing your space." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจเข้าลึก ๆ\nเรากำลังเตรียมพื้นที่ของคุณ"
+          }
+        }
+      }
+    },
+    "Take a deep breath.\nWe're signing you in." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจเข้าลึก ๆ\nเรากำลังพาคุณเข้าสู่ระบบ"
+          }
+        }
+      }
+    },
+    "Take your time" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่ต้องรีบ"
+          }
+        }
+      }
+    },
     "Thank you for giving to %@" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ขอบคุณที่มอบหัวใจให้ %@"
+          }
+        }
+      }
+    },
+    "Thanks for telling us. We'll take a look." : {
+      "comment" : "Quiet confirmation after reporting a peace message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ขอบคุณที่แจ้งให้เราทราบ เราจะตรวจสอบให้"
+          }
+        }
+      }
+    },
+    "This message can't be shared. Please keep it kind." : {
+      "comment" : "Inline note when the content filter refuses a peace message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อความนี้แชร์ไม่ได้ โปรดใช้ถ้อยคำที่อ่อนโยน"
+          }
+        }
+      }
+    },
+    "That email doesn't look quite right." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อีเมลนี้ดูยังไม่ค่อยถูกต้อง"
+          }
+        }
+      }
+    },
+    "That heart couldn't be sent — it's back in your balance." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ส่งหัวใจดวงนี้ไม่สำเร็จ — หัวใจกลับคืนสู่ยอดของคุณแล้ว"
+          }
+        }
+      }
+    },
+    "the Americas" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทวีปอเมริกา"
+          }
+        }
+      }
+    },
+    "The world is pausing" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โลกกำลังหยุดพัก"
+          }
+        }
+      }
+    },
+    "The world keeps breathing — you can rejoin while it's live." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โลกยังคงหายใจต่อไป — คุณกลับมาร่วมได้ตลอดช่วงที่ยังถ่ายทอดสด"
+          }
+        }
+      }
+    },
+    "The world, breathing together" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โลกกำลังหายใจไปพร้อมกัน"
+          }
+        }
+      }
+    },
+    "This permanently erases your account and everything you've shared. If you have a DEEP Premium subscription, cancel it separately in your App Store settings — deleting your account doesn't cancel billing." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การดำเนินการนี้จะลบบัญชีของคุณและทุกสิ่งที่คุณแบ่งปันไว้อย่างถาวร หากคุณสมัครสมาชิก DEEP Premium อยู่ โปรดยกเลิกแยกต่างหากในการตั้งค่า App Store เพราะการลบบัญชีไม่ได้ยกเลิกการเรียกเก็บเงิน"
           }
         }
       }
@@ -346,12 +1530,225 @@
         }
       }
     },
+    "Those %@ hearts couldn't be sent — they're back in your balance." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ส่งหัวใจ %@ ดวงไม่สำเร็จ — หัวใจกลับคืนสู่ยอดของคุณแล้ว"
+          }
+        }
+      }
+    },
+    "Three messages a day is plenty. Rest now." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สามข้อความต่อวันก็เพียงพอแล้ว พักผ่อนเถอะ"
+          }
+        }
+      }
+    },
+    "Time" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เวลา"
+          }
+        }
+      }
+    },
     "Today is full" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "วันนี้ได้รับครบแล้ว"
+          }
+        }
+      }
+    },
+    "Unblock" : {
+      "comment" : "Trailing action on a blocked member row.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลิกบล็อก"
+          }
+        }
+      }
+    },
+    "Unblocked members' peace messages will show again." : {
+      "comment" : "Footnote under the blocked members list.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อความแห่งสันติของสมาชิกที่เลิกบล็อกแล้วจะกลับมาแสดงอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Unblocks %@" : {
+      "comment" : "VoiceOver hint on a blocked member row. The placeholder is their display name.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลิกบล็อก %@"
+          }
+        }
+      }
+    },
+    "We couldn't load your blocked members." : {
+      "comment" : "Blocked members load failure.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เราโหลดรายชื่อสมาชิกที่บล็อกไว้ไม่ได้"
+          }
+        }
+      }
+    },
+    "You haven't blocked anyone." : {
+      "comment" : "Blocked members empty state.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณยังไม่ได้บล็อกใคร"
+          }
+        }
+      }
+    },
+    "You won't see their peace messages." : {
+      "comment" : "Block confirmation message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณจะไม่เห็นข้อความแห่งสันติของเขาอีก"
+          }
+        }
+      }
+    },
+    "Your account can't share peace messages right now." : {
+      "comment" : "Inline note when a suspended account tries to post a peace message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บัญชีของคุณยังแชร์ข้อความแห่งสันติไม่ได้ในขณะนี้"
+          }
+        }
+      }
+    },
+    "Today is full — more tomorrow." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้ได้รับครบแล้ว — พรุ่งนี้มีเพิ่มอีก"
+          }
+        }
+      }
+    },
+    "Today is full, %lld hearts earned" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "วันนี้ได้รับหัวใจครบแล้ว %lld ดวง"
+          }
+        }
+      }
+    },
+    "Today’s goal complete" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ครบเป้าหมายของวันนี้แล้ว"
+          }
+        }
+      }
+    },
+    "Today’s goal complete, %lld of %lld minutes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Today’s goal complete, %1$lld of %2$lld minutes"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ครบเป้าหมายของวันนี้แล้ว %1$lld จาก %2$lld นาที"
+          }
+        }
+      }
+    },
+    "Use at least 8 characters." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใช้อย่างน้อย 8 ตัวอักษร"
+          }
+        }
+      }
+    },
+    "We couldn't create your space just now. Please try again." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เราสร้างพื้นที่ของคุณไม่ได้ในตอนนี้ ลองอีกครั้งได้เลย"
+          }
+        }
+      }
+    },
+    "We couldn't reach DEEP just now. Check your connection and try again." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เราเชื่อมต่อ DEEP ไม่ได้ในตอนนี้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง"
+          }
+        }
+      }
+    },
+    "We couldn't sign you in just now. Please try again." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เราพาคุณเข้าสู่ระบบไม่ได้ในตอนนี้ ลองอีกครั้งได้เลย"
+          }
+        }
+      }
+    },
+    "You've sent %@ heart to this cause." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณส่งหัวใจให้ด้านนี้แล้ว %@ ดวง"
+          }
+        }
+      }
+    },
+    "You've sent %@ hearts to this cause." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณส่งหัวใจให้ด้านนี้แล้ว %@ ดวง"
           }
         }
       }
@@ -372,6 +1769,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "สวนของคุณกำลังพักผ่อน"
+          }
+        }
+      }
+    },
+    "Your message couldn't be sent just now." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังส่งข้อความของคุณไม่ได้ในตอนนี้"
+          }
+        }
+      }
+    },
+    "Your name" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ชื่อของคุณ"
+          }
+        }
+      }
+    },
+    "Your session has ended. Please sign in again." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เซสชันของคุณสิ้นสุดแล้ว โปรดเข้าสู่ระบบอีกครั้ง"
+          }
+        }
+      }
+    },
+    "You’re here now" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตอนนี้คุณอยู่ตรงนี้แล้ว"
           }
         }
       }
@@ -660,7 +2097,15 @@
     },
     "1 person is pausing with you" : {
       "comment" : "A line that appears in the pause meditation,",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 คนกำลังหยุดพักไปพร้อมกับคุณ"
+          }
+        }
+      }
     },
     "5,000 meals shared this month" : {
       "localizations" : {

@@ -101,6 +101,9 @@ export type AdminUser = {
   displayName: string
   role: Role
   createdAt: string
+  // Set while the member is suspended from peace messages: they can't post,
+  // and theirs are out of every public feed. Null otherwise.
+  suspendedAt: string | null
 }
 
 // DEEP Premium standing for one user (GET /admin/users/:id/membership).
@@ -288,6 +291,11 @@ export type AdminPeaceMessage = {
   status: PeaceMessageStatus
   pauseDate: string
   createdAt: string
+  // Distinct members who reported it since an admin last decided on it
+  // (Publish or Hide). Enough of them hide it automatically.
+  reportCount: number
+  // Every report ever made on it, reviewed or not.
+  totalReportCount: number
 }
 
 export type PauseDayStats = {

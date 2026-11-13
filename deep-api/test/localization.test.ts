@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { homeSectionTitle } from "../src/lib/homeSections.js";
 import { negotiateLanguage, requestLanguage } from "../src/lib/requestLanguage.js";
 import {
   invalidateTranslations,
@@ -114,5 +115,20 @@ test("a null source stays null rather than becoming a string", () => {
   seedTranslationCache("th", []);
   requestLanguage.run("th", () => {
     assert.equal(translate("SOUND_COLLECTION", "c1", "subtitle", null), null);
+  });
+});
+
+// ---- Server-authored shelf titles ------------------------------------------
+
+test("home shelf titles follow the request's language", () => {
+  requestLanguage.run(null, () => {
+    assert.equal(homeSectionTitle("popular"), "Popular now");
+    assert.equal(homeSectionTitle("today"), "Today's sessions");
+    assert.equal(homeSectionTitle("forYou"), "Made for you");
+  });
+  requestLanguage.run(negotiateLanguage("th-TH"), () => {
+    assert.equal(homeSectionTitle("popular"), "ยอดนิยมตอนนี้");
+    assert.equal(homeSectionTitle("today"), "เซสชันของวันนี้");
+    assert.equal(homeSectionTitle("forYou"), "คัดมาเพื่อคุณ");
   });
 });

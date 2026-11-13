@@ -17,7 +17,7 @@ final class LiveBadgeView: UIView {
   private let label = UILabel()
   private var observers: [NSObjectProtocol] = []
 
-  init(title: String = "LIVE") {
+  init(title: String = String(localized: "LIVE", bundle: .app, locale: .app)) {
     super.init(frame: .zero)
     isUserInteractionEnabled = false
     backgroundColor = UIColor.white.withAlphaComponent(0.85)
@@ -48,7 +48,7 @@ final class LiveBadgeView: UIView {
     ])
 
     isAccessibilityElement = true
-    accessibilityLabel = "Live"
+    accessibilityLabel = String(localized: "Live", bundle: .app, locale: .app)
 
     for name in [UIApplication.willEnterForegroundNotification,
                  UIAccessibility.reduceMotionStatusDidChangeNotification] {

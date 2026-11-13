@@ -253,9 +253,7 @@ final class RevenueCatSubscriptionStore: SubscriptionStore {
         price: product.price,
         currency: currency
       ),
-      trialNote: trial.map {
-        SubscriptionPlanFormatting.trialNote(count: $0.count, unit: $0.unit)
-      },
+      trial: trial.map { SubscriptionPlanFormatting.Trial(count: $0.count, unit: $0.unit) },
       freeTrialDays: trial.flatMap {
         SubscriptionPlanFormatting.trialDays(count: $0.count, unit: $0.unit)
       }

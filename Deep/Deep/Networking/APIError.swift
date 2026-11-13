@@ -15,13 +15,23 @@ enum APIError: LocalizedError, Equatable {
   var errorDescription: String? {
     switch self {
     case .unauthorized:
-      return "Your session has ended. Please sign in again."
-    case let .http(_, _, message):
-      return message
+      return String(localized: "Your session has ended. Please sign in again.", bundle: .app, locale: .app)
+    case let .http(_, code, message):
+      // The server's message is English; its code is the contract. The codes
+      // a member meets on the signed-out screens are worded here, in the
+      // reading language, and anything else still says what the server said.
+      switch code {
+      case "invalid_credentials":
+        return String(localized: "Incorrect email or password", bundle: .app, locale: .app)
+      case "email_taken":
+        return String(localized: "Email already registered", bundle: .app, locale: .app)
+      default:
+        return message
+      }
     case .transport:
-      return "We couldn't reach DEEP just now. Check your connection and try again."
+      return String(localized: "We couldn't reach DEEP just now. Check your connection and try again.", bundle: .app, locale: .app)
     case .decoding:
-      return "Something looked off in the response. Please try again."
+      return String(localized: "Something looked off in the response. Please try again.", bundle: .app, locale: .app)
     }
   }
 }

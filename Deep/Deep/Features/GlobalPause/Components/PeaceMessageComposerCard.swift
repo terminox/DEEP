@@ -24,14 +24,15 @@ struct PeaceMessageComposerCard: View {
   static let limit = 280
 
   private var name: String {
-    accountStore.account?.displayName ?? "Friend"
+    accountStore.account?.displayName ?? String(localized: "Friend", bundle: .app, locale: .app)
   }
 
   /// The same country the post itself carries — read from one source so the
-  /// preview can never disagree with what gets stored.
+  /// preview can never disagree with what gets stored. The device's region
+  /// says where the member is; the picked language says how to name it.
   private var place: String {
     guard let region = Locale.current.region?.identifier.uppercased() else { return "" }
-    return Locale.current.localizedString(forRegionCode: region) ?? region
+    return Locale.app.localizedString(forRegionCode: region) ?? region
   }
 
   var body: some View {

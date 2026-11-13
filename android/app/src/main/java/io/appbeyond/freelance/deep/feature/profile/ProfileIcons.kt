@@ -193,6 +193,21 @@ object ProfileIcons {
     lineTo(14.5f, 18f)
   }
 
+  /** Blocked members — iOS's `person.slash`. */
+  val PersonSlash: ImageVector = lineIcon("ProfilePersonSlash") {
+    circle(12f, 8f, 3.5f)
+    moveTo(5f, 20f)
+    curveTo(5f, 16.4f, 8.1f, 14f, 12f, 14f)
+    curveTo(15.9f, 14f, 19f, 16.4f, 19f, 20f)
+    moveTo(4f, 4f); lineTo(20f, 20f)
+  }
+
+  /** Contact us — iOS's `envelope`. */
+  val Envelope: ImageVector = lineIcon("ProfileEnvelope") {
+    moveTo(4.5f, 6f); lineTo(19.5f, 6f); lineTo(19.5f, 18f); lineTo(4.5f, 18f); close()
+    moveTo(4.5f, 6.5f); lineTo(12f, 12.5f); lineTo(19.5f, 6.5f)
+  }
+
   private fun PathBuilder.circle(cx: Float, cy: Float, r: Float) {
     val k = r * CIRCLE_K
     moveTo(cx, cy - r)

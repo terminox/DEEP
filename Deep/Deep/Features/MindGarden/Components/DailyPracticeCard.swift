@@ -10,20 +10,28 @@ struct DailyPracticeCard: View {
   var plantName: String? = nil
   var action: () -> Void = {}
 
+  // `Text(String)` renders verbatim, so the copy resolves in the reading
+  // language here.
   private var headline: String {
-    state.minutesRemaining == 0 ? "Today’s goal complete" : "Tend your garden"
+    state.minutesRemaining == 0
+      ? String(localized: "Today’s goal complete", bundle: .app, locale: .app)
+      : String(localized: "Tend your garden", bundle: .app, locale: .app)
   }
 
   private var subtitle: String {
-    state.minutesRemaining == 0
-      ? "Return tomorrow for new growth"
-      : "Each session feeds your \(plantName?.lowercased() ?? "garden")"
+    guard state.minutesRemaining > 0 else {
+      return String(localized: "Return tomorrow for new growth", bundle: .app, locale: .app)
+    }
+    let fed = plantName?.lowercased() ?? String(localized: "garden", bundle: .app, locale: .app)
+    return String(localized: "Each session feeds your \(fed)", bundle: .app, locale: .app)
   }
 
   private var accessibilitySummary: String {
-    state.minutesRemaining == 0
-      ? "Today’s goal complete, \(state.minutesToday) of \(state.dailyGoalMinutes) minutes"
-      : "Begin today’s practice, \(state.minutesToday) of \(state.dailyGoalMinutes) minutes complete"
+    let today = state.minutesToday
+    let goal = state.dailyGoalMinutes
+    return state.minutesRemaining == 0
+      ? String(localized: "Today’s goal complete, \(today) of \(goal) minutes", bundle: .app, locale: .app)
+      : String(localized: "Begin today’s practice, \(today) of \(goal) minutes complete", bundle: .app, locale: .app)
   }
 
   var body: some View {
