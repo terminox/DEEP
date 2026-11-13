@@ -164,6 +164,48 @@ struct ModerationStoreTests {
     #expect(store.unblockingIDs.isEmpty)
   }
 
+  @Test("Unblocking shows the block's messages again, but a reported message stays hidden")
+  func unblockRestoresBlockHidesOnly() async throws {
+    let (store, _) = Self.makeStore()
+    let feed = FixturePauseEventRepository.sampleMessages
+
+    try await store.report(Self.camille, reason: .spam)
+    try await store.block(Self.haruki)
+    #expect(store.hiddenMessageIDs == [Self.haruki.id, Self.camille.id])
+    #expect(!store.visible(feed).contains(Self.haruki))
+
+    let block = try #require(store.blockedMembers.first)
+    try await store.unblock(block)
+
+    #expect(store.visible(feed).contains(Self.haruki))
+    #expect(!store.visible(feed).contains(Self.camille))
+    #expect(store.hiddenMessageIDs == [Self.camille.id])
+  }
+
+  @Test("A message both reported and blocked stays hidden after unblocking")
+  func unblockKeepsReportedAndBlocked() async throws {
+    let (store, _) = Self.makeStore()
+
+    try await store.report(Self.haruki, reason: .harassment)
+    try await store.block(Self.haruki)
+    try await store.unblock(try #require(store.blockedMembers.first))
+
+    #expect(store.hiddenMessageIDs == [Self.haruki.id])
+  }
+
+  @Test("A refused unblock keeps the block's messages hidden")
+  func refusedUnblockKeepsHides() async throws {
+    let (store, remote) = Self.makeStore()
+    try await store.block(Self.haruki)
+    let block = try #require(store.blockedMembers.first)
+    remote.failsUnblock = true
+
+    await #expect(throws: MockModerationRemote.Failure.self) {
+      try await store.unblock(block)
+    }
+    #expect(store.hiddenMessageIDs == [Self.haruki.id])
+  }
+
   @Test("A refused unblock puts the row back where it was and throws")
   func refusedUnblockRestoresPosition() async {
     let (store, remote) = Self.makeStore(blocks: BlockedMember.samples)

@@ -411,6 +411,17 @@
         }
       }
     },
+    "Please choose a different name." : {
+      "comment" : "Sign-up error when the server's content filter turns the display name away.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โปรดเลือกชื่ออื่น"
+          }
+        }
+      }
+    },
     "Privacy Policy" : {
       "comment" : "Settings row linking the Privacy Policy.",
       "localizations" : {
@@ -622,6 +633,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "คุณจะไม่เห็นข้อความแห่งสันติของเขาอีก"
+          }
+        }
+      }
+    },
+    "Your account can't share peace messages right now." : {
+      "comment" : "Inline note when a suspended account tries to post a peace message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บัญชีของคุณยังแชร์ข้อความแห่งสันติไม่ได้ในขณะนี้"
           }
         }
       }

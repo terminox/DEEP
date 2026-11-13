@@ -189,6 +189,15 @@ struct GlobalPauseReflectionView: View {
         locale: .app,
         comment: "Inline note when the content filter refuses a peace message."
       )
+    case .http(403, "account_suspended", _):
+      // Not a rejection of the words: editing won't help, so the member
+      // simply continues without sending.
+      String(
+        localized: "Your account can't share peace messages right now.",
+        bundle: .app,
+        locale: .app,
+        comment: "Inline note when a suspended account tries to post a peace message."
+      )
     default:
       "Your message couldn't be sent just now."
     }

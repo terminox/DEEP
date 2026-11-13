@@ -17,6 +17,8 @@ struct SignUpView: View {
   @State private var errorMessage: String?
   @State private var isSubmitting = false
 
+  private static let nameLimit = 40
+
   private var canSubmit: Bool {
     !name.trimmingCharacters(in: .whitespaces).isEmpty
       && !email.isEmpty
@@ -54,6 +56,15 @@ struct SignUpView: View {
               placeholder: "Your name", text: $name, icon: "person",
               textContentType: .name, autocapitalization: .words
             )
+            .onChange(of: name) { _, updated in
+              // The server caps display names at 40 UTF-16 units (JavaScript's
+              // length), which Thai tone marks reach before 40 characters do.
+              // Drop whole characters until it fits.
+              guard updated.utf16.count > Self.nameLimit else { return }
+              var capped = Substring(updated)
+              while capped.utf16.count > Self.nameLimit { capped = capped.dropLast() }
+              name = String(capped)
+            }
             AuthField(
               placeholder: "Email", text: $email, icon: "envelope",
               isValid: emailLooksValid ? true : nil,
@@ -161,7 +172,15 @@ struct SignUpView: View {
   }
 
   private func message(for error: Error) -> String {
-    (error as? LocalizedError)?.errorDescription
+    if case APIError.http(422, "display_name_rejected", _) = error {
+      return String(
+        localized: "Please choose a different name.",
+        bundle: .app,
+        locale: .app,
+        comment: "Sign-up error when the server's content filter turns the display name away."
+      )
+    }
+    return (error as? LocalizedError)?.errorDescription
       ?? "We couldn't create your space just now. Please try again."
   }
 }
