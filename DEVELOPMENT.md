@@ -155,7 +155,7 @@ in the error message, instead of installing an app whose every request times out
 | App loads, but audio and artwork 404 | `PUBLIC_BASE_URL` is set in `deep-api/.env` — likely a `.env` predating this setup. `./scripts/dev-setup.sh --fix-env`, then restart the API. |
 | Artwork 404s only when the API runs from a worktree | `deep-api/media/garden` is a real directory instead of a symlink to the main checkout. `./scripts/dev-setup.sh`, then restart the API. |
 | Onboarding offers "Try again" instead of Mind Trees | `GET /onboarding/config` failed three times. The API is down, or the Dev host is unreachable — check `curl $(…)/health`. The flow never falls back to bundled trees. |
-| Device build fails to sign | The Dev bundle id is `io.appbeyond.freelance.Deep.dev` and needs its own profile with Sign In with Apple. Build once from the Xcode UI, which auto-creates it; CLI `xcodebuild` cannot. |
+| Device build fails to sign | The Dev bundle id is `space.deeppeace.app.dev` and needs its own development profile on the client's team. Build once from the Xcode UI, which auto-creates it; CLI `xcodebuild` cannot. |
 | `npm run dev` exits immediately | No `deep-api/.env`. Run `./scripts/dev-setup.sh`. |
 | Server starts but every DB call fails | Postgres is not up — `npm run db:up`. |
 | Port 8080 already in use | A server from another worktree. `lsof -nP -iTCP:8080 -sTCP:LISTEN` |
@@ -304,3 +304,30 @@ adb shell am start -n io.appbeyond.freelance.deep.dev/io.appbeyond.freelance.dee
 It only takes on a cold start (`adb shell am force-stop io.appbeyond.freelance.deep.dev`
 first), and a release build ignores it. `POST /dev/premium` above flips the
 server's half either way; the app hears it on its next foreground.
+
+## Shipping to the App Store
+
+DEEP ships under the client's Apple team as `space.deeppeace.app` (Dev, Staging and Pilot add
+`.dev`, `.staging`, `.pilot`). The **AppStore** configuration is Prod plus a version stamp and
+manual distribution signing — `Deep/Config/AppStore.xcconfig`, archived by the `Deep AppStore`
+scheme.
+
+```bash
+export DEEP_ASC_KEY_ID=…  DEEP_ASC_ISSUER_ID=…   # the client's Team API key
+./scripts/archive-app-store.sh --upload          # stamp, archive, export, verify, upload
+```
+
+The script reads the team, bundle id and profile from the build settings, so changing any of
+them is an xcconfig edit. It refuses an `.ipa` Apple would reject after the upload: a missing
+top-level `CFBundleIconName`, a bundled `Deep.storekit`, a RevenueCat `test_` key or no
+`appl_` key, the Dev-only local-network permission, a development signature. Commit the
+stamped build number afterwards.
+
+No Apple ID is signed into Xcode here, so the distribution certificate and the `DEEP App
+Store` profile are minted through the App Store Connect API with the same key, never by
+Xcode. `altool --upload-app` has to run outside the Bash sandbox ("Defaults.properties
+couldn't be opened"); `--validate-app` works inside it.
+
+Keep `deep:revenuecatAcceptSandbox` **true** in production: App Review buys with sandbox
+accounts on every submission, so refusing sandbox purchases would show the reviewer a paywall
+that never unlocks.

@@ -2,7 +2,7 @@
 #
 # Builds the release-signed DEEP Android APK, and the App Bundle Play will want,
 # then checks both against what a store would reject after upload. The Android
-# twin of archive-central-flight.sh.
+# twin of archive-app-store.sh.
 #
 # The APK is what the client installs directly while there is no Play listing.
 # The .aab is kept beside it for the day there is one.

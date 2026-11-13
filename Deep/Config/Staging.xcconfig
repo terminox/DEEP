@@ -12,7 +12,7 @@ APP_DISPLAY_NAME = DEEP Staging
 // Cloud Run service (and therefore its database). APP_ENV stays `staging` so the
 // app still knows which build it is: AppConfig maps it through
 // `AppEnvironment(rawValue:) ?? .dev`, and overriding it here would silently
-// downgrade the build — see CentralFlight.xcconfig.
+// downgrade the build — see AppStore.xcconfig.
 API_BASE_URL = https:/$()/deep-api-696592457470.asia-southeast1.run.app
 
 // ---- Release build profile ----
@@ -21,5 +21,5 @@ ENABLE_NS_ASSERTIONS = NO
 MTL_ENABLE_DEBUG_INFO = NO
 SWIFT_COMPILATION_MODE = wholemodule
 SWIFT_OPTIMIZATION_LEVEL = -O
-// EXPERIMENTS: Settings shows the Experiments section (Dev, Staging, CentralFlight).
+// EXPERIMENTS: Settings shows the Experiments section (Dev, Staging).
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = STAGING EXPERIMENTS $(inherited)

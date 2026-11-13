@@ -26,7 +26,7 @@ enum class AppEnvironment(val rawValue: String) {
      * Resolves a raw `APP_ENV` value, **throwing** on anything unrecognised.
      *
      * iOS falls back to `.dev` here, and both Staging.xcconfig and
-     * CentralFlight.xcconfig carry warnings that a typo therefore silently
+     * AppStore.xcconfig carry warnings that a typo therefore silently
      * downgrades a shipping build to the dev environment — pointing a release at
      * a development server with no sign anything is wrong. A build failure is the
      * better outcome, and on Android the value is a compile-time constant, so

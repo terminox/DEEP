@@ -29,8 +29,8 @@ struct LegalLinks: Equatable, Sendable {
   /// The values this build currently ships, and the environment default —
   /// unlike a fixture, a missed injection must still link somewhere real.
   static let placeholder = LegalLinks(
-    terms: URL(string: "https://deep.app/terms")!,
-    privacy: URL(string: "https://deep.app/privacy")!
+    terms: URL(string: "https://deeppeace.space/terms")!,
+    privacy: URL(string: "https://deeppeace.space/privacy")!
   )
 }
 

@@ -17,7 +17,10 @@ enum PaywallSource: String, Identifiable, Hashable {
 
   var id: String { rawValue }
 
-  var subhead: LocalizedStringKey {
+  /// `offersTrial` is whether a plan on sale gives this member the seven-day
+  /// free trial the onboarding line names — eligibility included — so that door
+  /// never promises a trial the store won't honour.
+  func subhead(offersTrial: Bool) -> LocalizedStringKey {
     switch self {
     case .settings:
       return "Every sound, every session — yours whenever you need them."
@@ -26,7 +29,9 @@ enum PaywallSource: String, Identifiable, Hashable {
     case .lockedPlant:
       return "This plant is part of DEEP Premium, along with every sound in the library."
     case .onboarding:
-      return "Try DEEP Premium free for seven days. Nothing to decide today."
+      return offersTrial
+        ? "Try DEEP Premium free for seven days. Nothing to decide today."
+        : "Every sound, every session — yours whenever you need them."
     }
   }
 }
