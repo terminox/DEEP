@@ -28,12 +28,12 @@ The English and Thai descriptions start from the client-approved Google Play lis
 
 These are not code. Each one is a reason App Review would reject the submission or the client would object.
 
-- [ ] **Store name is free.** "DEEP" alone is probably taken. If App Store Connect refuses it, decide a fallback with the client (≤30 characters, e.g. "DEEP: Pause with the World").
+- [x] **Store name:** the app record is "DEEP PEACE: Mental Wellness" (app 6834457133).
 - [ ] **Legal pages final.** `deeppeace.space/terms` and `/privacy` still show "Draft for review" and the `[Client legal name]`, `[Client registered address]` and `[N]` placeholders (`deep-web/src/legal/document.ts`). Fill them in, set `isDraft: false`, and redeploy.
-- [ ] **Copyright holder:** replace `[Client legal name]` in `metadata/copyright.txt`.
+- [x] **Copyright holder:** DEEP PEACE COMPANY LIMITED, the name on the client's Apple team.
 - [ ] **Exclusive plants exist.** The paywall and the description both promise "exclusive plants for your Mind Garden", but production has **no** premium plant today (all four are free). Mark at least one finished plant as premium in the admin before review, or remove that promise from the paywall and the description.
 - [ ] **Review contact:** the client's name, phone and email in App Review Information.
 - [ ] **Paid Applications agreement** active (Business ▸ Agreements), or the subscriptions won't load for the reviewer.
 - [ ] **Both subscriptions attached to the version** (see `subscriptions.md`).
-- [ ] **Production backend** carries Report/Block and the RevenueCat webhook (PR #80 and the deploy that follows it).
-- [ ] **RevenueCat** has the In-App Purchase key, or a sandbox purchase never unlocks anything (issue #53).
+- [x] **Production backend** carries Report/Block and the RevenueCat webhook (deployed `api:58e075a`).
+- [x] **RevenueCat** has the In-App Purchase key and the App Store Connect key; both validate.

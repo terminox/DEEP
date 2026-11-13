@@ -13,7 +13,7 @@
 MARKETING_VERSION = 1.0.0
 // Unix epoch seconds, stamped by scripts/archive-app-store.sh — always ahead of the last
 // upload, never repeats.
-CURRENT_PROJECT_VERSION = 1794078494
+CURRENT_PROJECT_VERSION = 1794586575
 
 // ---- Signing ----
 // Manual signing with a profile minted through the App Store Connect API (no Apple ID is
