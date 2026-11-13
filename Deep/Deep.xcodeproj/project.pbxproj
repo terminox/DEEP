@@ -28,7 +28,7 @@
 		DEE9CF0000000000000000B3 /* Pilot.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Pilot.xcconfig; sourceTree = "<group>"; };
 		DEE9CF0000000000000000B4 /* Prod.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Prod.xcconfig; sourceTree = "<group>"; };
 		DEE9CF0000000000000000B5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		DEE9CF0000000000000000B6 /* CentralFlight.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = CentralFlight.xcconfig; sourceTree = "<group>"; };
+		DEE9CF0000000000000000B6 /* AppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppStore.xcconfig; sourceTree = "<group>"; };
 		DEE9CF0000000000000001A1 /* DeepTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DeepTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -91,7 +91,7 @@
 				DEE9CF0000000000000000B2 /* Staging.xcconfig */,
 				DEE9CF0000000000000000B3 /* Pilot.xcconfig */,
 				DEE9CF0000000000000000B4 /* Prod.xcconfig */,
-				DEE9CF0000000000000000B6 /* CentralFlight.xcconfig */,
+				DEE9CF0000000000000000B6 /* AppStore.xcconfig */,
 				DEE9CF0000000000000000B5 /* Info.plist */,
 			);
 			path = Config;
@@ -263,7 +263,7 @@
 				DEVELOPMENT_TEAM = D45XUJ5XY2;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				PRODUCT_BUNDLE_IDENTIFIER = io.appbeyond.freelance.Deep.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -279,7 +279,7 @@
 				DEVELOPMENT_TEAM = D45XUJ5XY2;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				PRODUCT_BUNDLE_IDENTIFIER = io.appbeyond.freelance.Deep.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -295,7 +295,7 @@
 				DEVELOPMENT_TEAM = D45XUJ5XY2;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				PRODUCT_BUNDLE_IDENTIFIER = io.appbeyond.freelance.Deep.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -311,7 +311,7 @@
 				DEVELOPMENT_TEAM = D45XUJ5XY2;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				PRODUCT_BUNDLE_IDENTIFIER = io.appbeyond.freelance.Deep.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -319,7 +319,7 @@
 			};
 			name = Prod;
 		};
-		DEE9CF0000000000000001B5 /* CentralFlight */ = {
+		DEE9CF0000000000000001B5 /* AppStore */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -327,13 +327,13 @@
 				DEVELOPMENT_TEAM = D45XUJ5XY2;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				PRODUCT_BUNDLE_IDENTIFIER = io.appbeyond.freelance.Deep.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Deep.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Deep";
 			};
-			name = CentralFlight;
+			name = AppStore;
 		};
 		DEE9CF00000000000000C001 /* Dev */ = {
 			isa = XCBuildConfiguration;
@@ -367,13 +367,13 @@
 			};
 			name = Prod;
 		};
-		DEE9CF00000000000000C005 /* CentralFlight */ = {
+		DEE9CF00000000000000C005 /* AppStore */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DEE9CF0000000000000000B6 /* CentralFlight.xcconfig */;
+			baseConfigurationReference = DEE9CF0000000000000000B6 /* AppStore.xcconfig */;
 			buildSettings = {
 				DEVELOPMENT_TEAM = D45XUJ5XY2;
 			};
-			name = CentralFlight;
+			name = AppStore;
 		};
 		DEE9CF00000000000000D001 /* Dev */ = {
 			isa = XCBuildConfiguration;
@@ -427,9 +427,9 @@
 			};
 			name = Prod;
 		};
-		DEE9CF00000000000000D005 /* CentralFlight */ = {
+		DEE9CF00000000000000D005 /* AppStore */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DEE9CF0000000000000000B6 /* CentralFlight.xcconfig */;
+			baseConfigurationReference = DEE9CF0000000000000000B6 /* AppStore.xcconfig */;
 			buildSettings = {
 				INFOPLIST_KEY_CFBundleDisplayName = DEEP;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -438,7 +438,7 @@
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
-			name = CentralFlight;
+			name = AppStore;
 		};
 /* End XCBuildConfiguration section */
 
@@ -450,7 +450,7 @@
 				DEE9CF00000000000000C002 /* Staging */,
 				DEE9CF00000000000000C003 /* Pilot */,
 				DEE9CF00000000000000C004 /* Prod */,
-				DEE9CF00000000000000C005 /* CentralFlight */,
+				DEE9CF00000000000000C005 /* AppStore */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Dev;
@@ -462,7 +462,7 @@
 				DEE9CF00000000000000D002 /* Staging */,
 				DEE9CF00000000000000D003 /* Pilot */,
 				DEE9CF00000000000000D004 /* Prod */,
-				DEE9CF00000000000000D005 /* CentralFlight */,
+				DEE9CF00000000000000D005 /* AppStore */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Dev;
@@ -474,7 +474,7 @@
 				DEE9CF0000000000000001B2 /* Staging */,
 				DEE9CF0000000000000001B3 /* Pilot */,
 				DEE9CF0000000000000001B4 /* Prod */,
-				DEE9CF0000000000000001B5 /* CentralFlight */,
+				DEE9CF0000000000000001B5 /* AppStore */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Dev;

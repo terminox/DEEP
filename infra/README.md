@@ -48,9 +48,10 @@ pulumi up
 ```
 
 Plain (non-secret) config, already defaulted: `deep:revenuecatEntitlementId` (`deep_premium`) and
-`deep:revenuecatAcceptSandbox` (`true` while shipping through TestFlight, since TestFlight
-purchases are sandbox). **At public launch** set `pulumi config set deep:revenuecatAcceptSandbox
-false`, `pulumi up`, and revoke the TestFlight grants in one query
+`deep:revenuecatAcceptSandbox` (`true`). **Keep it true after launch.** App Review buys with
+sandbox accounts on every submission, so `false` would leave the reviewer on a paywall that
+never unlocks and get each update rejected. TestFlight purchases are sandbox too; if those
+grants ever need clearing, every row stores its environment
 (`UPDATE subscriptions SET "revokedAt" = now() WHERE environment = 'SANDBOX'`).
 
 ## Deploy

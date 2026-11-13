@@ -9,7 +9,7 @@ import Security
 final class KeychainTokenStore: Sendable {
   private let service: String
 
-  init(service: String = (Bundle.main.bundleIdentifier ?? "io.appbeyond.freelance.Deep") + ".auth") {
+  init(service: String = (Bundle.main.bundleIdentifier ?? "space.deeppeace.app") + ".auth") {
     self.service = service
   }
 

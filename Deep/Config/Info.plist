@@ -30,6 +30,7 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+#if DEEP_LOCAL_DEV_SERVER
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -37,6 +38,7 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>DEEP connects to a development server running on your Mac.</string>
+#endif
 	<key>PrivacyURL</key>
 	<string>$(PRIVACY_URL)</string>
 	<key>RevenueCatAPIKey</key>

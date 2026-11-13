@@ -12,7 +12,7 @@ APP_DISPLAY_NAME = DEEP Pilot
 // Cloud Run service (and therefore its database). APP_ENV stays `pilot` so the
 // app still knows which build it is: AppConfig maps it through
 // `AppEnvironment(rawValue:) ?? .dev`, and overriding it here would silently
-// downgrade the build — see CentralFlight.xcconfig.
+// downgrade the build — see AppStore.xcconfig.
 API_BASE_URL = https:/$()/deep-api-696592457470.asia-southeast1.run.app
 
 // ---- Release build profile ----
