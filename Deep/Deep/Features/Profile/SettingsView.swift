@@ -91,11 +91,8 @@ struct SettingsView: View {
       Button("Delete", role: .destructive, action: deleteAccount)
       Button("Cancel", role: .cancel) {}
     } message: {
-      Text(
-        "This permanently erases your account and everything you've shared. "
-        + "If you have a DEEP Premium subscription, cancel it separately in your "
-        + "App Store settings — deleting your account doesn't cancel billing."
-      )
+      // One literal, so it stays a localized key — `+` would make it a plain String.
+      Text("This permanently erases your account and everything you've shared. If you have a DEEP Premium subscription, cancel it separately in your App Store settings — deleting your account doesn't cancel billing.")
     }
     .alert("Something went wrong", isPresented: $deleteFailed) {
       Button("OK", role: .cancel) {}

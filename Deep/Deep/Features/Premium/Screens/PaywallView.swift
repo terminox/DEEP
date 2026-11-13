@@ -202,7 +202,7 @@ struct PaywallView: View {
     switch stage {
     case .welcoming: return "Everything is open now."
     case .member: return memberSubhead
-    default: return source.subhead
+    default: return source.subhead(offersTrial: subscriptionStore.plans.contains { $0.freeTrialDays != nil })
     }
   }
 

@@ -3939,6 +3939,16 @@
           }
         }
       }
+    },
+    "This permanently erases your account and everything you've shared. If you have a DEEP Premium subscription, cancel it separately in your App Store settings — deleting your account doesn't cancel billing." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การดำเนินการนี้จะลบบัญชีของคุณและทุกสิ่งที่คุณแบ่งปันไว้อย่างถาวร หากคุณสมัคร DEEP Premium ไว้ โปรดยกเลิกแยกต่างหากในการตั้งค่า App Store เพราะการลบบัญชีไม่ได้ยกเลิกการเรียกเก็บเงิน"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
