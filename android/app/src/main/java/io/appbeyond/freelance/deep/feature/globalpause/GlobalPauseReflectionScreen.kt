@@ -69,6 +69,11 @@ import kotlinx.coroutines.launch
  * with one deliberate difference: the button reads "Continue" throughout and
  * never relabels itself to "Send & continue" — one action title per screen.
  *
+ * A message the server's filter refuses (422 `message_rejected`) keeps its
+ * text and asks the member to keep it kind. Editing it re-arms the send;
+ * tapping on without an edit leaves without posting — the same "never trap
+ * them" rule every other refusal follows. iOS behaves the same.
+ *
  * @param isPreparing the ending is settling tonight's award: the tap rests
  *   rather than promise a number that hasn't landed.
  * @param post posts the message with its tag (the server also keeps the tag as
@@ -96,10 +101,13 @@ fun GlobalPauseReflectionScreen(
   // Once a refusal has been shown, the next tap leaves rather than trapping
   // the member on a message that will not send.
   var mayContinueUnsent by remember { mutableStateOf(false) }
+  // The text the filter refused; an edit away from it tries again.
+  var rejectedText by remember { mutableStateOf<String?>(null) }
 
   val noteSignedOut = stringResource(R.string.pause_reflection_note_signed_out)
   val noteLimit = stringResource(R.string.pause_reflection_note_limit)
   val noteFailed = stringResource(R.string.pause_reflection_note_failed)
+  val noteRejected = stringResource(R.string.pause_reflection_note_rejected)
 
   fun commit() {
     if (isSending || isPreparing) return
@@ -122,8 +130,10 @@ fun GlobalPauseReflectionScreen(
         note = when {
           failure is DeepApiException.Unauthorized -> noteSignedOut
           failure is DeepApiException.Http && failure.code == "message_limit" -> noteLimit
+          failure is DeepApiException.Http && failure.code == "message_rejected" -> noteRejected
           else -> noteFailed
         }
+        rejectedText = trimmed.takeIf { failure is DeepApiException.Http && failure.code == "message_rejected" }
         mayContinueUnsent = true
       } finally {
         isSending = false
@@ -155,7 +165,13 @@ fun GlobalPauseReflectionScreen(
 
       PeaceMessageComposerCard(
         text = text,
-        onTextChange = { text = it },
+        onTextChange = {
+          text = it
+          if (rejectedText != null && it.trim() != rejectedText) {
+            rejectedText = null
+            mayContinueUnsent = false
+          }
+        },
         name = name,
         place = place,
         tagLabel = intentions.firstOrNull { it.key == tag }?.label,
