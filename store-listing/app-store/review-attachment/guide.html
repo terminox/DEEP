@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DEEP App Review Guide</title>
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  :root { --plum: #2B2140; --ink: #3A3050; --soft: #6E6488; --mist: #EFE8F6; --card: #FFFFFF; --accent: #8E72C8; --bg: #FBF8FD; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
+  body { font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.42; }
+  .page { width: 297mm; height: 210mm; padding: 12mm 15mm 10mm; page-break-after: always; display: flex; flex-direction: column; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+  .top { display: flex; justify-content: space-between; color: var(--soft); font-size: 8.5pt; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 5mm; }
+  h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; color: var(--plum); font-size: 23pt; margin: 0 0 2mm; }
+  .lead { color: var(--soft); font-size: 11pt; margin: 0 0 4mm; max-width: 235mm; }
+  .facts { display: flex; gap: 5mm; margin-bottom: 5mm; }
+  .fact { background: var(--card); border-radius: 4mm; padding: 3mm 4mm; flex: 1; }
+  .fact b { display: block; color: var(--plum); font-size: 9pt; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1mm; }
+  .fact p { margin: 0; font-size: 9.6pt; }
+  .shots { display: flex; gap: 6mm; justify-content: center; align-items: flex-start; flex: 1; }
+  .shot { display: flex; flex-direction: column; align-items: center; }
+  .shot img { border-radius: 5mm; display: block; }
+  .cap { margin-top: 2.5mm; font-size: 9pt; text-align: center; max-width: 54mm; color: var(--ink); }
+  .num { display: inline-block; width: 5.2mm; height: 5.2mm; line-height: 5.2mm; border-radius: 50%; background: var(--accent); color: #fff; font-size: 8pt; font-weight: 600; text-align: center; margin-right: 1.2mm; }
+  .h105 img { height: 104mm; }
+  .h96 img { height: 96mm; }
+  .cover { flex-direction: row; gap: 10mm; }
+  .cover .left { flex: 1; display: flex; flex-direction: column; }
+  .cover h1 { font-size: 30pt; }
+  .kv { background: var(--card); border-radius: 4mm; padding: 4mm 5mm; margin-bottom: 4mm; }
+  .kv b { color: var(--plum); }
+  .kv p { margin: 0 0 1.5mm; }
+  .kv p:last-child { margin: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 9.8pt; }
+  td { padding: 1mm 0; }
+  td:first-child { color: var(--soft); width: 32mm; }
+  ol.toc { margin: 0; padding-left: 5mm; }
+  ol.toc li { margin-bottom: 1mm; }
+  .cover .right img { height: 178mm; border-radius: 6mm; }
+  .note { margin-top: auto; color: var(--soft); font-size: 8.5pt; }
+</style>
+</head>
+<body>
+
+<!-- 1. Overview -->
+<section class="page cover">
+  <div class="left">
+    <div class="top"><span>DEEP · App Review guide · version 1.0.0</span><span>1 / 5</span></div>
+    <h1>DEEP</h1>
+    <p class="lead">Meditation, breathing and calm sound, in English and Thai. This guide shows where each reviewed feature lives. App Review Information carries a 90-second video of the same flows, including a live Global Pause.</p>
+    <div class="kv">
+      <p><b>Sign in.</b> Welcome screen → “Already have an account? Log in”.</p>
+      <p>User name <b>app-review@deeppeace.space</b>; the password is in Sign-In Information. A regular member account: onboarding finished, no subscription.</p>
+    </div>
+    <div class="kv">
+      <p><b>Where things are.</b> Tabs: Home, Sounds, Garden, Compassion, You. Settings is the gear at the top right of the You tab. Settings → Language switches English / Thai.</p>
+    </div>
+    <div class="kv">
+      <p><b>Global Pause is live 10 minutes a day.</b></p>
+      <table>
+        <tr><td>Bangkok</td><td>8:40 PM (lobby opens 8:30 PM)</td></tr>
+        <tr><td>UTC</td><td>13:40</td></tr>
+        <tr><td>Cupertino</td><td>5:40 AM</td></tr>
+      </table>
+    </div>
+    <div class="kv">
+      <p><b>In this guide</b></p>
+      <ol class="toc">
+        <li>DEEP Premium subscription</li>
+        <li>Global Pause</li>
+        <li>Peace messages: filter, Report, Block, moderation</li>
+        <li>Account deletion and Compassion hearts</li>
+      </ol>
+    </div>
+    <p class="note">Contact: support@deeppeace.space · Settings → Contact us</p>
+  </div>
+  <div class="right"><img src="img/01-home.jpg" alt="Home tab"></div>
+</section>
+
+<!-- 2. Premium -->
+<section class="page">
+  <div class="top"><span>DEEP · App Review guide</span><span>2 / 5</span></div>
+  <h1>DEEP Premium</h1>
+  <p class="lead">An auto-renewable subscription in the group “DEEP Premium”. It unlocks the sounds marked with a lock. Everything else in DEEP is free.</p>
+  <div class="facts">
+    <div class="fact"><b>Products</b><p>deep.pro.monthly ($9.99) and deep.pro.yearly ($59.99, 1-week free trial for new subscribers).</p></div>
+    <div class="fact"><b>Open the paywall</b><p>Sounds → Deep Music → BEAM → tap a locked track (e.g. “Little Garden”), or You → gear → Upgrade to DEEP Premium.</p></div>
+    <div class="fact"><b>After purchase</b><p>Locked sounds play straight away; purchases are verified on our server. Restore purchases is in Settings, and Manage subscription appears there once subscribed.</p></div>
+  </div>
+  <div class="shots h105">
+    <div class="shot"><img src="img/02-beam-locked.jpg" alt=""><div class="cap"><span class="num">1</span>BEAM: tracks 8–12 carry a lock</div></div>
+    <div class="shot"><img src="img/03-paywall.jpg" alt=""><div class="cap"><span class="num">2</span>Paywall: price, length, renewal terms, Terms and Privacy links</div></div>
+    <div class="shot"><img src="img/04-settings.jpg" alt=""><div class="cap"><span class="num">3</span>Settings → Membership: Upgrade and Restore purchases</div></div>
+  </div>
+</section>
+
+<!-- 3. Global Pause -->
+<section class="page">
+  <div class="top"><span>DEEP · App Review guide</span><span>3 / 5</span></div>
+  <h1>Global Pause</h1>
+  <p class="lead">A shared 10-minute meditation once a day at 8:40 PM Bangkok time (5:40 AM Cupertino). At other times the Lounge shows a countdown and the peace messages. The attached video shows a live session.</p>
+  <div class="facts">
+    <div class="fact"><b>Path</b><p>Home → Fuku’s Lounge card → Join now. The button appears only while the session is open.</p></div>
+    <div class="fact"><b>Location</b><p>The globe shows roughly where people join from. Our server estimates country or city from the connection’s IP address. The app never asks for device location.</p></div>
+    <div class="fact"><b>Afterwards</b><p>Members may leave a short peace message, which passes an English and Thai word filter before it is published.</p></div>
+  </div>
+  <div class="shots h105">
+    <div class="shot"><img src="img/05-lounge-live.jpg" alt=""><div class="cap"><span class="num">1</span>Fuku’s Lounge while live: Join now</div></div>
+    <div class="shot"><img src="img/06-live-globe.jpg" alt=""><div class="cap"><span class="num">2</span>The live session: people pausing around the world</div></div>
+    <div class="shot"><img src="img/07-reflection.jpg" alt=""><div class="cap"><span class="num">3</span>After the pause: leave a peace message</div></div>
+  </div>
+</section>
+
+<!-- 4. Safety -->
+<section class="page">
+  <div class="top"><span>DEEP · App Review guide</span><span>4 / 5</span></div>
+  <h1>Peace messages: Report, Block, moderation</h1>
+  <div class="facts">
+    <div class="fact"><b>Report</b><p>“•••” on any message → Report → Offensive, Harassment, Spam or Something else. It disappears for the reporter at once; after 3 reports it is hidden for everyone until reviewed.</p></div>
+    <div class="fact"><b>Block</b><p>“•••” → Block &lt;name&gt;. All of that member’s messages disappear. Settings → Blocked members lists them, with Unblock.</p></div>
+    <div class="fact"><b>Moderation</b><p>Word filter on posts and display names. Our team reviews reported messages in an admin queue within 24 hours, removes objectionable content and suspends members who break the Terms.</p></div>
+  </div>
+  <div class="shots h96">
+    <div class="shot"><img src="img/08-menu.jpg" alt=""><div class="cap"><span class="num">1</span>“•••” opens Report and Block</div></div>
+    <div class="shot"><img src="img/09-report-reasons.jpg" alt=""><div class="cap"><span class="num">2</span>Choose a reason</div></div>
+    <div class="shot"><img src="img/10-reported.jpg" alt=""><div class="cap"><span class="num">3</span>The message is gone; confirmation shown</div></div>
+    <div class="shot"><img src="img/11-block-confirm.jpg" alt=""><div class="cap"><span class="num">4</span>Block asks to confirm</div></div>
+    <div class="shot"><img src="img/12-blocked-members.jpg" alt=""><div class="cap"><span class="num">5</span>Settings → Blocked members, with Unblock</div></div>
+  </div>
+</section>
+
+<!-- 5. Account + Compassion -->
+<section class="page">
+  <div class="top"><span>DEEP · App Review guide</span><span>5 / 5</span></div>
+  <h1>Account deletion and Compassion</h1>
+  <div class="facts">
+    <div class="fact"><b>Delete account</b><p>You → gear → Delete account. It permanently deletes the account and its data, and reminds members that an App Store subscription must be cancelled separately.</p></div>
+    <div class="fact"><b>Compassion hearts</b><p>Earned by practicing, up to 30 a day, and sent to causes to show which ones members would like DEEP to support. Hearts cannot be bought, sold or exchanged for money; members never pay or donate in the app.</p></div>
+    <div class="fact"><b>Also</b><p>Background audio only keeps sounds playing on a locked screen. Notifications only if the member turns on Daily reminder. No ads, no tracking, no third-party sign-in. Not medical care.</p></div>
+  </div>
+  <div class="shots h105">
+    <div class="shot"><img src="img/13-settings-account.jpg" alt=""><div class="cap"><span class="num">1</span>Settings: Community and Account</div></div>
+    <div class="shot"><img src="img/14-delete-alert.jpg" alt=""><div class="cap"><span class="num">2</span>Delete account confirmation</div></div>
+    <div class="shot"><img src="img/15-compassion.jpg" alt=""><div class="cap"><span class="num">3</span>Compassion: hearts and the community pool</div></div>
+  </div>
+</section>
+
+</body>
+</html>
