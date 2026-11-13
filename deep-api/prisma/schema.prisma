@@ -24,18 +24,21 @@ enum TrackKind {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  email           String   @unique
+  id              String    @id @default(uuid())
+  email           String    @unique
   passwordHash    String
   displayName     String
-  role            Role     @default(USER)
+  role            Role      @default(USER)
   // Last-seen IANA device timezone (from the X-Device-Timezone header),
   // persisted opportunistically; the day-key fallback when the header is absent.
   timezone        String?
   // The plant currently receiving sunlight; lazily assigned on first award.
   selectedPlantId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  // Set by an admin: the member can no longer post peace messages, and the ones
+  // they already shared leave every public feed. Nothing else changes for them.
+  suspendedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   selectedPlant Plant? @relation("SelectedPlant", fields: [selectedPlantId], references: [id], onDelete: SetNull)
 
@@ -546,6 +549,10 @@ model PeaceMessageReport {
   reporterId String
   reason     PeaceMessageReportReason
   createdAt  DateTime                 @default(now())
+  // Set when an admin decides on the message (Publish or Hide). Only unreviewed
+  // reports count toward the hide threshold and the admin review queue, so a
+  // message an admin restored isn't re-hidden by the next single report.
+  reviewedAt DateTime?
 
   message  PeaceMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
   reporter User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
