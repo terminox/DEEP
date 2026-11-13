@@ -6,6 +6,16 @@ enum class SignUpProblem { MissingName, MalformedEmail, ShortPassword }
 object SignUpValidation {
   const val MIN_PASSWORD_LENGTH = 8
 
+  /** deep-api refuses a longer display name, so the field stops here. */
+  const val MAX_NAME_LENGTH = 40
+
+  /** [name] cut to [MAX_NAME_LENGTH] UTF-16 units, the server's measure, never splitting a surrogate pair. */
+  fun capName(name: String): String {
+    if (name.length <= MAX_NAME_LENGTH) return name
+    val cut = name.take(MAX_NAME_LENGTH)
+    return if (cut.last().isHighSurrogate()) cut.dropLast(1) else cut
+  }
+
   /** Button enabled: trimmed name, trimmed email and password all non-empty (and not submitting — the caller's job). */
   fun canSubmit(name: String, email: String, password: String): Boolean =
     name.trim().isNotEmpty() && email.trim().isNotEmpty() && password.isNotEmpty()

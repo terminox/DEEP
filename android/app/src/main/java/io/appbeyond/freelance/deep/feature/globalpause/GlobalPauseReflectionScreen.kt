@@ -72,7 +72,9 @@ import kotlinx.coroutines.launch
  * A message the server's filter refuses (422 `message_rejected`) keeps its
  * text and asks the member to keep it kind. Editing it re-arms the send;
  * tapping on without an edit leaves without posting — the same "never trap
- * them" rule every other refusal follows. iOS behaves the same.
+ * them" rule every other refusal follows. iOS behaves the same. A suspended
+ * account (403 `account_suspended`) gets its own note; no edit changes that,
+ * so the next tap simply leaves.
  *
  * @param isPreparing the ending is settling tonight's award: the tap rests
  *   rather than promise a number that hasn't landed.
@@ -108,6 +110,7 @@ fun GlobalPauseReflectionScreen(
   val noteLimit = stringResource(R.string.pause_reflection_note_limit)
   val noteFailed = stringResource(R.string.pause_reflection_note_failed)
   val noteRejected = stringResource(R.string.pause_reflection_note_rejected)
+  val noteSuspended = stringResource(R.string.pause_reflection_note_suspended)
 
   fun commit() {
     if (isSending || isPreparing) return
@@ -131,6 +134,7 @@ fun GlobalPauseReflectionScreen(
           failure is DeepApiException.Unauthorized -> noteSignedOut
           failure is DeepApiException.Http && failure.code == "message_limit" -> noteLimit
           failure is DeepApiException.Http && failure.code == "message_rejected" -> noteRejected
+          failure is DeepApiException.Http && failure.code == "account_suspended" -> noteSuspended
           else -> noteFailed
         }
         rejectedText = trimmed.takeIf { failure is DeepApiException.Http && failure.code == "message_rejected" }

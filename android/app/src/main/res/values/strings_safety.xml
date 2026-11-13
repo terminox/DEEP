@@ -28,6 +28,8 @@
 
   <!-- The reflection composer, when the server's filter refuses a message (422 message_rejected) -->
   <string name="pause_reflection_note_rejected">This message can\'t be shared. Please keep it kind.</string>
+  <!-- …and when the member's account is suspended (403 account_suspended) -->
+  <string name="pause_reflection_note_suspended">Your account can\'t share peace messages right now.</string>
 
   <!-- Settings -->
   <string name="settings_section_community">Community</string>

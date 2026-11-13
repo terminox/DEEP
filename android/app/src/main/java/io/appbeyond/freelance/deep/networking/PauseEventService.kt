@@ -46,7 +46,8 @@ interface PauseEventService {
   ): PeaceMessagesResponse
 
   /**
-   * 403 `message_limit` past three a day; 401 signed out; 422
+   * 403 `message_limit` past three a day; 403 `account_suspended` for a
+   * suspended account; 401 signed out; 422
    * `message_rejected` when the text trips the server's content filter.
    */
   @POST("pause/messages")

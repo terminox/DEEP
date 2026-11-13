@@ -28,6 +28,8 @@
 
   <!-- The reflection composer, when the server's filter refuses a message (422 message_rejected) -->
   <string name="pause_reflection_note_rejected">ข้อความนี้แชร์ไม่ได้ โปรดใช้ถ้อยคำที่อ่อนโยน</string>
+  <!-- …and when the member's account is suspended (403 account_suspended) -->
+  <string name="pause_reflection_note_suspended">บัญชีของคุณยังแชร์ข้อความแห่งสันติไม่ได้ในขณะนี้</string>
 
   <!-- Settings -->
   <string name="settings_section_community">ชุมชน</string>
