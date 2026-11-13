@@ -117,6 +117,9 @@ sealed interface DeepRoute {
   /** The daily reminder, pushed from Settings — iOS's `.dailyReminder`. */
   data object DailyReminder : DeepRoute
 
+  /** Who the member has blocked, pushed from Settings — iOS's `.blockedMembers`. */
+  data object BlockedMembers : DeepRoute
+
   /**
    * A cause in full, on the Compassion tab's stack. **Parked**, as iOS parks
    * `openCategory`: nothing pushes it while giving happens on the cause cards.
@@ -237,6 +240,8 @@ data class PreferenceActions(
  *   cause's detail; [compassionCauseContent] draws that detail.
  * @param fukuLoungeContent Fuku's Lounge, pushed on Home's stack, handed the
  *   way into the live session ([onOpenGlobalPause]) and back.
+ * @param blockedMembersContent Settings → Blocked members, handed the way
+ *   back. A slot, so the shell carries none of its networking.
  * @param onBeginDeepSession Begin on a session threshold, with the practice at
  *   the chosen length: `AppRoot` presents it over the whole shell.
  * @param deepSessionRunning true while that practice covers the shell — the
@@ -268,6 +273,7 @@ fun MainShellCoordinator(
   compassionCauseContent: @Composable (causeId: String, onBack: () -> Unit) -> Unit = { _, _ -> },
   onOpenGlobalPause: () -> Unit = {},
   fukuLoungeContent: @Composable (onJoin: () -> Unit, onBack: () -> Unit) -> Unit = { _, _ -> },
+  blockedMembersContent: @Composable (onBack: () -> Unit) -> Unit = {},
   miniPlayerSuppressed: Boolean = false,
 ) {
   val reminderState by reminderStore.state.collectAsStateWithLifecycle()
@@ -488,6 +494,7 @@ fun MainShellCoordinator(
                       resetAccountState = resetAccountState,
                       onOpenLanguage = { push(DeepTab.You, DeepRoute.Language) },
                       onOpenReminder = { push(DeepTab.You, DeepRoute.DailyReminder) },
+                      onOpenBlockedMembers = { push(DeepTab.You, DeepRoute.BlockedMembers) },
                       onBack = { pop(DeepTab.You) },
                       onUpgrade = { openPaywall(DeepTab.You, PaywallSource.Settings) },
                     )
@@ -505,6 +512,8 @@ fun MainShellCoordinator(
                       disable = preferences.disableReminder,
                       onBack = { pop(DeepTab.You) },
                     )
+
+                    DeepRoute.BlockedMembers -> blockedMembersContent { pop(DeepTab.You) }
 
                     is DeepRoute.CompassionCause -> compassionCauseContent(route.causeId) { pop(tab) }
 
@@ -695,6 +704,7 @@ private fun DeepRoute.savedKey(): String? = when (this) {
   DeepRoute.Settings -> "settings"
   DeepRoute.Language -> "language"
   DeepRoute.DailyReminder -> "reminder"
+  DeepRoute.BlockedMembers -> "blocked"
   DeepRoute.FukuLounge -> "lounge"
   is DeepRoute.CompassionCause -> CAUSE_PREFIX + causeId
   is DeepRoute.SessionThreshold -> SESSION_PREFIX + session.id
@@ -707,6 +717,7 @@ private fun routeOf(key: String): DeepRoute? = when {
   key == "settings" -> DeepRoute.Settings
   key == "language" -> DeepRoute.Language
   key == "reminder" -> DeepRoute.DailyReminder
+  key == "blocked" -> DeepRoute.BlockedMembers
   key == "lounge" -> DeepRoute.FukuLounge
   key.startsWith(CAUSE_PREFIX) -> DeepRoute.CompassionCause(key.removePrefix(CAUSE_PREFIX))
   key.startsWith(PAYWALL_PREFIX) ->

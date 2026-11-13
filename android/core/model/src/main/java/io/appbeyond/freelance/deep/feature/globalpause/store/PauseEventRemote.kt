@@ -1,8 +1,10 @@
 package io.appbeyond.freelance.deep.feature.globalpause.store
 
+import io.appbeyond.freelance.deep.feature.globalpause.model.BlockedMember
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseJoinPoint
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseLiveSnapshot
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseSchedule
+import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessageReportReason
 import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessagesPage
 import io.appbeyond.freelance.deep.feature.globalpause.model.PostedPeaceMessage
 import io.appbeyond.freelance.deep.feature.rewards.model.AwardGrant
@@ -54,4 +56,21 @@ interface PauseEventRemote {
   suspend fun submitReflection(intention: String?, mood: String?)
 
   suspend fun claimPauseAward(): PauseAwardClaim
+
+  // Report and Block. All four need a signed-in member.
+
+  /** Idempotent: reporting the same message twice changes nothing. */
+  suspend fun report(messageId: String, reason: PeaceMessageReportReason)
+
+  /**
+   * Blocks the message's author. Null when the author's account is gone:
+   * there is no one left to block, and the message is simply hidden here.
+   */
+  suspend fun blockAuthor(messageId: String): BlockedMember?
+
+  /** Everyone the member has blocked, newest first. */
+  suspend fun blockedMembers(): List<BlockedMember>
+
+  /** Idempotent: an unknown block id is a quiet no-op. */
+  suspend fun unblock(blockId: String)
 }

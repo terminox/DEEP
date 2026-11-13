@@ -85,6 +85,7 @@ struct AppRootView: View {
           reminderStore: deps.reminderStore,
           pauseSession: deps.pauseSession,
           pauseRepository: deps.pauseRepository,
+          moderationStore: deps.moderationStore,
           imageLoader: deps.imageLoader,
           fullScreenImageLoader: deps.fullScreenImageLoader,
           videoCache: deps.videoCache

@@ -31,6 +31,10 @@ struct GlobalPauseReflectionView: View {
   /// Set once a refusal has been shown, so the next tap leaves rather than
   /// trapping the member on a message that will not send.
   @State private var mayContinueUnsent = false
+  /// The text the content filter turned away. Editing it away from this
+  /// re-arms sending, since a kinder rewording may well pass; leaving it as is
+  /// lets the next tap move on, as every other refusal does.
+  @State private var rejectedText: String?
   @FocusState private var isWriting: Bool
 
   private var intentions: [Intention] {
@@ -92,6 +96,11 @@ struct GlobalPauseReflectionView: View {
       .padding(.bottom, .rhythm)
     }
     .animation(.settle, value: note)
+    .onChange(of: text) { _, updated in
+      guard let rejectedText, updated != rejectedText else { return }
+      self.rejectedText = nil
+      mayContinueUnsent = false
+    }
   }
 
   private var header: some View {
@@ -154,6 +163,7 @@ struct GlobalPauseReflectionView: View {
       withAnimation(.settle) {
         note = Self.note(for: error)
         mayContinueUnsent = true
+        rejectedText = Self.isRejection(error) ? text : nil
       }
     } catch {
       withAnimation(.settle) {
@@ -163,12 +173,34 @@ struct GlobalPauseReflectionView: View {
     }
   }
 
+  /// The server's content filter turning the words themselves away.
+  private static func isRejection(_ error: APIError) -> Bool {
+    if case .http(422, "message_rejected", _) = error { return true }
+    return false
+  }
+
   private static func note(for error: APIError) -> String {
     switch error {
     case .unauthorized:
       String(localized: "Sign in from the You tab to leave a message.", bundle: .app, locale: .app)
     case .http(_, let code, _) where code == "message_limit":
       String(localized: "Three messages a day is plenty. Rest now.", bundle: .app, locale: .app)
+    case .http(422, "message_rejected", _):
+      String(
+        localized: "This message can't be shared. Please keep it kind.",
+        bundle: .app,
+        locale: .app,
+        comment: "Inline note when the content filter refuses a peace message."
+      )
+    case .http(403, "account_suspended", _):
+      // Not a rejection of the words: editing won't help, so the member
+      // simply continues without sending.
+      String(
+        localized: "Your account can't share peace messages right now.",
+        bundle: .app,
+        locale: .app,
+        comment: "Inline note when a suspended account tries to post a peace message."
+      )
     default:
       String(localized: "Your message couldn't be sent just now.", bundle: .app, locale: .app)
     }

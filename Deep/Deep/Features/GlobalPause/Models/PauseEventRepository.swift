@@ -199,7 +199,8 @@ final class APIPauseEventRepository: PauseEventRepository {
       countryISO: dto.countryISO,
       text: dto.text,
       intention: dto.intention,
-      createdAt: date(dto.createdAt)
+      createdAt: date(dto.createdAt),
+      isMine: dto.isMine
     )
   }
 }
@@ -457,7 +458,8 @@ final class FixturePauseEventRepository: PauseEventRepository {
       countryISO: countryISO,
       text: text,
       intention: intention,
-      createdAt: Date()
+      createdAt: Date(),
+      isMine: true
     )
     let isFirstOfTheNight = posted.isEmpty
     posted.insert(message, at: 0)

@@ -271,6 +271,24 @@ struct PeaceMessageDTO: Decodable {
   // messages left untagged.
   let intention: String?
   let createdAt: String
+  /// True only when the signed-in caller wrote it. Older servers omit it, and
+  /// anonymous callers always get false.
+  let isMine: Bool
+
+  private enum CodingKeys: String, CodingKey {
+    case id, displayName, countryISO, text, intention, createdAt, isMine
+  }
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    displayName = try container.decode(String.self, forKey: .displayName)
+    countryISO = try container.decodeIfPresent(String.self, forKey: .countryISO)
+    text = try container.decode(String.self, forKey: .text)
+    intention = try container.decodeIfPresent(String.self, forKey: .intention)
+    createdAt = try container.decode(String.self, forKey: .createdAt)
+    isMine = try container.decodeIfPresent(Bool.self, forKey: .isMine) ?? false
+  }
 }
 
 struct PauseLiveDTO: Decodable {
@@ -344,6 +362,27 @@ struct PeaceMessagePostRequestDTO: Encodable {
 struct PauseReflectionRequestDTO: Encodable {
   let intention: String?
   let mood: String?
+}
+
+// MARK: - Peace message moderation
+
+struct PeaceMessageReportRequestDTO: Encodable {
+  let reason: String
+}
+
+struct BlockedMemberDTO: Decodable {
+  let id: String
+  let displayName: String
+  let createdAt: String
+}
+
+struct BlockAuthorResponseDTO: Decodable {
+  /// Null when the author's account no longer exists.
+  let block: BlockedMemberDTO?
+}
+
+struct BlockedMembersResponseDTO: Decodable {
+  let blocks: [BlockedMemberDTO]
 }
 
 // MARK: - Garden & rewards

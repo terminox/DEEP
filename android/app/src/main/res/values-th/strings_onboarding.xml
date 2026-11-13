@@ -50,6 +50,8 @@
   <string name="onboarding_problem_missing_name">บอกชื่อที่อยากให้เราเรียกคุณหน่อยนะ</string> <!-- no iOS Thai -->
   <string name="onboarding_problem_malformed_email">อีเมลนี้ดูยังไม่ค่อยถูกต้อง</string> <!-- no iOS Thai -->
   <string name="onboarding_problem_short_password">ใช้อย่างน้อย 8 ตัวอักษร</string> <!-- no iOS Thai -->
+  <!-- The server's content filter refused the display name (422 display_name_rejected) -->
+  <string name="onboarding_problem_name_rejected">โปรดเลือกชื่ออื่น</string>
 
   <!-- Log in -->
   <string name="onboarding_log_in_title">ยินดีต้อนรับกลับมา</string>

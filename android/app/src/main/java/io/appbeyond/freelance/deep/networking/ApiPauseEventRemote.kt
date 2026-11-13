@@ -1,8 +1,10 @@
 package io.appbeyond.freelance.deep.networking
 
+import io.appbeyond.freelance.deep.feature.globalpause.model.BlockedMember
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseJoinPoint
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseLiveSnapshot
 import io.appbeyond.freelance.deep.feature.globalpause.model.PauseSchedule
+import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessageReportReason
 import io.appbeyond.freelance.deep.feature.globalpause.model.PeaceMessagesPage
 import io.appbeyond.freelance.deep.feature.globalpause.model.PostedPeaceMessage
 import io.appbeyond.freelance.deep.feature.globalpause.model.SyncedClock
@@ -85,6 +87,20 @@ class ApiPauseEventRemote(
       // hands back the wallet and plant, which reconcile the stores.
       grant = foldAwards(listOfNotNull(dto.award), dto.wallet, dto.plant),
     )
+  }
+
+  override suspend fun report(messageId: String, reason: PeaceMessageReportReason) {
+    apiCall { service.report(messageId, PeaceMessageReportRequest(reason = reason.wire)) }
+  }
+
+  override suspend fun blockAuthor(messageId: String): BlockedMember? =
+    apiCall { service.blockAuthor(messageId) }.block?.toDomain()
+
+  override suspend fun blockedMembers(): List<BlockedMember> =
+    apiCall { service.blockedMembers() }.blocks.map { it.toDomain() }
+
+  override suspend fun unblock(blockId: String) {
+    apiCall { service.unblock(blockId) }
   }
 
   private fun sync(serverNow: String?) {

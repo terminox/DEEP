@@ -17,6 +17,7 @@ import type {
   PauseSlot,
   PauseWelcomeMessage,
   PauseIntentionOption,
+  User,
 } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
@@ -170,10 +171,31 @@ export async function adminRoutes(app: FastifyInstance) {
     return { user: serializeUser(user), ...tokens };
   });
 
-  // ---- Users (read-only oversight) ----
+  // ---- Users (oversight, plus peace-message suspension) ----
+  // `suspendedAt` rides on the admin view only: serializeUser is also what a
+  // member gets back about themselves.
+  const serializeAdminUser = (user: User) => ({
+    ...serializeUser(user),
+    suspendedAt: user.suspendedAt?.toISOString() ?? null,
+  });
+
   app.get("/admin/users", adminOnly, async () => {
     const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
-    return { users: users.map(serializeUser) };
+    return { users: users.map(serializeAdminUser) };
+  });
+
+  // Suspension (the Terms' "suspend accounts"): the member can't post peace
+  // messages, and the ones they shared leave every public feed. Their session,
+  // garden and everything else keep working; unsuspending brings it all back.
+  app.patch("/admin/users/:id", adminOnly, async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const body = z.object({ suspended: z.boolean() }).parse(req.body);
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) throw ApiError.notFound("User not found", "user_not_found");
+    // Suspending again keeps the original date.
+    const suspendedAt = body.suspended ? (existing.suspendedAt ?? new Date()) : null;
+    const user = await prisma.user.update({ where: { id }, data: { suspendedAt } });
+    return { user: serializeAdminUser(user) };
   });
 
   // One user's DEEP Premium standing, for support: the Subscription row as
@@ -673,36 +695,72 @@ export async function adminRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Peace message moderation (publish-first; moderation hides after the fact)
+  // Peace message moderation (publish-first; moderation hides after the fact).
+  // `reportCount` is the reports no admin has reviewed yet, the ones the hide
+  // threshold and the queue act on; `totalReportCount` includes reviewed ones.
+  // `reported=true` is the review queue: messages with unreviewed reports only,
+  // most unreviewed reports first.
   app.get("/admin/pause/messages", adminOnly, async (req) => {
     const query = z
       .object({
         status: z.enum(["PUBLISHED", "HIDDEN"]).optional(),
         pauseDate: z.string().optional(),
+        reported: z.enum(["true", "false"]).optional(),
       })
       .parse(req.query);
-    const messages = await prisma.peaceMessage.findMany({
+    const reported = query.reported === "true";
+    const unreviewed = { reviewedAt: null };
+    const rows = await prisma.peaceMessage.findMany({
       where: {
         ...(query.status ? { status: query.status } : {}),
         ...(query.pauseDate ? { pauseDate: query.pauseDate } : {}),
+        ...(reported ? { reports: { some: unreviewed } } : {}),
       },
+      // Prisma can't order by a filtered relation count, so the queue is
+      // ranked below; it holds only what still awaits a decision.
       orderBy: { createdAt: "desc" },
-      take: 200,
+      include: { _count: { select: { reports: { where: unreviewed } } } },
+      ...(reported ? {} : { take: 200 }),
     });
-    return { messages };
+    const totals = await prisma.peaceMessageReport.groupBy({
+      by: ["messageId"],
+      where: { messageId: { in: rows.map((r) => r.id) } },
+      _count: { _all: true },
+    });
+    const totalById = new Map(totals.map((t) => [t.messageId, t._count._all]));
+    const messages = rows.map(({ _count, ...message }) => ({
+      ...message,
+      reportCount: _count.reports,
+      totalReportCount: totalById.get(message.id) ?? 0,
+    }));
+    if (reported) {
+      // Stable sort: equal counts keep newest first.
+      messages.sort((a, b) => b.reportCount - a.reportCount);
+    }
+    return { messages: messages.slice(0, 200) };
   });
 
   // Deliberately NOT staged: this hides user-posted content during a live event,
   // where waiting for someone to remember to publish is the wrong behaviour.
+  // Publish or Hide is the admin's decision, so it settles every report still
+  // outstanding: a restored message needs a fresh threshold of new reporters
+  // to be hidden again, and either way it leaves the review queue. Reporters
+  // still never see what they reported.
   app.patch("/admin/pause/messages/:id", adminOnly, async (req) => {
     const { id } = idParam.parse(req.params);
     const body = z
       .object({ status: z.enum(["PUBLISHED", "HIDDEN"]) })
       .parse(req.body);
-    const message = await prisma.peaceMessage.update({
-      where: { id },
-      data: { status: body.status },
-    });
+    const [message] = await prisma.$transaction([
+      prisma.peaceMessage.update({
+        where: { id },
+        data: { status: body.status },
+      }),
+      prisma.peaceMessageReport.updateMany({
+        where: { messageId: id, reviewedAt: null },
+        data: { reviewedAt: new Date() },
+      }),
+    ]);
     return { message };
   });
 

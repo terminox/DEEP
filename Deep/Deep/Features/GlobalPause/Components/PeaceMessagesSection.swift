@@ -11,6 +11,12 @@ struct PeaceMessagesSection: View {
   var intentions: [Intention] = []
   var isLoadingMore = false
   var onReachEnd: () -> Void = {}
+  /// Whether a card offers Report and Block: the owner answers per message
+  /// (signed in, and not the member's own). Off by default, so a section with
+  /// no owner to act on the choice never offers one.
+  var canModerate: (PeaceMessage) -> Bool = { _ in false }
+  var onReport: (PeaceMessage, PeaceMessageReportReason) -> Void = { _, _ in }
+  var onBlock: (PeaceMessage) -> Void = { _ in }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
@@ -18,7 +24,16 @@ struct PeaceMessagesSection: View {
 
       LazyVStack(alignment: .leading, spacing: 12) {
         ForEach(messages) { message in
-          PeaceMessageCard(message: message, intentions: intentions)
+          PeaceMessageCard(
+            message: message,
+            intentions: intentions,
+            menu: canModerate(message)
+              ? PeaceMessageMenuActions(
+                report: { onReport(message, $0) },
+                block: { onBlock(message) }
+              )
+              : nil
+          )
             .onAppear {
               if message.id == messages.last?.id { onReachEnd() }
             }
@@ -42,6 +57,13 @@ struct PeaceMessagesSection: View {
 private struct PeaceMessageCard: View {
   let message: PeaceMessage
   let intentions: [Intention]
+  /// Nil when this card offers no menu — signed out, or the member's own.
+  var menu: PeaceMessageMenuActions?
+
+  /// The report reasons are showing. Held here so the picker can be anchored
+  /// to this card's own ellipsis (iOS presents it as a popover from the view
+  /// it hangs on), whether the menu or VoiceOver asked for it.
+  @State private var isChoosingReason = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -50,6 +72,9 @@ private struct PeaceMessageCard: View {
         place: message.countryName,
         tintSeed: message.id
       )
+      // Room for the menu, which floats over this row rather than sitting in
+      // it, so the rest of the card can still be read as one element.
+      .padding(.trailing, menu == nil ? 0 : 30)
 
       Text("\u{201C}\(message.text)\u{201D}")
         .font(DeepType.caption)
@@ -70,9 +95,38 @@ private struct PeaceMessageCard: View {
         }
       }
     }
-    .peaceMessageCard()
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
+    .accessibilityActions {
+      if let menu {
+        Button("Report") { isChoosingReason = true }
+        Button("Block \(message.displayName)", action: menu.block)
+      }
+    }
+    .peaceMessageCard()
+    .overlay(alignment: .topTrailing) {
+      if let menu {
+        PeaceMessageMenu(
+          name: message.displayName,
+          report: { isChoosingReason = true },
+          block: menu.block
+        )
+        .confirmationDialog(
+          "Report this message",
+          isPresented: $isChoosingReason,
+          titleVisibility: .visible
+        ) {
+          ForEach(PeaceMessageReportReason.allCases) { reason in
+            Button(reason.title) { menu.report(reason) }
+          }
+          Button("Cancel", role: .cancel) {}
+        }
+        // Centres the glyph on the identity row: 14 of card padding plus
+        // half the 32-point avatar, less half this 44-point target.
+        .padding(.top, 8)
+        .padding(.trailing, 2)
+      }
+    }
   }
 
   private var accessibilityLabel: String {
@@ -89,6 +143,55 @@ private struct PeaceMessageCard: View {
   }
 }
 
+/// What a card's menu does, handed down by the section's owner. Reporting
+/// arrives with its reason, chosen on the card; blocking asks the owner, who
+/// confirms it.
+struct PeaceMessageMenuActions {
+  let report: (PeaceMessageReportReason) -> Void
+  let block: () -> Void
+}
+
+extension PeaceMessageReportReason {
+  /// The reason as the picker shows it.
+  var title: LocalizedStringKey {
+    switch self {
+    case .offensive: "Offensive"
+    case .harassment: "Harassment"
+    case .spam: "Spam"
+    case .other: "Something else"
+    }
+  }
+}
+
+/// The quiet "more" control on someone else's message: Report, and Block
+/// their author. Neither item is `.destructive`: that would paint it the
+/// system's alarm red, and DEEP has no urgent reds. The confirmation that
+/// follows each one is where the weight sits.
+struct PeaceMessageMenu: View {
+  let name: String
+  let report: () -> Void
+  let block: () -> Void
+
+  var body: some View {
+    Menu {
+      Button(action: report) {
+        Label("Report", systemImage: "flag")
+      }
+      Button(action: block) {
+        Label("Block \(name)", systemImage: "hand.raised")
+      }
+    } label: {
+      Image(systemName: "ellipsis")
+        .font(DeepType.body)
+        .foregroundStyle(.driftGrey)
+        .frame(width: 44, height: 44)
+        .contentShape(Rectangle())
+    }
+    .menuIndicator(.hidden)
+    .accessibilityLabel("More")
+  }
+}
+
 #Preview("Peace Messages") {
   ScrollView {
     PeaceMessagesSection(
@@ -98,6 +201,25 @@ private struct PeaceMessageCard: View {
     .padding(.vertical, 24)
   }
   .background { AtmosphereBackground() }
+}
+
+#Preview("Signed in — with menus") {
+  ScrollView {
+    PeaceMessagesSection(
+      messages: FixturePauseEventRepository.sampleMessages,
+      intentions: Intention.samples,
+      canModerate: { $0.id != "fixture-1" }
+    )
+    .padding(.vertical, 24)
+  }
+  .background { AtmosphereBackground() }
+}
+
+#Preview("More menu") {
+  ZStack {
+    AtmosphereBackground()
+    PeaceMessageMenu(name: "Haruki", report: {}, block: {})
+  }
 }
 
 #Preview("Loading more") {

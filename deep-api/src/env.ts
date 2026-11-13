@@ -53,6 +53,9 @@ const schema = z.object({
     .string()
     .optional()
     .transform((v) => v === "true" || v === "1"),
+  // How many distinct members must report a peace message before it is hidden
+  // pending admin review.
+  REPORT_HIDE_THRESHOLD: z.coerce.number().int().positive().default(3),
   // Dev-only: enables POST /dev/premium, which flips a user's DEEP Premium
   // entitlement without a purchase. Must stay false anywhere real.
   ALLOW_DEV_ENTITLEMENT: z

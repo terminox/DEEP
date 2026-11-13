@@ -499,6 +499,78 @@
         }
       }
     },
+    "Block" : {
+      "comment" : "Block confirmation button.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บล็อก"
+          }
+        }
+      }
+    },
+    "Block %@" : {
+      "comment" : "Peace message card menu item. The placeholder is the author's display name.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บล็อก %@"
+          }
+        }
+      }
+    },
+    "Block %@?" : {
+      "comment" : "Block confirmation title. The placeholder is the author's display name.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บล็อก %@ ใช่ไหม"
+          }
+        }
+      }
+    },
+    "Blocked members" : {
+      "comment" : "Settings row and screen title.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สมาชิกที่บล็อกไว้"
+          }
+        }
+      }
+    },
+    "By creating an account, you agree to our [Terms](%@) and [Privacy Policy](%@)." : {
+      "comment" : "Sign-up form footer. The placeholders are URLs — keep the [text](url) markdown intact.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "By creating an account, you agree to our [Terms](%1$@) and [Privacy Policy](%2$@)."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เมื่อสร้างบัญชี ถือว่าคุณยอมรับ[ข้อกำหนด](%1$@)และ[นโยบายความเป็นส่วนตัว](%2$@)ของเรา"
+          }
+        }
+      }
+    },
+    "Contact us" : {
+      "comment" : "Settings row that opens an email to DEEP support.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ติดต่อเรา"
+          }
+        }
+      }
+    },
     "Begin today’s practice, %lld of %lld minutes complete" : {
       "localizations" : {
         "en" : {
@@ -825,6 +897,39 @@
         }
       }
     },
+    "Harassment" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การคุกคาม"
+          }
+        }
+      }
+    },
+    "More" : {
+      "comment" : "VoiceOver label for the ellipsis menu on a peace message card.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพิ่มเติม"
+          }
+        }
+      }
+    },
+    "Offensive" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่เหมาะสม"
+          }
+        }
+      }
+    },
     "Incorrect email or password" : {
       "localizations" : {
         "th" : {
@@ -951,6 +1056,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "เป็นส่วนหนึ่งของ DEEP Premium"
+          }
+        }
+      }
+    },
+    "Please choose a different name." : {
+      "comment" : "Sign-up error when the server's content filter turns the display name away.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โปรดเลือกชื่ออื่น"
+          }
+        }
+      }
+    },
+    "Privacy Policy" : {
+      "comment" : "Settings row linking the Privacy Policy.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "นโยบายความเป็นส่วนตัว"
+          }
+        }
+      }
+    },
+    "Report" : {
+      "comment" : "Peace message card menu item, and its VoiceOver action.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รายงาน"
+          }
+        }
+      }
+    },
+    "Report this message" : {
+      "comment" : "Title of the report-reason picker.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รายงานข้อความนี้"
+          }
+        }
+      }
+    },
+    "Something else" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เหตุผลอื่น"
+          }
+        }
+      }
+    },
+    "Something went wrong. Please try again." : {
+      "comment" : "Shown when a report, block or unblock does not go through.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เกิดข้อผิดพลาด โปรดลองอีกครั้ง"
           }
         }
       }
@@ -1165,6 +1336,28 @@
         }
       }
     },
+    "Spam" : {
+      "comment" : "Report reason.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สแปม"
+          }
+        }
+      }
+    },
+    "Terms of Service" : {
+      "comment" : "Settings row linking the Terms of Service.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อกำหนดการใช้งาน"
+          }
+        }
+      }
+    },
     "tagged %@" : {
       "localizations" : {
         "th" : {
@@ -1221,6 +1414,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ขอบคุณที่มอบหัวใจให้ %@"
+          }
+        }
+      }
+    },
+    "Thanks for telling us. We'll take a look." : {
+      "comment" : "Quiet confirmation after reporting a peace message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ขอบคุณที่แจ้งให้เราทราบ เราจะตรวจสอบให้"
+          }
+        }
+      }
+    },
+    "This message can't be shared. Please keep it kind." : {
+      "comment" : "Inline note when the content filter refuses a peace message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อความนี้แชร์ไม่ได้ โปรดใช้ถ้อยคำที่อ่อนโยน"
           }
         }
       }
@@ -1351,6 +1566,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "วันนี้ได้รับครบแล้ว"
+          }
+        }
+      }
+    },
+    "Unblock" : {
+      "comment" : "Trailing action on a blocked member row.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลิกบล็อก"
+          }
+        }
+      }
+    },
+    "Unblocked members' peace messages will show again." : {
+      "comment" : "Footnote under the blocked members list.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อความแห่งสันติของสมาชิกที่เลิกบล็อกแล้วจะกลับมาแสดงอีกครั้ง"
+          }
+        }
+      }
+    },
+    "Unblocks %@" : {
+      "comment" : "VoiceOver hint on a blocked member row. The placeholder is their display name.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เลิกบล็อก %@"
+          }
+        }
+      }
+    },
+    "We couldn't load your blocked members." : {
+      "comment" : "Blocked members load failure.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เราโหลดรายชื่อสมาชิกที่บล็อกไว้ไม่ได้"
+          }
+        }
+      }
+    },
+    "You haven't blocked anyone." : {
+      "comment" : "Blocked members empty state.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณยังไม่ได้บล็อกใคร"
+          }
+        }
+      }
+    },
+    "You won't see their peace messages." : {
+      "comment" : "Block confirmation message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คุณจะไม่เห็นข้อความแห่งสันติของเขาอีก"
+          }
+        }
+      }
+    },
+    "Your account can't share peace messages right now." : {
+      "comment" : "Inline note when a suspended account tries to post a peace message.",
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บัญชีของคุณยังแชร์ข้อความแห่งสันติไม่ได้ในขณะนี้"
           }
         }
       }

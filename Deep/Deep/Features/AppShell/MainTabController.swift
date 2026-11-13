@@ -52,6 +52,9 @@ final class MainTabController: UITabBarController {
   /// Fuku's Lounge's card).
   private let pauseSession: GlobalPauseSession
   private let pauseRepository: any PauseEventRepository
+  /// Reporting, blocking and the block list — the lounge's cards and the You
+  /// tab's Settings must share one store, so a block in one is seen in both.
+  private let moderationStore: ModerationStore
 
   /// The shared artwork cache, injected into every hosted tab so all tiles
   /// draw from one memory/disk store.
@@ -110,6 +113,7 @@ final class MainTabController: UITabBarController {
     reminderStore: ReminderStore,
     pauseSession: GlobalPauseSession,
     pauseRepository: any PauseEventRepository,
+    moderationStore: ModerationStore,
     imageLoader: any ImageLoading,
     fullScreenImageLoader: any ImageLoading,
     videoCache: VideoCache? = nil
@@ -131,6 +135,7 @@ final class MainTabController: UITabBarController {
     self.reminderStore = reminderStore
     self.pauseSession = pauseSession
     self.pauseRepository = pauseRepository
+    self.moderationStore = moderationStore
     self.imageLoader = imageLoader
     self.fullScreenImageLoader = fullScreenImageLoader
     self.videoCache = videoCache
@@ -176,6 +181,7 @@ final class MainTabController: UITabBarController {
       accountStore: accountStore,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
+      moderationStore: moderationStore,
       imageLoader: imageLoader
     )
     globalPause.tabBarItem = tabItem(title: String(localized: "Home", bundle: .app, locale: .app), systemImage: "globe.americas.fill")
@@ -343,6 +349,7 @@ final class MainTabController: UITabBarController {
       .environment(\.gardenStore, gardenStore)
       .environment(\.playlistStore, playlistStore)
       .environment(\.continuityWitness, continuityWitness)
+      .environment(\.moderationStore, moderationStore)
       // The SwiftUI environment does not survive the UIKit boundary, so the
       // locale `AppRootView` set never reaches a hosted tab. Re-apply it here
       // or every screen inside the shell silently resolves its copy against

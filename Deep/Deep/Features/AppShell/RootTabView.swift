@@ -27,6 +27,7 @@ struct RootTabView: UIViewControllerRepresentable {
   let reminderStore: ReminderStore
   let pauseSession: GlobalPauseSession
   let pauseRepository: any PauseEventRepository
+  let moderationStore: ModerationStore
   let imageLoader: any ImageLoading
   let fullScreenImageLoader: any ImageLoading
   let videoCache: VideoCache?
@@ -50,6 +51,7 @@ struct RootTabView: UIViewControllerRepresentable {
       reminderStore: reminderStore,
       pauseSession: pauseSession,
       pauseRepository: pauseRepository,
+      moderationStore: moderationStore,
       imageLoader: imageLoader,
       fullScreenImageLoader: fullScreenImageLoader,
       videoCache: videoCache
@@ -81,6 +83,7 @@ struct RootTabView: UIViewControllerRepresentable {
       repository: FixturePauseEventRepository()
     ),
     pauseRepository: FixturePauseEventRepository(),
+    moderationStore: ModerationStore(remote: MockModerationRemote()),
     imageLoader: FixtureImageLoader(),
     fullScreenImageLoader: FixtureImageLoader(),
     videoCache: nil

@@ -31,6 +31,8 @@ struct GlobalPauseLobbyView: View {
   @Environment(\.globalPauseSession) private var globalPauseSession
   @Environment(\.loungeRadio) private var radio
   @Environment(\.soundPlayer) private var soundPlayer
+  @Environment(\.accountStore) private var accountStore
+  @Environment(\.moderationStore) private var moderation
 
   /// Where the broadcast has got to, recomputed whenever the session says the
   /// set started or ended and when the intro hands off. Held rather than
@@ -50,6 +52,13 @@ struct GlobalPauseLobbyView: View {
   /// Bumped whenever a refresh replaces the feed wholesale, so an in-flight
   /// loadMore from the previous feed can tell its page is stale.
   @State private var feedEpoch = 0
+  /// The message whose author the member is being asked to block. Kept after
+  /// the alert closes, so its title never blanks mid-fade; the alert follows
+  /// `isConfirmingBlock`.
+  @State private var blockTarget: PeaceMessage?
+  @State private var isConfirmingBlock = false
+  /// The quiet line at the bottom after a report, or when one fails.
+  @State private var notice: ModerationNotice?
 
   /// The feed as shown: whatever has been paged in, with the member's own
   /// message from tonight seated at the head. It was written after this feed
@@ -57,11 +66,23 @@ struct GlobalPauseLobbyView: View {
   /// never removed — so there is no lifecycle moment to insert it on. Deriving
   /// it keeps the lounge honest whenever the body runs, and the de-dupe means
   /// a later page that catches up with it changes nothing.
+  /// Anything reported or blocked on this phone is filtered out here, so it
+  /// leaves the moment the member acts rather than at the next fetch.
   private var feedMessages: [PeaceMessage] {
+    let shown = moderation.visible(messages)
     guard let mine = globalPauseSession.postedMessage,
-          !messages.contains(where: { $0.id == mine.id })
-    else { return messages }
-    return [mine] + messages
+          !shown.contains(where: { $0.id == mine.id })
+    else { return shown }
+    return [mine] + shown
+  }
+
+  /// Report and Block are for signed-in members, on messages that aren't
+  /// theirs. Tonight's own post is excluded by id as well, because an older
+  /// server never says `isMine`.
+  private func canModerate(_ message: PeaceMessage) -> Bool {
+    accountStore.isSignedIn
+      && !message.isMine
+      && message.id != globalPauseSession.postedMessage?.id
   }
 
   private let heroHeight: CGFloat = 320
@@ -92,7 +113,13 @@ struct GlobalPauseLobbyView: View {
               messages: feedMessages,
               intentions: globalPauseSession.schedule?.intentions ?? [],
               isLoadingMore: isLoadingMore,
-              onReachEnd: { Task { await loadMore() } }
+              onReachEnd: { Task { await loadMore() } },
+              canModerate: canModerate,
+              onReport: { report($0, reason: $1) },
+              onBlock: { message in
+                blockTarget = message
+                isConfirmingBlock = true
+              }
             )
           }
 
@@ -121,6 +148,36 @@ struct GlobalPauseLobbyView: View {
           .ignoresSafeArea(edges: .top)
           .allowsHitTesting(false)
       }
+    }
+    .overlay(alignment: .bottom) {
+      if let notice {
+        QuietNoticePill(text: notice.text, systemImage: notice.systemImage)
+          .padding(.horizontal, .edge)
+          .padding(.bottom, .rhythm)
+          .transition(.opacity.combined(with: .offset(y: 8)))
+      }
+    }
+    .animation(.exhale, value: notice)
+    .task(id: notice) {
+      guard notice != nil else { return }
+      try? await Task.sleep(for: .seconds(3))
+      guard !Task.isCancelled else { return }
+      notice = nil
+    }
+    .alert(
+      Text("Block \(blockTarget?.displayName ?? "")?"),
+      isPresented: $isConfirmingBlock,
+      presenting: blockTarget
+    ) { message in
+      Button("Block", role: .destructive) { block(message) }
+      Button("Cancel", role: .cancel) {}
+    } message: { _ in
+      Text("You won't see their peace messages.")
+    }
+    // A block hides more than the one card: the server knows the author's
+    // other messages, so the feed is fetched again once the block lands.
+    .onChange(of: moderation.blockRevision) { _, _ in
+      Task { await reloadFeed() }
     }
     .navigationTitle("Fuku's Lounge")
     .navigationBarTitleDisplayMode(.inline)
@@ -240,15 +297,64 @@ struct GlobalPauseLobbyView: View {
 
   private func refresh() async {
     async let liveness: Void = globalPauseSession.start()
+    await reloadFeed()
+    await liveness
+  }
+
+  /// Replaces the feed with its first page. On failure the feed stays as it
+  /// is; the local filter already hides whatever the member acted on.
+  private func reloadFeed() async {
     do {
       let page = try await repository.messages(limit: pageSize, cursor: nil)
       messages = page.messages
       nextCursor = page.nextCursor
       feedEpoch += 1
     } catch {
-      // Keep the feed we have; the schedule refresh still lands.
+      // Keep the feed we have.
     }
-    await liveness
+  }
+
+  // MARK: - Report & block
+
+  private func report(_ message: PeaceMessage, reason: PeaceMessageReportReason) {
+    Task {
+      do {
+        try await moderation.report(message, reason: reason)
+        notice = .reported
+      } catch {
+        notice = .failed
+      }
+    }
+  }
+
+  private func block(_ message: PeaceMessage) {
+    Task {
+      do {
+        try await moderation.block(message)
+      } catch {
+        notice = .failed
+      }
+    }
+  }
+}
+
+/// The quiet line the lounge shows after the member acts on a message.
+private enum ModerationNotice: Equatable {
+  case reported
+  case failed
+
+  var text: LocalizedStringKey {
+    switch self {
+    case .reported: "Thanks for telling us. We'll take a look."
+    case .failed: "Something went wrong. Please try again."
+    }
+  }
+
+  var systemImage: String? {
+    switch self {
+    case .reported: "checkmark"
+    case .failed: nil
+    }
   }
 }
 
@@ -266,6 +372,15 @@ struct GlobalPauseLobbyView: View {
     .environment(\.globalPauseSession, GlobalPauseSession.previewOnAir())
     .environment(\.loungeRadio, MockLoungeRadioPlayer.onAir)
     .environment(\.soundPlayer, MockSoundPlayer.idle)
+}
+
+#Preview("Signed in — report and block") {
+  GlobalPauseLobbyView()
+    .environment(\.pauseEventRepository, FixturePauseEventRepository())
+    .environment(\.loungeRadio, MockLoungeRadioPlayer())
+    .environment(\.soundPlayer, MockSoundPlayer.idle)
+    .environment(\.accountStore, MockAccountStore.emailUser)
+    .environment(\.moderationStore, ModerationStore(remote: MockModerationRemote()))
 }
 
 // The muted pill is previewed where it lives, in `OnAirPill`: muting is the

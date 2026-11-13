@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import type { PeaceMessage } from "@prisma/client";
+import type { PeaceMessage, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { requireAuth, optionalAuth } from "../auth/middleware.js";
 import { mediaUrl } from "../lib/media.js";
+import { markVariesByCaller } from "../lib/premiumContent.js";
+import { isRejectedText } from "../lib/contentFilter.js";
 import { translate } from "../lib/translations.js";
 import {
   resolveOccurrence,
@@ -38,7 +40,9 @@ const countryISOSchema = z
   .regex(/^[A-Z]{2}$/, "countryISO must be ISO-3166 alpha-2")
   .optional();
 
-function serializePeaceMessage(message: PeaceMessage) {
+// `isMine` is what lets a client offer Report / Block on everyone's card but
+// the caller's own, without the author's userId ever leaving the server.
+function serializePeaceMessage(message: PeaceMessage, callerId: string | undefined) {
   return {
     id: message.id,
     displayName: message.displayName,
@@ -46,6 +50,34 @@ function serializePeaceMessage(message: PeaceMessage) {
     text: message.text,
     intention: message.intention,
     createdAt: message.createdAt.toISOString(),
+    isMine: callerId !== undefined && message.userId === callerId,
+  };
+}
+
+// Who a public feed leaves out. For everyone: members an admin suspended. For a
+// signed-in caller, also what they asked not to see: messages they reported,
+// and every message by a member they blocked.
+//
+// Each author clause spells out the null case: a message whose author deleted
+// their account (userId null) can't be suspended or blocked, and SQL's NOT IN
+// (and a missing relation) would otherwise drop it.
+async function feedFilter(callerId: string | undefined): Promise<Prisma.PeaceMessageWhereInput> {
+  const notSuspended: Prisma.PeaceMessageWhereInput = {
+    OR: [{ userId: null }, { user: { is: { suspendedAt: null } } }],
+  };
+  if (!callerId) return { AND: [notSuspended] };
+  const blocks = await prisma.userBlock.findMany({
+    where: { blockerId: callerId },
+    select: { blockedId: true },
+  });
+  return {
+    AND: [
+      notSuspended,
+      { reports: { none: { reporterId: callerId } } },
+      ...(blocks.length > 0
+        ? [{ OR: [{ userId: null }, { userId: { notIn: blocks.map((b) => b.blockedId) } }] }]
+        : []),
+    ],
   };
 }
 
@@ -216,7 +248,8 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
 
   // One poll feeds everything live: counter, country glow, join ripples, and
   // tonight's message feed.
-  app.get("/pause/live", { preHandler: optionalAuth }, async (req) => {
+  app.get("/pause/live", { preHandler: optionalAuth }, async (req, reply) => {
+    markVariesByCaller(reply);
     const now = resolveNow();
     const { config, slots } = await loadPauseSchedule();
     const occurrence = resolveOccurrence(config, slots, now);
@@ -224,7 +257,11 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const messages = await prisma.peaceMessage.findMany({
       // The feed is the day's, not the occurrence's: peace messages, their
       // three-a-day limit and the reflection are all keyed on pauseDate.
-      where: { pauseDate: localDate(now, config.timezone), status: "PUBLISHED" },
+      where: {
+        pauseDate: localDate(now, config.timezone),
+        status: "PUBLISHED",
+        ...(await feedFilter(req.auth?.sub)),
+      },
       orderBy: { createdAt: "desc" },
       take: LIVE_MESSAGE_COUNT,
     });
@@ -250,7 +287,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         at: j.at.toISOString(),
         ...(j.lat !== undefined ? { lat: j.lat, lon: j.lon } : {}),
       })),
-      messages: messages.map(serializePeaceMessage),
+      messages: messages.map((m) => serializePeaceMessage(m, req.auth?.sub)),
     };
   });
 
@@ -338,20 +375,26 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
         intention: z.string().trim().min(1).max(64).optional(),
       })
       .parse(req.body);
+    const auth = req.auth!;
+    const user = await prisma.user.findUnique({ where: { id: auth.sub } });
+    if (!user) throw ApiError.unauthorized();
+    // Suspension only closes peace messages; the rest of DEEP stays open.
+    if (user.suspendedAt) {
+      throw ApiError.forbidden("This account can't share peace messages", "account_suspended");
+    }
+    if (isRejectedText(body.text)) {
+      throw ApiError.unprocessable("This message can't be shared", "message_rejected");
+    }
     const now = resolveNow();
     const config = await loadPauseConfig();
     const pauseDate = localDate(now, config.timezone);
 
-    const auth = req.auth!;
     const already = await prisma.peaceMessage.count({
       where: { userId: auth.sub, pauseDate },
     });
     if (already >= MESSAGES_PER_DAY) {
       throw ApiError.forbidden("Message limit reached for today", "message_limit");
     }
-
-    const user = await prisma.user.findUnique({ where: { id: auth.sub } });
-    if (!user) throw ApiError.unauthorized();
 
     const message = await prisma.peaceMessage.create({
       data: {
@@ -388,7 +431,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const snapshot = await rewardSnapshot(user.id, userDayKey(now, tz));
 
     return {
-      message: serializePeaceMessage(message),
+      message: serializePeaceMessage(message, user.id),
       serverNow: now.toISOString(),
       award: serializeAwardOutcome(outcome),
       ...snapshot,
@@ -397,8 +440,10 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
 
   // Public read of published messages, newest first — available around the
   // clock. Keyset-paginated: pass back `nextCursor` to fetch the next page;
-  // null means the feed is exhausted.
-  app.get("/pause/messages", async (req) => {
+  // null means the feed is exhausted. A signed-in caller's exclusions sit in
+  // the same WHERE as the cursor, so pages stay full and never skip or repeat.
+  app.get("/pause/messages", { preHandler: optionalAuth }, async (req, reply) => {
+    markVariesByCaller(reply);
     const query = z
       .object({
         limit: z.coerce.number().int().positive().max(50).default(20),
@@ -409,14 +454,17 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const page = await prisma.peaceMessage.findMany({
       where: {
         status: "PUBLISHED",
-        ...(cursor
-          ? {
-              OR: [
-                { createdAt: { lt: cursor.createdAt } },
-                { createdAt: cursor.createdAt, id: { lt: cursor.id } },
-              ],
-            }
-          : {}),
+        AND: [
+          await feedFilter(req.auth?.sub),
+          cursor
+            ? {
+                OR: [
+                  { createdAt: { lt: cursor.createdAt } },
+                  { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+                ],
+              }
+            : {},
+        ],
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: query.limit + 1,
@@ -425,7 +473,7 @@ export async function pauseLiveRoutes(app: FastifyInstance) {
     const messages = hasMore ? page.slice(0, query.limit) : page;
     return {
       serverNow: resolveNow().toISOString(),
-      messages: messages.map(serializePeaceMessage),
+      messages: messages.map((m) => serializePeaceMessage(m, req.auth?.sub)),
       nextCursor: hasMore ? encodeMessageCursor(messages[messages.length - 1]!) : null,
     };
   });

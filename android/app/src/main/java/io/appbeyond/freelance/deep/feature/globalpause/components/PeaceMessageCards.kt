@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -24,8 +25,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -111,9 +114,16 @@ fun PeaceMessageAvatar(tint: Color, initial: String, modifier: Modifier = Modifi
  *
  * @param tintSeed a message id in the feed, the member's own name in the
  *   composer, so a person's colour holds still.
+ * @param trailing the card's Report and Block menu, when it offers one.
  */
 @Composable
-fun PeaceMessageIdentity(name: String, place: String, tintSeed: String, modifier: Modifier = Modifier) {
+fun PeaceMessageIdentity(
+  name: String,
+  place: String,
+  tintSeed: String,
+  modifier: Modifier = Modifier,
+  trailing: (@Composable () -> Unit)? = null,
+) {
   Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
     PeaceMessageAvatar(tint = peaceTint(tintSeed), initial = name.firstOrNull()?.toString() ?: "?")
     // Weighted, not beside a Spacer: a Spacer bids against the text column.
@@ -123,6 +133,7 @@ fun PeaceMessageIdentity(name: String, place: String, tintSeed: String, modifier
         Text(place, style = DeepType.micro, color = Color.driftGrey, maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
     }
+    trailing?.invoke()
   }
 }
 
@@ -138,9 +149,22 @@ fun peaceTint(seed: String): Color {
 /**
  * The titled list of messages in Fuku's Lounge. Rendered as items of the
  * lounge's own lazy list (see `GlobalPauseLobbyScreen`); this is one card.
+ *
+ * @param actions Report and Block, for a signed-in member. Never offered on
+ *   the member's own message, whatever is handed in. TalkBack reaches them as
+ *   the card's custom actions, since the card reads as one sentence.
  */
 @Composable
-fun PeaceMessageCard(message: PeaceMessage, intentions: List<Intention>, modifier: Modifier = Modifier) {
+fun PeaceMessageCard(
+  message: PeaceMessage,
+  intentions: List<Intention>,
+  modifier: Modifier = Modifier,
+  actions: PeaceMessageCardActions? = null,
+) {
+  val menuActions = actions?.takeUnless { message.isMine }
+  val menu = remember { PeaceMessageMenuState() }
+  val reportLabel = stringResource(R.string.safety_report)
+  val blockLabel = stringResource(R.string.safety_block, message.displayName)
   val locale = LocalConfiguration.current.locales[0]
   val place = message.countryName(locale)
   val tag = message.intentionLabel(intentions)
@@ -157,10 +181,25 @@ fun PeaceMessageCard(message: PeaceMessage, intentions: List<Intention>, modifie
   Column(
     modifier
       .peaceMessageCard()
-      .clearAndSetSemantics { contentDescription = spoken },
+      .clearAndSetSemantics {
+        contentDescription = spoken
+        if (menuActions != null) {
+          customActions = listOf(
+            CustomAccessibilityAction(reportLabel) { menu.isPickingReason = true; true },
+            CustomAccessibilityAction(blockLabel) { menu.isConfirmingBlock = true; true },
+          )
+        }
+      },
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
-    PeaceMessageIdentity(name = message.displayName, place = place, tintSeed = message.id)
+    PeaceMessageIdentity(
+      name = message.displayName,
+      place = place,
+      tintSeed = message.id,
+      trailing = menuActions?.let { cardActions ->
+        { PeaceMessageMenu(state = menu, authorName = message.displayName, actions = cardActions) }
+      },
+    )
     Text(
       quoted,
       style = DeepType.caption.copy(lineHeight = DeepType.caption.lineHeight * 1.1f),
@@ -203,9 +242,16 @@ private fun PeaceMessageCardPreview() {
     Box {
       AtmosphereBackground()
       Column(Modifier.padding(Dp.edge), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val actions = PeaceMessageCardActions(onReport = {}, onBlock = {})
         FixturePauseEventRemote.sampleMessages(Instant.now()).take(3).forEach {
-          PeaceMessageCard(it, FixturePauseEventRemote.sampleIntentions)
+          PeaceMessageCard(it, FixturePauseEventRemote.sampleIntentions, actions = actions)
         }
+        // The member's own: no menu, even with actions handed in.
+        PeaceMessageCard(
+          FixturePauseEventRemote.sampleMessages(Instant.now()).first().copy(id = "mine", displayName = "Miyu", isMine = true),
+          FixturePauseEventRemote.sampleIntentions,
+          actions = actions,
+        )
         PeaceMessageIdentity(name = "Friend", place = "", tintSeed = "friend", modifier = Modifier.peaceMessageCard())
       }
     }

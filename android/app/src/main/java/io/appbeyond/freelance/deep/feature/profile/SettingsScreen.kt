@@ -114,6 +114,9 @@ private const val FOOTER_ALPHA = 0.8f
 private val MEMBERSHIP_NOTE_SPACING = 8.dp
 private val MEMBERSHIP_NOTE_INSET = 8.dp
 
+/** Contact us — the address the store listings and the privacy policy publish. */
+private const val SUPPORT_MAIL_URI = "mailto:support@deeppeace.space"
+
 /** Where a restore stands — iOS's `RestorePhase`. */
 private enum class RestorePhase { Idle, Working, Restored, Failed }
 
@@ -175,6 +178,9 @@ private enum class RestorePhase { Idle, Working, Restored, Failed }
  * @param onUpgrade opens the DEEP Premium invitation — the Membership card's
  *   first row, shown on the free plan once this is supplied (iOS's
  *   `openPaywall(.settings)`). Null hides it.
+ * @param onOpenBlockedMembers pushes Blocked members — the Community card's
+ *   first row, for a signed-in member once this is supplied. The card's
+ *   Contact us opens a mail to DEEP's support address.
  */
 @Composable
 fun SettingsScreen(
@@ -189,6 +195,7 @@ fun SettingsScreen(
   onBack: () -> Unit,
   modifier: Modifier = Modifier,
   onUpgrade: (() -> Unit)? = null,
+  onOpenBlockedMembers: (() -> Unit)? = null,
 ) {
   val locale = rememberAppLocale()
   val account by accountStore.account.collectAsStateWithLifecycle()
@@ -363,6 +370,23 @@ fun SettingsScreen(
           restorePhase = restorePhase,
           onRestore = ::restorePurchases,
         )
+
+        SettingsSection(title = stringResource(R.string.settings_section_community)) {
+          if (account != null && onOpenBlockedMembers != null) {
+            SettingsRow(
+              title = stringResource(R.string.settings_blocked_members),
+              icon = ProfileIcons.PersonSlash,
+              accessory = SettingsAccessory.Chevron,
+              onClick = onOpenBlockedMembers,
+            )
+          }
+          SettingsRow(
+            title = stringResource(R.string.settings_contact_us),
+            icon = ProfileIcons.Envelope,
+            accessory = SettingsAccessory.Chevron,
+            onClick = { runCatching { uriHandler.openUri(SUPPORT_MAIL_URI) } },
+          )
+        }
 
         SettingsSection(title = stringResource(R.string.settings_section_account)) {
           SettingsRow(
@@ -664,6 +688,7 @@ private fun SettingsScreenPreview() {
         onOpenLanguage = {},
         onOpenReminder = {},
         onBack = {},
+        onOpenBlockedMembers = {},
       )
     }
   }

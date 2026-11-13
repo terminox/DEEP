@@ -45,6 +45,7 @@ import io.appbeyond.freelance.deep.feature.onboarding.store.AccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockAccountStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.MockOnboardingProgressStore
 import io.appbeyond.freelance.deep.feature.onboarding.store.OnboardingProgressStore
+import io.appbeyond.freelance.deep.networking.DeepApiException
 import io.appbeyond.freelance.deep.onboarding.model.OnboardingRoute
 import io.appbeyond.freelance.deep.onboarding.model.SignUpProblem
 import io.appbeyond.freelance.deep.onboarding.model.SignUpValidation
@@ -105,6 +106,7 @@ fun SignUpScreen(
   val focusManager = LocalFocusManager.current
   val breatheLine = stringResource(R.string.onboarding_sign_up_breathe)
   val fallback = stringResource(R.string.onboarding_sign_up_failed)
+  val nameRejected = stringResource(R.string.onboarding_problem_name_rejected)
   val problemText = mapOf(
     SignUpProblem.MissingName to stringResource(R.string.onboarding_problem_missing_name),
     SignUpProblem.MalformedEmail to stringResource(R.string.onboarding_problem_malformed_email),
@@ -139,7 +141,14 @@ fun SignUpScreen(
       } catch (e: CancellationException) {
         throw e
       } catch (e: Exception) {
-        errorMessage = e.displayMessage(fallback)
+        // The server's content filter refused the name (422
+        // `display_name_rejected`): say so in the member's language rather
+        // than show the server's English sentence.
+        errorMessage = if (e is DeepApiException.Http && e.code == "display_name_rejected") {
+          nameRejected
+        } else {
+          e.displayMessage(fallback)
+        }
       }
       isSubmitting = false
     }
@@ -182,7 +191,7 @@ fun SignUpScreen(
         Column(verticalArrangement = Arrangement.spacedBy(FIELD_SPACING)) {
           AuthField(
             value = name,
-            onValueChange = { name = it },
+            onValueChange = { name = SignUpValidation.capName(it) },
             placeholder = stringResource(R.string.onboarding_field_name),
             icon = DeepIcons.Person,
             capitalization = KeyboardCapitalization.Words,

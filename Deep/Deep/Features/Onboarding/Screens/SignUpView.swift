@@ -8,12 +8,16 @@ struct SignUpView: View {
   @Environment(\.accountStore) private var accountStore
   @Environment(\.onboardingStore) private var onboardingStore
   @Environment(\.onboardingAdvance) private var advance
+  @Environment(\.legalLinks) private var legalLinks
+  @Environment(\.locale) private var locale
 
   @State private var name = ""
   @State private var email = ""
   @State private var password = ""
   @State private var errorMessage: String?
   @State private var isSubmitting = false
+
+  private static let nameLimit = 40
 
   private var canSubmit: Bool {
     !name.trimmingCharacters(in: .whitespaces).isEmpty
@@ -52,6 +56,15 @@ struct SignUpView: View {
               placeholder: "Your name", text: $name, icon: "person",
               textContentType: .name, autocapitalization: .words
             )
+            .onChange(of: name) { _, updated in
+              // The server caps display names at 40 UTF-16 units (JavaScript's
+              // length), which Thai tone marks reach before 40 characters do.
+              // Drop whole characters until it fits.
+              guard updated.utf16.count > Self.nameLimit else { return }
+              var capped = Substring(updated)
+              while capped.utf16.count > Self.nameLimit { capped = capped.dropLast() }
+              name = String(capped)
+            }
             AuthField(
               placeholder: "Email", text: $email, icon: "envelope",
               isValid: emailLooksValid ? true : nil,
@@ -88,7 +101,18 @@ struct SignUpView: View {
 
         Spacer()
 
-        OnboardingPrimaryButton(title: "Create account", isEnabled: canSubmit, action: submit)
+        VStack(spacing: 14) {
+          OnboardingPrimaryButton(title: "Create account", isEnabled: canSubmit, action: submit)
+
+          // The same footer recipe as `CreateAccountView`, worded for the tap
+          // that actually creates the account.
+          Text(LegalCopy.accountCreation(legalLinks, locale: locale))
+            .font(DeepType.micro)
+            .foregroundStyle(.driftGrey)
+            .tint(.deepPlum)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+        }
       }
       .padding(.horizontal, .edge)
       .padding(.bottom, .rhythm)
@@ -150,7 +174,15 @@ struct SignUpView: View {
   }
 
   private func message(for error: Error) -> String {
-    (error as? LocalizedError)?.errorDescription
+    if case APIError.http(422, "display_name_rejected", _) = error {
+      return String(
+        localized: "Please choose a different name.",
+        bundle: .app,
+        locale: .app,
+        comment: "Sign-up error when the server's content filter turns the display name away."
+      )
+    }
+    return (error as? LocalizedError)?.errorDescription
       ?? String(localized: "We couldn't create your space just now. Please try again.", bundle: .app, locale: .app)
   }
 }

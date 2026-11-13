@@ -7,11 +7,14 @@ import { createSession, rotateSession, revokeSession } from "../auth/sessions.js
 import { requireAuth } from "../auth/middleware.js";
 import { serializeUser } from "../lib/serialize.js";
 import { requestEntitlement } from "../lib/entitlement.js";
+import { isRejectedText } from "../lib/contentFilter.js";
 
 const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  displayName: z.string().trim().min(1),
+  // The name rides on every peace message the member shares, so it is capped
+  // and runs through the same word filter as the message text.
+  displayName: z.string().trim().min(1).max(40),
 });
 
 const loginSchema = z.object({
@@ -28,6 +31,9 @@ function device(req: FastifyRequest) {
 export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/signup", async (req) => {
     const body = signupSchema.parse(req.body);
+    if (isRejectedText(body.displayName)) {
+      throw ApiError.unprocessable("Please choose a different name", "display_name_rejected");
+    }
     const email = body.email.toLowerCase();
 
     const existing = await prisma.user.findUnique({ where: { email } });
