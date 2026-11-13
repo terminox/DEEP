@@ -11,6 +11,9 @@ struct PeaceMessage: Identifiable, Hashable {
   /// untagged. Resolved to display copy against tonight's options.
   let intention: String?
   let createdAt: Date
+  /// True when the signed-in member wrote it — such a message offers no way to
+  /// report or block. False for anything an older server sent.
+  var isMine: Bool = false
 
   /// Country display name from the ISO code, in the user's locale.
   var countryName: String {
