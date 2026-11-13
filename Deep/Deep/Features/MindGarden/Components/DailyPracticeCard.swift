@@ -10,14 +10,20 @@ struct DailyPracticeCard: View {
   var plantName: String? = nil
   var action: () -> Void = {}
 
+  // `Text(String)` renders verbatim, so the copy resolves in the reading
+  // language here.
   private var headline: String {
-    state.minutesRemaining == 0 ? "Today’s goal complete" : "Tend your garden"
+    state.minutesRemaining == 0
+      ? String(localized: "Today’s goal complete", bundle: .app, locale: .app)
+      : String(localized: "Tend your garden", bundle: .app, locale: .app)
   }
 
   private var subtitle: String {
-    state.minutesRemaining == 0
-      ? "Return tomorrow for new growth"
-      : "Each session feeds your \(plantName?.lowercased() ?? "garden")"
+    guard state.minutesRemaining > 0 else {
+      return String(localized: "Return tomorrow for new growth", bundle: .app, locale: .app)
+    }
+    let fed = plantName?.lowercased() ?? String(localized: "garden", bundle: .app, locale: .app)
+    return String(localized: "Each session feeds your \(fed)", bundle: .app, locale: .app)
   }
 
   private var accessibilitySummary: String {

@@ -236,12 +236,112 @@
         }
       }
     },
+    "About %lld min left" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เหลืออีกราว %lld นาที"
+          }
+        }
+      }
+    },
+    "About a minute left" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เหลืออีกราวหนึ่งนาที"
+          }
+        }
+      }
+    },
+    "Africa" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แอฟริกา"
+          }
+        }
+      }
+    },
+    "Almost there" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใกล้แล้ว"
+          }
+        }
+      }
+    },
+    "Americas" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อเมริกา"
+          }
+        }
+      }
+    },
+    "Asia" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เอเชีย"
+          }
+        }
+      }
+    },
     "Aurora" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ออโรร่า"
+          }
+        }
+      }
+    },
+    "Breathe in" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจเข้า"
+          }
+        }
+      }
+    },
+    "Breathe out" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจออก"
+          }
+        }
+      }
+    },
+    "Carry this calm" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "พาความสงบนี้ไปด้วย"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ต่อไป"
           }
         }
       }
@@ -266,12 +366,42 @@
         }
       }
     },
+    "Each session feeds your %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทุกเซสชันช่วยหล่อเลี้ยง%@ของคุณ"
+          }
+        }
+      }
+    },
+    "Europe" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยุโรป"
+          }
+        }
+      }
+    },
     "Experiments" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "การทดลอง"
+          }
+        }
+      }
+    },
+    "garden" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สวน"
           }
         }
       }
@@ -296,12 +426,52 @@
         }
       }
     },
+    "Oceania" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โอเชียเนีย"
+          }
+        }
+      }
+    },
     "Part of DEEP Premium" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "เป็นส่วนหนึ่งของ DEEP Premium"
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หยุดไว้ก่อน"
+          }
+        }
+      }
+    },
+    "Return tomorrow for new growth" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กลับมาใหม่พรุ่งนี้ เพื่อการเติบโตครั้งใหม่"
+          }
+        }
+      }
+    },
+    "Session complete" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จบเซสชันแล้ว"
           }
         }
       }
@@ -316,12 +486,32 @@
         }
       }
     },
+    "Take your time" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ไม่ต้องรีบ"
+          }
+        }
+      }
+    },
     "Thank you for giving to %@" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "ขอบคุณที่มอบหัวใจให้ %@"
+          }
+        }
+      }
+    },
+    "the Americas" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ทวีปอเมริกา"
           }
         }
       }
@@ -356,6 +546,16 @@
         }
       }
     },
+    "Today’s goal complete" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ครบเป้าหมายของวันนี้แล้ว"
+          }
+        }
+      }
+    },
     "Your garden grew" : {
       "localizations" : {
         "th" : {
@@ -372,6 +572,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "สวนของคุณกำลังพักผ่อน"
+          }
+        }
+      }
+    },
+    "You’re here now" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ตอนนี้คุณอยู่ตรงนี้แล้ว"
           }
         }
       }

@@ -24,6 +24,10 @@ final class GlobalPauseSessionController: UIViewController {
   /// The reward ritual draws the plant's mascot artwork; without the real
   /// loader it reaches the throwaway default and falls back to a gradient.
   private let imageLoader: any ImageLoading
+  /// The picked language. UIKit severs the environment here too, so without it
+  /// the meditation and reflection resolve their copy against the device
+  /// language instead of the one chosen in Settings.
+  private let locale: Locale
   private let onClose: () -> Void
 
   /// Faded in late by the present animator, out early by the dismiss animator.
@@ -80,6 +84,7 @@ final class GlobalPauseSessionController: UIViewController {
     continuityWitness: ContinuityWitness,
     accountStore: any AccountStore,
     imageLoader: any ImageLoading,
+    locale: Locale,
     onClose: @escaping () -> Void
   ) {
     self.session = session
@@ -91,6 +96,7 @@ final class GlobalPauseSessionController: UIViewController {
     self.continuityWitness = continuityWitness
     self.accountStore = accountStore
     self.imageLoader = imageLoader
+    self.locale = locale
     self.onClose = onClose
 
     // Liquid Glass on iOS 26, hand-blended frosted capsule below — the UIKit
@@ -362,6 +368,7 @@ final class GlobalPauseSessionController: UIViewController {
         continents: ContinentPresence.row(from: session.participantsByContinent),
         revealed: isOverlayRevealed
       )
+      .environment(\.locale, locale)
       // iOS 26 quirk: hosting SwiftUI inside this custom-presented
       // controller arrives with `isEnabled == false` in the environment —
       // Buttons silently dead while gestures still fire. Re-enable at the
@@ -534,6 +541,7 @@ final class GlobalPauseSessionController: UIViewController {
         .environment(\.continuityWitness, continuityWitness)
         .environment(\.accountStore, accountStore)
         .environment(\.imageLoader, imageLoader)
+        .environment(\.locale, locale)
         // Same iOS 26 re-enable as the meditation overlay.
         .environment(\.isEnabled, true)
         .preferredColorScheme(.light)
@@ -697,6 +705,7 @@ final class GlobalPauseSessionController: UIViewController {
     continuityWitness: .unwitnessed,
     accountStore: PreviewAccountStore(),
     imageLoader: FixtureImageLoader(),
+    locale: Locale(identifier: "en"),
     onClose: {}
   )
   controller.loadViewIfNeeded()

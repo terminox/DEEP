@@ -264,19 +264,21 @@ struct DeepSessionView: View {
     .accessibilityElement(children: .combine)
   }
 
+  // Plain `String`s render verbatim, so each cue resolves in the reading
+  // language here — the same string then serves the VoiceOver announcement.
   private var cue: String {
     switch engine.phase {
-    case .finished: "You’re here now"
-    case _ where engine.isPaused: "Paused"
-    case .inhale: "Breathe in"
-    case .exhale: "Breathe out"
+    case .finished: String(localized: "You’re here now", bundle: .app, locale: .app)
+    case _ where engine.isPaused: String(localized: "Paused", bundle: .app, locale: .app)
+    case .inhale: String(localized: "Breathe in", bundle: .app, locale: .app)
+    case .exhale: String(localized: "Breathe out", bundle: .app, locale: .app)
     }
   }
 
   private var caption: String {
     switch engine.phase {
-    case .finished: "Session complete"
-    case _ where engine.isPaused: "Take your time"
+    case .finished: String(localized: "Session complete", bundle: .app, locale: .app)
+    case _ where engine.isPaused: String(localized: "Take your time", bundle: .app, locale: .app)
     default: remainingLine
     }
   }
@@ -287,9 +289,10 @@ struct DeepSessionView: View {
   /// nothing new ticks on a screen meant to be watched with the eyes half shut.
   private var remainingLine: String {
     let left = engine.remainingInSession
-    if left < 30 { return "Almost there" }
-    if left < 90 { return "About a minute left" }
-    return "About \(Int((left / 60).rounded())) min left"
+    if left < 30 { return String(localized: "Almost there", bundle: .app, locale: .app) }
+    if left < 90 { return String(localized: "About a minute left", bundle: .app, locale: .app) }
+    let minutes = Int((left / 60).rounded())
+    return String(localized: "About \(minutes) min left", bundle: .app, locale: .app)
   }
 
   /// Speaks the visual cue, so VoiceOver users breathe with the session too.
