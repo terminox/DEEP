@@ -1,0 +1,132 @@
+/* A reading page: one column, generous line height, spacing rather than rules between sections. */
+body {
+  background: var(--moon-cream);
+}
+
+.legal {
+  min-height: 100vh;
+  background-image: var(--atmosphere);
+  color: var(--deep-plum);
+  font-family: var(--sans);
+}
+
+.legal-top,
+.legal-body,
+.legal-foot {
+  max-width: 680px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+.legal-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 24px;
+}
+
+.legal-home {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--iris-dusk);
+  text-decoration: none;
+}
+
+.legal-wordmark {
+  width: 72px;
+}
+
+.legal-languages {
+  display: flex;
+  gap: 4px;
+}
+
+.legal-languages button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--drift-grey);
+  font: 500 var(--caption) / 1 var(--sans);
+  cursor: pointer;
+}
+
+.legal-languages button[aria-pressed='true'] {
+  background: var(--frost);
+  color: var(--deep-plum);
+}
+
+.legal-body {
+  padding-block: 16px 48px;
+}
+
+.legal-draft {
+  display: inline-block;
+  margin: 0 0 24px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--frost);
+  color: var(--dusk-rose);
+  font-size: var(--caption);
+}
+
+.legal h1 {
+  margin: 0 0 8px;
+  font: 300 var(--h1) / 1.2 var(--serif);
+}
+
+.legal-updated {
+  margin: 0 0 24px;
+  color: var(--drift-grey);
+  font-size: var(--caption);
+}
+
+.legal-intro {
+  margin: 0 0 16px;
+  font-size: var(--h3);
+  line-height: 1.6;
+}
+
+.legal section {
+  margin-top: 36px;
+}
+
+.legal h2 {
+  margin: 0 0 10px;
+  font: 500 var(--h3) / 1.35 var(--sans);
+}
+
+.legal p,
+.legal li {
+  font-size: var(--body);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.legal section p {
+  margin: 0 0 12px;
+}
+
+.legal ul {
+  margin: 0;
+  padding-inline-start: 20px;
+}
+
+.legal li {
+  margin-bottom: 8px;
+}
+
+.legal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding-block: 0 48px;
+  font-size: var(--caption);
+}
+
+.legal-foot a {
+  color: var(--drift-grey);
+}

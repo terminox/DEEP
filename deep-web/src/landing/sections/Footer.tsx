@@ -3,7 +3,11 @@ import { LogoMark, Tagline, Wordmark } from '../components/shared.tsx'
 import { sections } from '../storyOrder.ts'
 import './Footer.css'
 
-const company = ['Privacy', 'Terms', 'Contact']
+const company = [
+  { label: 'Privacy', href: '/privacy' },
+  { label: 'Terms', href: '/terms' },
+  { label: 'Contact', href: 'mailto:support@deeppeace.space' },
+]
 
 export default function Footer() {
   return (
@@ -33,9 +37,9 @@ export default function Footer() {
           <div>
             <p className="eyebrow">DEEP</p>
             <ul>
-              {company.map((label) => (
+              {company.map(({ label, href }) => (
                 <li key={label}>
-                  <a href="#">{label}</a>
+                  <a href={href}>{label}</a>
                 </li>
               ))}
             </ul>

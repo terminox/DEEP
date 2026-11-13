@@ -121,7 +121,7 @@ The Android counterpart of `baguette`:
 adb shell input tap <x> <y>
 adb shell input swipe <x1> <y1> <x2> <y2> <ms>
 adb exec-out screencap -p > shot.png
-adb shell am start -n io.appbeyond.freelance.deep.dev/io.appbeyond.freelance.deep.MainActivity
+adb shell am start -n space.deeppeace.app.dev/io.appbeyond.freelance.deep.MainActivity
 ```
 
 ## Why media URLs just work

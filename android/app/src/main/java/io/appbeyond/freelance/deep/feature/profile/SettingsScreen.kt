@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.appbeyond.freelance.deep.BuildConfig
+import io.appbeyond.freelance.deep.config.AppConfig
 import io.appbeyond.freelance.deep.R
 import io.appbeyond.freelance.deep.auth.Account
 import io.appbeyond.freelance.deep.feature.appshell.DeepIcons
@@ -376,6 +377,21 @@ fun SettingsScreen(
             accessory = if (isDeletingAccount) SettingsAccessory.Progress else SettingsAccessory.None,
             tint = Color.duskRose,
             onClick = { if (!isDeletingAccount) confirmingDelete = true },
+          )
+        }
+
+        SettingsSection(title = stringResource(R.string.settings_section_legal)) {
+          SettingsRow(
+            title = stringResource(R.string.onboarding_privacy),
+            icon = ProfileIcons.Document,
+            accessory = SettingsAccessory.Chevron,
+            onClick = { runCatching { uriHandler.openUri(AppConfig.legal.privacy) } },
+          )
+          SettingsRow(
+            title = stringResource(R.string.onboarding_terms),
+            icon = ProfileIcons.Document,
+            accessory = SettingsAccessory.Chevron,
+            onClick = { runCatching { uriHandler.openUri(AppConfig.legal.terms) } },
           )
         }
 

@@ -172,6 +172,15 @@ object ProfileIcons {
     moveTo(8.75f, 17f); lineTo(20f, 17f)
   }
 
+  /** Privacy Policy and Terms: a page with a few lines on it. */
+  val Document: ImageVector = lineIcon("ProfileDocument") {
+    moveTo(7f, 3.75f); lineTo(14f, 3.75f); lineTo(18.5f, 8.25f); lineTo(18.5f, 20.25f)
+    lineTo(5.5f, 20.25f); lineTo(5.5f, 3.75f); lineTo(7f, 3.75f)
+    moveTo(14f, 3.75f); lineTo(14f, 8.25f); lineTo(18.5f, 8.25f)
+    moveTo(9f, 12.5f); lineTo(15f, 12.5f)
+    moveTo(9f, 16f); lineTo(15f, 16f)
+  }
+
   val ChevronRight: ImageVector = lineIcon("ProfileChevronRight") {
     moveTo(9.5f, 6f)
     lineTo(15.5f, 12f)

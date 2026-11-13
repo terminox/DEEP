@@ -40,7 +40,7 @@ const features: Feature[] = [
     id: 'compassion',
     eyebrow: 'Compassion Portfolio',
     title: ['Make', 'real life impacts'],
-    lede: 'Every quiet minute becomes a heart. Give your hearts to the causes you care about, and DEEP donates real money in proportion to where the community’s hearts have gone.',
+    lede: 'Every quiet minute becomes a heart. Send your hearts to the causes you care about. Each heart is a vote for the causes you’d like DEEP to support.',
     capture: 'compassion',
     accent: 'var(--blush-powder)',
   },

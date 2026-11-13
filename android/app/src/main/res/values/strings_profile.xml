@@ -28,6 +28,7 @@
   <string name="settings_restored">Restored</string>
   <!-- iOS: "Couldn't reach the App Store. Please try again in a moment." — Google Play here -->
   <string name="settings_restore_failed">Couldn\'t reach Google Play. Please try again in a moment.</string>
+  <string name="settings_section_legal">Legal</string>
   <string name="settings_section_account">Account</string>
   <string name="settings_log_out">Log out</string>
   <string name="settings_delete_account">Delete account</string>
