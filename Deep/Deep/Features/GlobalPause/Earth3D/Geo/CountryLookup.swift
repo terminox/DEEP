@@ -26,6 +26,13 @@ final class CountryLookup {
     var unitVector: SIMD3<Float> {
       sphereUnitVector(latDeg: latitude, lonDeg: longitude)
     }
+
+    /// The name a member reads when they tap the country: the system's own
+    /// name for it in the language picked in-app. `name` is the English
+    /// fallback for a code the system doesn't know.
+    var displayName: String {
+      Locale.app.localizedString(forRegionCode: iso2) ?? name
+    }
   }
 
   struct ContinentCenter {

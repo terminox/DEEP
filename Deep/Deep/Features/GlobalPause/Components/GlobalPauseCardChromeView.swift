@@ -69,7 +69,7 @@ final class GlobalPauseCardChromeView: UIView {
     case .off(let scheduleLine), .countdown(_, let scheduleLine):
       setCaptionText(scheduleLine, animated: animated)
     case .live:
-      setCaptionText("The world is pausing", animated: animated)
+      setCaptionText(String(localized: "The world is pausing", bundle: .app, locale: .app), animated: animated)
     }
 
     let isCountdown = if case .countdown = state { true } else { false }
@@ -126,7 +126,8 @@ final class GlobalPauseCardChromeView: UIView {
     // second; at zero the label clamps to "00:00" until the boundary timer
     // flips the state live.
     let seconds = Int(remaining.rounded(.up))
-    countdownLabel.text = String(format: "Live in %02d:%02d", seconds / 60, seconds % 60)
+    let clock = String(format: "%02d:%02d", seconds / 60, seconds % 60)
+    countdownLabel.text = String(localized: "Live in \(clock)", bundle: .app, locale: .app)
   }
 
   init(caption: String) {
@@ -165,7 +166,9 @@ final class GlobalPauseCardChromeView: UIView {
     countdownPillShadow.isHidden = true
     countdownPillShadow.alpha = 0
 
-    pillLabel.text = "Join now"
+    // UIKit has no environment to resolve against, so every label here reads
+    // the picked language itself; the tree is rebuilt when it changes.
+    pillLabel.text = String(localized: "Join now", bundle: .app, locale: .app)
     pillLabel.font = .bodyMedium
     // deepPlum, not white — white on the pastel gradient measures under 2.2:1
     // and vanishes; plum-on-light is the house pairing (see LiveBadgeView).

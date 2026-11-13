@@ -219,8 +219,8 @@ final class LoungeRadioPlayer: LoungeRadioPlaying {
   private func publishNowPlaying(elapsed: TimeInterval) {
     guard case .onAir = state else { return }
     MPNowPlayingInfoCenter.default().nowPlayingInfo = [
-      MPMediaItemPropertyTitle: "Fuku's Lounge",
-      MPMediaItemPropertyArtist: "Live before the Global Pause",
+      MPMediaItemPropertyTitle: String(localized: "Fuku's Lounge", bundle: .app, locale: .app),
+      MPMediaItemPropertyArtist: String(localized: "Live before the Global Pause", bundle: .app, locale: .app),
       MPNowPlayingInfoPropertyElapsedPlaybackTime: elapsed,
       MPNowPlayingInfoPropertyPlaybackRate: 1.0,
       MPNowPlayingInfoPropertyIsLiveStream: true,

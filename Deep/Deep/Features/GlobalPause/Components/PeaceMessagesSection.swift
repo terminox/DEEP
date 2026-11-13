@@ -77,10 +77,14 @@ private struct PeaceMessageCard: View {
 
   private var accessibilityLabel: String {
     var parts = [message.displayName]
-    if !message.countryName.isEmpty { parts.append("from \(message.countryName)") }
-    parts.append("says: \(message.text)")
-    parts.append(message.createdAt.formatted(.relative(presentation: .named)))
-    if let tag = message.intentionLabel(in: intentions) { parts.append("tagged \(tag)") }
+    if !message.countryName.isEmpty {
+      parts.append(String(localized: "from \(message.countryName)", bundle: .app, locale: .app))
+    }
+    parts.append(String(localized: "says: \(message.text)", bundle: .app, locale: .app))
+    parts.append(message.createdAt.formatted(.relative(presentation: .named).locale(.app)))
+    if let tag = message.intentionLabel(in: intentions) {
+      parts.append(String(localized: "tagged \(tag)", bundle: .app, locale: .app))
+    }
     return parts.joined(separator: ", ")
   }
 }

@@ -65,9 +65,15 @@ struct ContinentLights: View {
   private var accessibilityLabel: String {
     guard !presences.isEmpty else { return "" }
     let places = presences
-      .map { "\($0.count.formatted()) in \($0.continent.spokenName)" }
-      .formatted(.list(type: .and))
-    return "Pausing now: \(places)"
+      .map {
+        String(
+          localized: "\($0.count.formatted()) in \($0.continent.spokenName)",
+          bundle: .app,
+          locale: .app
+        )
+      }
+      .formatted(.list(type: .and).locale(.app))
+    return String(localized: "Pausing now: \(places)", bundle: .app, locale: .app)
   }
 }
 

@@ -73,6 +73,22 @@
         }
       }
     },
+    "%@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ in %2$@"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ คนใน%2$@"
+          }
+        }
+      }
+    },
     "%lld hearts received" : {
       "localizations" : {
         "th" : {
@@ -329,6 +345,16 @@
         }
       }
     },
+    "Antarctica" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แอนตาร์กติกา"
+          }
+        }
+      }
+    },
     "Asia" : {
       "localizations" : {
         "th" : {
@@ -365,6 +391,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "หายใจออก"
+          }
+        }
+      }
+    },
+    "Breathe with the world, together" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "หายใจไปพร้อมกับทั้งโลก"
           }
         }
       }
@@ -479,6 +515,16 @@
         }
       }
     },
+    "Explore" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สำรวจ"
+          }
+        }
+      }
+    },
     "Free plan" : {
       "localizations" : {
         "th" : {
@@ -499,12 +545,52 @@
         }
       }
     },
+    "from %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "จาก %@"
+          }
+        }
+      }
+    },
     "garden" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "สวน"
+          }
+        }
+      }
+    },
+    "Global Pause. %@." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global Pause %@"
+          }
+        }
+      }
+    },
+    "Global Pause. %@. Going live soon." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global Pause %@ กำลังจะเริ่มถ่ายทอดสดเร็ว ๆ นี้"
+          }
+        }
+      }
+    },
+    "Global Pause. Live. The world is pausing. Join now." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Global Pause ถ่ายทอดสด โลกกำลังหยุดพัก เข้าร่วมเลย"
           }
         }
       }
@@ -525,6 +611,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "มีเสียงนำ"
+          }
+        }
+      }
+    },
+    "Join now" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เข้าร่วมเลย"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สด"
+          }
+        }
+      }
+    },
+    "LIVE" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สด"
+          }
+        }
+      }
+    },
+    "Live before the Global Pause" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ถ่ายทอดสดก่อน Global Pause"
+          }
+        }
+      }
+    },
+    "Live in %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เริ่มในอีก %@"
           }
         }
       }
@@ -569,6 +705,26 @@
         }
       }
     },
+    "Pausing now: %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังหยุดพักตอนนี้: %@"
+          }
+        }
+      }
+    },
+    "Peace messages" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อความแห่งสันติ"
+          }
+        }
+      }
+    },
     "Preferences" : {
       "localizations" : {
         "th" : {
@@ -599,6 +755,26 @@
         }
       }
     },
+    "says: %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กล่าวว่า: %@"
+          }
+        }
+      }
+    },
+    "Send & continue" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ส่งและไปต่อ"
+          }
+        }
+      }
+    },
     "Session complete" : {
       "localizations" : {
         "th" : {
@@ -609,12 +785,32 @@
         }
       }
     },
+    "Sign in from the You tab to leave a message." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เข้าสู่ระบบจากแท็บ “ฉัน” เพื่อฝากข้อความ"
+          }
+        }
+      }
+    },
     "Soundscape" : {
       "localizations" : {
         "th" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "เสียงบรรยากาศ"
+          }
+        }
+      }
+    },
+    "tagged %@" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แท็ก %@"
           }
         }
       }
@@ -649,6 +845,36 @@
         }
       }
     },
+    "The world is pausing" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โลกกำลังหยุดพัก"
+          }
+        }
+      }
+    },
+    "The world keeps breathing — you can rejoin while it's live." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โลกยังคงหายใจต่อไป — คุณกลับมาร่วมได้ตลอดช่วงที่ยังถ่ายทอดสด"
+          }
+        }
+      }
+    },
+    "The world, breathing together" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "โลกกำลังหายใจไปพร้อมกัน"
+          }
+        }
+      }
+    },
     "This permanently erases your account and everything you've shared. If you have a DEEP Premium subscription, cancel it separately in your App Store settings — deleting your account doesn't cancel billing." : {
       "localizations" : {
         "th" : {
@@ -675,6 +901,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium"
+          }
+        }
+      }
+    },
+    "Three messages a day is plenty. Rest now." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "สามข้อความต่อวันก็เพียงพอแล้ว พักผ่อนเถอะ"
           }
         }
       }
@@ -725,6 +961,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "สวนของคุณกำลังพักผ่อน"
+          }
+        }
+      }
+    },
+    "Your message couldn't be sent just now." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังส่งข้อความของคุณไม่ได้ในตอนนี้"
           }
         }
       }
@@ -1023,7 +1269,15 @@
     },
     "1 person is pausing with you" : {
       "comment" : "A line that appears in the pause meditation,",
-      "isCommentAutoGenerated" : true
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 คนกำลังหยุดพักไปพร้อมกับคุณ"
+          }
+        }
+      }
     },
     "5,000 meals shared this month" : {
       "localizations" : {

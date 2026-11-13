@@ -146,7 +146,7 @@ final class GlobalPauseSessionController: UIViewController {
     view.backgroundColor = .moonCream
 
     closeButton.alpha = 0
-    closeButton.accessibilityLabel = "Close"
+    closeButton.accessibilityLabel = String(localized: "Close", bundle: .app, locale: .app)
     closeButton.addAction(
       UIAction { [weak self] _ in self?.requestClose() },
       for: .touchUpInside
@@ -454,16 +454,16 @@ final class GlobalPauseSessionController: UIViewController {
     }
 
     let alert = UIAlertController(
-      title: "Leave your session?",
-      message: "The world keeps breathing — you can rejoin while it's live.",
+      title: String(localized: "Leave your session?", bundle: .app, locale: .app),
+      message: String(localized: "The world keeps breathing — you can rejoin while it's live.", bundle: .app, locale: .app),
       preferredStyle: .alert
     )
     alert.addAction(
-      UIAlertAction(title: "Leave", style: .destructive) { [weak self] _ in
+      UIAlertAction(title: String(localized: "Leave", bundle: .app, locale: .app), style: .destructive) { [weak self] _ in
         self?.confirmLeave()
       }
     )
-    alert.addAction(UIAlertAction(title: "Keep breathing", style: .cancel))
+    alert.addAction(UIAlertAction(title: String(localized: "Keep breathing", bundle: .app, locale: .app), style: .cancel))
     alert.overrideUserInterfaceStyle = .light
     leaveAlert = alert
     present(alert, animated: true)
