@@ -70,7 +70,7 @@ final class AppDependencies {
     // drivable without RevenueCat or a network. It compiles out of every
     // shipping build.
     if ProcessInfo.processInfo.arguments.contains("-DeepMockSubscriptions") {
-      self.subscriptionStore = MockSubscriptionStore.free
+      self.subscriptionStore = MockSubscriptionStore.mixedTrials
     } else {
       self.subscriptionStore = Self.liveSubscriptionStore(config: config, accountStore: accountStore)
     }
