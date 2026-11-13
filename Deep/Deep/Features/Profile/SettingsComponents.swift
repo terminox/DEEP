@@ -7,7 +7,9 @@ import SwiftUI
 /// whitespace and surfaces, never with rules, so there are no hairlines
 /// between the rows.
 struct SettingsSection<Content: View>: View {
-  var title: String? = nil
+  /// A key, not a `String`: a section title is always product copy, and a
+  /// `String` here would render verbatim and skip the reading language.
+  var title: LocalizedStringKey? = nil
   @ViewBuilder var content: Content
 
   var body: some View {
@@ -55,17 +57,20 @@ struct SettingsRow: View {
 
   /// For a title chosen at runtime — a language's own name, an account's email.
   /// Such a title does not pass through the String Catalog, which is right for
-  /// a proper noun and wrong for anything else.
+  /// a proper noun and wrong for anything else. Labelled `verbatim:` so a
+  /// literal can never land here by overload resolution: with a plain
+  /// `title: String` beside the key init, Swift prefers `String` for a literal
+  /// and every row silently skipped translation.
   init(
     icon: String? = nil,
-    title: String,
+    verbatim title: String,
     accessory: Accessory = .none,
     role: ButtonRole? = nil,
     tint: Color? = nil,
     action: (() -> Void)? = nil
   ) {
     self.icon = icon
-    self.titleLabel = Text(title)
+    self.titleLabel = Text(verbatim: title)
     self.accessory = accessory
     self.role = role
     self.tint = tint
@@ -76,7 +81,7 @@ struct SettingsRow: View {
   /// view's locale.
   init(
     icon: String? = nil,
-    _ titleKey: LocalizedStringKey,
+    title titleKey: LocalizedStringKey,
     accessory: Accessory = .none,
     role: ButtonRole? = nil,
     tint: Color? = nil,

@@ -91,11 +91,13 @@ struct SettingsView: View {
       Button("Delete", role: .destructive, action: deleteAccount)
       Button("Cancel", role: .cancel) {}
     } message: {
-      Text(
-        "This permanently erases your account and everything you've shared. "
-        + "If you have a DEEP Premium subscription, cancel it separately in your "
-        + "App Store settings — deleting your account doesn't cancel billing."
-      )
+      // One literal, not a `+` chain: concatenation yields a plain `String`,
+      // which `Text` renders verbatim instead of looking it up.
+      Text("""
+        This permanently erases your account and everything you've shared. \
+        If you have a DEEP Premium subscription, cancel it separately in your \
+        App Store settings — deleting your account doesn't cancel billing.
+        """)
     }
     .alert("Something went wrong", isPresented: $deleteFailed) {
       Button("OK", role: .cancel) {}
@@ -118,7 +120,7 @@ struct SettingsView: View {
     VStack(spacing: 6) {
       avatar
         .padding(.bottom, 6)
-      Text(account?.displayName ?? "Friend")
+      Text(displayName)
         .font(DeepType.displayTitle)
         .foregroundStyle(.deepPlum)
       if let email = account?.email {
@@ -168,25 +170,33 @@ struct SettingsView: View {
       .padding(.top, 4)
   }
 
+  /// Resolved here rather than in the view: `Label` renders a `String`
+  /// verbatim, so the copy has to arrive already in the reading language.
   private var planLabel: String {
     switch subscriptionStore.status {
     case .subscribed(let productID):
       switch productID {
-      case DeepProduct.yearly: return "DEEP Premium, yearly"
-      case DeepProduct.monthly: return "DEEP Premium, monthly"
-      default: return "DEEP Premium"
+      case DeepProduct.yearly: return String(localized: "DEEP Premium, yearly", bundle: .app, locale: .app)
+      case DeepProduct.monthly: return String(localized: "DEEP Premium, monthly", bundle: .app, locale: .app)
+      default: return String(localized: "DEEP Premium", bundle: .app, locale: .app)
       }
     case .none, .unknown:
       // A membership the store can't see — granted by the server, or carried
       // by the server's last answer while RevenueCat checks — is still one.
-      if premiumAccess.hasPremium { return "DEEP Premium" }
-      return subscriptionStore.status == .none ? "Free plan" : "Checking…"
+      if premiumAccess.hasPremium { return String(localized: "DEEP Premium", bundle: .app, locale: .app) }
+      return subscriptionStore.status == .none
+        ? String(localized: "Free plan", bundle: .app, locale: .app)
+        : String(localized: "Checking…", bundle: .app, locale: .app)
     }
   }
 
+  /// The member's own name, or a warm stand-in in the reading language.
+  private var displayName: String {
+    account?.displayName ?? String(localized: "Friend", bundle: .app, locale: .app)
+  }
+
   private var initials: String {
-    let name = account?.displayName ?? "Friend"
-    let letters = name.split(separator: " ").compactMap(\.first).prefix(2)
+    let letters = displayName.split(separator: " ").compactMap(\.first).prefix(2)
     return letters.isEmpty ? "·" : String(letters).uppercased()
   }
 
@@ -245,20 +255,20 @@ struct SettingsView: View {
         // above a chip still reading "Checking…", and offer a paying member
         // what they already have.
         if subscriptionStore.status == .none, !premiumAccess.hasPremium {
-          SettingsRow(icon: "sparkles", "Upgrade to DEEP Premium", accessory: .chevron) {
+          SettingsRow(icon: "sparkles", title: "Upgrade to DEEP Premium", accessory: .chevron) {
             openPaywall(.settings)
           }
         }
         // Members only: there is nothing to manage on the free plan, and the
         // way in to buying is the row above.
         if premiumAccess.hasPremium {
-          SettingsRow(icon: "creditcard", "Manage subscription", accessory: .chevron) {
+          SettingsRow(icon: "creditcard", title: "Manage subscription", accessory: .chevron) {
             manageSubscription()
           }
         }
         SettingsRow(
           icon: "arrow.clockwise",
-          "Restore purchases",
+          title: "Restore purchases",
           accessory: restoreAccessory,
           action: restorePurchases
         )
@@ -287,7 +297,7 @@ struct SettingsView: View {
     switch restorePhase {
     case .idle, .failed: return .none
     case .working: return .progress
-    case .restored: return .value("Restored")
+    case .restored: return .value(String(localized: "Restored", bundle: .app, locale: .app))
     }
   }
 

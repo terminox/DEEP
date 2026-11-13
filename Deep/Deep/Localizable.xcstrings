@@ -256,6 +256,16 @@
         }
       }
     },
+    "Account" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "บัญชี"
+          }
+        }
+      }
+    },
     "Africa" : {
       "localizations" : {
         "th" : {
@@ -336,6 +346,16 @@
         }
       }
     },
+    "Checking…" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กำลังตรวจสอบ…"
+          }
+        }
+      }
+    },
     "Continue" : {
       "localizations" : {
         "th" : {
@@ -352,6 +372,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "เปลี่ยนต้นไม้ไม่สำเร็จ ลองใหม่อีกครั้งในอีกสักครู่"
+          }
+        }
+      }
+    },
+    "DEEP Premium, monthly" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DEEP Premium รายเดือน"
+          }
+        }
+      }
+    },
+    "DEEP Premium, yearly" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DEEP Premium รายปี"
+          }
+        }
+      }
+    },
+    "Delete account" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลบบัญชี"
           }
         }
       }
@@ -396,6 +446,26 @@
         }
       }
     },
+    "Free plan" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แพ็กเกจฟรี"
+          }
+        }
+      }
+    },
+    "Friend" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เพื่อน"
+          }
+        }
+      }
+    },
     "garden" : {
       "localizations" : {
         "th" : {
@@ -426,6 +496,16 @@
         }
       }
     },
+    "Membership" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การเป็นสมาชิก"
+          }
+        }
+      }
+    },
     "Oceania" : {
       "localizations" : {
         "th" : {
@@ -452,6 +532,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "หยุดไว้ก่อน"
+          }
+        }
+      }
+    },
+    "Preferences" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การปรับแต่ง"
+          }
+        }
+      }
+    },
+    "Restored" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "กู้คืนแล้ว"
           }
         }
       }
@@ -516,6 +616,16 @@
         }
       }
     },
+    "This permanently erases your account and everything you've shared. If you have a DEEP Premium subscription, cancel it separately in your App Store settings — deleting your account doesn't cancel billing." : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การดำเนินการนี้จะลบบัญชีของคุณและทุกสิ่งที่คุณแบ่งปันไว้อย่างถาวร หากคุณสมัครสมาชิก DEEP Premium อยู่ โปรดยกเลิกแยกต่างหากในการตั้งค่า App Store เพราะการลบบัญชีไม่ได้ยกเลิกการเรียกเก็บเงิน"
+          }
+        }
+      }
+    },
     "This plant is part of DEEP Premium, along with every sound in the library." : {
       "localizations" : {
         "th" : {
@@ -532,6 +642,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ต้นไม้นี้เป็นส่วนหนึ่งของ DEEP Premium"
+          }
+        }
+      }
+    },
+    "Time" : {
+      "localizations" : {
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เวลา"
           }
         }
       }
