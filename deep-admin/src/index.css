@@ -621,6 +621,11 @@ textarea {
   color: var(--danger);
 }
 
+.badge-reported {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .palette-swatch {
   display: inline-flex;
   align-items: center;

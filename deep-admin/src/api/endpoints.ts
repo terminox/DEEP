@@ -577,6 +577,8 @@ export async function reorderPauseIntentions(ids: string[]): Promise<void> {
 export async function listPeaceMessages(params?: {
   status?: PeaceMessageStatus
   pauseDate?: string
+  // Reported messages only, most-reported first.
+  reported?: boolean
 }): Promise<AdminPeaceMessage[]> {
   const { data } = await http.get<{ messages: AdminPeaceMessage[] }>(
     '/admin/pause/messages',

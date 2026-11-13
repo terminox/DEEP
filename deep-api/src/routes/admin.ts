@@ -673,22 +673,33 @@ export async function adminRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Peace message moderation (publish-first; moderation hides after the fact)
+  // Peace message moderation (publish-first; moderation hides after the fact).
+  // `reported=true` is the review queue: reported messages only, most-reported first.
   app.get("/admin/pause/messages", adminOnly, async (req) => {
     const query = z
       .object({
         status: z.enum(["PUBLISHED", "HIDDEN"]).optional(),
         pauseDate: z.string().optional(),
+        reported: z.enum(["true", "false"]).optional(),
       })
       .parse(req.query);
-    const messages = await prisma.peaceMessage.findMany({
+    const reported = query.reported === "true";
+    const rows = await prisma.peaceMessage.findMany({
       where: {
         ...(query.status ? { status: query.status } : {}),
         ...(query.pauseDate ? { pauseDate: query.pauseDate } : {}),
+        ...(reported ? { reports: { some: {} } } : {}),
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: reported
+        ? [{ reports: { _count: "desc" } }, { createdAt: "desc" }]
+        : { createdAt: "desc" },
+      include: { _count: { select: { reports: true } } },
       take: 200,
     });
+    const messages = rows.map(({ _count, ...message }) => ({
+      ...message,
+      reportCount: _count.reports,
+    }));
     return { messages };
   });
 

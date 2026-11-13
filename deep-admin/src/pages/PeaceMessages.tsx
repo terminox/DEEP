@@ -109,6 +109,13 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
           <span className="muted">Hidden</span>
         )}
       </td>
+      <td>
+        {message.reportCount > 0 ? (
+          <span className="badge badge-reported">{message.reportCount}</span>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
       <td className="mono">{message.pauseDate}</td>
       <td className="muted">
         {new Date(message.createdAt).toLocaleString()}
@@ -131,13 +138,15 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
 function PeaceMessagesPage() {
   const [status, setStatus] = useState<PeaceMessageStatus | ''>('')
   const [pauseDate, setPauseDate] = useState('')
+  const [reportedOnly, setReportedOnly] = useState(false)
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['peace-messages', status, pauseDate],
+    queryKey: ['peace-messages', status, pauseDate, reportedOnly],
     queryFn: () =>
       listPeaceMessages({
         status: status || undefined,
         pauseDate: pauseDate || undefined,
+        reported: reportedOnly || undefined,
       }),
   })
 
@@ -147,7 +156,9 @@ function PeaceMessagesPage() {
         <div>
           <h1>Peace messages</h1>
           <div className="page-subtitle">
-            Moderate messages shared during the Global Pause feedback phase
+            Moderate messages shared during the Global Pause feedback phase.
+            Members' reports hide a message automatically once enough of them
+            agree; Publish restores it.
           </div>
         </div>
       </div>
@@ -166,18 +177,26 @@ function PeaceMessagesPage() {
             </option>
           ))}
         </select>
+        <select
+          value={reportedOnly ? 'reported' : ''}
+          onChange={(e) => setReportedOnly(e.target.value === 'reported')}
+        >
+          <option value="">All messages</option>
+          <option value="reported">Reported</option>
+        </select>
         <input
           type="date"
           value={pauseDate}
           onChange={(e) => setPauseDate(e.target.value)}
           style={{ width: 'auto' }}
         />
-        {(status || pauseDate) && (
+        {(status || pauseDate || reportedOnly) && (
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => {
               setStatus('')
               setPauseDate('')
+              setReportedOnly(false)
             }}
           >
             Clear filters
@@ -197,6 +216,7 @@ function PeaceMessagesPage() {
                 <th>From</th>
                 <th>Message</th>
                 <th>Status</th>
+                <th>Reports</th>
                 <th>Pause date</th>
                 <th>Posted</th>
                 <th style={{ width: 120 }}>Actions</th>
@@ -208,7 +228,7 @@ function PeaceMessagesPage() {
               ))}
               {data && data.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="empty">
+                  <td colSpan={7} className="empty">
                     No peace messages match these filters.
                   </td>
                 </tr>

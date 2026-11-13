@@ -288,6 +288,8 @@ export type AdminPeaceMessage = {
   status: PeaceMessageStatus
   pauseDate: string
   createdAt: string
+  // Distinct members who reported it. Enough of them hide it automatically.
+  reportCount: number
 }
 
 export type PauseDayStats = {
