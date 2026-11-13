@@ -20,7 +20,8 @@
     "seed:assets": "bash scripts/copy-garden-assets.sh",
     "verify:safe-publish": "node --import tsx scripts/verifySafePublish.ts",
     "verify:revenuecat": "node --import tsx scripts/verifyRevenueCatWebhook.ts",
-    "verify:premium": "node --import tsx scripts/verifyPremiumContent.ts"
+    "verify:premium": "node --import tsx scripts/verifyPremiumContent.ts",
+    "verify:report-block": "node --import tsx scripts/verifyReportBlock.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

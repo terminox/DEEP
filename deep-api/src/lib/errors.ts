@@ -25,4 +25,7 @@ export class ApiError extends Error {
   static conflict(message: string, code = "conflict") {
     return new ApiError(409, code, message);
   }
+  static unprocessable(message: string, code = "unprocessable") {
+    return new ApiError(422, code, message);
+  }
 }
