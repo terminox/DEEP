@@ -55,7 +55,7 @@ struct BlockedMembersView: View {
         ForEach(moderation.blockedMembers) { member in
           SettingsRow(
             icon: "person.crop.circle.badge.xmark",
-            title: member.displayName,
+            verbatim: member.displayName,
             accessory: moderation.unblockingIDs.contains(member.id)
               ? .progress
               : .value(String(localized: "Unblock", bundle: .app, locale: .app))

@@ -332,24 +332,23 @@ struct SettingsView: View {
   /// Living alongside other members: who this member has blocked, how to reach
   /// a person at DEEP, and the two documents the community runs on.
   private var communitySection: some View {
-    // Resolved here: the section renders its title verbatim.
-    SettingsSection(title: String(localized: "Community", bundle: .app, locale: .app)) {
+    SettingsSection(title: "Community") {
       // Blocks belong to an account; signed out there are none to list.
       if accountStore.isSignedIn {
         SettingsRow(
           icon: "hand.raised",
-          "Blocked members",
+          title: "Blocked members",
           accessory: .chevron,
           action: openBlockedMembers
         )
       }
-      SettingsRow(icon: "envelope", "Contact us") {
+      SettingsRow(icon: "envelope", title: "Contact us") {
         openURL(Self.supportMail)
       }
-      SettingsRow(icon: "doc.text", "Terms of Service") {
+      SettingsRow(icon: "doc.text", title: "Terms of Service") {
         openURL(legalLinks.terms)
       }
-      SettingsRow(icon: "lock.shield", "Privacy Policy") {
+      SettingsRow(icon: "lock.shield", title: "Privacy Policy") {
         openURL(legalLinks.privacy)
       }
     }
