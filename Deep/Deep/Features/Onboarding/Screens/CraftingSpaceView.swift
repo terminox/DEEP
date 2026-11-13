@@ -9,7 +9,9 @@ struct CraftingSpaceView: View {
   @Environment(\.onboardingRemote) private var remote
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  private let steps = [
+  // Keys, so each row resolves in the reading language; a `String` array
+  // would hand the row verbatim English.
+  private let steps: [LocalizedStringKey] = [
     "Gathering a little calm",
     "Listening to what you shared",
     "Choosing sounds that suit you",
@@ -32,7 +34,7 @@ struct CraftingSpaceView: View {
 
           VStack(alignment: .leading, spacing: 20) {
             ForEach(Array(steps.enumerated()), id: \.offset) { offset, step in
-              CraftingChecklistRow(title: step, isDone: offset < completedCount)
+              CraftingChecklistRow(step, isDone: offset < completedCount)
             }
           }
         }

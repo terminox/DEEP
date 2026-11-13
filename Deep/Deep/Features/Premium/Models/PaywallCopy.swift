@@ -100,7 +100,7 @@ extension Bundle {
   /// set). `Bundle.app` follows the stored pick instead, which is right for
   /// copy resolved outside a view and wrong here — it would leave a Thai
   /// preview rendering half in English.
-  static func localized(for locale: Locale) -> Bundle {
+  nonisolated static func localized(for locale: Locale) -> Bundle {
     guard let code = locale.language.languageCode?.identifier,
           let path = Bundle.main.path(forResource: code, ofType: "lproj"),
           let bundle = Bundle(path: path) else { return .main }

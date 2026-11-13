@@ -5,6 +5,7 @@ import { optionalAuth } from "../auth/middleware.js";
 import { serializeCategory, serializeCollection } from "../lib/serialize.js";
 import { VISIBLE_CATEGORY_TREE } from "../lib/soundQuery.js";
 import { markVariesByCaller, requestContentAccess } from "../lib/premiumContent.js";
+import { homeSectionTitle } from "../lib/homeSections.js";
 
 type LoadedTrack = SoundTrack & { lyrics: { languageCode: string }[] };
 type LoadedCollection = SoundCollection & { tracks: LoadedTrack[] };
@@ -154,19 +155,19 @@ export async function pauseRoutes(app: FastifyInstance) {
       sections: [
         {
           key: "popular",
-          title: "Popular now",
+          title: homeSectionTitle("popular"),
           personalized: false,
           collections: popular.map((c) => serializeCollection(c, access)),
         },
         {
           key: "today",
-          title: "Today's sessions",
+          title: homeSectionTitle("today"),
           personalized: false,
           collections: today.map((c) => serializeCollection(c, access)),
         },
         {
           key: "forYou",
-          title: "Made for you",
+          title: homeSectionTitle("forYou"),
           personalized,
           collections: forYou.map((c) => serializeCollection(c, access)),
         },

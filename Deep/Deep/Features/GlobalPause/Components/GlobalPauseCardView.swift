@@ -98,7 +98,7 @@ final class GlobalPauseCardView: UIControl {
     static let cornerInset: CGFloat = 0.25
   }
 
-  init(scene: GlobalPauseEarthScene, caption: String = "Breathe with the world, together") {
+  init(scene: GlobalPauseEarthScene, caption: String = GlobalPauseSession.restingLine) {
     earthScene = EarthSceneView(glow: scene.glow, interaction: scene.interaction, ripples: scene.ripples)
     chrome = GlobalPauseCardChromeView(caption: caption)
     nightSkyHost = UIHostingController(rootView: NightSkyBackground(tuning: NightSkyTuning.shared))
@@ -131,7 +131,7 @@ final class GlobalPauseCardView: UIControl {
     addTarget(self, action: #selector(handleTap), for: .touchUpInside)
 
     isAccessibilityElement = true
-    accessibilityLabel = "Global Pause. \(caption)."
+    accessibilityLabel = String(localized: "Global Pause. \(caption).", bundle: .app, locale: .app)
     accessibilityTraits = .button
   }
 
@@ -224,11 +224,11 @@ final class GlobalPauseCardView: UIControl {
     chrome.setState(state, animated: animated)
     switch state {
     case .off(let scheduleLine):
-      accessibilityLabel = "Global Pause. \(scheduleLine)."
+      accessibilityLabel = String(localized: "Global Pause. \(scheduleLine).", bundle: .app, locale: .app)
     case .countdown(_, let scheduleLine):
-      accessibilityLabel = "Global Pause. \(scheduleLine). Going live soon."
+      accessibilityLabel = String(localized: "Global Pause. \(scheduleLine). Going live soon.", bundle: .app, locale: .app)
     case .live:
-      accessibilityLabel = "Global Pause. Live. The world is pausing. Join now."
+      accessibilityLabel = String(localized: "Global Pause. Live. The world is pausing. Join now.", bundle: .app, locale: .app)
     }
   }
 

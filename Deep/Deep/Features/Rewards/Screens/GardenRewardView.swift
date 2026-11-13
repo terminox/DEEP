@@ -58,7 +58,7 @@ struct GardenRewardView: View {
     }
     .scrollIndicators(.hidden)
     .safeAreaInset(edge: .bottom) {
-      RewardContinueButton(title: buttonTitle, isFinal: isFinal, action: onContinue)
+      RewardContinueButton(verbatim: buttonTitle, isFinal: isFinal, action: onContinue)
         .padding(.horizontal, .edge)
         .padding(.bottom, .rhythm)
     }

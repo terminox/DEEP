@@ -97,8 +97,8 @@ struct PaywallPlanRow: View {
 
   @ViewBuilder
   private var trialNote: some View {
-    if showsTrialNote, let note = plan.trialNote {
-      Text(note)
+    if showsTrialNote, let trial = plan.trial {
+      Text(SubscriptionPlanFormatting.trialNote(count: trial.count, unit: trial.unit, locale: locale))
         .font(DeepType.micro)
         .foregroundStyle(.irisDusk)
     }

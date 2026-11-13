@@ -50,7 +50,7 @@ struct ContinuityRewardView: View {
     }
     .scrollIndicators(.hidden)
     .safeAreaInset(edge: .bottom) {
-      RewardContinueButton(title: buttonTitle, isFinal: true, action: onFinish)
+      RewardContinueButton(verbatim: buttonTitle, isFinal: true, action: onFinish)
         .padding(.horizontal, .edge)
         .padding(.bottom, .rhythm)
     }
@@ -113,8 +113,10 @@ struct ContinuityRewardView: View {
   }
 
   private var accessibilitySummary: String {
-    let unit = receipt.continuityAfter == 1 ? "day" : "days"
-    return "\(headline). \(receipt.continuityAfter) \(unit) of returning. Each return is enough."
+    let days = receipt.continuityAfter
+    return days == 1
+      ? String(localized: "\(headline). 1 day of returning. Each return is enough.", bundle: .app, locale: .app)
+      : String(localized: "\(headline). \(days) days of returning. Each return is enough.", bundle: .app, locale: .app)
   }
 
   private func playEntrance() async {

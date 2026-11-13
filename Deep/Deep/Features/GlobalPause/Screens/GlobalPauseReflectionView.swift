@@ -45,8 +45,11 @@ struct GlobalPauseReflectionView: View {
     intentions.first { $0.key == tag }?.label
   }
 
+  /// Resolved here: the button and the note render their `String`s verbatim.
   private var buttonTitle: String {
-    trimmed.isEmpty || mayContinueUnsent ? "Continue" : "Send & continue"
+    trimmed.isEmpty || mayContinueUnsent
+      ? String(localized: "Continue", bundle: .app, locale: .app)
+      : String(localized: "Send & continue", bundle: .app, locale: .app)
   }
 
   var body: some View {
@@ -81,7 +84,7 @@ struct GlobalPauseReflectionView: View {
     .scrollDismissesKeyboard(.interactively)
     .safeAreaInset(edge: .bottom) {
       RewardContinueButton(
-        title: buttonTitle,
+        verbatim: buttonTitle,
         isBusy: isSending || isPreparing,
         action: { Task { await commit() } }
       )
@@ -154,7 +157,7 @@ struct GlobalPauseReflectionView: View {
       }
     } catch {
       withAnimation(.settle) {
-        note = "Your message couldn't be sent just now."
+        note = String(localized: "Your message couldn't be sent just now.", bundle: .app, locale: .app)
         mayContinueUnsent = true
       }
     }
@@ -163,11 +166,11 @@ struct GlobalPauseReflectionView: View {
   private static func note(for error: APIError) -> String {
     switch error {
     case .unauthorized:
-      "Sign in from the You tab to leave a message."
+      String(localized: "Sign in from the You tab to leave a message.", bundle: .app, locale: .app)
     case .http(_, let code, _) where code == "message_limit":
-      "Three messages a day is plenty. Rest now."
+      String(localized: "Three messages a day is plenty. Rest now.", bundle: .app, locale: .app)
     default:
-      "Your message couldn't be sent just now."
+      String(localized: "Your message couldn't be sent just now.", bundle: .app, locale: .app)
     }
   }
 }

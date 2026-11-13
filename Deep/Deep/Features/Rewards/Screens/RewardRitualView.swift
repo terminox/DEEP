@@ -12,7 +12,7 @@ struct RewardRitualView: View {
 
   let receipt: RewardReceipt
   /// The label on the tap that ends the ritual.
-  var finalButtonTitle = "Carry this calm"
+  var finalButtonTitle = String(localized: "Carry this calm", bundle: .app, locale: .app)
   /// Whether the ritual paints its own atmosphere. False when an owner spans a
   /// longer ending and already holds one — two independently drifting
   /// atmospheres crossfading against each other visibly slide.
@@ -35,7 +35,7 @@ struct RewardRitualView: View {
       case .garden:
         GardenRewardView(
           receipt: receipt,
-          buttonTitle: "Continue",
+          buttonTitle: String(localized: "Continue", bundle: .app, locale: .app),
           onContinue: showCompassion
         )
         .transition(.softDrift)
@@ -44,7 +44,7 @@ struct RewardRitualView: View {
         if receipt.showsContinuity {
           CompassionRewardView(
             receipt: receipt,
-            buttonTitle: "Continue",
+            buttonTitle: String(localized: "Continue", bundle: .app, locale: .app),
             onContinue: showContinuity
           )
           .transition(.softDrift)

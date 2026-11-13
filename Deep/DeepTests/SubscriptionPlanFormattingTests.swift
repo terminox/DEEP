@@ -79,23 +79,33 @@ struct SubscriptionPlanFormattingTests {
 
   // MARK: - Trial note
 
+  private static let english = Locale(identifier: "en")
+
   @Test("A trial counted in days is spoken in days")
   func trialInDays() {
-    #expect(SubscriptionPlanFormatting.trialNote(count: 3, unit: .day) == "3-day free trial")
+    #expect(SubscriptionPlanFormatting.trialNote(count: 3, unit: .day, locale: Self.english) == "3-day free trial")
   }
 
   @Test("A trial counted in weeks is spoken in days")
   func trialInWeeksBecomesDays() {
     // The stores record a trial as one week; it is offered, and read, as seven
     // days. Both plans in the product carry this one.
-    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .week) == "7-day free trial")
-    #expect(SubscriptionPlanFormatting.trialNote(count: 2, unit: .week) == "14-day free trial")
+    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .week, locale: Self.english) == "7-day free trial")
+    #expect(SubscriptionPlanFormatting.trialNote(count: 2, unit: .week, locale: Self.english) == "14-day free trial")
   }
 
   @Test("A trial counted in months or years keeps its own unit")
   func trialInMonthsAndYears() {
-    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .month) == "1-month free trial")
-    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .year) == "1-year free trial")
+    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .month, locale: Self.english) == "1-month free trial")
+    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .year, locale: Self.english) == "1-year free trial")
+  }
+
+  @Test("A trial note reads in the language it is handed, not the device's")
+  func trialNoteFollowsTheGivenLocale() {
+    // The yearly row on the real store path: a one-week trial, read in Thai.
+    let thai = Locale(identifier: "th")
+    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .week, locale: thai) == "ทดลองฟรี 7 วัน")
+    #expect(SubscriptionPlanFormatting.trialNote(count: 1, unit: .month, locale: thai) == "ทดลองฟรี 1 เดือน")
   }
 
   // MARK: - Trial days

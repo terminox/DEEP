@@ -95,8 +95,10 @@ struct SignUpView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
 
       if isSubmitting {
-        BreatheLoadingView(line: "Take a deep breath.\nWe're creating your space.")
-          .transition(.opacity)
+        BreatheLoadingView(
+          line: String(localized: "Take a deep breath.\nWe're creating your space.", bundle: .app, locale: .app)
+        )
+        .transition(.opacity)
       }
     }
     .animation(.exhale, value: isSubmitting)
@@ -149,7 +151,7 @@ struct SignUpView: View {
 
   private func message(for error: Error) -> String {
     (error as? LocalizedError)?.errorDescription
-      ?? "We couldn't create your space just now. Please try again."
+      ?? String(localized: "We couldn't create your space just now. Please try again.", bundle: .app, locale: .app)
   }
 }
 

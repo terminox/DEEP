@@ -4,7 +4,7 @@ import SwiftUI
 /// pressed panel button, sized to share a row. Lives here rather than inside
 /// one screen because a collection and a playlist start the same way.
 struct SoundActionButton: View {
-  let title: String
+  let title: LocalizedStringKey
   let systemName: String
   let action: () -> Void
 

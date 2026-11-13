@@ -125,9 +125,7 @@ final class MockSubscriptionStore: SubscriptionStore {
         price: amount,
         currency: currency
       ),
-      trialNote: trialDays.map {
-        SubscriptionPlanFormatting.trialNote(count: $0, unit: .day)
-      },
+      trial: trialDays.map { SubscriptionPlanFormatting.Trial(count: $0, unit: .day) },
       freeTrialDays: trialDays
     )
   }
