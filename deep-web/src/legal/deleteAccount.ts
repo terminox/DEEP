@@ -5,7 +5,7 @@ import { site, type Localized } from './document.ts'
 export const deleteAccount: Localized = {
   en: {
     title: 'Delete your DEEP account',
-    updated: 'Last updated: [date of publication]',
+    updated: 'Last updated: 14 November 2026',
     intro: 'You can delete your DEEP account and its data at any time, with or without the app.',
     sections: [
       {
@@ -47,7 +47,7 @@ export const deleteAccount: Localized = {
   },
   th: {
     title: 'ลบบัญชี DEEP ของคุณ',
-    updated: 'ปรับปรุงล่าสุด: [วันที่เผยแพร่]',
+    updated: 'ปรับปรุงล่าสุด: 14 พฤศจิกายน 2569',
     intro: 'คุณลบบัญชี DEEP และข้อมูลได้ทุกเมื่อ ไม่ว่าจะมีแอปอยู่หรือไม่',
     sections: [
       {

@@ -5,7 +5,7 @@ import { site, type Localized } from './document.ts'
 export const privacy: Localized = {
   en: {
     title: 'Privacy Policy',
-    updated: 'Last updated: [date of publication]',
+    updated: 'Last updated: 14 November 2026',
     intro: `DEEP is a meditation and calm app run by ${site.operator}. This policy explains what we collect, why, who handles it for us, and the choices you have. It follows Thailand's Personal Data Protection Act (PDPA).`,
     sections: [
       {
@@ -85,14 +85,14 @@ export const privacy: Localized = {
       {
         heading: 'Changes and contact',
         paragraphs: [
-          `If this policy changes in an important way, we will tell you in the app before it takes effect. Questions: ${site.operator}, ${site.address}, ${site.supportEmail}.`,
+          `If this policy changes in an important way, we will tell you in the app before it takes effect. Questions: ${site.operator}, ${site.address.en}, ${site.supportEmail}.`,
         ],
       },
     ],
   },
   th: {
     title: 'นโยบายความเป็นส่วนตัว',
-    updated: 'ปรับปรุงล่าสุด: [วันที่เผยแพร่]',
+    updated: 'ปรับปรุงล่าสุด: 14 พฤศจิกายน 2569',
     intro: `DEEP คือแอปการทำสมาธิและความสงบ ดำเนินการโดย ${site.operator} นโยบายนี้อธิบายว่าเราเก็บข้อมูลอะไร เพื่ออะไร ใครดูแลข้อมูลให้เรา และคุณมีทางเลือกอะไรบ้าง โดยเป็นไปตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA)`,
     sections: [
       {
@@ -172,7 +172,7 @@ export const privacy: Localized = {
       {
         heading: 'การเปลี่ยนแปลงและการติดต่อ',
         paragraphs: [
-          `หากนโยบายนี้เปลี่ยนแปลงในส่วนสำคัญ เราจะแจ้งให้คุณทราบในแอปก่อนมีผล ติดต่อ: ${site.operator}, ${site.address}, ${site.supportEmail}`,
+          `หากนโยบายนี้เปลี่ยนแปลงในส่วนสำคัญ เราจะแจ้งให้คุณทราบในแอปก่อนมีผล ติดต่อ: ${site.operator}, ${site.address.th}, ${site.supportEmail}`,
         ],
       },
     ],

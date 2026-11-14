@@ -21,12 +21,16 @@ export type LegalDocument = {
 
 export type Localized = Record<Language, LegalDocument>
 
-/** Facts only the client can confirm. Every use reads "[...]" until they do. */
+/** Facts every document shares, confirmed by the client. */
 export const site = {
-  operator: '[Client legal name]',
-  address: '[Client registered address]',
+  operator: 'DEEP PEACE COMPANY LIMITED',
+  address: {
+    en: '15/134 Soi Sukhumvit 48, Phra Khanong Subdistrict, Khlong Toei District, Bangkok 10110, Thailand',
+    th: '15/134 ซอยสุขุมวิท 48 แขวงพระโขนง เขตคลองเตย กรุงเทพฯ 10110',
+  } satisfies Record<Language, string>,
   supportEmail: 'support@deeppeace.space',
-  backupDays: '[N]',
-  /** While true, every page says so. Set false only once the client has signed off the text. */
-  isDraft: true,
+  /** Cloud SQL keeps 7 daily backups, so a deleted record leaves them within 7 days. */
+  backupDays: '7',
+  /** While true, every page says it is a draft. Set it back to true while a revision awaits sign-off. */
+  isDraft: false,
 }

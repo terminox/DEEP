@@ -5,7 +5,7 @@ import { site, type Localized } from './document.ts'
 export const terms: Localized = {
   en: {
     title: 'Terms of Service',
-    updated: 'Last updated: [date of publication]',
+    updated: 'Last updated: 14 November 2026',
     intro: `These terms are an agreement between you and ${site.operator}, who runs DEEP. By creating an account or using DEEP, you accept them.`,
     sections: [
       {
@@ -76,14 +76,14 @@ export const terms: Localized = {
       {
         heading: 'Law and changes to these terms',
         paragraphs: [
-          `These terms are governed by the laws of Thailand. If they change in an important way, we will tell you in the app before the change takes effect. Questions: ${site.operator}, ${site.address}, ${site.supportEmail}.`,
+          `These terms are governed by the laws of Thailand. If they change in an important way, we will tell you in the app before the change takes effect. Questions: ${site.operator}, ${site.address.en}, ${site.supportEmail}.`,
         ],
       },
     ],
   },
   th: {
     title: 'ข้อกำหนดการใช้งาน',
-    updated: 'ปรับปรุงล่าสุด: [วันที่เผยแพร่]',
+    updated: 'ปรับปรุงล่าสุด: 14 พฤศจิกายน 2569',
     intro: `ข้อกำหนดนี้เป็นข้อตกลงระหว่างคุณกับ ${site.operator} ผู้ดำเนินการ DEEP เมื่อคุณสร้างบัญชีหรือใช้ DEEP ถือว่าคุณยอมรับข้อกำหนดนี้`,
     sections: [
       {
@@ -148,7 +148,7 @@ export const terms: Localized = {
       {
         heading: 'กฎหมายที่ใช้บังคับและการเปลี่ยนแปลงข้อกำหนด',
         paragraphs: [
-          `ข้อกำหนดนี้อยู่ภายใต้กฎหมายไทย หากมีการเปลี่ยนแปลงในส่วนสำคัญ เราจะแจ้งให้คุณทราบในแอปก่อนมีผล ติดต่อ: ${site.operator}, ${site.address}, ${site.supportEmail}`,
+          `ข้อกำหนดนี้อยู่ภายใต้กฎหมายไทย หากมีการเปลี่ยนแปลงในส่วนสำคัญ เราจะแจ้งให้คุณทราบในแอปก่อนมีผล ติดต่อ: ${site.operator}, ${site.address.th}, ${site.supportEmail}`,
         ],
       },
     ],
