@@ -61,9 +61,8 @@ import kotlinx.coroutines.withContext
  * [IdentityUnavailableException] rather than attached to an anonymous
  * RevenueCat id — re-homing anonymous purchases later is manual surgery.
  *
- * With no API key (every flavor but dev, until a Play Store app exists in the
- * RevenueCat project) the SDK is never configured and the store simply reads
- * [SubscriptionState.None] with no plans to offer.
+ * With no API key (staging and pilot) the SDK is never configured and the
+ * store simply reads [SubscriptionState.None] with no plans to offer.
  *
  * Differences from iOS:
  * - The SDK is configured on [scope] a beat after construction, not inside

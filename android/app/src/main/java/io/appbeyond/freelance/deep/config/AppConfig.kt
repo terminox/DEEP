@@ -61,8 +61,8 @@ object AppConfig {
 
   /**
    * RevenueCat's public SDK key for this flavor, or null when it has none —
-   * every flavor but dev until a Play Store app exists in the DEEP Premium
-   * project. Null leaves the purchasing SDK unconfigured.
+   * staging and pilot, whose package names aren't the Play app. Null leaves
+   * the purchasing SDK unconfigured.
    */
   val revenueCatApiKey: String? = BuildConfig.REVENUECAT_API_KEY.trim().ifEmpty { null }
 

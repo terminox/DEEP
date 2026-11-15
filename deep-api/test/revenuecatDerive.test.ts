@@ -204,3 +204,64 @@ test("REST subscriber maps onto the same state shape", () => {
   });
   assert.equal(stateFromSubscriber({ entitlements: {} }, ENTITLEMENT, now), null);
 });
+
+// Google Play. RevenueCat names a Play subscription "subscriptionId:basePlanId"
+// in webhooks, and REST may key it either way. DEEP stores the bare id.
+
+test("Play INITIAL_PURCHASE (trial) grants like the App Store, under the bare product id", () => {
+  const { eventClass, state } = stateOf("play_initial_purchase");
+  assert.equal(eventClass, "grant");
+  assert.equal(state.productId, "deep.pro.yearly");
+  assert.equal(state.store, "PLAY_STORE");
+  assert.equal(state.periodType, "TRIAL");
+  assert.equal(state.willRenew, true);
+  assert.equal(isPremiumNow(state, new Date(1788220801234)), true);
+});
+
+test("Play SUBSCRIPTION_PAUSED stops renewal but keeps the paid period", () => {
+  const { eventClass, state } = stateOf("play_paused");
+  assert.equal(eventClass, "metadata");
+  assert.equal(state.willRenew, false);
+  assert.equal(state.revokedAt, null);
+  assert.equal(isPremiumNow(state, new Date(1790812805000)), true);
+  assert.equal(isPremiumNow(state, new Date(1793491200000 + 1000)), false);
+});
+
+test("a Play refund revokes immediately", () => {
+  const { eventClass, state } = stateOf("play_refund");
+  assert.equal(eventClass, "revoke");
+  assert.equal(state.store, "PLAY_STORE");
+  assert.equal(isPremiumNow(state, new Date(1791417600000 + 1000)), false);
+});
+
+test("REST play_store subscriber matches the webhook's product id, keyed either way", () => {
+  const now = new Date("2026-10-10T00:00:00Z");
+  const subscription = {
+    expires_date: "2026-11-01T00:00:00Z",
+    period_type: "normal",
+    store: "play_store",
+    is_sandbox: true,
+    unsubscribe_detected_at: null,
+    billing_issues_detected_at: null,
+    refunded_at: null,
+  };
+  for (const [reported, key] of [
+    ["deep.pro.yearly", "deep.pro.yearly"],
+    ["deep.pro.yearly:yearly", "deep.pro.yearly:yearly"],
+    ["deep.pro.yearly:yearly", "deep.pro.yearly"],
+  ]) {
+    const state = stateFromSubscriber(
+      {
+        entitlements: { deep_premium: { expires_date: "2026-11-01T00:00:00Z", product_identifier: reported } },
+        subscriptions: { [key]: subscription },
+      },
+      ENTITLEMENT,
+      now,
+    );
+    const label = `${reported} keyed as ${key}`;
+    assert.equal(state?.productId, "deep.pro.yearly", label);
+    assert.equal(state?.store, "PLAY_STORE", label);
+    assert.equal(state?.environment, "SANDBOX", label);
+    assert.equal(state?.willRenew, true, label);
+  }
+});
