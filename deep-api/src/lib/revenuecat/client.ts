@@ -5,7 +5,7 @@
 // GET https://api.revenuecat.com/v1/subscribers/{app_user_id}
 // https://www.revenuecat.com/docs/api-v1#tag/customers
 import { ApiError } from "../errors.js";
-import type { SubscriptionState } from "./derive.js";
+import { canonicalProductId, type SubscriptionState } from "./derive.js";
 
 const API_BASE = "https://api.revenuecat.com/v1";
 const TIMEOUT_MS = 8_000;
@@ -54,9 +54,11 @@ export function stateFromSubscriber(
 ): SubscriptionState | null {
   const ent = subscriber.entitlements?.[entitlementId];
   if (!ent) return null;
-  const productId = ent.product_identifier ?? "unknown";
-  const sub = subscriber.subscriptions?.[productId];
-  const oneOff = subscriber.non_subscriptions?.[productId]?.at(-1);
+  const reported = ent.product_identifier ?? "unknown";
+  const productId = canonicalProductId(reported);
+  // Play subscriptions may be keyed with or without their base plan.
+  const sub = subscriber.subscriptions?.[reported] ?? subscriber.subscriptions?.[productId];
+  const oneOff = (subscriber.non_subscriptions?.[reported] ?? subscriber.non_subscriptions?.[productId])?.at(-1);
 
   const expiresAt = isoDate(ent.expires_date ?? sub?.expires_date);
   const refundedAt = isoDate(sub?.refunded_at);

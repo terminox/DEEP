@@ -4,8 +4,8 @@
 # then checks both against what a store would reject after upload. The Android
 # twin of archive-app-store.sh.
 #
-# The APK is what the client installs directly while there is no Play listing.
-# The .aab is kept beside it for the day there is one.
+# The .aab is what goes to Google Play. The APK is kept beside it for installing
+# a release build directly on a test phone.
 #
 # Signing needs two things this repository never holds (it is public):
 #   android/keystore.properties   storeFile=<path to the .jks>, keyAlias=deep
@@ -236,14 +236,10 @@ grep -qa "https://$API_HOST" "$WORK/dex" || die "the production API host is not 
 # build would sell nothing real and crash outside debug.
 ! grep -qaE 'test_[A-Za-z0-9]{20,}' "$WORK/dex" || die "a RevenueCat Test Store key is in the code"
 ok "no RevenueCat Test Store key"
-# Premium sells only with the Play app's key, and then only when build.gradle.kts
-# says so (`sellsOnPlay`). Say which build this is, so nobody uploads the wrong one.
-if grep -qaE 'goog_[A-Za-z0-9]{20,}' "$WORK/dex"; then
-  grep -q '^val sellsOnPlay = true' "$GRADLE_FILE" || die "a goog_ key shipped while sellsOnPlay is false"
-  ok "DEEP Premium sells through Google Play"
-else
-  ok "DEEP Premium shows Coming soon (sellsOnPlay is false)"
-fi
+# DEEP Premium sells through the Play app's RevenueCat key. Without it every
+# paywall would say Google Play can't be reached.
+grep -qaE 'goog_[A-Za-z0-9]{20,}' "$WORK/dex" || die "the RevenueCat Google Play key is not in the code"
+ok "DEEP Premium sells through Google Play"
 # The Dev flavor's host, as build.gradle.kts resolves it, must not have leaked
 # into the production flavor.
 DEV_HOST="$(sed -n 's/^deep\.devApiHost=//p' "$ANDROID/local.properties" 2>/dev/null | tail -1 || true)"

@@ -100,6 +100,16 @@ export type Derivation =
   /** A type we do not know, or a payload too malformed to trust. */
   | { kind: "unknown" };
 
+/**
+ * The product id DEEP stores. Google Play names a subscription
+ * "subscriptionId:basePlanId" in some RevenueCat payloads and by its bare id in
+ * others, so the base plan is dropped and every path writes the same value.
+ * App Store ids carry no colon and pass through unchanged.
+ */
+export function canonicalProductId(id: string): string {
+  return id.split(":")[0] || id;
+}
+
 function msDate(ms: number | null | undefined): Date | null {
   return typeof ms === "number" && Number.isFinite(ms) ? new Date(ms) : null;
 }
@@ -149,8 +159,9 @@ export function deriveFromEvent(event: RevenueCatEvent, entitlementId: string): 
     return { kind: "unknown" };
   }
 
-  const productId =
-    (event.type === "PRODUCT_CHANGE" ? event.new_product_id : null) ?? event.product_id ?? "unknown";
+  const productId = canonicalProductId(
+    (event.type === "PRODUCT_CHANGE" ? event.new_product_id : null) ?? event.product_id ?? "unknown",
+  );
 
   const base: SubscriptionState = {
     entitlementId,
