@@ -54,16 +54,17 @@ val revenueCatPlayKey = "goog_qTlCZcIoKmvhXGYJrgyhmzFdBuc"
 // The release version, the one number a person reads. iOS ships the same
 // marketing version; each platform keeps its own build number.
 //
-// versionCode is derived from it as major * 10000 + minor * 100 + patch, so
-// 1.0.0 is 10000 and the code can never drift from the name. iOS stamps Unix
-// epoch seconds instead, which doesn't fit: versionCode is a signed 32-bit int
-// that a store track never lets decrease. Weeks 1 to 7 shipped codes 1 to 7,
-// all below 10000.
-val deepVersion = "1.1.0"
+// versionCode is derived from it as 100000 + major * 10000 + minor * 100 +
+// patch, so 1.0.0 is 110000 and the code can never drift from the name. iOS
+// stamps Unix epoch seconds instead, which doesn't fit: versionCode is a signed
+// 32-bit int that a store track never lets decrease, and Play never takes a
+// code twice. The 100000 base clears every code already used: weeks 1 to 7
+// shipped 1 to 7, and pre-launch internal testing took 10000 and 10100.
+val deepVersion = "1.0.0"
 val deepVersionCode: Int =
   deepVersion.split('.').map(String::toInt).let { (major, minor, patch) ->
     require(minor < 100 && patch < 100) { "minor and patch must stay below 100: $deepVersion" }
-    major * 10_000 + minor * 100 + patch
+    100_000 + major * 10_000 + minor * 100 + patch
   }
 
 // Release signing, read from a gitignored keystore.properties.
