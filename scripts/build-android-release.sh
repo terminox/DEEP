@@ -101,7 +101,7 @@ ok "release key ${RELEASE_SHA:0:16}…"
 
 VERSION_NAME="$(sed -n 's/^val deepVersion = "\(.*\)"$/\1/p' "$GRADLE_FILE")"
 [[ "$VERSION_NAME" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || die "no deepVersion in ${GRADLE_FILE/#$ROOT\//}"
-VERSION_CODE=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
+VERSION_CODE=$(( 100000 + BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))
 ok "version $VERSION_NAME ($VERSION_CODE)"
 
 # ---- 2. build -----------------------------------------------------------------
