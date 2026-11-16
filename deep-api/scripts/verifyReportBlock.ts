@@ -214,6 +214,25 @@ async function main() {
   assert.deepEqual(counts, [...counts].sort((x, y) => y - x), "most-reported first");
   assert.equal(queue.find((m) => m.id === a1)?.reportCount, 3);
   assert.equal(queue.find((m) => m.id === a2)?.reportCount, 1);
+  type ReasonRow = { id: string; reasons: Record<string, number>; authorSuspended: boolean };
+  const reasonRows = queue as unknown as ReasonRow[];
+  assert.deepEqual(
+    reasonRows.find((m) => m.id === a1)?.reasons,
+    { OFFENSIVE: 1, HARASSMENT: 0, SPAM: 1, OTHER: 1 },
+    "reasons split the unreviewed reports, first reason per reporter",
+  );
+  assert.deepEqual(reasonRows.find((m) => m.id === a2)?.reasons, {
+    OFFENSIVE: 0,
+    HARASSMENT: 0,
+    SPAM: 1,
+    OTHER: 0,
+  });
+  assert.equal(reasonRows.find((m) => m.id === a1)?.authorSuspended, false);
+  const reviewCount = async () =>
+    json(await get("/admin/pause/messages/review-count", asAdmin)).count as number;
+  const pendingBefore = await reviewCount();
+  assert.equal(pendingBefore, queue.length, "review-count matches the queue");
+  assert.equal((await get("/admin/pause/messages/review-count", bob.as)).statusCode, 403);
   assert.ok(!queue.some((m) => m.id === c1), "unreported messages stay out of the queue");
   const all = json(await get("/admin/pause/messages", asAdmin)).messages as {
     id: string;
@@ -231,7 +250,7 @@ async function main() {
   });
   await sees(erin.as, [a1], true, "restored by an admin");
   await sees(bob.as, [a1], false, "but never back for someone who reported it");
-  pass("5. admin list carries reportCount; reported=true is most-reported first; PATCH restores");
+  pass("5. admin list carries reportCount + reasons; review-count matches the queue; PATCH restores");
 
   // ---- 5b. An admin decision reviews the reports it settled ----
   type AdminRow = { id: string; reportCount: number; totalReportCount: number };
@@ -245,6 +264,12 @@ async function main() {
   assert.ok(!(await adminRows("?reported=true")).some((m) => m.id === a1), "restored: out of the queue");
   const restored = (await adminRows()).find((m) => m.id === a1)!;
   assert.deepEqual([restored.reportCount, restored.totalReportCount], [0, 3]);
+  assert.deepEqual(
+    (restored as unknown as ReasonRow).reasons,
+    { OFFENSIVE: 0, HARASSMENT: 0, SPAM: 0, OTHER: 0 },
+    "reviewed reports leave the reasons",
+  );
+  assert.equal(await reviewCount(), pendingBefore - 1, "a decision takes one off the review count");
 
   // One new report must not undo the admin's decision: it starts a fresh count.
   assert.equal((await post(`/pause/messages/${a1}/report`, frank.as, { reason: "spam" })).statusCode, 200);
@@ -364,6 +389,9 @@ async function main() {
   const listedUsers = json(await get("/admin/users", asAdmin)).users as { id: string; suspendedAt: string | null }[];
   assert.equal(listedUsers.find((u) => u.id === carol.id)?.suspendedAt, since);
   assert.equal(listedUsers.find((u) => u.id === erin.id)?.suspendedAt, null);
+  const carolRow = async () =>
+    (json(await get("/admin/pause/messages", asAdmin)).messages as ReasonRow[]).find((m) => m.id === c1)!;
+  assert.equal((await carolRow()).authorSuspended, true, "the message row shows its author suspended");
 
   const refused = await postMessage(carol.as, "Still here");
   assert.equal(refused.statusCode, 403);
@@ -378,6 +406,7 @@ async function main() {
   assert.equal((await get("/me/blocks", carol.as)).statusCode, 200, "other features keep working");
 
   assert.equal(json(await suspend(carol.id, false)).user.suspendedAt, null);
+  assert.equal((await carolRow()).authorSuspended, false, "and back after unsuspending");
   await sees(erin.as, [c1], true, "unsuspended: back in the feeds");
   assert.equal((await postMessage(carol.as, "Back with a calm heart")).statusCode, 200);
   pass("9b. suspend: admin-only; 403 account_suspended on post; out of all feeds; session untouched; unsuspend restores");

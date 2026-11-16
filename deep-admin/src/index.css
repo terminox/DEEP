@@ -907,6 +907,22 @@ audio {
   text-align: center;
 }
 
+.nav-link-counted {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.nav-count-alert {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .nav-link-active .nav-count {
   background: rgba(255, 255, 255, 0.9);
   color: var(--lavender-strong);

@@ -19,6 +19,7 @@ import type {
   PauseIntentionOption,
   User,
 } from "@prisma/client";
+import { PeaceMessageReportReason } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { ApiError } from "../lib/errors.js";
 import { verifyPassword } from "../auth/password.js";
@@ -699,7 +700,9 @@ export async function adminRoutes(app: FastifyInstance) {
   // `reportCount` is the reports no admin has reviewed yet, the ones the hide
   // threshold and the queue act on; `totalReportCount` includes reviewed ones.
   // `reported=true` is the review queue: messages with unreviewed reports only,
-  // most unreviewed reports first.
+  // most unreviewed reports first. `reasons` splits `reportCount` by what the
+  // reporters chose, and `authorSuspended` is the author's standing, so the
+  // admin can act on the author from the message itself.
   app.get("/admin/pause/messages", adminOnly, async (req) => {
     const query = z
       .object({
@@ -719,25 +722,58 @@ export async function adminRoutes(app: FastifyInstance) {
       // Prisma can't order by a filtered relation count, so the queue is
       // ranked below; it holds only what still awaits a decision.
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { reports: { where: unreviewed } } } },
+      include: {
+        _count: { select: { reports: { where: unreviewed } } },
+        user: { select: { suspendedAt: true } },
+      },
       ...(reported ? {} : { take: 200 }),
     });
-    const totals = await prisma.peaceMessageReport.groupBy({
-      by: ["messageId"],
-      where: { messageId: { in: rows.map((r) => r.id) } },
-      _count: { _all: true },
-    });
+    const ids = rows.map((r) => r.id);
+    const [totals, byReason] = await Promise.all([
+      prisma.peaceMessageReport.groupBy({
+        by: ["messageId"],
+        where: { messageId: { in: ids } },
+        _count: { _all: true },
+      }),
+      prisma.peaceMessageReport.groupBy({
+        by: ["messageId", "reason"],
+        where: { messageId: { in: ids }, ...unreviewed },
+        _count: { _all: true },
+      }),
+    ]);
     const totalById = new Map(totals.map((t) => [t.messageId, t._count._all]));
-    const messages = rows.map(({ _count, ...message }) => ({
+    type ReasonCounts = Record<PeaceMessageReportReason, number>;
+    const noReasons = (): ReasonCounts =>
+      Object.fromEntries(
+        Object.values(PeaceMessageReportReason).map((r) => [r, 0]),
+      ) as ReasonCounts;
+    const reasonsById = new Map<string, ReasonCounts>();
+    for (const { messageId, reason, _count } of byReason) {
+      const reasons = reasonsById.get(messageId) ?? noReasons();
+      reasons[reason] = _count._all;
+      reasonsById.set(messageId, reasons);
+    }
+    const messages = rows.map(({ _count, user, ...message }) => ({
       ...message,
       reportCount: _count.reports,
       totalReportCount: totalById.get(message.id) ?? 0,
+      reasons: reasonsById.get(message.id) ?? noReasons(),
+      authorSuspended: user?.suspendedAt != null,
     }));
     if (reported) {
       // Stable sort: equal counts keep newest first.
       messages.sort((a, b) => b.reportCount - a.reportCount);
     }
     return { messages: messages.slice(0, 200) };
+  });
+
+  // How many messages await a decision: the sidebar badge polls this, so it
+  // stays a single count rather than the queue itself.
+  app.get("/admin/pause/messages/review-count", adminOnly, async () => {
+    const count = await prisma.peaceMessage.count({
+      where: { reports: { some: { reviewedAt: null } } },
+    });
+    return { count };
   });
 
   // Deliberately NOT staged: this hides user-posted content during a live event,

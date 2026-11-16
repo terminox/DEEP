@@ -1,10 +1,19 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { clearSession } from '../auth/session'
 import { usePendingCount } from '../lib/pending'
+import { getPeaceMessageReviewCount } from '../api/endpoints'
 import { CHANGE_AREA_LABELS } from '../api/types'
 
-type NavItem = { to: string; label: string; end?: boolean; spaced?: boolean }
+type NavItem = {
+  to: string
+  label: string
+  end?: boolean
+  spaced?: boolean
+  // Shows how many reported messages await a decision, and links to that queue.
+  reports?: boolean
+}
 
 type NavEntry =
   | ({ kind: 'link' } & NavItem)
@@ -30,7 +39,7 @@ const navEntries: NavEntry[] = [
     title: CHANGE_AREA_LABELS.pause,
     items: [
       { to: '/pause', label: 'Schedule' },
-      { to: '/peace-messages', label: 'Peace messages' },
+      { to: '/peace-messages', label: 'Peace messages', reports: true },
     ],
   },
   { kind: 'link', to: '/users', label: 'Users', spaced: true },
@@ -48,6 +57,14 @@ function Layout() {
   // Shown on every page on purpose: staged work that nobody remembers to
   // publish is the one way this feature can quietly make things worse.
   const { data: pendingCount } = usePendingCount()
+  // Reported messages hide themselves at the threshold, so without this badge
+  // nobody would know they wait. Under ['peace-messages'], so every decision
+  // on that page refreshes it.
+  const { data: reviewCount } = useQuery({
+    queryKey: ['peace-messages', 'review-count'],
+    queryFn: getPeaceMessageReviewCount,
+    refetchInterval: 60_000,
+  })
 
   const handleLogout = () => {
     clearSession()
@@ -78,11 +95,25 @@ function Layout() {
             entry.kind === 'group' ? (
               <div className="nav-group" key={entry.title}>
                 <div className="nav-group-title">{entry.title}</div>
-                {entry.items.map((item) => (
-                  <NavLink key={item.to} to={item.to} className={linkClass(item)}>
-                    {item.label}
-                  </NavLink>
-                ))}
+                {entry.items.map((item) =>
+                  item.reports && reviewCount ? (
+                    <NavLink
+                      key={item.to}
+                      to={`${item.to}?reported=1`}
+                      className={({ isActive }) =>
+                        `${linkClass(item)({ isActive })} nav-link-counted`
+                      }
+                      title="Reported messages awaiting a decision"
+                    >
+                      {item.label}
+                      <span className="nav-count nav-count-alert">{reviewCount}</span>
+                    </NavLink>
+                  ) : (
+                    <NavLink key={item.to} to={item.to} className={linkClass(item)}>
+                      {item.label}
+                    </NavLink>
+                  ),
+                )}
               </div>
             ) : (
               <NavLink
