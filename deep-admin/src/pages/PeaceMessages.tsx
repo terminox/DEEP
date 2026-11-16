@@ -1,14 +1,18 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getPauseStats,
   listPeaceMessages,
+  setUserSuspended,
   updatePeaceMessageStatus,
 } from '../api/endpoints'
 import {
   PEACE_MESSAGE_STATUSES,
+  REPORT_REASON_LABELS,
   type AdminPeaceMessage,
   type PeaceMessageStatus,
+  type ReportReason,
 } from '../api/types'
 import { apiErrorMessage } from '../api/errors'
 
@@ -70,9 +74,21 @@ function StatsPanel() {
   )
 }
 
+// One line per reason given ("Offensive 2"), in the order the app offers them.
+function ReasonLines({ reasons }: { reasons: Record<ReportReason, number> }) {
+  return (Object.keys(REPORT_REASON_LABELS) as ReportReason[])
+    .filter((reason) => reasons[reason] > 0)
+    .map((reason) => (
+      <div key={reason} className="subtitle-cell nowrap">
+        {REPORT_REASON_LABELS[reason]} {reasons[reason]}
+      </div>
+    ))
+}
+
 function MessageRow({ message }: { message: AdminPeaceMessage }) {
   const qc = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const userId = message.userId
 
   const toggle = useMutation({
     mutationFn: () =>
@@ -87,12 +103,41 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
     onError: (e) => setError(apiErrorMessage(e)),
   })
 
+  // The same suspension as on the Users page, reached from the message so the
+  // admin acts on this author rather than someone sharing their display name.
+  const suspension = useMutation({
+    mutationFn: (suspended: boolean) => setUserSuspended(userId!, suspended),
+    onSuccess: () => {
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['peace-messages'] })
+      qc.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (e) => setError(apiErrorMessage(e)),
+  })
+
+  const toggleSuspension = () => {
+    if (
+      !message.authorSuspended &&
+      !confirm(
+        `Suspend ${message.displayName}? They won't be able to share peace messages, and the ones they shared will be hidden from everyone.`
+      )
+    ) {
+      return
+    }
+    suspension.mutate(!message.authorSuspended)
+  }
+
   return (
     <tr>
       <td>
         <span className="title-cell">{message.displayName}</span>
         {message.countryISO && (
           <div className="subtitle-cell">{message.countryISO}</div>
+        )}
+        {message.authorSuspended && (
+          <div>
+            <span className="badge badge-suspended">Suspended</span>
+          </div>
         )}
       </td>
       <td>
@@ -111,7 +156,10 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
       </td>
       <td>
         {message.reportCount > 0 ? (
-          <span className="badge badge-reported">{message.reportCount}</span>
+          <>
+            <span className="badge badge-reported">{message.reportCount}</span>
+            <ReasonLines reasons={message.reasons} />
+          </>
         ) : message.totalReportCount > 0 ? (
           <span className="muted">{message.totalReportCount} reviewed</span>
         ) : (
@@ -131,6 +179,15 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
           >
             {message.status === 'PUBLISHED' ? 'Hide' : 'Publish'}
           </button>
+          {userId && (
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={toggleSuspension}
+              disabled={suspension.isPending}
+            >
+              {message.authorSuspended ? 'Restore author' : 'Suspend author'}
+            </button>
+          )}
         </div>
       </td>
     </tr>
@@ -140,7 +197,11 @@ function MessageRow({ message }: { message: AdminPeaceMessage }) {
 function PeaceMessagesPage() {
   const [status, setStatus] = useState<PeaceMessageStatus | ''>('')
   const [pauseDate, setPauseDate] = useState('')
-  const [reportedOnly, setReportedOnly] = useState(false)
+  // The sidebar's report badge links here with ?reported=1.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const reportedOnly = searchParams.get('reported') === '1'
+  const setReportedOnly = (on: boolean) =>
+    setSearchParams(on ? { reported: '1' } : {}, { replace: true })
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['peace-messages', status, pauseDate, reportedOnly],
@@ -161,7 +222,9 @@ function PeaceMessagesPage() {
             Moderate messages shared during the Global Pause feedback phase.
             Members' reports hide a message automatically once enough of them
             agree; Publish restores it. Publish or Hide settles the reports so
-            far, so only new reports count toward hiding it again.
+            far, so only new reports count toward hiding it again. Each report
+            shows the reason the member chose, and Suspend author stops that
+            member sharing messages at all.
           </div>
         </div>
       </div>
@@ -222,7 +285,7 @@ function PeaceMessagesPage() {
                 <th>Reports</th>
                 <th>Pause date</th>
                 <th>Posted</th>
-                <th style={{ width: 120 }}>Actions</th>
+                <th style={{ width: 220 }}>Actions</th>
               </tr>
             </thead>
             <tbody>

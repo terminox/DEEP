@@ -296,6 +296,21 @@ export type AdminPeaceMessage = {
   reportCount: number
   // Every report ever made on it, reviewed or not.
   totalReportCount: number
+  // `reportCount` split by the reason each reporter chose.
+  reasons: Record<ReportReason, number>
+  // The author is suspended from peace messages. False once they deleted
+  // their account (`userId` is null then).
+  authorSuspended: boolean
+}
+
+export type ReportReason = 'OFFENSIVE' | 'HARASSMENT' | 'SPAM' | 'OTHER'
+
+// In the order the app offers them.
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  OFFENSIVE: 'Offensive',
+  HARASSMENT: 'Harassment',
+  SPAM: 'Spam',
+  OTHER: 'Other',
 }
 
 export type PauseDayStats = {

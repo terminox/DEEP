@@ -599,6 +599,14 @@ export async function listPeaceMessages(params?: {
   return data.messages
 }
 
+// Messages with reports no admin has decided on yet: the sidebar badge.
+export async function getPeaceMessageReviewCount(): Promise<number> {
+  const { data } = await http.get<{ count: number }>(
+    '/admin/pause/messages/review-count'
+  )
+  return data.count
+}
+
 export async function updatePeaceMessageStatus(
   id: string,
   status: PeaceMessageStatus
