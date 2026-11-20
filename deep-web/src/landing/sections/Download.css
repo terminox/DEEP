@@ -79,23 +79,67 @@
   letter-spacing: 0.01em;
 }
 
-/* Pre-launch, the section closes on a note rather than an action: the serif italic in iris that the
-   headlines use for their emphasis, so it reads as the last line of the story, never a button. */
-.dl-soon {
-  margin: 6px 0 0;
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: clamp(22px, 2.4vw, 28px);
-  line-height: 1.3;
-  letter-spacing: 0.01em;
-  color: var(--iris-dusk);
-  text-wrap: balance;
+/* Both badges show the same artwork height. Google's PNG carries 41px of transparent clear space
+   around a 168px-tall badge, so its image is enlarged and pulled in by that margin until the art
+   itself is --badge tall. */
+.dl-badges {
+  --badge: 52px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px 18px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dl-badge {
+  display: block;
+  border-radius: 9px;
+  transition: transform var(--drift) var(--exhale);
+}
+
+.dl-badge img {
+  display: block;
+  height: var(--badge);
+  width: auto;
+}
+
+.dl-badge--google-play {
+  overflow: hidden;
+  height: var(--badge);
+}
+
+.dl-badge--google-play img {
+  height: calc(var(--badge) * 250 / 168);
+  margin: calc(var(--badge) * -41 / 168);
+}
+
+.dl-badge:focus-visible {
+  outline: 2px solid var(--iris-dusk);
+  outline-offset: 4px;
+}
+
+@media (hover: hover) {
+  .dl-badge:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.dl-badge:active {
+  transform: scale(0.97);
 }
 
 @media (max-width: 600px) {
   .dl-stage {
     border-radius: 32px;
+  }
+
+  /* Small enough to keep the pair on one row on a 375pt phone, above Apple's 40px minimum. */
+  .dl-badges {
+    --badge: 44px;
+    gap: 12px;
   }
 }
 
