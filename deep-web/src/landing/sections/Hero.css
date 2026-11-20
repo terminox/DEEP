@@ -155,7 +155,9 @@
 }
 
 /* MARK: Copy */
+/* Positioned so the copy paints over the mist's lower reach instead of sinking into it. */
 .hero-foot {
+  position: relative;
   margin-top: auto;
   padding-top: 48px;
   display: flex;
@@ -182,12 +184,31 @@
   color: rgb(from var(--deep-plum) r g b / 0.82);
 }
 
+/* The store badges lead; the way further down the page is the frosted capsule beneath them, centred
+   on the pair. */
 .hero-actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.hero-more {
+  min-height: 48px;
+  padding: 0 20px 0 26px;
+  font-size: 15px;
+}
+
+.hero-more svg {
+  color: var(--iris-dusk);
+  transition: transform var(--drift) var(--exhale);
+}
+
+@media (hover: hover) {
+  .hero-more:hover svg {
+    transform: translateY(2px);
+  }
 }
 
 /* Increase Contrast: the veils flatten to cream, as on iOS, and the mark trades its cream bloom for a
@@ -225,7 +246,6 @@
   }
 
   .hero-actions {
-    width: 100%;
-    flex-direction: column;
+    gap: 14px;
   }
 }

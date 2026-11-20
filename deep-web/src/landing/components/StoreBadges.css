@@ -1,0 +1,78 @@
+/* Both badges show the same artwork height. Google's PNG carries 41px of transparent clear space
+   around a 168px-tall badge, so its image is enlarged and pulled in by that margin until the art
+   itself is --badge tall. */
+.store-badges {
+  --badge: 52px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 14px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.store-badge {
+  display: block;
+  border-radius: 9px;
+  transition: transform var(--drift) var(--exhale);
+}
+
+.store-badge img {
+  display: block;
+  height: var(--badge);
+  width: auto;
+  /* The global img cap would squash Google's badge to its cropped box and leave a gap beside it. */
+  max-width: none;
+}
+
+.store-badge--google-play {
+  overflow: hidden;
+  height: var(--badge);
+}
+
+.store-badge--google-play img {
+  height: calc(var(--badge) * 250 / 168);
+  margin: calc(var(--badge) * -41 / 168);
+}
+
+.store-badge:focus-visible {
+  outline: 2px solid var(--iris-dusk);
+  outline-offset: 4px;
+}
+
+@media (hover: hover) {
+  .store-badge:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.store-badge:active {
+  transform: scale(0.97);
+}
+
+/* Centred use: the badges differ in width, so two equal columns put the gap between them, not the
+   pair's outer edges, on the centre line. */
+.store-badges--balanced {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: max-content;
+  max-width: 100%;
+}
+
+.store-badges--balanced > :first-child {
+  justify-self: end;
+}
+
+.store-badges--balanced > :last-child {
+  justify-self: start;
+}
+
+/* Small enough to keep the pair on one row on a 375pt phone, above Apple's 40px minimum. */
+@media (max-width: 600px) {
+  .store-badges {
+    --badge: 44px;
+    gap: 12px;
+  }
+}

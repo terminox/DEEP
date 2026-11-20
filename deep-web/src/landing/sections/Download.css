@@ -2,150 +2,81 @@
   padding: var(--section-gap) var(--edge) 0;
 }
 
+/* The primary capsule's twilight (tokens.css `.pill`) grown to a card: iris dusk into lavender mist
+   into blush powder. The iris is pooled and deepened behind the words so white reads; the blush falls
+   away to the lower corners, and two soft lights keep the surface from lying flat. */
 .dl-stage {
+  --dl-mark: 112px;
   position: relative;
   max-width: 1240px;
-  min-height: min(88vh, 820px);
   margin: 0 auto;
   display: grid;
   place-items: center;
   border-radius: 40px;
-  overflow: hidden;
+  overflow: clip;
   isolation: isolate;
-}
-
-.dl-stage > .atmosphere {
-  z-index: -2;
-}
-
-/* The BreathingOrb recipe at rest scale, breathing 4s in and 6s out behind the words. */
-.dl-orb {
-  position: absolute;
-  z-index: -1;
-  width: min(78vw, 640px);
-  aspect-ratio: 1;
-  animation: dl-breathe calc(var(--inhale-length) + var(--exhale-length)) var(--exhale) infinite;
-}
-
-.dl-orb-body {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 50% 42%,
-    rgb(255 255 255 / 0.95) 0%,
-    rgb(from var(--soft-lilac) r g b / 0.75) 38%,
-    rgb(from var(--lavender-mist) r g b / 0.45) 58%,
-    rgb(from var(--sky-wash) r g b / 0.2) 72%,
-    transparent 100%
-  );
-  opacity: 0.85;
-}
-
-@keyframes dl-breathe {
-  0% {
-    transform: scale(0.82);
-  }
-  40% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(0.82);
-  }
+  color: #fff;
+  background:
+    radial-gradient(88% 62% at 50% 50%, rgb(from var(--deep-plum) r g b / 0.26), transparent 100%),
+    radial-gradient(84% 60% at 50% 50%, var(--iris-dusk) 30%, transparent 100%),
+    radial-gradient(38% 46% at 12% 8%, rgb(255 255 255 / 0.26), transparent 100%),
+    radial-gradient(42% 50% at 92% 96%, rgb(255 255 255 / 0.3), transparent 100%),
+    linear-gradient(120deg, var(--iris-dusk) 0%, var(--lavender-mist) 55%, var(--blush-powder) 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 24px 64px rgb(from var(--lavender-mist) r g b / 0.45);
 }
 
 .dl-content {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
-  max-width: 560px;
-  padding: 96px var(--edge);
+  gap: 36px;
+  padding: clamp(72px, 8vw, 104px) var(--edge);
   text-align: center;
-}
-
-.dl-content .lede {
-  margin-inline: auto;
 }
 
 .dl-title {
   margin: 0;
   font-family: var(--serif);
-  font-style: italic;
   font-weight: 300;
-  font-size: clamp(52px, 8vw, 104px);
-  line-height: 1;
+  font-size: clamp(40px, 5.2vw, 68px);
+  line-height: 1.04;
   letter-spacing: 0.01em;
+  text-wrap: balance;
+  text-shadow: 0 1px 18px rgb(from var(--iris-dusk) r g b / 0.7);
 }
 
-/* Both badges show the same artwork height. Google's PNG carries 41px of transparent clear space
-   around a 168px-tall badge, so its image is enlarged and pulled in by that margin until the art
-   itself is --badge tall. */
+.dl-title em {
+  font-style: italic;
+}
+
+/* The balanced pair: the gap between the badges sits on the card's centre line. */
 .dl-badges {
-  --badge: 52px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 14px 18px;
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
+  --badge: 48px;
 }
 
-.dl-badge {
-  display: block;
-  border-radius: 9px;
-  transition: transform var(--drift) var(--exhale);
-}
-
-.dl-badge img {
-  display: block;
-  height: var(--badge);
-  width: auto;
-}
-
-.dl-badge--google-play {
-  overflow: hidden;
-  height: var(--badge);
-}
-
-.dl-badge--google-play img {
-  height: calc(var(--badge) * 250 / 168);
-  margin: calc(var(--badge) * -41 / 168);
-}
-
-.dl-badge:focus-visible {
-  outline: 2px solid var(--iris-dusk);
-  outline-offset: 4px;
-}
-
-@media (hover: hover) {
-  .dl-badge:hover {
-    transform: translateY(-1px);
+/* Increase Contrast: a flat iris, deepened, instead of the gradient. */
+@media (prefers-contrast: more) {
+  .dl-stage {
+    background: var(--deep-plum);
   }
 }
 
-.dl-badge:active {
-  transform: scale(0.97);
-}
-
-@media (max-width: 600px) {
+@media (max-width: 860px) {
   .dl-stage {
+    --dl-mark: 88px;
     border-radius: 32px;
   }
 
-  /* Small enough to keep the pair on one row on a 375pt phone, above Apple's 40px minimum. */
-  .dl-badges {
-    --badge: 44px;
-    gap: 12px;
+  .dl-content {
+    gap: 30px;
+    padding-inline: 12px;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dl-orb {
-    animation: none;
-    transform: scale(0.9);
+@media (max-width: 600px) {
+  .dl-badges {
+    --badge: 44px;
   }
 }
