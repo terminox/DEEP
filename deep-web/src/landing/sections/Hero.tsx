@@ -4,6 +4,7 @@
 // sun so the cream mark reads as light, and a frosted cream mist settles behind the wordmark.
 import type { CSSProperties } from 'react'
 import { AmbientVideo, LogoMark, useBloom, Wordmark } from '../components/shared.tsx'
+import { StoreBadges } from '../components/StoreBadges.tsx'
 import './Hero.css'
 
 // Desktop plays the generated landscape film; phones in portrait play the iOS welcome itself.
@@ -41,15 +42,16 @@ export default function Hero() {
             Pause. Breathe. Connect. Heal&nbsp;— together.
           </p>
           <p className="hero-lede bloom" style={{ '--bloom-delay': '420ms' } as CSSProperties}>
-            A soft place to slow down. Breathe with a gentle guide, pause with people all over the world,
-            and watch your quiet minutes grow into something that helps others.
+            Breathe with a gentle guide, pause with people all over the world, and watch your quiet
+            minutes grow into something that helps others.
           </p>
           <div className="hero-actions bloom" style={{ '--bloom-delay': '520ms' } as CSSProperties}>
-            <a className="pill" href="#download">
-              Download DEEP
-            </a>
-            <a className="pill pill--ghost" href="#global-pause">
+            <StoreBadges balanced />
+            <a className="pill pill--ghost hero-more" href="#global-pause">
               See how it feels
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path d="M3.5 6 8 10.5 12.5 6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </a>
           </div>
         </div>

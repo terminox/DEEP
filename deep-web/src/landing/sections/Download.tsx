@@ -1,23 +1,11 @@
-// The closing invitation: the atmosphere, one large orb breathing slowly, and the way in. The store
-// badges are Apple's and Google's official artwork, used unmodified as their guidelines require.
+// The closing invitation: the twilight of the primary button grown to a whole card, the mark,
+// one line, and the store badges.
 import type { CSSProperties } from 'react'
-import { Atmosphere, LogoMark, useBloom } from '../components/shared.tsx'
+import { LogoMark, useBloom } from '../components/shared.tsx'
+import { StoreBadges } from '../components/StoreBadges.tsx'
 import './Download.css'
 
-const stores = [
-  {
-    id: 'app-store',
-    href: 'https://apps.apple.com/us/app/deep-peace-mental-wellness/id6834457133',
-    badge: '/badges/app-store.svg',
-    label: 'Download DEEP on the App Store',
-  },
-  {
-    id: 'google-play',
-    href: 'https://play.google.com/store/apps/details?id=space.deeppeace.app',
-    badge: '/badges/google-play.png',
-    label: 'Get DEEP on Google Play',
-  },
-] as const
+const delay = (ms: number) => ({ '--bloom-delay': `${ms}ms` }) as CSSProperties
 
 export default function Download() {
   const ref = useBloom<HTMLElement>()
@@ -25,31 +13,16 @@ export default function Download() {
   return (
     <section className="dl" id="download" aria-labelledby="dl-title" ref={ref}>
       <div className="dl-stage">
-        <Atmosphere />
-        <div className="dl-orb" aria-hidden="true">
-          <div className="dl-orb-body" />
-        </div>
-
         <div className="dl-content">
-          <div className="bloom">
-            <LogoMark size={56} glow tint="var(--iris-dusk)" />
+          <div className="bloom" aria-hidden="true">
+            <LogoMark size="var(--dl-mark)" glow tint="var(--moon-cream)" />
           </div>
-          <h2 className="dl-title bloom" id="dl-title" style={{ '--bloom-delay': '100ms' } as CSSProperties}>
-            You’re here now.
+
+          <h2 className="dl-title bloom" id="dl-title" style={delay(120)}>
+            Take your first breath <em>with us.</em>
           </h2>
-          <p className="lede bloom" style={{ '--bloom-delay': '200ms' } as CSSProperties}>
-            Whenever you’d like to come back to this feeling, DEEP is waiting on your phone. A breath, a
-            pause with the world, a plant that grows with you.
-          </p>
-          <ul className="dl-badges bloom" style={{ '--bloom-delay': '300ms' } as CSSProperties}>
-            {stores.map(({ id, href, badge, label }) => (
-              <li key={id}>
-                <a className={`dl-badge dl-badge--${id}`} href={href} target="_blank" rel="noopener">
-                  <img src={badge} alt={label} />
-                </a>
-              </li>
-            ))}
-          </ul>
+
+          <StoreBadges balanced className="dl-badges bloom" style={delay(240)} />
         </div>
       </div>
     </section>
