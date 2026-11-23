@@ -9,6 +9,8 @@ import SwiftUI
 // Data → lantern (per four-second window, see `SkyLantern`):
 // - band mix → paper colour (alpha amber, theta rose, beta pale, low calm ember)
 // - calm → bigger, brighter, steadier
+// - a flower on the paper: one petal per slice of the window (alpha green, theta
+//   violet, busy rose), more petals when busy, ruffled when restless
 // - blinks → a flickering flame; jaw clenches → a wobble
 // - a live blink → the newest lantern gutters
 // Rising follows the session clock, so lanterns hold still while the sit pauses;
@@ -113,6 +115,14 @@ private enum LanternShape {
     center: CGPoint(x: 0, y: 0.58), startRadius: 0, endRadius: 0.15
   )
 
+  /// Where the flower is printed: centred on the paper, about half its width.
+  static let flowerPrint = CGAffineTransform(translationX: 0, y: -0.02).scaledBy(x: 0.27, y: 0.27)
+  static let flowerHeart = Path(ellipseIn: CGRect(x: -0.054, y: -0.074, width: 0.108, height: 0.108))
+  /// The flower's pale gold heart, where the flame shows through most.
+  static let flowerHeartLight = Color.starlight.mix(with: .lanternFlame, by: 0.3)
+  /// Below this height (points) the flower is too small to read, so it is skipped.
+  static let flowerMinimumHeight = 14.0
+
   static let glowCenter = CGPoint(x: 0, y: 0.15)
   static let glowRadius = 2.4
   static let glowDisc = Path(ellipseIn: CGRect(
@@ -127,6 +137,8 @@ private struct LanternInk {
   let paper: GraphicsContext.Shading
   /// The single bright point a distant lantern shrinks to.
   let core: Color
+  /// The flower printed on the paper, already placed in lantern space.
+  let petals: [(path: Path, color: Color)]
 
   init(_ lantern: SkyLantern) {
     let light = Color(red: lantern.red, green: lantern.green, blue: lantern.blue)
@@ -148,6 +160,14 @@ private struct LanternInk {
       startPoint: CGPoint(x: 0, y: -0.66), endPoint: CGPoint(x: 0, y: 0.62)
     )
     core = light.mix(with: .starlight, by: 0.4)
+    // Printed on lit paper: each petal warmed a little by the flame behind it.
+    let shapes = LanternFlowerShape.petals(count: lantern.petals.count, ruffle: lantern.ruffle)
+    petals = zip(shapes, lantern.petals).map { shape, tint in
+      let color = Color(red: tint.red, green: tint.green, blue: tint.blue)
+        .mix(with: .lanternFlame, by: 0.18)
+        .opacity(0.85)
+      return (shape.applying(LanternShape.flowerPrint), color)
+    }
   }
 }
 
@@ -299,6 +319,10 @@ private struct LanternScene {
       var paper = base
       paper.opacity = fadeIn * (0.62 + 0.38 * depth) * min(0.75 + 0.25 * flame * gutter, 1)
       paper.fill(LanternShape.body, with: ink.paper)
+      if height >= LanternShape.flowerMinimumHeight {
+        for petal in ink.petals { paper.fill(petal.path, with: .color(petal.color)) }
+        paper.fill(LanternShape.flowerHeart, with: .color(LanternShape.flowerHeartLight))
+      }
 
       var fire = base
       fire.blendMode = .plusLighter

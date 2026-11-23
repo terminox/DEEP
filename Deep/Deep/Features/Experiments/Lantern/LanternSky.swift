@@ -4,7 +4,8 @@ import Foundation
 // One sit, many lanterns. Every four session seconds a khom loi (the paper sky
 // lantern of Yi Peng) is released for the window that just ended. Its colour, size
 // and steadiness come from that window of brain data, so the finished sky is the
-// whole sit, read as lanterns. `LanternArtView` paints them.
+// whole sit, read as lanterns. Each carries a small flower on its paper, one petal
+// per slice of its window (`LanternFlower`). `LanternArtView` paints them.
 
 // MARK: - Palette (paper inks; the night lives in LanternArtView)
 
@@ -59,11 +60,29 @@ struct SkyLantern: Identifiable, Equatable {
   let rest: Double
   /// A private phase, 0 … 1, so no two lanterns sway in step.
   let phase: Double
+  /// The flower printed on its paper: one petal per slice of the window, in order,
+  /// 6 (a quiet window) … 10 (a busy one).
+  let petals: [PetalTint]
+  /// 0 smooth, round petals (a calm window) … 1 ruffled (a restless one).
+  let ruffle: Double
+
+  /// Neutral band powers for a window with no data.
+  fileprivate static let resting = BandPowers(delta: 0.3, theta: 0.22, alpha: 0.25, beta: 0.15, gamma: 0.08)
+
+  /// How many petals a window's flower has: more for a busier mind.
+  static func petalCount(for powers: BandPowers) -> Int {
+    6 + Int(LanternPetalInk.busy(powers) * 4)
+  }
 
   /// Reads one window. The seeded draws depend only on `k`, so a lantern is the
   /// same whenever it is built.
-  fileprivate init(index k: Int, window: (powers: BandPowers, calm: Double, stillness: Double)?, events: [EEGEvent]) {
-    let powers = window?.powers ?? BandPowers(delta: 0.3, theta: 0.22, alpha: 0.25, beta: 0.15, gamma: 0.08)
+  fileprivate init(
+    index k: Int,
+    window: (powers: BandPowers, calm: Double, stillness: Double)?,
+    slices: [BandPowers],
+    events: [EEGEvent]
+  ) {
+    let powers = window?.powers ?? Self.resting
     // Our calm index spans ~0.15 (restless) to ~0.85 (deep), never 0 or 1.
     let calm = min(max(((window?.calm ?? 0.5) - 0.15) / 0.7, 0), 1)
     let blinks = events.filter { $0.kind == .blink }.count
@@ -87,6 +106,8 @@ struct SkyLantern: Identifiable, Equatable {
     depth = random.unit()
     rest = 0.07 + 0.18 * depth + 0.40 * random.unit()
     phase = random.unit()
+    petals = slices.map(LanternPetalInk.tint)
+    ruffle = 1 - eegSmoothstep(0.18, 0.8, window?.calm ?? 0.5)
   }
 
   /// The band mix as a warm light: each band pulls toward its own ink, the
@@ -138,7 +159,15 @@ final class LanternSky {
       let k = lanterns.count
       let from = Double(k) * Self.interval
       let to = from + Self.interval
-      lanterns.append(SkyLantern(index: k, window: sit.mean(from: from, to: to), events: sit.events(from: from, to: to)))
+      let window = sit.mean(from: from, to: to)
+      // The window cut into one slice per petal.
+      let count = SkyLantern.petalCount(for: window?.powers ?? SkyLantern.resting)
+      let slices = (0..<count).map { j in
+        let start = from + Self.interval * Double(j) / Double(count)
+        let end = from + Self.interval * Double(j + 1) / Double(count)
+        return sit.mean(from: start, to: end)?.powers ?? window?.powers ?? SkyLantern.resting
+      }
+      lanterns.append(SkyLantern(index: k, window: window, slices: slices, events: sit.events(from: from, to: to)))
     }
     return lanterns
   }
