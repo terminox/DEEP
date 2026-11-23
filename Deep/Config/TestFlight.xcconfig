@@ -16,5 +16,5 @@ DEEP_BUILD_FLAVOR = lab
 MARKETING_VERSION = 1.1.0
 // `<epoch>.1`, stamped by `scripts/archive-app-store.sh --testflight`. Always ahead of
 // the store builds' plain epoch numbers, and the ".1" marks it as a lab build.
-CURRENT_PROJECT_VERSION = 1795429162.1
+CURRENT_PROJECT_VERSION = 1795466664.1
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = PROD TESTFLIGHT EXPERIMENTS $(DEEP_MUSE_CONDITION)
