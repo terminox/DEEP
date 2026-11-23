@@ -1,0 +1,16 @@
+// The lab build: the App Store build plus Settings → Experiments and the Muse 2
+// headband. Same app and bundle id, so it goes to DEEP's own TestFlight, but it is
+// for internal testers only and must never be submitted for App Review: App Store
+// builds come from AppStore.xcconfig and contain no Muse code.
+//
+// Told apart from a store build three ways: the home-screen name "DEEP Lab", a build
+// number ending in ".1", and "Lab build" under Settings.
+#include "AppStore.xcconfig"
+#include "Muse.xcconfig"
+
+APP_DISPLAY_NAME = DEEP Lab
+DEEP_BUILD_FLAVOR = lab
+// `<epoch>.1`, stamped by `scripts/archive-app-store.sh --testflight`. Always ahead of
+// the store builds' plain epoch numbers, and the ".1" marks it as a lab build.
+CURRENT_PROJECT_VERSION = 1794586575.1
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = PROD TESTFLIGHT EXPERIMENTS $(DEEP_MUSE_CONDITION)

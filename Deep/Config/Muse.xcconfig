@@ -1,0 +1,15 @@
+// The Muse 2 headband (LibMuse), for the EEG art in Settings → Experiments.
+//
+// LibMuse is Interaxon's confidential SDK and this repository is public, so the SDK
+// is never committed. `scripts/setup-muse-sdk.sh` unpacks it from the local archive
+// into the gitignored `Deep/Vendor/Muse/` and writes the gitignored
+// `MuseSDK.local.xcconfig` below, which turns it on for device builds only: the SDK
+// ships no arm64 simulator slice, so the simulator always runs a simulated headband.
+// Without that file every build still compiles, with the simulated headband.
+//
+// Included by Dev and TestFlight only. Prod and AppStore never include this file, so
+// an App Store build cannot link LibMuse or ask for Bluetooth.
+#include? "MuseSDK.local.xcconfig"
+
+// Info.plist gains NSBluetoothAlwaysUsageDescription (see `#if DEEP_MUSE` there).
+DEEP_INFOPLIST_MUSE = DEEP_MUSE=1
