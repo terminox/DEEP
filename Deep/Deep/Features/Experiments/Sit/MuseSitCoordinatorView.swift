@@ -59,6 +59,11 @@ struct MuseSitCoordinatorView: View {
 
   private func close() {
     headband.stopScanning()
+    // A connection still being attempted is abandoned with the flow; a working one
+    // stays up for the next art.
+    if !headband.link.isConnected, headband.link.headband != nil {
+      headband.disconnect()
+    }
     dismiss()
   }
 }

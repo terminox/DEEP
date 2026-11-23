@@ -5,11 +5,13 @@ import Foundation
 
 // A real Muse 2, through Interaxon's LibMuse.
 //
-// Threading: every LibMuse call happens on `MuseLink`'s serial queue, which pumps the
-// headband with `execute()` every 20 ms, so packets arrive there synchronously and
-// feed one `MuseFrameBuilder` with no locks. Ten times a second the link hands a
-// `HeadbandTick` (a plain Sendable value) to the main actor. `MuseHeadband` is what
-// the UI observes.
+// Threading: LibMuse's manager (scanning, the list of headbands) runs its own
+// CoreBluetooth central on the main queue and schedules timers on the current run
+// loop, so `MuseHeadband` drives it on the main actor. Once a headband is chosen,
+// `MuseLink` owns it on a serial queue and pumps it with `execute()` every 20 ms;
+// packets arrive there synchronously and feed one `MuseFrameBuilder` with no locks.
+// Ten times a second the link hands a `HeadbandTick` (a plain Sendable value) back to
+// the main actor.
 
 @MainActor
 @Observable
@@ -23,13 +25,22 @@ final class MuseHeadband: MuseConnecting {
 
   @ObservationIgnored private let fanout = TickFanout()
   @ObservationIgnored private lazy var museLink = MuseLink(owner: self)
+  @ObservationIgnored private var manager: IXNMuseManagerIos?
+  @ObservationIgnored private lazy var listListener = ListListener { [weak self] in self?.refreshList() }
+  @ObservationIgnored private lazy var logListener = LogListener { [weak self] line in self?.libraryLogged(line) }
+  @ObservationIgnored private var muses: [String: IXNMuse] = [:]
+  /// The headband being connected or used, so its name survives a dropped link.
+  @ObservationIgnored private var current: HeadbandInfo?
   @ObservationIgnored private var bluetooth: BluetoothWatch?
+  @ObservationIgnored private var bluetoothState = CBManagerState.unknown
+  @ObservationIgnored private var wantsScan = false
   @ObservationIgnored private var events: [String] = []
   @ObservationIgnored private var libraryLog: [String] = []
   @ObservationIgnored private var latest: MuseLink.Snapshot?
 
   func startScanning() {
     if link.headband != nil { return }
+    wantsScan = true
     // Creating the watcher shows the Bluetooth permission prompt, after our own
     // explanation screen.
     if bluetooth == nil {
@@ -42,25 +53,43 @@ final class MuseHeadband: MuseConnecting {
     default:
       break
     }
+    if bluetoothState == .poweredOff {
+      link = .failed(.bluetoothOff)
+      return
+    }
+    let manager = self.manager ?? makeManager()
     nearby = []
     link = .scanning
-    museLink.startScanning()
+    // A scan that died with the Bluetooth radio never restarts by itself, and
+    // startListening does nothing while LibMuse thinks it is still listening.
+    manager?.stopListening()
+    manager?.startListening()
     note("scanning")
   }
 
   func stopScanning() {
-    museLink.stopScanning()
+    wantsScan = false
+    manager?.stopListening()
     if link == .scanning { link = .idle }
   }
 
   func connect(_ headband: HeadbandInfo) {
+    wantsScan = false
+    // LibMuse: stop listening before connecting.
+    manager?.stopListening()
+    guard let muse = muses[headband.id] else {
+      link = .failed(.connectionFailed)
+      return
+    }
+    current = headband
     link = .connecting(headband)
     note("connecting to \(headband.name)")
-    museLink.connect(id: headband.id)
+    museLink.connect(muse)
   }
 
   func disconnect() {
     museLink.disconnect()
+    current = nil
     link = .idle
     fit = .unknown
     battery = nil
@@ -69,30 +98,56 @@ final class MuseHeadband: MuseConnecting {
 
   func ticks() -> AsyncStream<HeadbandTick> { fanout.stream() }
 
-  // MARK: From the link (main actor)
-
-  fileprivate func found(_ headbands: [HeadbandInfo]) {
-    nearby = headbands
+  private func makeManager() -> IXNMuseManagerIos? {
+    guard let manager = IXNMuseManagerIos.sharedManager() else { return nil }
+    manager.museListener = listListener
+    // A headband that stops advertising drops off the list after ten seconds.
+    manager.removeFromList(after: 10)
+    if let log = IXNLogManager.instance() {
+      log.setLogListener(logListener)
+      log.setMinimumSeverity(.sevInfo)
+    }
+    self.manager = manager
+    return manager
   }
 
+  private func refreshList() {
+    let found = manager?.getMuses() ?? []
+    muses = Dictionary(found.map { ($0.getMacAddress(), $0) }, uniquingKeysWith: { first, _ in first })
+    // The model isn't known until a headband connects (LibMuse reports 2016 before
+    // then), so the list shows names only.
+    nearby = found.map { HeadbandInfo(id: $0.getMacAddress(), name: $0.getName(), model: "Muse headband") }
+  }
+
+  // MARK: From the link (main actor)
+
   fileprivate func linkChanged(_ state: MuseLink.State) {
-    let headband = link.headband ?? nearby.first ?? HeadbandInfo(id: "?", name: "Muse", model: "Muse 2")
+    let headband = current ?? HeadbandInfo(id: "?", name: "Muse", model: "Muse headband")
     switch state {
     case .connecting:
       if case .reconnecting = link { return }
       link = .connecting(headband)
-    case .connected:
-      link = .connected(headband)
-      note("connected")
+    case .connected(let model):
+      let named = HeadbandInfo(id: headband.id, name: headband.name, model: model)
+      current = named
+      link = .connected(named)
+      note("connected (\(model))")
     case .reconnecting(let attempt):
       link = .reconnecting(headband, attempt: attempt)
+      // The last reading is stale while the link is down.
+      fit = .unknown
       note("link dropped, reconnect attempt \(attempt)")
     case .failed(let problem):
+      current = nil
       link = .failed(problem)
+      fit = .unknown
       note("failed: \(problem)")
     case .disconnected:
-      link = .idle
       fit = .unknown
+      // Keep a failure on screen ("update your headband") rather than going idle.
+      if case .failed = link { return }
+      current = nil
+      link = .idle
     }
   }
 
@@ -107,20 +162,24 @@ final class MuseHeadband: MuseConnecting {
     refreshDiagnostics()
   }
 
-  fileprivate func libraryLogged(_ line: String) {
+  private func libraryLogged(_ line: String) {
     libraryLog.append(line)
     if libraryLog.count > 100 { libraryLog.removeFirst(libraryLog.count - 100) }
   }
 
   private func bluetoothChanged(_ state: CBManagerState) {
+    bluetoothState = state
     switch state {
     case .poweredOff:
-      link = .failed(.bluetoothOff)
+      // A headband in use keeps its state: the link reports the drop and reconnects.
+      if link.headband == nil { link = .failed(.bluetoothOff) }
       note("Bluetooth is off")
     case .unauthorized:
       link = .failed(.bluetoothDenied)
     case .poweredOn:
-      if case .failed(.bluetoothOff) = link { link = .idle }
+      guard case .failed(.bluetoothOff) = link else { return }
+      link = .idle
+      if wantsScan { startScanning() }
     default:
       break
     }
@@ -158,10 +217,12 @@ final class MuseHeadband: MuseConnecting {
 
 // MARK: - The LibMuse side
 
-/// Owns LibMuse. Everything here runs on `queue`; only Sendable values leave it.
+/// Owns the chosen headband. Everything here runs on `queue`; only Sendable values
+/// leave it.
 private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
   enum State: Sendable {
-    case connecting, connected, disconnected
+    case connecting, disconnected
+    case connected(model: String)
     case reconnecting(attempt: Int)
     case failed(HeadbandProblem)
   }
@@ -175,13 +236,17 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
     var blinks = 0, clenches = 0, reconnects = 0
   }
 
+  /// Attempts before giving up on a headband that has never answered (the Muse app
+  /// holds it, or it's off or out of range).
+  static let firstConnectAttempts = 3
+
   private weak var owner: MuseHeadband?
   private let queue = DispatchQueue(label: "space.deeppeace.muse", qos: .userInitiated)
-  private var manager: IXNMuseManagerIos?
   private var muse: IXNMuse?
   private var timer: DispatchSourceTimer?
   private var builder = MuseFrameBuilder()
   private var wantsConnection = false
+  private var everConnected = false
   private var attempts = 0
   private var pumpCount = 0
   private var battery: Double?
@@ -193,10 +258,8 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
   private let clockStart = Date()
 
   // Plain listener objects: LibMuse holds them weakly, so the link keeps them.
-  private var listListener: ListListener!
   private var connectionListener: ConnectionListener!
   private var dataListener: DataListener!
-  private var logListener: LogListener!
 
   private static let packetTypes: [IXNMuseDataPacketType] = [
     .alphaRelative, .betaRelative, .deltaRelative, .thetaRelative, .gammaRelative,
@@ -207,10 +270,8 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
   init(owner: MuseHeadband) {
     self.owner = owner
     super.init()
-    listListener = ListListener(link: self)
     connectionListener = ConnectionListener(link: self)
     dataListener = DataListener(link: self)
-    logListener = LogListener(link: self)
   }
 
   private var now: Double { Date().timeIntervalSince(clockStart) }
@@ -223,53 +284,21 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
     }
   }
 
-  // MARK: Scanning
-
-  func startScanning() {
-    queue.async { [self] in
-      if manager == nil, let manager = IXNMuseManagerIos.sharedManager() {
-        manager.museListener = listListener
-        manager.removeFromList(after: 10)
-        self.manager = manager
-        if let log = IXNLogManager.instance() {
-          log.setLogListener(logListener)
-          log.setMinimumSeverity(.sevInfo)
-        }
-      }
-      manager?.startListening()
-    }
-  }
-
-  func stopScanning() {
-    queue.async { [self] in manager?.stopListening() }
-  }
-
-  fileprivate func listChanged() {
-    queue.async { [self] in
-      let headbands = (manager?.getMuses() ?? []).map { muse in
-        HeadbandInfo(id: muse.getMacAddress(), name: muse.getName(), model: Self.modelName(muse.getModel()))
-      }
-      toMain { $0.found(headbands) }
-    }
-  }
-
   // MARK: Connecting
 
-  func connect(id: String) {
+  func connect(_ muse: IXNMuse) {
     queue.async { [self] in
-      guard let manager, let muse = manager.getMuses().first(where: { $0.getMacAddress() == id }) else {
-        toMain { $0.linkChanged(.failed(.connectionFailed)) }
-        return
+      if let previous = self.muse, previous !== muse {
+        previous.unregisterAllListeners()
+        previous.disconnect()
       }
-      // LibMuse: stop listening before connecting.
-      manager.stopListening()
       self.muse = muse
       wantsConnection = true
+      everConnected = false
       attempts = 0
       builder = MuseFrameBuilder()
       snapshot = Snapshot()
       snapshot.name = muse.getName()
-      snapshot.model = Self.modelName(muse.getModel())
       open(muse)
       startPump()
     }
@@ -282,25 +311,32 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
     for type in Self.packetTypes {
       muse.register(dataListener, type: type)
     }
-    // 4-channel EEG with PPG (heart rate), for every Muse 2 from 2018 to the 2024 USB-C.
-    let preset: IXNMusePreset = [.mu03, .mu04, .mu05, .mu06].contains(muse.getModel()) ? .preset51 : .preset21
-    muse.setPreset(preset)
-    snapshot.preset = preset == .preset51 ? "51 (EEG + PPG)" : "21 (EEG)"
+    // 4-channel EEG with PPG (heart rate). Set before connecting: the model isn't
+    // known yet, and changing presets while connected forces a reconnect. Every Muse 2
+    // supports it; LibMuse ignores a preset a headband can't use.
+    muse.setPreset(.preset51)
     muse.connect()
   }
 
   func disconnect() {
     queue.async { [self] in
       wantsConnection = false
-      muse?.disconnect()
-      // Keep pumping briefly so LibMuse can finish disconnecting, then stop.
-      queue.asyncAfter(deadline: .now() + 1) { [self] in
-        guard !wantsConnection else { return }
-        stopPump()
-        muse?.unregisterAllListeners()
-        muse = nil
+      guard let muse else { return }
+      muse.disconnect()
+      // LibMuse needs execute() until it reports DISCONNECTED (see `teardown`);
+      // stop anyway if it never does.
+      queue.asyncAfter(deadline: .now() + 5) { [self] in
+        guard !wantsConnection, self.muse === muse else { return }
+        teardown()
       }
     }
+  }
+
+  /// Stops pumping and lets the headband go.
+  private func teardown() {
+    stopPump()
+    muse?.unregisterAllListeners()
+    muse = nil
   }
 
   private func startPump() {
@@ -330,20 +366,33 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
     if pumpCount % 50 == 0 { report(tick) }
   }
 
+  /// Called by LibMuse during `execute()`. Never connect, disconnect or unregister from
+  /// in here: schedule it on the queue instead.
   fileprivate func connectionChanged(_ state: IXNConnectionState) {
     switch state {
     case .connecting:
       if attempts == 0 { toMain { $0.linkChanged(.connecting) } }
     case .connected:
       attempts = 0
-      toMain { $0.linkChanged(.connected) }
+      everConnected = true
+      let model = muse.map { Self.modelName($0.getModel()) } ?? "Muse"
+      snapshot.model = model
+      snapshot.preset = muse?.getConfiguration().map { Self.presetName($0.getPreset()) } ?? "?"
+      toMain { $0.linkChanged(.connected(model: model)) }
     case .disconnected:
       guard wantsConnection, let muse else {
+        queue.async { [self] in teardown() }
         toMain { $0.linkChanged(.disconnected) }
         return
       }
-      // Never reconnect from inside LibMuse's callback: schedule it.
       attempts += 1
+      // A headband that never answered: stop trying and say so.
+      if !everConnected, attempts >= Self.firstConnectAttempts {
+        wantsConnection = false
+        queue.async { [self] in teardown() }
+        toMain { $0.linkChanged(.failed(.connectionFailed)) }
+        return
+      }
       snapshot.reconnects += 1
       let attempt = attempts
       toMain { $0.linkChanged(.reconnecting(attempt: attempt)) }
@@ -355,9 +404,11 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
     case .needsUpdate:
       wantsConnection = false
       toMain { $0.linkChanged(.failed(.needsFirmwareUpdate)) }
+      queue.async { [self] in muse?.disconnect() }
     case .needsLicense:
       wantsConnection = false
       toMain { $0.linkChanged(.failed(.needsLicense)) }
+      queue.async { [self] in muse?.disconnect() }
     default:
       break
     }
@@ -403,11 +454,6 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
     if packet.jawClench { snapshot.clenches += 1 }
   }
 
-  fileprivate func logged(_ log: IXNLogPacket) {
-    let line = "\(log.tag): \(log.message)"
-    toMain { $0.libraryLogged(line) }
-  }
-
   /// Once a second: what the diagnostics panel shows.
   private func report(_ tick: HeadbandTick) {
     let elapsed = max(Date().timeIntervalSince(lastReportAt), 0.001)
@@ -448,39 +494,55 @@ private nonisolated final class MuseLink: NSObject, @unchecked Sendable {
     default: "Muse"
     }
   }
+
+  private static func presetName(_ preset: IXNMusePreset) -> String {
+    switch preset {
+    case .preset51: "51 (EEG + PPG)"
+    case .preset21: "21 (EEG)"
+    default: "\(preset.rawValue)"
+    }
+  }
 }
 
 // MARK: - Listeners
 
+// LibMuse's manager and log manager are process-wide singletons: their listeners hold
+// weak references back, so a callback after we're gone does nothing.
+
 private nonisolated final class ListListener: NSObject, IXNMuseListener, @unchecked Sendable {
-  private unowned let link: MuseLink
-  init(link: MuseLink) { self.link = link }
-  func museListChanged() { link.listChanged() }
-}
-
-private nonisolated final class ConnectionListener: NSObject, IXNMuseConnectionListener, @unchecked Sendable {
-  private unowned let link: MuseLink
-  init(link: MuseLink) { self.link = link }
-  func receive(_ packet: IXNMuseConnectionPacket, muse: IXNMuse?) {
-    link.connectionChanged(packet.currentConnectionState)
-  }
-}
-
-private nonisolated final class DataListener: NSObject, IXNMuseDataListener, @unchecked Sendable {
-  private unowned let link: MuseLink
-  init(link: MuseLink) { self.link = link }
-  func receive(_ packet: IXNMuseDataPacket?, muse: IXNMuse?) {
-    if let packet { link.received(packet) }
-  }
-  func receive(_ packet: IXNMuseArtifactPacket, muse: IXNMuse?) {
-    link.received(packet)
+  private let changed: @MainActor () -> Void
+  init(changed: @escaping @MainActor () -> Void) { self.changed = changed }
+  func museListChanged() {
+    DispatchQueue.main.async { [changed] in MainActor.assumeIsolated { changed() } }
   }
 }
 
 private nonisolated final class LogListener: NSObject, IXNLogListener, @unchecked Sendable {
-  private unowned let link: MuseLink
+  private let logged: @MainActor (String) -> Void
+  init(logged: @escaping @MainActor (String) -> Void) { self.logged = logged }
+  func receiveLog(_ log: IXNLogPacket) {
+    let line = "\(log.tag): \(log.message)"
+    DispatchQueue.main.async { [logged] in MainActor.assumeIsolated { logged(line) } }
+  }
+}
+
+private nonisolated final class ConnectionListener: NSObject, IXNMuseConnectionListener, @unchecked Sendable {
+  private weak var link: MuseLink?
   init(link: MuseLink) { self.link = link }
-  func receiveLog(_ log: IXNLogPacket) { link.logged(log) }
+  func receive(_ packet: IXNMuseConnectionPacket, muse: IXNMuse?) {
+    link?.connectionChanged(packet.currentConnectionState)
+  }
+}
+
+private nonisolated final class DataListener: NSObject, IXNMuseDataListener, @unchecked Sendable {
+  private weak var link: MuseLink?
+  init(link: MuseLink) { self.link = link }
+  func receive(_ packet: IXNMuseDataPacket?, muse: IXNMuse?) {
+    if let packet { link?.received(packet) }
+  }
+  func receive(_ packet: IXNMuseArtifactPacket, muse: IXNMuse?) {
+    link?.received(packet)
+  }
 }
 
 /// Watches the Bluetooth radio so the connect screen can say "turn Bluetooth on".

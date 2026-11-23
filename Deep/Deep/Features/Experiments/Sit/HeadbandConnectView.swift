@@ -11,7 +11,7 @@ struct HeadbandConnectView: View {
   var body: some View {
     SitStepScaffold(title: "Connect your Muse", onClose: onClose) {
       switch headband.link {
-      case .idle where searchingSince == nil:
+      case .idle:
         introduction
       case .failed(let problem):
         ProblemCard(problem: problem) { search() }
