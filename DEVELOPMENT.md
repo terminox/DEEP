@@ -331,3 +331,37 @@ couldn't be opened"); `--validate-app` works inside it.
 Keep `deep:revenuecatAcceptSandbox` **true** in production: App Review buys with sandbox
 accounts on every submission, so refusing sandbox purchases would show the reviewer a paywall
 that never unlocks.
+
+## EEG art and the Muse 2 (lab build)
+
+Settings → Experiments holds the EEG art: **Live demos** play a simulated sit, **With your
+Muse** runs a real sit on a Muse 2 headband through Interaxon's LibMuse SDK. Experiments exist
+only in Dev, Staging and the **TestFlight** lab build; Prod and App Store builds compile them out.
+
+LibMuse is confidential under its licence and this repository is public, so it is never
+committed. Unpack it from your local SDK archive once per machine:
+
+```bash
+./scripts/setup-muse-sdk.sh "path/to/libmuse_ios_8.0.9.tar.gz"   # → Deep/Vendor/Muse (gitignored)
+./scripts/setup-muse-sdk.sh --remove                              # back to simulated only
+```
+
+That links LibMuse into **device** builds of Dev and TestFlight. The SDK has no arm64 simulator
+slice, so the simulator always uses a simulated headband, and so does any build without the SDK.
+
+- Jump straight in (debug builds): `-experiment demo.lantern` / `-experiment sit.aurora`, and
+  `-experimentSpeed 10` to play the simulated sit faster.
+- On a playing artwork, a long press opens the diagnostics panel (link state, packet rates,
+  fit, band powers, calm, heart rate); **Copy report** puts it on the pasteboard.
+
+The lab build is the App Store build plus Experiments and LibMuse, same bundle id, named
+**DEEP Lab**, build number `<epoch>.1`, "Lab build" under Settings:
+
+```bash
+./scripts/archive-app-store.sh --testflight --upload
+```
+
+Give it to internal TestFlight testers only and **never submit it for App Review**: the SDK
+licence lets the app reach Muse owners only, and App Store builds must not ask for Bluetooth.
+The script checks a lab build carries LibMuse and the Bluetooth permission, and a store build
+carries neither. Commit the stamped number in `Deep/Config/TestFlight.xcconfig`.

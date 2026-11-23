@@ -17,7 +17,11 @@ DEV_API_HOST = localhost:8080
 // `$()` keeps xcconfig from reading `//` as a comment.
 API_BASE_URL = http:/$()/$(DEV_API_HOST)
 // The Info.plist keys that let the app reach that host over the local network.
-INFOPLIST_PREPROCESSOR_DEFINITIONS = DEEP_LOCAL_DEV_SERVER=1
+DEEP_INFOPLIST_LOCAL_DEV = DEEP_LOCAL_DEV_SERVER=1
+
+// ---- Muse 2 headband ----
+// Linked on device builds once scripts/setup-muse-sdk.sh has run; simulated otherwise.
+#include "Muse.xcconfig"
 
 // ---- RevenueCat ----
 // The DEEP Premium project's Test Store key: purchases are simulated by
@@ -36,5 +40,5 @@ GCC_PREPROCESSOR_DEFINITIONS = DEBUG=1 $(inherited)
 MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE
 ONLY_ACTIVE_ARCH = YES
 // EXPERIMENTS: Settings shows the Experiments section (Dev, Staging).
-SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG DEV EXPERIMENTS $(inherited)
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG DEV EXPERIMENTS $(DEEP_MUSE_CONDITION) $(inherited)
 SWIFT_OPTIMIZATION_LEVEL = -Onone

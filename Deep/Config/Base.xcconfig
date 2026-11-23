@@ -15,6 +15,11 @@ GENERATE_INFOPLIST_FILE = NO
 // DOCTYPE's `http://` from being read as a `//` comment.
 INFOPLIST_PREPROCESS = YES
 INFOPLIST_OTHER_PREPROCESSOR_FLAGS = -traditional
+// Each environment fills in its own part: Dev's local-network key, the Muse headband's
+// Bluetooth key (Muse.xcconfig). Unset parts expand to nothing.
+INFOPLIST_PREPROCESSOR_DEFINITIONS = $(DEEP_INFOPLIST_LOCAL_DEV) $(DEEP_INFOPLIST_MUSE)
+// `store` everywhere but the TestFlight lab build (`lab`); shown under Settings.
+DEEP_BUILD_FLAVOR = store
 // Bundle id is the same base with a per-env suffix so all four apps coexist.
 PRODUCT_BUNDLE_IDENTIFIER = space.deeppeace.app$(BUNDLE_ID_SUFFIX)
 PRODUCT_NAME = $(TARGET_NAME)
@@ -53,6 +58,9 @@ SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES
 SWIFT_EMIT_LOC_STRINGS = YES
 ENABLE_PREVIEWS = YES
 LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/Frameworks
+// Filled in for device builds by the gitignored MuseSDK.local.xcconfig (see Muse.xcconfig).
+FRAMEWORK_SEARCH_PATHS = $(inherited) $(DEEP_MUSE_FRAMEWORK_PATHS)
+OTHER_LDFLAGS = $(inherited) $(DEEP_MUSE_LDFLAGS)
 
 // ---- Assets / localization ----
 // The StoreKit config is attached by the schemes from the source tree, so it never needs to

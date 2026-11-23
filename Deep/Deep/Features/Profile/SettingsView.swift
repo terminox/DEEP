@@ -42,7 +42,7 @@ struct SettingsView: View {
   @State private var isLoggingOut = false
   @State private var showUnsyncedConfirm = false
   #if EXPERIMENTS
-  @State private var showAurora = false
+  @State private var experiment: ExperimentLaunch?
   #endif
 
   private enum RestorePhase: Equatable {
@@ -79,7 +79,7 @@ struct SettingsView: View {
     .task { await subscriptionStore.loadPlans() }
     .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
     #if EXPERIMENTS
-    .fullScreenCover(isPresented: $showAurora) { AuroraExperimentView() }
+    .fullScreenCover(item: $experiment) { launch in launch.destination }
     #endif
     .confirmationDialog(
       "Log out of DEEP?",
@@ -237,15 +237,12 @@ struct SettingsView: View {
   // MARK: - Experiments
 
   #if EXPERIMENTS
-  /// Work in progress shown to Dev, Staging and client (CentralFlight) builds
-  /// only; Prod compiles it out. Aurora is the EEG art demo on a simulated
-  /// Muse 2 headband, and the one screen in DEEP that turns landscape.
+  /// Work in progress shown to Dev, Staging and the TestFlight lab build only;
+  /// Prod and App Store builds compile it out. The EEG art, as live demos on a
+  /// simulated headband and as real sits on a Muse 2. Its sky scenes are the only
+  /// screens in DEEP that turn landscape.
   private var experimentsSection: some View {
-    SettingsSection(title: "Experiments") {
-      SettingsRow(icon: "testtube.2", title: "Aurora", accessory: .chevron) {
-        showAurora = true
-      }
-    }
+    ExperimentsSettingsSection(launch: $experiment)
   }
   #endif
 
@@ -468,7 +465,9 @@ struct SettingsView: View {
     let info = Bundle.main.infoDictionary
     let version = info?["CFBundleShortVersionString"] as? String ?? "—"
     let build = info?["CFBundleVersion"] as? String ?? "—"
-    return "DEEP v\(version) (\(build))"
+    // The TestFlight lab build says so, so nobody mistakes it for a store build.
+    let lab = info?["DeepBuildFlavor"] as? String == "lab" ? " · Lab build" : ""
+    return "DEEP v\(version) (\(build))\(lab)"
   }
 }
 

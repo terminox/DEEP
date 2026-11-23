@@ -191,12 +191,11 @@ struct EarthSceneDebugHarness: View {
         Button("Stress 80") {
           // 80 deterministic cells — watch the dimmest get evicted at the
           // 64-source GPU cap without shader artifacts.
-          scene.glow.locations = (0..<80).map { i in
-            PauseLiveSnapshot.GeoPoint(
-              lat: Float(-50 + (i * 17) % 110),
-              lon: Float(-170 + (i * 47) % 345),
-              count: 1 + i % 5
-            )
+          scene.glow.locations = (0..<80).map { (i: Int) -> PauseLiveSnapshot.GeoPoint in
+            let lat: Int = -50 + (i * 17) % 110
+            let lon: Int = -170 + (i * 47) % 345
+            let count: Int = 1 + i % 5
+            return PauseLiveSnapshot.GeoPoint(lat: Float(lat), lon: Float(lon), count: count)
           }
           lastAction = "80 cells (cap 64)"
         }

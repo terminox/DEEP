@@ -97,3 +97,8 @@ handover/
 # masters can stay out of a history that never forgets.
 references/fuku/
 references/global-pause-lobby/
+# Muse 2 SDK (LibMuse). Interaxon's SDK licence makes it confidential and this
+# repository is public: scripts/setup-muse-sdk.sh unpacks it here from the local
+# archive, never into Deep/Deep (the synchronized source group).
+/Deep/Vendor/Muse/
+/Deep/Config/MuseSDK.local.xcconfig

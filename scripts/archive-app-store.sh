@@ -11,6 +11,13 @@
 #   ./scripts/archive-app-store.sh                # stamp, archive, export, verify
 #   ./scripts/archive-app-store.sh --keep-build   # reuse the committed build number
 #   ./scripts/archive-app-store.sh --upload       # …then validate and upload
+#   ./scripts/archive-app-store.sh --testflight   # the lab build instead (see below)
+#
+# --testflight builds the TestFlight configuration: the same app plus Settings →
+# Experiments and the Muse 2 SDK, named "DEEP Lab", build number <epoch>.1. It is for
+# internal TestFlight testers only and must never be submitted for App Review. It needs
+# LibMuse unpacked first (scripts/setup-muse-sdk.sh). A store build is checked to carry
+# no Muse code and no Bluetooth permission; a lab build to carry both.
 #
 # --upload reads an App Store Connect API key (Admin or App Manager) from the environment:
 #   DEEP_ASC_KEY_ID, DEEP_ASC_ISSUER_ID, and the key file at
@@ -20,11 +27,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_DIR="$ROOT/Deep/Config"
-XCCONFIG="$CONFIG_DIR/AppStore.xcconfig"
 PROJECT="$ROOT/Deep/Deep.xcodeproj"
 BUILD_DIR="$ROOT/Deep/build"
-ARCHIVE="$BUILD_DIR/AppStore.xcarchive"
-IPA_DIR="$BUILD_DIR/ipa"
 LOG_DIR="$BUILD_DIR/logs"
 EXPORT_OPTIONS="$BUILD_DIR/app-store-export-options.plist"
 
@@ -39,13 +43,31 @@ die()  { printf '  %s✗%s %s\n' "$red" "$reset" "$1" >&2; exit 1; }
 
 KEEP_BUILD=0
 UPLOAD=0
+LAB=0
 for arg in "$@"; do
   case "$arg" in
     --keep-build) KEEP_BUILD=1 ;;
     --upload) UPLOAD=1 ;;
+    --testflight) LAB=1 ;;
     *) die "unknown argument: $arg" ;;
   esac
 done
+
+if [ "$LAB" -eq 1 ]; then
+  CONFIGURATION="TestFlight"
+  FLAVOR="lab"
+  DISPLAY_NAME="DEEP Lab"
+  [ -f "$ROOT/Deep/Vendor/Muse/Muse.framework/Muse" ] && [ -f "$CONFIG_DIR/MuseSDK.local.xcconfig" ] \
+    || die "the lab build needs LibMuse: run scripts/setup-muse-sdk.sh first"
+else
+  CONFIGURATION="AppStore"
+  FLAVOR="store"
+  DISPLAY_NAME="DEEP"
+fi
+SCHEME="Deep $CONFIGURATION"
+XCCONFIG="$CONFIG_DIR/$CONFIGURATION.xcconfig"
+ARCHIVE="$BUILD_DIR/$CONFIGURATION.xcarchive"
+IPA_DIR="$BUILD_DIR/ipa-$FLAVOR"
 
 if [ "$UPLOAD" -eq 1 ]; then
   [ -n "${DEEP_ASC_KEY_ID:-}" ] && [ -n "${DEEP_ASC_ISSUER_ID:-}" ] \
@@ -56,8 +78,8 @@ fi
 
 # The identity the archive must carry, read from the build settings rather than restated:
 # a value written twice is a value that drifts.
-setting() { # name — the AppStore configuration's resolved value
-  xcodebuild -project "$PROJECT" -scheme "Deep AppStore" -configuration AppStore \
+setting() { # name — the configuration's resolved value
+  xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIGURATION" \
     -showBuildSettings 2>/dev/null | sed -n "s/^ *$1 = //p" | head -1 || true
 }
 TEAM_ID="$(setting DEVELOPMENT_TEAM)"
@@ -65,7 +87,7 @@ BUNDLE_ID="$(setting PRODUCT_BUNDLE_IDENTIFIER)"
 PROFILE="$(setting PROVISIONING_PROFILE_SPECIFIER)"
 VERSION="$(setting MARKETING_VERSION)"
 [ -n "$TEAM_ID" ] && [ -n "$BUNDLE_ID" ] && [ -n "$PROFILE" ] && [ -n "$VERSION" ] \
-  || die "couldn't read the AppStore build settings"
+  || die "couldn't read the $CONFIGURATION build settings"
 
 # `xcodebuild | tail` exits 0 even when the build failed, so never pipe it: send the log
 # to a file, check the real exit code, then insist on the literal success line.
@@ -89,6 +111,8 @@ if [ "$KEEP_BUILD" -eq 1 ]; then
   ok "reusing committed build number $BUILD_NUMBER"
 else
   BUILD_NUMBER="$(date +%s)"
+  # A lab build's number ends in .1: ahead of the store builds, and marked as a lab build.
+  [ "$LAB" -eq 0 ] || BUILD_NUMBER="$BUILD_NUMBER.1"
   # Rewrite in place, then prove it took — a silent no-op here ships a duplicate build
   # number, which App Store Connect only rejects after the upload.
   /usr/bin/sed -i '' "s/^CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $BUILD_NUMBER/" "$XCCONFIG"
@@ -103,8 +127,8 @@ step "Archiving"
 rm -rf "$ARCHIVE" "$IPA_DIR"
 run_xcodebuild "$LOG_DIR/archive.log" archive \
   -project "$PROJECT" \
-  -scheme "Deep AppStore" \
-  -configuration AppStore \
+  -scheme "$SCHEME" \
+  -configuration "$CONFIGURATION" \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE"
 grep -q '\*\* ARCHIVE SUCCEEDED \*\*' "$LOG_DIR/archive.log" \
@@ -162,6 +186,8 @@ expect CFBundleIdentifier "$BUNDLE_ID"
 expect CFBundleShortVersionString "$VERSION"
 expect CFBundleVersion "$BUILD_NUMBER"
 expect AppEnvironment "prod"
+expect DeepBuildFlavor "$FLAVOR"
+expect CFBundleDisplayName "$DISPLAY_NAME"
 # Missing at the top level is ITMS-90713 — actool writes it only nested under CFBundleIcons.
 expect CFBundleIconName "AppIcon"
 
@@ -192,6 +218,24 @@ ARCHS="$(lipo -archs "$APP/$EXECUTABLE")"
 [ "$ARCHS" = "arm64" ] || die "architectures are '$ARCHS', expected arm64"
 ok "arm64"
 
+# The Muse 2 SDK belongs to the lab build alone (licence: Muse owners only; and an App
+# Store build has no business asking for Bluetooth).
+BLUETOOTH="$(value NSBluetoothAlwaysUsageDescription)"
+if [ "$LAB" -eq 1 ]; then
+  [ -n "$BLUETOOTH" ] || die "the lab build has no NSBluetoothAlwaysUsageDescription"
+  grep -qa 'IXNMuseManagerIos' "$APP/$EXECUTABLE" || die "LibMuse isn't linked into the lab build"
+  otool -L "$APP/$EXECUTABLE" | grep -q CoreBluetooth || die "the lab build doesn't link CoreBluetooth"
+  # The SDK is confidential: compiled in, never shipped as files.
+  [ -z "$(find "$APP" -name 'Muse.framework' -o -name '*.h' | head -1)" ] \
+    || die "LibMuse files were copied into the bundle"
+  ok "LibMuse linked, Bluetooth permission present, no SDK files in the bundle"
+else
+  [ -z "$BLUETOOTH" ] || die "a store build asks for Bluetooth"
+  ! grep -qa 'IXNMuse' "$APP/$EXECUTABLE" || die "LibMuse reached a store build"
+  ! otool -L "$APP/$EXECUTABLE" | grep -q CoreBluetooth || die "a store build links CoreBluetooth"
+  ok "no Muse SDK, no Bluetooth permission"
+fi
+
 ENTS="$(codesign -d --entitlements :- "$APP" 2>/dev/null)"
 grep -q 'beta-reports-active' <<<"$ENTS" || die "not a TestFlight-capable signature"
 # codesign may print the whole plist on one line, so match the key and its value together.
@@ -220,6 +264,9 @@ else
   printf '  %sRe-run with --upload (and DEEP_ASC_KEY_ID / DEEP_ASC_ISSUER_ID set) to validate and upload.%s\n' "$dim" "$reset"
 fi
 if [ "$KEEP_BUILD" -eq 0 ]; then
-  printf '  %sCommit the stamped build number in Deep/Config/AppStore.xcconfig.%s\n' "$dim" "$reset"
+  printf '  %sCommit the stamped build number in %s.%s\n' "$dim" "${XCCONFIG/#$ROOT\//}" "$reset"
+fi
+if [ "$LAB" -eq 1 ]; then
+  printf '  %sLab build: internal testers only. Never submit it for App Review.%s\n' "$bold" "$reset"
 fi
 printf '\n'
