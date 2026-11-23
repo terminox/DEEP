@@ -1,11 +1,10 @@
 #if EXPERIMENTS
 import SwiftUI
 
-// Settings → Experiments → Aurora: the night sky over the hills of northern
-// Thailand, with aurora curtains that move with a simulated meditator's brain.
-// A pure picture: no captions, no controls beyond a close button that fades
-// away. The sit loops until the person leaves. This is the one screen in DEEP
-// that may turn landscape (see `OrientationLock`).
+// Aurora: the night sky over the hills of northern Thailand, with aurora curtains
+// that move with the sitter's brain. A pure picture, no captions. The art reads a
+// `LiveSit`, so the same view plays a live demo (simulated headband) and a real sit
+// on a Muse 2; the close button, orientation and pauses belong to `ExperimentStage`.
 //
 // The sky is one Metal colour effect (`EEGAurora.metal`); the hills and the sea
 // of mist in front of it are Canvas paths. Data → sky (all smoothed first so
@@ -149,65 +148,26 @@ private final class AuroraDriver {
   }
 }
 
-// MARK: - The screen
+// MARK: - The art
 
-struct AuroraExperimentView: View {
-  @Environment(\.dismiss) private var dismiss
-  @State private var player = EEGSessionPlayer(recording: .regular)
+/// The aurora for a sit, live or finished.
+struct AuroraArtView: View {
+  let sit: LiveSit
   @State private var driver = AuroraDriver()
-  @State private var showsClose = true
-  @State private var hideClose: Task<Void, Never>?
+
+  /// Before the first frame arrives: a quiet, settled sky.
+  private static let resting = EEGSessionRecording.regular.frames[3000]
 
   var body: some View {
     TimelineView(.animation) { context in
       let wall = context.date.timeIntervalSinceReferenceDate
-      let frame = player.frame(at: context.date)
-      let blink = player.liveArtifacts.last { $0.kind == .blink }?.wallTime
+      let frame = sit.frame(at: context.date) ?? Self.resting
+      let blink = sit.recentArtifacts.last { $0.kind == .blink }?.wall
       AuroraScene(state: driver.advance(wall: wall, frame: frame, blinkWall: blink, smoothing: 1.2))
     }
     .ignoresSafeArea()
-    .contentShape(Rectangle())
-    .onTapGesture(perform: revealClose)
-    .overlay(alignment: .topLeading) {
-      if showsClose {
-        Button("Close", systemImage: "xmark") { dismiss() }
-          .labelStyle(.iconOnly)
-          .font(.system(size: 15, weight: .semibold))
-          .foregroundStyle(.moonCream)
-          .frame(width: 44, height: 44)
-          .background(.ultraThinMaterial, in: Circle())
-          .padding(.leading, .edge)
-          .padding(.top, 8)
-          .transition(.opacity)
-          .accessibilityIdentifier("aurora.close")
-      }
-    }
-    .statusBarHidden()
-    .persistentSystemOverlays(.hidden)
-    .preferredColorScheme(.dark)
-    .onAppear {
-      OrientationLock.allow(.allButUpsideDown)
-      UIApplication.shared.isIdleTimerDisabled = true
-      player.start()
-      revealClose()
-    }
-    .onDisappear {
-      player.stop()
-      hideClose?.cancel()
-      UIApplication.shared.isIdleTimerDisabled = false
-      OrientationLock.allow(.portrait)
-    }
-  }
-
-  /// Shows the close button, then lets it fade after three seconds.
-  private func revealClose() {
-    withAnimation(.settle) { showsClose = true }
-    hideClose?.cancel()
-    hideClose = Task {
-      try? await Task.sleep(for: .seconds(3))
-      guard !Task.isCancelled else { return }
-      withAnimation(.hush) { showsClose = false }
-    }
+    .accessibilityElement()
+    .accessibilityLabel("Aurora over the hills, moving with your brainwaves")
   }
 }
 
@@ -366,7 +326,7 @@ private struct AuroraHills: View {
 // MARK: - Previews
 
 #Preview("Aurora") {
-  AuroraExperimentView()
+  AuroraArtView(sit: .replaying(.regular, length: 600, upTo: 240))
 }
 
 #endif

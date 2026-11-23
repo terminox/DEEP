@@ -1,17 +1,21 @@
 #if EXPERIMENTS
 import SwiftUI
 
-// A simulated Muse 2 headband for the Aurora experiment: one deterministic
-// 10-minute meditation, shaped like the processed data LibMuse delivers
-// (relative/absolute band powers at ~10 Hz, electrode fit, blink and jaw
-// artifacts, plus Muse 2 heart rate and stillness). No headband is involved.
-// LibMuse has no "calm" score, so `calm` is DEEP's own index: smoothed frontal
-// alpha / (alpha + beta) on a soft saturating curve.
+// The EEG vocabulary every experiment speaks, and a simulated sit.
+//
+// `EEGFrame` is one ~10 Hz sample shaped like the processed data LibMuse delivers
+// (relative/absolute band powers, electrode fit, blink and jaw artifacts, plus the
+// Muse 2's heart rate and stillness). A real headband produces frames through
+// `MuseFrameBuilder`; `EEGSessionRecording` generates a deterministic 10-minute sit for
+// the live demos, the simulator and previews (played by `SimulatedHeadband`).
+// LibMuse has no "calm" score, so `calm` is DEEP's own index (`CalmIndex`).
+//
+// The value types are `nonisolated`: a real headband builds frames on its own queue.
 // Origin: the EEG art prototype on the `prototype/eeg-art` branch.
 
 // MARK: - Vocabulary
 
-enum EEGBand: Int, CaseIterable, Identifiable {
+nonisolated enum EEGBand: Int, CaseIterable, Identifiable, Sendable {
   case delta, theta, alpha, beta, gamma
 
   var id: Int { rawValue }
@@ -37,7 +41,7 @@ enum EEGBand: Int, CaseIterable, Identifiable {
   }
 }
 
-enum MuseChannel: Int, CaseIterable, Identifiable {
+nonisolated enum MuseChannel: Int, CaseIterable, Identifiable, Sendable {
   case tp9, af7, af8, tp10
 
   var id: Int { rawValue }
@@ -64,7 +68,7 @@ enum MuseChannel: Int, CaseIterable, Identifiable {
 }
 
 /// LibMuse "horseshoe" electrode fit.
-enum HorseshoeFit: Int {
+nonisolated enum HorseshoeFit: Int, Sendable {
   case good = 1
   case ok = 2
   case bad = 4
@@ -79,7 +83,7 @@ enum HorseshoeFit: Int {
 }
 
 /// Where the sitter is, read from the data (not the clock).
-enum MeditationPhase: String, CaseIterable, Identifiable {
+nonisolated enum MeditationPhase: String, CaseIterable, Identifiable, Sendable {
   case settling, drifting, wandering, deep, returning
 
   var id: String { rawValue }
@@ -95,7 +99,7 @@ enum MeditationPhase: String, CaseIterable, Identifiable {
   }
 }
 
-enum EEGArtifactKind: String {
+nonisolated enum EEGArtifactKind: String, Sendable {
   case blink
   case jawClench
 
@@ -107,7 +111,7 @@ enum EEGArtifactKind: String {
   }
 }
 
-struct EEGEvent: Identifiable, Hashable {
+nonisolated struct EEGEvent: Identifiable, Hashable, Sendable {
   let id: Int
   let kind: EEGArtifactKind
   /// Session seconds.
@@ -116,7 +120,7 @@ struct EEGEvent: Identifiable, Hashable {
 
 // MARK: - Band powers
 
-struct BandPowers: Equatable {
+nonisolated struct BandPowers: Equatable, Sendable {
   var delta: Double
   var theta: Double
   var alpha: Double
@@ -173,7 +177,7 @@ struct BandPowers: Equatable {
 
 // MARK: - One processed sample (the ~10 Hz LibMuse stream, plus Muse 2 extras)
 
-struct EEGFrame: Equatable {
+nonisolated struct EEGFrame: Equatable, Sendable {
   /// Session seconds.
   var time: Double
   /// Relative band powers, averaged over the four channels. Sum to 1.
@@ -216,7 +220,7 @@ struct EEGFrame: Equatable {
 // MARK: - People
 
 /// Three sitters, so the client sees the art change with the person.
-enum EEGPerson: String, CaseIterable, Identifiable {
+nonisolated enum EEGPerson: String, CaseIterable, Identifiable, Sendable {
   case firstTime, regular, experienced
 
   var id: String { rawValue }
@@ -256,7 +260,7 @@ enum EEGPerson: String, CaseIterable, Identifiable {
   }
 }
 
-struct EEGProfile {
+nonisolated struct EEGProfile: Sendable {
   var seed: UInt64
   /// How strongly alpha rises as the sitter relaxes.
   var alphaGain: Double
@@ -279,7 +283,7 @@ struct EEGProfile {
 
 /// Small seeded RNG (SplitMix64) so the same person always yields the same
 /// session, and the same flower.
-struct SeededRandom: RandomNumberGenerator {
+nonisolated struct SeededRandom: RandomNumberGenerator, Sendable {
   private var state: UInt64
 
   init(seed: UInt64) { state = seed &* 0x9E37_79B9_7F4A_7C15 &+ 1 }
@@ -296,7 +300,7 @@ struct SeededRandom: RandomNumberGenerator {
 }
 
 /// Smooth 1-D value noise in −1…1, continuous in `x`.
-func eegNoise(_ x: Double, seed: UInt64) -> Double {
+nonisolated func eegNoise(_ x: Double, seed: UInt64) -> Double {
   func hash(_ i: Int64) -> Double {
     var z = UInt64(bitPattern: i) &+ seed &* 0x9E37_79B9_7F4A_7C15
     z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
@@ -310,7 +314,8 @@ func eegNoise(_ x: Double, seed: UInt64) -> Double {
   return hash(i) + (hash(i + 1) - hash(i)) * s
 }
 
-private func smoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double {
+/// Hermite ramp from 0 at `edge0` to 1 at `edge1`.
+nonisolated func eegSmoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double {
   let t = min(max((x - edge0) / (edge1 - edge0), 0), 1)
   return t * t * (3 - 2 * t)
 }
@@ -319,7 +324,7 @@ private func smoothstep(_ edge0: Double, _ edge1: Double, _ x: Double) -> Double
 
 /// A whole 10-minute sit, sampled at `frameRate`. The "after" screens read it
 /// whole; the live player walks through it.
-struct EEGSessionRecording {
+nonisolated struct EEGSessionRecording: Sendable {
   static let duration: Double = 600
 
   let person: EEGPerson?
@@ -358,7 +363,7 @@ struct EEGSessionRecording {
     while time < duration {
       let progress = time / duration
       let rate = profile.blinksPerMinute.0
-        + (profile.blinksPerMinute.1 - profile.blinksPerMinute.0) * smoothstep(0, 0.5, progress)
+        + (profile.blinksPerMinute.1 - profile.blinksPerMinute.0) * eegSmoothstep(0, 0.5, progress)
       let wandering = profile.wanders.contains { time >= $0.0 && time < $0.0 + $0.1 }
       let perMinute = rate * (wandering ? 1.8 : 1)
       events.append(EEGEvent(id: events.count, kind: .blink, time: time))
@@ -386,7 +391,7 @@ struct EEGSessionRecording {
     let seed = profile.seed
     var frames: [EEGFrame] = []
     frames.reserveCapacity(count)
-    var smoothedRatio = 0.4
+    var calmIndex = CalmIndex()
     var smoothedTheta = 0.0
     var eventIndex = 0
 
@@ -395,11 +400,11 @@ struct EEGSessionRecording {
 
       // How far into letting go the sitter is: relaxes over ~4 min, eases back
       // up in the last minute.
-      let relax = smoothstep(40, 260, t) * (1 - 0.45 * smoothstep(540, 600, t))
-      let deep = smoothstep(280, 420, t) * (1 - smoothstep(520, 590, t))
+      let relax = eegSmoothstep(40, 260, t) * (1 - 0.45 * eegSmoothstep(540, 600, t))
+      let deep = eegSmoothstep(280, 420, t) * (1 - eegSmoothstep(520, 590, t))
       let wander = profile.wanders.reduce(0.0) { level, episode in
-        let rise = smoothstep(episode.0, episode.0 + 8, t)
-        let fall = 1 - smoothstep(episode.0 + episode.1 - 10, episode.0 + episode.1, t)
+        let rise = eegSmoothstep(episode.0, episode.0 + 8, t)
+        let fall = 1 - eegSmoothstep(episode.0 + episode.1 - 10, episode.0 + episode.1, t)
         return max(level, rise * fall)
       }
       let settled = relax * (1 - 0.85 * wander)
@@ -452,12 +457,8 @@ struct EEGSessionRecording {
 
       // Our calm index: frontal alpha against beta, smoothed over ~4 s.
       let frontalAlpha = (channelAlpha[1] + channelAlpha[2]) / 2
-      let ratio = frontalAlpha / (frontalAlpha + relative.beta)
-      let smoothing = 1 - exp(-dt / 4)
-      smoothedRatio += (ratio - smoothedRatio) * smoothing
-      smoothedTheta += (relative.theta - smoothedTheta) * smoothing
-      // Saturates softly, so a very settled sitter still has headroom.
-      let calm = 1 - exp(-1.7 * max(smoothedRatio - 0.3, 0) / 0.5)
+      let calm = calmIndex.update(frontalAlpha: frontalAlpha, beta: relative.beta, dt: dt)
+      smoothedTheta += (relative.theta - smoothedTheta) * (1 - exp(-dt / 4))
 
       let fit = MuseChannel.allCases.map { channel -> HorseshoeFit in
         let settleAt = profile.fitSettle * (channel.isFrontal ? 0.6 : 1.0 + 0.2 * Double(channel.rawValue % 2))
@@ -467,7 +468,7 @@ struct EEGSessionRecording {
       }
 
       let heartRate = profile.heartRate.0
-        + (profile.heartRate.1 - profile.heartRate.0) * smoothstep(0, 480, t)
+        + (profile.heartRate.1 - profile.heartRate.0) * eegSmoothstep(0, 480, t)
         + 4 * wander
         + 1.2 * eegNoise(t * 0.15, seed: seed &+ 7)
       let fidget = max(0, eegNoise(t * 0.4, seed: seed &+ 9)) * (1 - settled)
@@ -507,86 +508,10 @@ struct EEGSessionRecording {
   }
 }
 
-struct LiveArtifact: Hashable {
-  let kind: EEGArtifactKind
-  /// Wall-clock seconds (timeIntervalSinceReferenceDate) the artifact fired.
-  let wallTime: Double
-}
-
-// MARK: - Live player
-
-/// Walks a recording in compressed time (10 minutes in 2.5) and turns crossed
-/// events into wall-clock artifacts. At the end of the sit it starts again from
-/// the top, forever, so the demo plays until someone leaves. For 60 Hz visuals
-/// read `frame(at:)` inside a TimelineView; `liveArtifacts` updates at 10 Hz.
-@MainActor
-@Observable
-final class EEGSessionPlayer {
-  /// Session seconds per wall second.
-  static let speed = 4.0
-
-  let recording: EEGSessionRecording
-  private(set) var liveArtifacts: [LiveArtifact] = []
-
-  @ObservationIgnored private var anchorWall = Date()
-  @ObservationIgnored private var lastTime: Double = 0
-  @ObservationIgnored private var nextEvent = 0
-  @ObservationIgnored private var ticker: Task<Void, Never>?
-
-  init(recording: EEGSessionRecording) {
-    self.recording = recording
-  }
-
-  /// Session seconds at a wall-clock date, wrapping at the end of the sit.
-  func sessionTime(at date: Date) -> Double {
-    let elapsed = max(date.timeIntervalSince(anchorWall), 0) * Self.speed
-    return elapsed.truncatingRemainder(dividingBy: EEGSessionRecording.duration)
-  }
-
-  func frame(at date: Date) -> EEGFrame {
-    recording.frame(at: sessionTime(at: date))
-  }
-
-  func start() {
-    guard ticker == nil else { return }
-    anchorWall = Date()
-    lastTime = 0
-    nextEvent = 0
-    liveArtifacts = []
-    ticker = Task { [weak self] in
-      while !Task.isCancelled {
-        self?.tick()
-        try? await Task.sleep(for: .milliseconds(100))
-      }
-    }
-  }
-
-  func stop() {
-    ticker?.cancel()
-    ticker = nil
-  }
-
-  private func tick() {
-    let now = Date()
-    let time = sessionTime(at: now)
-    let wall = now.timeIntervalSinceReferenceDate
-    // The sit wrapped around: start reading events from the top again.
-    if time < lastTime { nextEvent = 0 }
-    lastTime = time
-    let events = recording.events
-    while nextEvent < events.count, events[nextEvent].time <= time {
-      // Place the artifact at the wall moment the session crossed it.
-      let behind = (time - events[nextEvent].time) / Self.speed
-      liveArtifacts.append(LiveArtifact(kind: events[nextEvent].kind, wallTime: wall - behind))
-      nextEvent += 1
-    }
-    liveArtifacts.removeAll { wall - $0.wallTime > 8 }
-  }
-}
-
 extension EEGSessionRecording {
-  /// The sit the Aurora experiment plays: a regular meditator, built once.
-  static let regular = EEGSessionRecording(person: .regular)
+  /// The sit the live demos and the simulated headband play: a regular meditator,
+  /// built once.
+  nonisolated static let regular = EEGSessionRecording(person: .regular)
 }
 
 #endif
